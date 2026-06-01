@@ -72,7 +72,23 @@ jobs:
           gh release upload "$RELEASE_TAG" "$upload_dir"/* --clobber
       - name: Verify checksums before publish
         run: (cd ../../release-assets/protocol-schemas && sha256sum --check SHA256SUMS.txt)
-      - run: npm publish "${{ steps.pack-evidence.outputs.tarball }}" --access public --provenance --ignore-scripts
+      - name: Check if version already published
+        id: check-published
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          pkg="@oaslananka/kicad-protocol-schemas"
+          if npm view "${pkg}@${version}" version --json 2>/dev/null; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "found=true"
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+            echo "not found"
+          fi
+      - name: Publish to npm
+        if: steps.check-published.outputs.already_published != 'true'
+        run: npm publish "${{ steps.pack-evidence.outputs.tarball }}" --access public --provenance --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Verify published tarball
