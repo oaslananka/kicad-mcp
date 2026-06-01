@@ -94,7 +94,30 @@ export async function verifyPublishedNpmDigest({
 
   const tarball = await fetchBytes(tarballUrl);
   const tarballName = basename(new URL(tarballUrl).pathname);
-  const expected = checksums.get(tarballName);
+  let expected = checksums.get(tarballName);
+  if (expected === undefined) {
+    // Local pack may produce a different basename than the registry
+    // (e.g. scoped packages: pack -> oaslananka-kicad-...tgz, registry -> kicad-...tgz).
+    // If there is exactly one .tgz entry in checksums, use it as the fallback.
+    const tarballEntries = [...checksums.entries()].filter(([name]) =>
+      name.endsWith(".tgz"),
+    );
+    if (tarballEntries.length === 0) {
+      throw new Error(`No .tgz entry found in checksums file ${checksumsPath}`);
+    }
+    if (tarballEntries.length > 1) {
+      throw new Error(
+        `${tarballName} not found in checksums and multiple .tgz entries exist (` +
+          `${tarballEntries.map(([n]) => n).join(", ")}). ` +
+          `Cannot unambiguously match. Add an explicit entry for ${tarballName}.`,
+      );
+    }
+    const [entryName, entryDigest] = tarballEntries[0];
+    console.log(
+      `[warn] tarball basename differs: local="${entryName}" registry="${tarballName}" — matching by digest`,
+    );
+    expected = entryDigest;
+  }
   const actual = sha256(tarball);
   if (expected !== actual) {
     throw new Error(
