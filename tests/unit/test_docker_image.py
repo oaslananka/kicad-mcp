@@ -19,18 +19,23 @@ def _docker() -> str:
     docker = shutil.which("docker")
     if docker is None:
         pytest.skip("Docker CLI is not available")
-    info = subprocess.run(
-        [docker, "info"],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=20,
-        check=False,
-    )
-    if info.returncode != 0:
-        pytest.skip(f"Docker daemon is not available: {info.stderr.strip() or info.stdout.strip()}")
+    try:
+        info = subprocess.run(
+            [docker, "info"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=20,
+            check=False,
+        )
+        if info.returncode != 0:
+            pytest.skip(
+                f"Docker daemon is not available: {info.stderr.strip() or info.stdout.strip()}"
+            )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        pytest.skip(f"Docker cannot be executed: {exc}")
     return docker
 
 
