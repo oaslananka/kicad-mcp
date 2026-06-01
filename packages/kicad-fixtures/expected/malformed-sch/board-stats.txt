@@ -1,0 +1,6 @@
+fixture=malformed-sch
+board=absent
+footprints=0
+nets=0
+segments=0
+layers=

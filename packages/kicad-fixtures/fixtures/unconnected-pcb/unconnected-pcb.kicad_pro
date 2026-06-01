@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "filename": "unconnected-pcb",
+    "version": 1,
+    "fixtureId": "unconnected-pcb",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "unconnected-pcb",
+    "expectedOutcome": "warn",
+    "tags": [
+      "pcb",
+      "ratsnest",
+      "netlist"
+    ]
+  },
+  "schematic": {
+    "file": "unconnected-pcb.kicad_sch"
+  },
+  "board": {
+    "file": "unconnected-pcb.kicad_pcb"
+  }
+}

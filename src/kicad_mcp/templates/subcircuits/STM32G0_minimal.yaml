@@ -1,0 +1,22 @@
+name: STM32G0_minimal
+version: "1.0"
+description: Minimal STM32G0 Cortex-M0+ circuit with SWD and decoupling.
+symbols:
+  - ref_prefix: U
+    value: STM32G0
+    default_footprint: Package_QFP:LQFP-32_7x7mm_P0.8mm
+    pins_left: [SWDIO, SWCLK, NRST, BOOT0]
+    pins_right: [PA0, PA1, PB0, PB1, VDD, VSS]
+  - ref_prefix: C
+    value: 100nF
+    default_footprint: Capacitor_SMD:C_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: +3V3
+    type: power
+  - name: GND
+    type: power
+placement_hints:
+  - Place one 100nF capacitor next to each VDD/VSS pair.
+  - Keep SWD connector close enough for short debug traces.

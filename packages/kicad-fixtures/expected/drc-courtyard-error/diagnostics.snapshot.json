@@ -1,0 +1,17 @@
+{
+  "fixture": "drc-courtyard-error",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "diagnostics": [
+    {
+      "id": "drc-courtyard-error-drc_courtyard",
+      "fixture": "drc-courtyard-error",
+      "sequence": 1,
+      "severity": "error",
+      "source": "drc",
+      "code": "DRC_COURTYARD",
+      "message": "Footprint courtyards overlap between U1 and U2.",
+      "stale": false,
+      "file": "drc-courtyard-error.kicad_pcb"
+    }
+  ]
+}

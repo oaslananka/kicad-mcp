@@ -1,0 +1,23 @@
+{
+  "fixture": "erc-power-pin-error",
+  "semanticName": "erc-power-pin-error",
+  "root": "packages/kicad-fixtures/fixtures/erc-power-pin-error",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "files": [
+    {
+      "role": "project",
+      "path": "erc-power-pin-error.kicad_pro",
+      "exists": true
+    },
+    {
+      "role": "schematic",
+      "path": "erc-power-pin-error.kicad_sch",
+      "exists": true
+    },
+    {
+      "role": "dru",
+      "path": null,
+      "exists": false
+    }
+  ]
+}

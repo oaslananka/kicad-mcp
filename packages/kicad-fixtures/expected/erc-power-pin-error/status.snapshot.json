@@ -1,0 +1,28 @@
+{
+  "fixture": "erc-power-pin-error",
+  "expectedOutcome": "fail",
+  "projectState": "blocked",
+  "diagnostics": {
+    "errors": 1,
+    "warnings": 0,
+    "infos": 0,
+    "stale": false
+  },
+  "schematic": {
+    "state": "available"
+  },
+  "board": {
+    "state": "absent",
+    "footprints": 2
+  },
+  "netlist": {
+    "state": "available"
+  },
+  "designRules": {
+    "state": "absent"
+  },
+  "pathFeatures": {
+    "containsSpaces": false,
+    "containsNonAscii": false
+  }
+}

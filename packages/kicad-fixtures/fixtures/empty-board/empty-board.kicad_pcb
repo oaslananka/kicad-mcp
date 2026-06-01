@@ -1,0 +1,11 @@
+(kicad_pcb
+  (version 20240101)
+  (generator "KiCad Studio Fixture Corpus")
+  (general)
+  (layers
+    (0 "F.Cu" signal)
+    (31 "B.Cu" signal)
+    (44 "Edge.Cuts" user)
+  )
+  (gr_rect (start 0 0) (end 100 60) (stroke (width 0.10) (type solid)) (fill none) (layer "Edge.Cuts"))
+)

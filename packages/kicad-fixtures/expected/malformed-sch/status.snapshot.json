@@ -1,0 +1,28 @@
+{
+  "fixture": "malformed-sch",
+  "expectedOutcome": "fail",
+  "projectState": "blocked",
+  "diagnostics": {
+    "errors": 1,
+    "warnings": 0,
+    "infos": 0,
+    "stale": false
+  },
+  "schematic": {
+    "state": "parse-error"
+  },
+  "board": {
+    "state": "absent",
+    "footprints": 0
+  },
+  "netlist": {
+    "state": "available"
+  },
+  "designRules": {
+    "state": "absent"
+  },
+  "pathFeatures": {
+    "containsSpaces": false,
+    "containsNonAscii": false
+  }
+}

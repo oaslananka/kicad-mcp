@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oaslananka.github.io/kicad-studio-kit/schemas/compatibility-manifest.schema.json",
+  "title": "Protocol compatibility manifest",
+  "description": "Cross-product manifest describing supported schema majors and migration policy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "products", "schemas", "policy"],
+  "properties": {
+    "schemaVersion": {
+      "$ref": "#/$defs/semver"
+    },
+    "products": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version", "supportedSchemaMajors"],
+        "properties": {
+          "version": {
+            "$ref": "#/$defs/semver"
+          },
+          "supportedSchemaMajors": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["current", "compatibility"],
+        "properties": {
+          "current": {
+            "$ref": "#/$defs/semver"
+          },
+          "compatibility": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "breakingChanges",
+        "additiveChanges",
+        "documentationChanges"
+      ],
+      "properties": {
+        "breakingChanges": {
+          "const": "major"
+        },
+        "additiveChanges": {
+          "const": "minor"
+        },
+        "documentationChanges": {
+          "const": "patch"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    }
+  },
+  "x-kicad-studio-kit": {
+    "trackingIssue": "OASLANA-52",
+    "schemaVersion": "1.0.0"
+  }
+}

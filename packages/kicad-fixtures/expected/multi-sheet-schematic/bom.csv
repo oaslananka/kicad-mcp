@@ -1,0 +1,6 @@
+Reference,Value,Footprint,Manufacturer,MPN
+R1,1k,Resistor_SMD:R_0603_1608Metric,Yageo,1k-R1
+LED1,red,LED_SMD:LED_0603_1608Metric,Kingbright,APT1608
+C1,100n,Capacitor_SMD:C_0603_1608Metric,Yageo,100n-C1
+U2,LDO,Package_TO_SOT_SMD:SOT-23-5,Yageo,LDO-U2
+C2,10u,Capacitor_SMD:C_0805_2012Metric,Yageo,10u-C2

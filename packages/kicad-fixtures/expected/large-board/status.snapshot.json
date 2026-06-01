@@ -1,0 +1,28 @@
+{
+  "fixture": "large-board",
+  "expectedOutcome": "pass",
+  "projectState": "ready",
+  "diagnostics": {
+    "errors": 0,
+    "warnings": 0,
+    "infos": 0,
+    "stale": false
+  },
+  "schematic": {
+    "state": "available"
+  },
+  "board": {
+    "state": "available",
+    "footprints": 36
+  },
+  "netlist": {
+    "state": "available"
+  },
+  "designRules": {
+    "state": "available"
+  },
+  "pathFeatures": {
+    "containsSpaces": false,
+    "containsNonAscii": false
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "include-component-in-tag": true,
+  "separate-pull-requests": true,
+  "plugins": [
+    {
+      "type": "linked-versions",
+      "groupName": "kicad-mcp-pro",
+      "components": ["mcp-server", "mcp-npm"]
+    }
+  ],
+  "packages": {
+    ".": {
+      "release-type": "python",
+      "package-name": "kicad-mcp-pro",
+      "component": "mcp-server",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "src/kicad_mcp/__init__.py"
+        },
+        {
+          "type": "json",
+          "path": "mcp.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "mcp.json",
+          "jsonpath": "$.packages[0].version"
+        },
+        {
+          "type": "json",
+          "path": "mcp.json",
+          "jsonpath": "$.packages[1].version"
+        },
+        {
+          "type": "json",
+          "path": "mcp.json",
+          "jsonpath": "$.packages[2].version"
+        },
+        {
+          "type": "json",
+          "path": "server.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "server.json",
+          "jsonpath": "$.packages[0].version"
+        },
+        {
+          "type": "json",
+          "path": "server.json",
+          "jsonpath": "$.packages[1].version"
+        },
+        {
+          "type": "json",
+          "path": "server.json",
+          "jsonpath": "$.packages[2].version"
+        }
+      ]
+    },
+    "packages/mcp-npm": {
+      "release-type": "node",
+      "package-name": "kicad-mcp-pro",
+      "component": "mcp-npm",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}

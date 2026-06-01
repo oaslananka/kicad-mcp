@@ -1,0 +1,28 @@
+{
+  "fixture": "missing-netlist",
+  "semanticName": "missing-netlist",
+  "root": "packages/kicad-fixtures/fixtures/missing-netlist",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "files": [
+    {
+      "role": "project",
+      "path": "missing-netlist.kicad_pro",
+      "exists": true
+    },
+    {
+      "role": "schematic",
+      "path": "missing-netlist.kicad_sch",
+      "exists": true
+    },
+    {
+      "role": "board",
+      "path": "missing-netlist.kicad_pcb",
+      "exists": true
+    },
+    {
+      "role": "dru",
+      "path": null,
+      "exists": false
+    }
+  ]
+}

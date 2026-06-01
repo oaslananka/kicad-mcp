@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "filename": "drc-courtyard-error",
+    "version": 1,
+    "fixtureId": "drc-courtyard-error",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "drc-courtyard-error",
+    "expectedOutcome": "fail",
+    "tags": [
+      "drc",
+      "pcb",
+      "courtyard"
+    ]
+  },
+  "board": {
+    "file": "drc-courtyard-error.kicad_pcb"
+  },
+  "designRules": {
+    "file": "drc-courtyard-error.kicad_dru"
+  }
+}

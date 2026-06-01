@@ -1,0 +1,17 @@
+{
+  "fixture": "erc-power-pin-error",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "diagnostics": [
+    {
+      "id": "erc-power-pin-error-erc_power_pin",
+      "fixture": "erc-power-pin-error",
+      "sequence": 1,
+      "severity": "error",
+      "source": "erc",
+      "code": "ERC_POWER_PIN",
+      "message": "Power input pin VCC is not driven by a power output symbol.",
+      "stale": false,
+      "file": "erc-power-pin-error.kicad_sch"
+    }
+  ]
+}

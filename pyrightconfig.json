@@ -1,0 +1,7 @@
+{
+  "include": ["src/kicad_mcp"],
+  "exclude": ["**/__pycache__", ".venv", "dist", "site"],
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "strict",
+  "reportMissingTypeStubs": false
+}

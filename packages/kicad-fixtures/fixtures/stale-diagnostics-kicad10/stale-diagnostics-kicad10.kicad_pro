@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "filename": "stale-diagnostics-kicad10",
+    "version": 1,
+    "fixtureId": "stale-diagnostics-kicad10",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "stale-diagnostics-kicad10",
+    "expectedOutcome": "warn",
+    "tags": [
+      "kicad10",
+      "diagnostics",
+      "stale-state"
+    ]
+  },
+  "schematic": {
+    "file": "stale-diagnostics-kicad10.kicad_sch"
+  },
+  "board": {
+    "file": "stale-diagnostics-kicad10.kicad_pcb"
+  },
+  "designRules": {
+    "file": "stale-diagnostics-kicad10.kicad_dru"
+  }
+}

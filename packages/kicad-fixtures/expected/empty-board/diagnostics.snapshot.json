@@ -1,0 +1,17 @@
+{
+  "fixture": "empty-board",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "diagnostics": [
+    {
+      "id": "empty-board-board_empty",
+      "fixture": "empty-board",
+      "sequence": 1,
+      "severity": "warning",
+      "source": "pcb",
+      "code": "BOARD_EMPTY",
+      "message": "Board has no footprints and no routed copper.",
+      "stale": false,
+      "file": "empty-board.kicad_pcb"
+    }
+  ]
+}

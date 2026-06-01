@@ -1,0 +1,359 @@
+"""Health and doctor diagnostics for CLI and integrations."""
+
+from __future__ import annotations
+
+import json
+import platform
+import re
+import sys
+from pathlib import Path
+from typing import Any, ClassVar, Literal
+from zipfile import ZIP_DEFLATED, ZipFile
+
+from pydantic import BaseModel, ConfigDict, Field
+
+from . import __version__
+from .capabilities import AccessTier, RuntimeRequirement, all_records
+from .config import get_config
+from .connection import KiCadConnectionError, get_board
+from .discovery import find_kicad_version
+
+CheckStatus = Literal["ok", "warn", "error", "skipped"]
+OverallStatus = Literal["ok", "degraded", "error"]
+DIAGNOSTIC_SCHEMA_VERSION = "1.0.0"
+_PRIVATE_KEY_MARKER = "PRIVATE" + " KEY"
+_SECRET_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"(?i)\b(token|access_token|refresh_token|client_secret|password)=([^\s,;]+)"),
+    re.compile(r"(?i)\b(authorization:\s*bearer\s+)([^\s,;]+)"),
+    re.compile(
+        rf"-----BEGIN {_PRIVATE_KEY_MARKER}-----.*?-----END {_PRIVATE_KEY_MARKER}-----",
+        re.DOTALL,
+    ),
+)
+
+
+class CheckResult(BaseModel):
+    """One diagnostics check result."""
+
+    name: str
+    status: CheckStatus
+    message: str
+    hint: str = ""
+
+
+class PackageDiagnostics(BaseModel):
+    """Installed package information."""
+
+    name: str = "kicad-mcp-pro"
+    version: str = __version__
+
+
+class PythonDiagnostics(BaseModel):
+    """Python runtime information."""
+
+    version: str = Field(default_factory=platform.python_version)
+    executable: str | None = None
+
+
+class McpDiagnostics(BaseModel):
+    """MCP server runtime settings."""
+
+    transport_default: str
+    profile: str
+    host: str | None = None
+    port: int | None = None
+    mount_path: str | None = None
+    stateful_http: bool = False
+
+
+class KiCadDiagnostics(BaseModel):
+    """KiCad CLI and IPC availability."""
+
+    cli_path: str | None
+    cli_found: bool
+    version: str | None = None
+    ipc_reachable: bool = False
+    headless: bool = False
+
+
+class ConfigDiagnostics(BaseModel):
+    """Sanitized server configuration fields."""
+
+    workspace_root: str | None = None
+    project_dir: str | None = None
+    project_file: str | None = None
+    pcb_file: str | None = None
+    sch_file: str | None = None
+    output_dir: str | None = None
+    timeout_ms: int
+    retries: int
+    headless: bool
+    log_level: str
+    log_format: str
+    transport: str
+    host: str | None = None
+    port: int | None = None
+    mount_path: str | None = None
+    stateful_http: bool = False
+    auth_token: dict[str, bool]
+    kicad_token: dict[str, bool]
+
+
+class ToolCatalogDiagnostics(BaseModel):
+    """Summary of the tool registry available to the configured profile."""
+
+    tool_count: int = 0
+    category_count: int = 0
+    categories: list[str] = Field(default_factory=list)
+    capability_summary: dict[str, dict[str, int]] = Field(default_factory=dict)
+
+
+class LiveContextDiagnostics(BaseModel):
+    """Live KiCad GUI and IPC context availability."""
+
+    available: bool = False
+    ipc_reachable: bool = False
+    live_pcb_context: bool = False
+    live_schematic_context: bool = False
+    diagnostics: list[str] = Field(default_factory=list)
+
+
+class DiagnosticReport(BaseModel):
+    """Machine-readable health/doctor report."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(populate_by_name=True)
+
+    schema_version: str = Field(default=DIAGNOSTIC_SCHEMA_VERSION, alias="schemaVersion")
+    ok: bool
+    status: OverallStatus
+    package: PackageDiagnostics = Field(default_factory=PackageDiagnostics)
+    python: PythonDiagnostics = Field(default_factory=PythonDiagnostics)
+    mcp: McpDiagnostics
+    kicad: KiCadDiagnostics
+    config: ConfigDiagnostics
+    tools: ToolCatalogDiagnostics = Field(default_factory=ToolCatalogDiagnostics)
+    live_context: LiveContextDiagnostics = Field(default_factory=LiveContextDiagnostics)
+    recent_errors: list[str] = Field(default_factory=list)
+    checks: list[CheckResult] = Field(default_factory=list)
+
+
+def _redact_sensitive(value: str) -> str:
+    redacted = value
+    redacted = _SECRET_PATTERNS[0].sub(lambda match: f"{match.group(1)}=[REDACTED]", redacted)
+    redacted = _SECRET_PATTERNS[1].sub(lambda match: f"{match.group(1)}[REDACTED]", redacted)
+    redacted = _SECRET_PATTERNS[2].sub(
+        f"-----BEGIN {_PRIVATE_KEY_MARKER}-----[REDACTED]-----END {_PRIVATE_KEY_MARKER}-----",
+        redacted,
+    )
+    return redacted
+
+
+def _redact_check(check: CheckResult) -> CheckResult:
+    return CheckResult(
+        name=check.name,
+        status=check.status,
+        message=_redact_sensitive(check.message),
+        hint=_redact_sensitive(check.hint),
+    )
+
+
+def _status(checks: list[CheckResult]) -> tuple[bool, OverallStatus]:
+    if any(check.status == "error" for check in checks):
+        return False, "error"
+    if any(check.status == "warn" for check in checks):
+        return True, "degraded"
+    return True, "ok"
+
+
+def _cli_found(path: Path) -> bool:
+    return path.exists()
+
+
+def _capability_summary() -> dict[str, dict[str, int]]:
+    tiers = {tier.value: 0 for tier in AccessTier}
+    runtimes = {runtime.value: 0 for runtime in RuntimeRequirement}
+    for record in all_records().values():
+        tiers[record.tier.value] += 1
+        runtimes[record.runtime.value] += 1
+    return {"tiers": tiers, "runtimes": runtimes}
+
+
+def _tool_catalog_diagnostics(profile: str) -> ToolCatalogDiagnostics:
+    from .tools.router import categories_for_profile
+
+    categories = list(categories_for_profile(profile))
+    return ToolCatalogDiagnostics(
+        tool_count=len(all_records()),
+        category_count=len(categories),
+        categories=categories,
+        capability_summary=_capability_summary(),
+    )
+
+
+def _recent_errors(checks: list[CheckResult]) -> list[str]:
+    return [
+        f"{check.name}: {check.message}" for check in checks if check.status in {"warn", "error"}
+    ]
+
+
+def _diagnostic_payload(report: DiagnosticReport) -> dict[str, Any]:
+    payload = report.model_dump(mode="json", by_alias=True)
+    DiagnosticReport.model_validate(payload)
+    return payload
+
+
+def _json_dumps(payload: object) -> str:
+    return json.dumps(payload, indent=2, sort_keys=True)
+
+
+def write_diagnostic_bundle(report: DiagnosticReport, bundle_path: Path) -> None:
+    """Write a redacted support bundle for setup diagnostics."""
+    payload = _diagnostic_payload(report)
+    bundle_path.parent.mkdir(parents=True, exist_ok=True)
+    config = payload["config"]
+    if not isinstance(config, dict):
+        config = {}
+    environment = {
+        "schemaVersion": DIAGNOSTIC_SCHEMA_VERSION,
+        "platform": platform.platform(),
+        "python": payload["python"],
+        "package": payload["package"],
+        "config": config,
+        "environment": {
+            "KICAD_MCP_AUTH_TOKEN": config.get("auth_token", {"configured": False}),
+            "KICAD_API_TOKEN": config.get("kicad_token", {"configured": False}),
+            "KICAD_MCP_KICAD_TOKEN": config.get("kicad_token", {"configured": False}),
+            "OTEL_EXPORTER_OTLP_HEADERS": {"configured": bool(config.get("otel_headers"))},
+        },
+    }
+    readme = (
+        "KiCad MCP Pro diagnostic bundle\n\n"
+        "This bundle contains redacted setup diagnostics only. Secret values, tokens, "
+        "and plaintext credentials are not included.\n"
+    )
+    with ZipFile(bundle_path, mode="w", compression=ZIP_DEFLATED) as archive:
+        archive.writestr("README.txt", readme)
+        archive.writestr("doctor.json", _json_dumps(payload))
+        archive.writestr(
+            "diagnostic-schema.json",
+            _json_dumps(DiagnosticReport.model_json_schema(by_alias=True)),
+        )
+        archive.writestr("environment.json", _json_dumps(environment))
+
+
+def diagnostic_report_json(report: DiagnosticReport, *, indent: int = 2) -> str:
+    """Return schema-validated JSON for a diagnostic report."""
+    payload = _diagnostic_payload(report)
+    return json.dumps(payload, indent=indent)
+
+
+def build_diagnostic_report(*, probe_cli: bool, probe_ipc: bool) -> DiagnosticReport:
+    """Build a diagnostics report without raising for non-fatal KiCad unavailability."""
+    cfg = get_config()
+    checks: list[CheckResult] = []
+
+    cli_found = _cli_found(cfg.kicad_cli)
+    kicad_version: str | None = None
+    if cli_found:
+        checks.append(
+            CheckResult(
+                name="kicad_cli",
+                status="ok",
+                message=f"kicad-cli found at {cfg.kicad_cli}",
+            )
+        )
+        if probe_cli:
+            kicad_version = find_kicad_version(cfg.kicad_cli)
+            checks.append(
+                CheckResult(
+                    name="kicad_cli_version",
+                    status="ok" if kicad_version else "warn",
+                    message=kicad_version or "Could not read KiCad CLI version.",
+                    hint="" if kicad_version else "Verify that kicad-cli runs on this machine.",
+                )
+            )
+    else:
+        checks.append(
+            CheckResult(
+                name="kicad_cli",
+                status="warn",
+                message=f"kicad-cli was not found at {cfg.kicad_cli}",
+                hint="Install KiCad or set KICAD_CLI_PATH/KICAD_MCP_KICAD_CLI.",
+            )
+        )
+
+    ipc_reachable = False
+    if probe_ipc:
+        try:
+            get_board()
+            ipc_reachable = True
+            checks.append(
+                CheckResult(
+                    name="kicad_ipc",
+                    status="ok",
+                    message="KiCad IPC is reachable and a board is open.",
+                )
+            )
+        except KiCadConnectionError as exc:
+            checks.append(
+                CheckResult(
+                    name="kicad_ipc",
+                    status="warn",
+                    message=str(exc).splitlines()[0],
+                    hint="Start KiCad, enable the IPC API server, and open a board.",
+                )
+            )
+    else:
+        checks.append(
+            CheckResult(
+                name="kicad_ipc",
+                status="skipped",
+                message="KiCad IPC probe deferred for fast health check.",
+                hint="Run doctor --json for a deeper probe.",
+            )
+        )
+
+    checks = [_redact_check(check) for check in checks]
+    ok, status = _status(checks)
+    config_payload = cfg.safe_diagnostics()
+    return DiagnosticReport(
+        ok=ok,
+        status=status,
+        python=PythonDiagnostics(executable=sys.executable),
+        mcp=McpDiagnostics(
+            transport_default=cfg.transport,
+            profile=cfg.profile,
+            host=cfg.host,
+            port=cfg.port,
+            mount_path=cfg.mount_path,
+            stateful_http=cfg.stateful_http,
+        ),
+        kicad=KiCadDiagnostics(
+            cli_path=str(cfg.kicad_cli) if cfg.kicad_cli else None,
+            cli_found=cli_found,
+            version=kicad_version,
+            ipc_reachable=ipc_reachable,
+            headless=cfg.headless,
+        ),
+        config=ConfigDiagnostics.model_validate(config_payload),
+        tools=_tool_catalog_diagnostics(cfg.profile),
+        live_context=LiveContextDiagnostics(
+            available=ipc_reachable,
+            ipc_reachable=ipc_reachable,
+            live_pcb_context=ipc_reachable,
+            live_schematic_context=False,
+            diagnostics=_recent_errors(checks),
+        ),
+        recent_errors=_recent_errors(checks),
+        checks=checks,
+    )
+
+
+def build_health_report() -> DiagnosticReport:
+    """Build a fast health report that never requires KiCad IPC."""
+    return build_diagnostic_report(probe_cli=False, probe_ipc=False)
+
+
+def build_doctor_report() -> DiagnosticReport:
+    """Build a deeper doctor report with non-fatal KiCad probes."""
+    return build_diagnostic_report(probe_cli=True, probe_ipc=True)

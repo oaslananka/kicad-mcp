@@ -1,0 +1,6 @@
+fixture=multi-sheet-schematic
+board=available
+footprints=5
+nets=5
+segments=5
+layers=F.Cu,B.Cu,Edge.Cuts

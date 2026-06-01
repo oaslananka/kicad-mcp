@@ -1,0 +1,19 @@
+name: I2C_pullup
+version: "1.0"
+description: I2C pull-up network with optional level-shift footprint guidance.
+symbols:
+  - ref_prefix: R
+    value: 4.7k
+    default_footprint: Resistor_SMD:R_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: SDA
+    type: signal
+  - name: SCL
+    type: signal
+  - name: +3V3
+    type: power
+placement_hints:
+  - Place pull-ups near the bus master or level shifter.
+  - Use lower pull-up values for high bus capacitance.

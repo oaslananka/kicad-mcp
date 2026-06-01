@@ -1,0 +1,525 @@
+"""Tool routing, metadata labels, and server profiles."""
+
+from __future__ import annotations
+
+from typing import TypedDict
+
+from mcp.server.fastmcp import FastMCP
+
+from .metadata import get_tool_metadata
+
+
+class ToolCategory(TypedDict):
+    """Router metadata for a single tool category."""
+
+    description: str
+    tools: list[str]
+
+
+EXPERIMENTAL_TOOL_NAMES: frozenset[str] = frozenset(
+    {
+        "sch_swap_pins",
+        "sch_swap_gates",
+        "sch_add_jumper",
+        "sch_reload",
+    }
+)
+
+
+def _display_tool_name(tool_name: str) -> str:
+    suffixes: list[str] = []
+    if tool_name in EXPERIMENTAL_TOOL_NAMES:
+        suffixes.append("EXPERIMENTAL")
+    metadata = get_tool_metadata(tool_name)
+    if metadata is not None:
+        if metadata.headless_compatible:
+            suffixes.append("HEADLESS")
+        if metadata.requires_kicad_running:
+            suffixes.append("REQUIRES_KICAD")
+        for dependency in metadata.dependencies:
+            suffixes.append(f"REQUIRES:{dependency}")
+    if not suffixes:
+        return tool_name
+    return f"{tool_name} [{' / '.join(suffixes)}]"
+
+
+TOOL_CATEGORIES: dict[str, ToolCategory] = {
+    "project": {
+        "description": "Project setup, server discovery, and quick help.",
+        "tools": [
+            "kicad_set_project",
+            "kicad_get_project_info",
+            "project_set_design_intent",
+            "project_get_design_intent",
+            "project_get_design_spec",
+            "project_infer_design_spec",
+            "project_validate_design_spec",
+            "project_generate_design_prompt",
+            "project_get_next_action",
+            "project_auto_fix_loop",
+            "project_full_validation_loop",
+            "project_gate_trend",
+            "project_design_report",
+            "kicad_list_recent_projects",
+            "kicad_scan_directory",
+            "kicad_create_new_project",
+            "kicad_get_version",
+            "kicad_get_server_info",
+            "kicad_list_tool_categories",
+            "kicad_get_tools_in_category",
+            "kicad_help",
+            "studio_push_context",
+        ],
+    },
+    "pcb_read": {
+        "description": "Read PCB state including tracks, vias, footprints, nets, and layers.",
+        "tools": [
+            "pcb_get_board_summary",
+            "pcb_get_tracks",
+            "pcb_get_vias",
+            "pcb_get_footprints",
+            "pcb_get_nets",
+            "pcb_get_zones",
+            "pcb_get_shapes",
+            "pcb_get_pads",
+            "pcb_get_layers",
+            "pcb_get_stackup",
+            "pcb_get_selection",
+            "pcb_get_board_as_string",
+            "pcb_get_ratsnest",
+            "pcb_get_design_rules",
+            "pcb_get_footprint_layers",
+            "pcb_get_impedance_for_trace",
+            "pcb_check_creepage_clearance",
+            "pcb_block_list",
+        ],
+    },
+    "pcb_write": {
+        "description": "Modify PCB geometry, sync initial footprints, and save board changes.",
+        "tools": [
+            "pcb_add_track",
+            "pcb_route_trace",
+            "pcb_add_tracks_bulk",
+            "pcb_add_via",
+            "pcb_add_zone",
+            "pcb_add_copper_zone",
+            "pcb_add_segment",
+            "pcb_add_circle",
+            "pcb_add_rectangle",
+            "pcb_add_text",
+            "pcb_set_board_outline",
+            "pcb_set_design_rules",
+            "pcb_set_stackup",
+            "pcb_add_blind_via",
+            "pcb_add_microvia",
+            "pcb_auto_place_by_schematic",
+            "pcb_place_decoupling_caps",
+            "pcb_group_by_function",
+            "pcb_align_footprints",
+            "pcb_set_keepout_zone",
+            "pcb_add_mounting_holes",
+            "pcb_add_fiducial_marks",
+            "pcb_add_teardrops",
+            "pcb_auto_place_force_directed",
+            "pcb_bga_fanout",
+            "pcb_delete_object",
+            "pcb_delete_items",
+            "pcb_save",
+            "pcb_refill_zones",
+            "pcb_highlight_net",
+            "pcb_set_net_class",
+            "pcb_place_component",
+            "pcb_move_component",
+            "pcb_move_footprint",
+            "pcb_set_footprint_layer",
+            "pcb_sync_from_schematic",
+            "add_footprint_inner_layer_graphic",
+            "pcb_add_barcode",
+            "pcb_block_create_from_selection",
+            "pcb_block_place",
+        ],
+    },
+    "schematic": {
+        "description": "Inspect and edit schematic files with hybrid IPC reload support.",
+        "tools": [
+            "sch_get_symbols",
+            "sch_get_wires",
+            "sch_get_labels",
+            "sch_get_net_names",
+            "sch_create_sheet",
+            "sch_list_sheets",
+            "sch_get_sheet_info",
+            "sch_add_symbol",
+            "sch_add_component",
+            "sch_add_wire",
+            "sch_add_label",
+            "sch_add_global_label",
+            "sch_add_hierarchical_label",
+            "sch_add_power_symbol",
+            "sch_add_bus",
+            "sch_add_bus_wire_entry",
+            "sch_add_no_connect",
+            "sch_update_properties",
+            "sch_modify_property",
+            "sch_delete_symbol",
+            "sch_move_symbol",
+            "sch_delete_wire",
+            "sch_analyze_net_compilation",
+            "sch_build_circuit",
+            "sch_get_pin_positions",
+            "sch_route_wire_between_pins",
+            "sch_add_missing_junctions",
+            "sch_get_connectivity_graph",
+            "sch_trace_net",
+            "sch_auto_place_symbols",
+            "sch_check_power_flags",
+            "sch_annotate",
+            "sch_reload",
+            # v2.1.0 — spatial awareness + sheet size tools
+            "sch_get_bounding_boxes",
+            "sch_find_free_placement",
+            "sch_auto_place_functional",
+            "sch_set_sheet_size",
+            "sch_auto_resize_sheet",
+            # v2.1.0 — subcircuit template tools
+            "sch_list_templates",
+            "sch_get_template_info",
+            "sch_instantiate_template",
+            "sch_set_hop_over",
+            "sch_list_swappable_pins",
+            "sch_swap_pins",
+            "sch_swap_gates",
+            "sch_add_jumper",
+            "variant_list",
+            "variant_create",
+            "variant_set_active",
+            "variant_set_component_override",
+            "variant_diff_bom",
+            "variant_export_bom",
+        ],
+    },
+    "library": {
+        "description": "Search and inspect symbol/footprint libraries plus live component data.",
+        "tools": [
+            "lib_search_symbols",
+            "lib_get_symbol_info",
+            "lib_list_libraries",
+            "lib_search_footprints",
+            "lib_list_footprints",
+            "lib_rebuild_index",
+            "lib_get_footprint_info",
+            "lib_get_footprint_3d_model",
+            "lib_assign_footprint",
+            "lib_create_custom_symbol",
+            "lib_search_components",
+            "lib_get_component_details",
+            "lib_assign_lcsc_to_symbol",
+            "lib_get_bom_with_pricing",
+            "lib_check_stock_availability",
+            "lib_find_alternative_parts",
+            "lib_get_datasheet_url",
+            # v2.2.0 — generative library tools
+            "lib_generate_footprint_ipc7351",
+            "lib_generate_symbol_from_pintable",
+            "lib_recommend_part",
+            "lib_bind_part_to_symbol",
+        ],
+    },
+    "export": {
+        "description": "Produce low-level debug, review, and interchange exports.",
+        "tools": [
+            "export_gerber",
+            "export_drill",
+            "export_bom",
+            "export_netlist",
+            "export_spice_netlist",
+            "export_pcb_pdf",
+            "export_sch_pdf",
+            "export_3d_step",
+            "export_step",
+            "export_stepz",
+            "export_xao",
+            "export_3d_render",
+            "export_pick_and_place",
+            "export_ipc2581",
+            "export_odb",
+            "export_svg",
+            "export_dxf",
+            "pcb_export_3d_pdf",
+        ],
+    },
+    "release_export": {
+        "description": "Produce release-gated manufacturing handoff artifacts.",
+        "tools": [
+            "export_manufacturing_package",
+            "get_board_stats",
+        ],
+    },
+    "manufacturing": {
+        "description": "Panelization, bring-up test plan generation, and release manifest.",
+        "tools": [
+            "mfg_panelize",
+            "mfg_generate_test_plan",
+            "mfg_generate_release_manifest",
+            "mfg_correct_cpl_rotations",
+            "mfg_check_import_support",
+            "mfg_import_allegro",
+            "mfg_import_pads",
+            "mfg_import_geda",
+        ],
+    },
+    "validation": {
+        "description": "Design validation, DFM checks, and rule inspection.",
+        "tools": [
+            "schematic_quality_gate",
+            "schematic_connectivity_gate",
+            "pcb_quality_gate",
+            "pcb_placement_quality_gate",
+            "pcb_placement_quality_report",
+            "pcb_transfer_quality_gate",
+            "pcb_score_placement",
+            "manufacturing_quality_gate",
+            "project_quality_gate",
+            "project_quality_gate_report",
+            "run_drc",
+            "run_erc",
+            "validate_design",
+            "check_design_for_manufacture",
+            "get_unconnected_nets",
+            "get_courtyard_violations",
+            "get_silk_to_pad_violations",
+            "validate_footprints_vs_schematic",
+            "drc_list_rules",
+            "drc_rule_create",
+            "drc_rule_delete",
+            "drc_rule_enable",
+            "drc_export_rules",
+        ],
+    },
+    "dfm": {
+        "description": "Load bundled manufacturer profiles, run DFM checks, and estimate cost.",
+        "tools": [
+            "dfm_load_manufacturer_profile",
+            "dfm_run_manufacturer_check",
+            "dfm_calculate_manufacturing_cost",
+        ],
+    },
+    "routing": {
+        "description": (
+            "Advanced routing helpers including FreeRouting orchestration and rule-file tuning."
+        ),
+        "tools": [
+            "route_single_track",
+            "route_from_pad_to_pad",
+            "route_export_dsn",
+            "route_import_ses",
+            "route_autoroute_freerouting",
+            "route_set_net_class_rules",
+            "route_differential_pair",
+            "route_tune_length",
+            "tune_diff_pair_length",
+            "route_create_tuning_profile",
+            "route_list_tuning_profiles",
+            "route_apply_tuning_profile",
+            "route_tune_time_domain",
+        ],
+    },
+    "signal_integrity": {
+        "description": (
+            "Estimate impedance, skew, length matching, stackup geometry, via stubs, "
+            "and decoupling placement."
+        ),
+        "tools": [
+            "si_calculate_trace_impedance",
+            "si_calculate_trace_width_for_impedance",
+            "si_check_differential_pair_skew",
+            "si_validate_length_matching",
+            "si_generate_stackup",
+            "si_check_via_stub",
+            "si_calculate_decoupling_placement",
+            # v2.3.0 — stackup synthesis + net class binding
+            "si_list_dielectric_materials",
+            "si_synthesize_stackup_for_interfaces",
+            "si_bind_interfaces_to_net_classes",
+        ],
+    },
+    "power_integrity": {
+        "description": (
+            "Estimate voltage drop, current capacity, decoupling needs, power planes, "
+            "and thermal spreading."
+        ),
+        "tools": [
+            "check_power_integrity",
+            "pdn_calculate_voltage_drop",
+            "pdn_recommend_decoupling_caps",
+            "pdn_check_copper_weight",
+            "pdn_generate_power_plane",
+            "thermal_calculate_via_count",
+            "thermal_check_copper_pour",
+        ],
+    },
+    "emc": {
+        "description": "Run lightweight EMC-oriented layout checks and a bundled compliance sweep.",
+        "tools": [
+            "emc_check_ground_plane_voids",
+            "emc_check_return_path_continuity",
+            "emc_check_split_plane_crossing",
+            "emc_check_decoupling_placement",
+            "emc_check_via_stitching",
+            "emc_check_differential_pair_symmetry",
+            "emc_check_high_speed_routing_rules",
+            "emc_run_full_compliance",
+        ],
+    },
+    "simulation": {
+        "description": "Run SPICE operating-point, AC, transient, DC sweep, and stability checks.",
+        "tools": [
+            "sim_run_operating_point",
+            "sim_run_ac_analysis",
+            "sim_run_transient",
+            "sim_run_dc_sweep",
+            "sim_check_stability",
+            "sim_add_spice_directive",
+        ],
+    },
+    "version_control": {
+        "description": "Create Git checkpoints, inspect diffs, and safely restore project files.",
+        "tools": [
+            "vcs_init_git",
+            "vcs_commit_checkpoint",
+            "vcs_list_checkpoints",
+            "vcs_restore_checkpoint",
+            "vcs_diff_with_checkpoint",
+            "vcs_tag_release",
+        ],
+    },
+}
+
+PROFILE_CATEGORIES: dict[str, tuple[str, ...]] = {
+    "full": tuple(TOOL_CATEGORIES.keys()),
+    "minimal": ("project", "pcb_read", "export"),
+    "schematic_only": ("project", "schematic", "library"),
+    "pcb_only": ("project", "pcb_read", "pcb_write", "routing"),
+    "manufacturing": (
+        "project",
+        "pcb_read",
+        "release_export",
+        "validation",
+        "dfm",
+        "manufacturing",
+    ),
+    "builder": (
+        "project",
+        "schematic",
+        "library",
+        "pcb_read",
+        "pcb_write",
+        "routing",
+        "validation",
+        "version_control",
+    ),
+    "critic": (
+        "project",
+        "schematic",
+        "pcb_read",
+        "validation",
+        "dfm",
+        "signal_integrity",
+        "power_integrity",
+        "emc",
+    ),
+    "release_manager": (
+        "project",
+        "pcb_read",
+        "validation",
+        "dfm",
+        "release_export",
+        "version_control",
+    ),
+    "high_speed": (
+        "project",
+        "schematic",
+        "pcb_read",
+        "pcb_write",
+        "routing",
+        "signal_integrity",
+        "emc",
+        "validation",
+        "export",
+        "simulation",
+        "version_control",
+    ),
+    "power": (
+        "project",
+        "schematic",
+        "pcb_read",
+        "pcb_write",
+        "power_integrity",
+        "validation",
+        "export",
+    ),
+    "simulation": ("project", "schematic", "simulation", "export", "library"),
+    "analysis": ("project", "pcb_read", "signal_integrity", "power_integrity", "emc", "validation"),
+    "agent_full": tuple(TOOL_CATEGORIES.keys()),
+    # Backward-compatible aliases kept for existing clients.
+    "pcb": ("project", "pcb_read", "pcb_write", "routing", "export", "validation"),
+    "schematic": ("project", "schematic", "library", "export", "validation"),
+}
+
+
+def categories_for_profile(profile: str) -> tuple[str, ...]:
+    """Resolve categories enabled by the named server profile."""
+    return PROFILE_CATEGORIES.get(profile, PROFILE_CATEGORIES["full"])
+
+
+def available_profiles() -> tuple[str, ...]:
+    """Return the supported server profile names."""
+    preferred = [
+        "full",
+        "minimal",
+        "schematic_only",
+        "pcb_only",
+        "manufacturing",
+        "builder",
+        "critic",
+        "release_manager",
+        "high_speed",
+        "power",
+        "simulation",
+        "analysis",
+        "agent_full",
+        "pcb",
+        "schematic",
+    ]
+    return tuple(name for name in preferred if name in PROFILE_CATEGORIES)
+
+
+def register(mcp: FastMCP) -> None:
+    """Register category discovery tools."""
+
+    @mcp.tool()
+    def kicad_list_tool_categories() -> str:
+        """List all available tool categories and capabilities."""
+        lines = ["# KiCad MCP Pro Tool Categories", ""]
+        for category, info in TOOL_CATEGORIES.items():
+            tools = info["tools"]
+            lines.append(f"## `{category}`")
+            lines.append(str(info["description"]))
+            lines.append(f"Tools: {len(tools)}")
+            lines.append("")
+        lines.append("Profiles:")
+        lines.extend(f"- `{profile}`" for profile in available_profiles())
+        return "\n".join(lines)
+
+    @mcp.tool()
+    def kicad_get_tools_in_category(category: str) -> str:
+        """Get the tool names available in a specific category."""
+        info = TOOL_CATEGORIES.get(category)
+        if info is None:
+            available = ", ".join(sorted(TOOL_CATEGORIES))
+            return f"Unknown category '{category}'. Available categories: {available}"
+
+        lines = [f"# Tools in `{category}`", str(info["description"]), ""]
+        for tool_name in info["tools"]:
+            lines.append(f"- `{_display_tool_name(tool_name)}`")
+        return "\n".join(lines)

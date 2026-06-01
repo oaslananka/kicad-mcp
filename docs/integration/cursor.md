@@ -1,0 +1,8 @@
+# Cursor
+
+Cursor can connect in two ways:
+
+- Stdio: `uvx kicad-mcp-pro`
+- HTTP: local bridge + `http://127.0.0.1:<port>/mcp`
+
+For larger tool surfaces, it is often helpful to set `KICAD_MCP_PROFILE=pcb_only`, `schematic_only`, or `high_speed`.

@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.venv/
+
+# Build outputs
+dist/
+out/
+site/
+coverage/
+htmlcov/
+coverage.xml
+performance-results/
+artifacts/
+.pytest-tmp*/
+*.whl
+*.tar.gz
+
+# Python caches
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/tmp/
+
+# Local/editor state
+.DS_Store
+Thumbs.db
+.codex-checkpoints/
+.kicad_mcp/
+.omo/
+.hypothesis/
+*.log
+*.db
+
+# Secret-bearing local files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+cookies.json
+storage_state.json

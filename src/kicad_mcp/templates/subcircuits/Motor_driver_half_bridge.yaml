@@ -1,0 +1,24 @@
+name: Motor_driver_half_bridge
+version: "1.0"
+description: IR2104-style half-bridge driver with MOSFETs and bootstrap capacitor.
+symbols:
+  - ref_prefix: U
+    value: IR2104
+    default_footprint: Package_SO:SOIC-8_3.9x4.9mm_P1.27mm
+    pins_left: [IN, SD, COM]
+    pins_right: [HO, LO, VB, VS, VCC]
+  - ref_prefix: Q
+    value: NMOS
+    default_footprint: Package_TO_SOT_SMD:TO-252-2
+    pins_left: [G]
+    pins_right: [D, S]
+nets:
+  - name: VMOTOR
+    type: power
+  - name: PHASE
+    type: power
+  - name: GND
+    type: power
+placement_hints:
+  - Minimize high-current loop area around MOSFETs and bootstrap capacitor.
+  - Keep gate traces short and matched.

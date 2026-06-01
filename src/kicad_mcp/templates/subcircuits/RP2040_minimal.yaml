@@ -1,0 +1,31 @@
+name: RP2040_minimal
+version: "1.0"
+description: Minimal RP2040 circuit with USB, crystal, SWD, and decoupling.
+symbols:
+  - ref_prefix: U
+    value: RP2040
+    default_footprint: Package_DFN_QFN:QFN-56-1EP_7x7mm_P0.4mm_EP5.6x5.6mm
+    pins_left: [USB_DP, USB_DN, SWCLK, SWDIO, RUN]
+    pins_right: [GPIO0, GPIO1, GPIO2, GPIO3, DVDD, AVDD]
+  - ref_prefix: Y
+    value: 12MHz
+    default_footprint: Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm
+    pins_left: [1, 2]
+    pins_right: [3, 4]
+  - ref_prefix: C
+    value: 100nF
+    default_footprint: Capacitor_SMD:C_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: +3V3
+    type: power
+  - name: GND
+    type: power
+  - name: USB_DP
+    type: differential
+  - name: USB_DN
+    type: differential
+placement_hints:
+  - Place 100nF capacitors within 2.5mm of RP2040 supply pins.
+  - Keep USB D+/D- length matched and routed as a 90 ohm differential pair.

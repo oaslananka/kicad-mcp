@@ -1,0 +1,28 @@
+(kicad_sch
+  (version 20250316)
+  (generator "pytest")
+  (uuid "60000000-0000-0000-0000-000000000001")
+  (paper "A4")
+  (lib_symbols)
+  (sheet
+    (at 40.64 50.8)
+    (size 20.32 15.24)
+    (stroke (width 0.1524) (type solid))
+    (fill (color 0 0 0 0))
+    (uuid "60000000-0000-0000-0000-000000000002")
+    (property "Sheetname" "Power" (at 40.64 48.26 0) (effects (font (size 1.27 1.27))))
+    (property "Sheetfile" "power.kicad_sch" (at 40.64 66.04 0) (effects (font (size 1.27 1.27))))
+    (pin "VOUT" input
+      (at 71.12 60.96 180)
+      (effects (font (size 1.27 1.27)))
+      (uuid "60000000-0000-0000-0000-000000000003")
+    )
+    (instances
+      (project "demo" (path "/60000000-0000-0000-0000-000000000002") (page "2"))
+    )
+  )
+  (sheet_instances
+    (path "/" (page "1"))
+  )
+  (embedded_fonts no)
+)

@@ -1,0 +1,12 @@
+(kicad_sch
+  (version 20250316)
+  (generator "KiCad Studio Fixture Corpus")
+  (uuid "00000000-0000-0000-0000-000000000228")
+  (paper "A4")
+  (title_block (title "empty-project-kicad10"))
+  (lib_symbols)
+  (sheet_instances
+    (path "/" (page "1"))
+  )
+  (embedded_fonts no)
+)

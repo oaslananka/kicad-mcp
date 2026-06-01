@@ -1,0 +1,83 @@
+name: ldo_linear_generic
+version: "1.0"
+description: >
+  Generic low-dropout (LDO) linear regulator subcircuit.
+  Suitable for low-noise analog and mixed-signal applications.
+
+parameters:
+  vin_min_v:
+    type: float
+    description: Minimum input voltage (V)
+    default: 4.0
+  vout_v:
+    type: float
+    description: Output voltage (V)
+    default: 3.3
+  iout_max_a:
+    type: float
+    description: Maximum output current (A)
+    default: 0.5
+  psrr_min_db:
+    type: float
+    description: Minimum power supply rejection ratio at 1kHz (dB)
+    default: 60.0
+
+symbols:
+  - ref_prefix: U
+    value: "LDO_IC"
+    comment: "LDO regulator IC — replace with lib_recommend_part()"
+    default_footprint: "Package_TO_SOT_SMD:SOT-223-3_TabPin2"
+    pins_left: [VIN, ADJ, EN]
+    pins_right: [VOUT, GND]
+
+  - ref_prefix: C
+    value: "10uF"
+    comment: "Input capacitor — placed within 10mm of VIN pin"
+    default_footprint: "Capacitor_SMD:C_0805_2012Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: C
+    value: "10uF"
+    comment: "Output capacitor — low ESR required (ceramic preferred)"
+    default_footprint: "Capacitor_SMD:C_0805_2012Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: C
+    value: "100nF"
+    comment: "High-frequency bypass on VIN"
+    default_footprint: "Capacitor_SMD:C_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: R
+    value: "100k"
+    comment: "Adjust divider upper (adjustable LDOs only)"
+    default_footprint: "Resistor_SMD:R_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: R
+    value: "10k"
+    comment: "Adjust divider lower"
+    default_footprint: "Resistor_SMD:R_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+nets:
+  - name: "VIN"
+    type: power
+  - name: "VOUT"
+    type: power
+  - name: "GND"
+    type: power
+
+placement_hints:
+  - "Place Cin within 5mm of VIN pin."
+  - "Place Cout within 5mm of VOUT pin."
+  - "Provide copper pours under IC exposed pad for thermal dissipation."
+  - "Keep ADJ/SENSE trace away from noisy switching signals."
+
+part_search_hints:
+  ic: "LDO linear regulator {vout_v}V {iout_max_a}A PSRR {psrr_min_db}dB"

@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist-test",
+    "declaration": false,
+    "declarationMap": false,
+    "allowJs": true,
+    "checkJs": false,
+    "paths": {
+      "@oaslananka/kicad-protocol-schemas": ["./dist/index.d.ts"]
+    }
+  },
+  "include": ["test/**/*.ts"],
+  "exclude": ["dist-test", "node_modules"]
+}

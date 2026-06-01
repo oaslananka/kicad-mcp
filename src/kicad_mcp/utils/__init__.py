@@ -1,0 +1,53 @@
+"""Utility helpers for KiCad MCP Pro."""
+
+from .component_search import ComponentRecord, DigiKeyClient, JLCSearchClient, NexarClient
+from .freerouting import FreeRoutingResult, FreeRoutingRunner
+from .impedance import (
+    copper_thickness_mm,
+    differential_impedance,
+    propagation_delay_ps_per_mm,
+    recommended_decoupling_distance_mm,
+    solve_spacing_for_differential_impedance,
+    solve_width_for_impedance,
+    trace_impedance,
+    via_stub_resonance_ghz,
+    via_stub_risk_level,
+)
+from .layers import CANONICAL_LAYER_NAMES, resolve_layer, resolve_layer_name
+from .ngspice import NgspiceRunner, SimulationResult, SimulationTrace, discover_ngspice_cli
+from .sexpr import _escape_sexpr_string, _extract_block, _sexpr_string, _unescape_sexpr_string
+from .units import _coord_nm, mil_to_mm, mm_to_mil, mm_to_nm, nm_to_mm
+
+__all__ = [
+    "CANONICAL_LAYER_NAMES",
+    "ComponentRecord",
+    "DigiKeyClient",
+    "FreeRoutingResult",
+    "FreeRoutingRunner",
+    "JLCSearchClient",
+    "NgspiceRunner",
+    "NexarClient",
+    "SimulationResult",
+    "SimulationTrace",
+    "_coord_nm",
+    "_escape_sexpr_string",
+    "_extract_block",
+    "_sexpr_string",
+    "_unescape_sexpr_string",
+    "copper_thickness_mm",
+    "differential_impedance",
+    "discover_ngspice_cli",
+    "mil_to_mm",
+    "mm_to_mil",
+    "mm_to_nm",
+    "nm_to_mm",
+    "propagation_delay_ps_per_mm",
+    "recommended_decoupling_distance_mm",
+    "resolve_layer",
+    "resolve_layer_name",
+    "solve_spacing_for_differential_impedance",
+    "solve_width_for_impedance",
+    "trace_impedance",
+    "via_stub_resonance_ghz",
+    "via_stub_risk_level",
+]

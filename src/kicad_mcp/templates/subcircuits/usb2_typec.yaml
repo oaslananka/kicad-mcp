@@ -1,0 +1,87 @@
+name: usb2_typec
+version: "1.0"
+description: >
+  USB 2.0 Full/High Speed on a USB Type-C connector subcircuit.
+  Includes CC resistors (device/host/DRP), ESD protection on data lines,
+  and optional VBUS power management.
+
+parameters:
+  role:
+    type: string
+    description: "USB role: device (CC pulldown), host (CC pullup), or drp"
+    default: device
+  vbus_max_a:
+    type: float
+    description: Maximum VBUS current draw (A)
+    default: 0.5
+
+symbols:
+  - ref_prefix: J
+    value: "USB_C"
+    comment: "USB Type-C receptacle — 16-pin SMD or THT"
+    default_footprint: "Connector_USB:USB_C_Receptacle_GCT_USB4085"
+    pins_left: [VBUS, CC1, CC2, GND, SHIELD]
+    pins_right: [D_P, D_N]
+
+  - ref_prefix: U
+    value: "ESD_USB"
+    comment: "USB 2.0 ESD protection — dual-line TVS (e.g. PRTR5V0U2X)"
+    default_footprint: "Package_TO_SOT_SMD:SOT-363_SC-70-6"
+    pins_left: [I_O1, I_O2]
+    pins_right: [A1, A2, GND]
+
+  - ref_prefix: R
+    value: "5.1k"
+    comment: "CC1 pull-down resistor (device) or 56k pull-up (host)"
+    default_footprint: "Resistor_SMD:R_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: R
+    value: "5.1k"
+    comment: "CC2 pull-down resistor (device)"
+    default_footprint: "Resistor_SMD:R_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: C
+    value: "100nF"
+    comment: "VBUS decoupling"
+    default_footprint: "Capacitor_SMD:C_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: F
+    value: "500mA"
+    comment: "VBUS polyfuse — optional current protection"
+    default_footprint: "Fuse:Fuse_1812_4532Metric"
+    pins_left: [A]
+    pins_right: [K]
+
+nets:
+  - name: "USB_DP"
+    type: signal
+    impedance_ohm: 90
+    differential: true
+    note: "Route as 90Ω differential pair. Keep trace length <50mm."
+  - name: "USB_DM"
+    type: signal
+    impedance_ohm: 90
+    differential: true
+  - name: "CC1"
+    type: signal
+    note: "Pull CC1 and CC2 to GND (device) or 3.3V via 56kΩ (host)."
+  - name: "CC2"
+    type: signal
+  - name: "VBUS"
+    type: power
+  - name: "GND"
+    type: power
+
+placement_hints:
+  - "Route USB_DP/USB_DM as 90Ω edge-coupled differential pair."
+  - "Keep USB diff-pair length within 2mm tolerance."
+  - "Place ESD diode as close to connector as possible."
+  - "Keep CC resistors within 10mm of connector."
+  - "Add GND copper pours under connector for shielding."
+  - "Verify no 45° angles on USB diff pair — use curved or 45° arcs."

@@ -1,0 +1,38 @@
+{
+  "fixture": "kicad-10-0-3-regressions",
+  "semanticName": "kicad-10-0-3-regressions",
+  "root": "packages/kicad-fixtures/fixtures/kicad-10-0-3-regressions",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "files": [
+    {
+      "role": "project",
+      "path": "kicad-10-0-3-regressions.kicad_pro",
+      "exists": true
+    },
+    {
+      "role": "schematic",
+      "path": "kicad-10-0-3-regressions.kicad_sch",
+      "exists": true
+    },
+    {
+      "role": "board",
+      "path": "kicad-10-0-3-regressions.kicad_pcb",
+      "exists": true
+    },
+    {
+      "role": "dru",
+      "path": "kicad-10-0-3-regressions.kicad_dru",
+      "exists": true
+    },
+    {
+      "role": "pads-import-fixture",
+      "path": "importers/pads-zone-intersection.asc",
+      "exists": true
+    },
+    {
+      "role": "allegro-capability-probe",
+      "path": "importers/allegro-capability-probe.json",
+      "exists": true
+    }
+  ]
+}

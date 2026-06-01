@@ -1,0 +1,5 @@
+{
+  "fixture": "clean-led-kicad10",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "diagnostics": []
+}

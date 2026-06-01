@@ -1,0 +1,28 @@
+{
+  "fixture": "no-dru-file",
+  "semanticName": "no-dru-file",
+  "root": "packages/kicad-fixtures/fixtures/no-dru-file",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "files": [
+    {
+      "role": "project",
+      "path": "no-dru-file.kicad_pro",
+      "exists": true
+    },
+    {
+      "role": "schematic",
+      "path": "no-dru-file.kicad_sch",
+      "exists": true
+    },
+    {
+      "role": "board",
+      "path": "no-dru-file.kicad_pcb",
+      "exists": true
+    },
+    {
+      "role": "dru",
+      "path": null,
+      "exists": false
+    }
+  ]
+}

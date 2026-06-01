@@ -1,0 +1,28 @@
+{
+  "fixture": "stale-diagnostics-kicad10",
+  "semanticName": "stale-diagnostics-kicad10",
+  "root": "packages/kicad-fixtures/fixtures/stale-diagnostics-kicad10",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "files": [
+    {
+      "role": "project",
+      "path": "stale-diagnostics-kicad10.kicad_pro",
+      "exists": true
+    },
+    {
+      "role": "schematic",
+      "path": "stale-diagnostics-kicad10.kicad_sch",
+      "exists": true
+    },
+    {
+      "role": "board",
+      "path": "stale-diagnostics-kicad10.kicad_pcb",
+      "exists": true
+    },
+    {
+      "role": "dru",
+      "path": "stale-diagnostics-kicad10.kicad_dru",
+      "exists": true
+    }
+  ]
+}

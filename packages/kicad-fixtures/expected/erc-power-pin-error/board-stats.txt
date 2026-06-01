@@ -1,0 +1,6 @@
+fixture=erc-power-pin-error
+board=absent
+footprints=0
+nets=0
+segments=0
+layers=

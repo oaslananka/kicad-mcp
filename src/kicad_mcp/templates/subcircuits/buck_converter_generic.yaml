@@ -1,0 +1,105 @@
+name: buck_converter_generic
+version: "1.0"
+description: >
+  Generic synchronous or asynchronous buck converter subcircuit.
+  Parameterised by input/output voltage and output current.
+  Use lib_recommend_part() to select a specific IC, then
+  lib_bind_part_to_symbol() to assign it.
+
+parameters:
+  vin_min_v:
+    type: float
+    description: Minimum input voltage (V)
+    default: 4.5
+  vin_max_v:
+    type: float
+    description: Maximum input voltage (V)
+    default: 40.0
+  vout_v:
+    type: float
+    description: Output voltage (V)
+    default: 3.3
+  iout_max_a:
+    type: float
+    description: Maximum output current (A)
+    default: 1.0
+  fsw_khz:
+    type: float
+    description: Switching frequency (kHz)
+    default: 500.0
+
+symbols:
+  - ref_prefix: U
+    value: "BUCK_IC"
+    comment: "Synchronous buck converter IC — replace with lib_recommend_part()"
+    default_footprint: "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
+    pins_left: [VIN, EN, FB, COMP]
+    pins_right: [SW, GND, PGND, VOUT]
+
+  - ref_prefix: L
+    value: "4.7uH"
+    comment: "Output inductor — value calculated: L = Vout*(Vin-Vout)/(Vin*ΔIL*fsw)"
+    default_footprint: "Inductor_SMD:L_Bourns_SRR1260"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: C
+    value: "22uF"
+    comment: "Input bulk capacitor — low ESR ceramic"
+    default_footprint: "Capacitor_SMD:C_0805_2012Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: C
+    value: "47uF"
+    comment: "Output filter capacitor — low ESR"
+    default_footprint: "Capacitor_SMD:C_0805_2012Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: C
+    value: "100nF"
+    comment: "High-frequency bypass on VIN"
+    default_footprint: "Capacitor_SMD:C_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: R
+    value: "100k"
+    comment: "Feedback divider upper (Rfb1) — sets output voltage"
+    default_footprint: "Resistor_SMD:R_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: R
+    value: "10k"
+    comment: "Feedback divider lower (Rfb2) — Vout = Vref*(1 + Rfb1/Rfb2)"
+    default_footprint: "Resistor_SMD:R_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+nets:
+  - name: "VIN"
+    type: power
+  - name: "VOUT"
+    type: power
+  - name: "GND"
+    type: power
+  - name: "SW"
+    type: signal
+    note: "Keep trace short and wide. EMC critical."
+  - name: "FB"
+    type: signal
+    note: "Keep trace away from switching node."
+
+placement_hints:
+  - "Place Cin as close as possible to IC VIN pin."
+  - "Place Cout as close as possible to IC output and load."
+  - "Keep SW node copper area small — EMC source."
+  - "Place FB resistors close to IC FB pin; route from Cout+ directly."
+  - "Ensure inductor is positioned between SW pin and Cout."
+  - "Add ground pour under IC and inductor for thermal management."
+
+part_search_hints:
+  ic: "synchronous buck converter {vout_v}V {iout_max_a}A"
+  inductor: "power inductor {fsw_khz}kHz"

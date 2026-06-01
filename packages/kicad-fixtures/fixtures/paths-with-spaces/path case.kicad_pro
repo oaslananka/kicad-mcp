@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "filename": "path case",
+    "version": 1,
+    "fixtureId": "paths-with-spaces",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "paths-with-spaces",
+    "expectedOutcome": "pass",
+    "tags": [
+      "path-spaces",
+      "windows-paths"
+    ]
+  },
+  "schematic": {
+    "file": "path case.kicad_sch"
+  },
+  "board": {
+    "file": "path case.kicad_pcb"
+  },
+  "designRules": {
+    "file": "path case.kicad_dru"
+  }
+}

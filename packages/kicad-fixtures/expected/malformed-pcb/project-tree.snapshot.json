@@ -1,0 +1,23 @@
+{
+  "fixture": "malformed-pcb",
+  "semanticName": "malformed-pcb",
+  "root": "packages/kicad-fixtures/fixtures/malformed-pcb",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "files": [
+    {
+      "role": "project",
+      "path": "malformed-pcb.kicad_pro",
+      "exists": true
+    },
+    {
+      "role": "board",
+      "path": "malformed-pcb.kicad_pcb",
+      "exists": true
+    },
+    {
+      "role": "dru",
+      "path": null,
+      "exists": false
+    }
+  ]
+}

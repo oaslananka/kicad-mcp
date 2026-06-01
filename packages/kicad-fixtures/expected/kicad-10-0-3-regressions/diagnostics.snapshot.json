@@ -1,0 +1,50 @@
+{
+  "fixture": "kicad-10-0-3-regressions",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "diagnostics": [
+    {
+      "id": "kicad-10-0-3-regressions-drc_status_output_shape",
+      "fixture": "kicad-10-0-3-regressions",
+      "sequence": 1,
+      "severity": "warning",
+      "source": "drc",
+      "code": "DRC_STATUS_OUTPUT_SHAPE",
+      "message": "KiCad 10.0.3 DRC status and elapsed-time output remains parseable from JSON reports.",
+      "stale": false,
+      "file": "kicad-10-0-3-regressions.kicad_pcb"
+    },
+    {
+      "id": "kicad-10-0-3-regressions-erc_sheet_output_shape",
+      "fixture": "kicad-10-0-3-regressions",
+      "sequence": 2,
+      "severity": "warning",
+      "source": "erc",
+      "code": "ERC_SHEET_OUTPUT_SHAPE",
+      "message": "KiCad 10.0.3 ERC sheet-level report shape remains parseable.",
+      "stale": false,
+      "file": "kicad-10-0-3-regressions.kicad_sch"
+    },
+    {
+      "id": "kicad-10-0-3-regressions-pads_edge_case_fixture",
+      "fixture": "kicad-10-0-3-regressions",
+      "sequence": 3,
+      "severity": "info",
+      "source": "importer",
+      "code": "PADS_EDGE_CASE_FIXTURE",
+      "message": "PADS segment-intersection regression fixture is present for importer probes.",
+      "stale": false,
+      "file": "kicad-10-0-3-regressions.kicad_pro"
+    },
+    {
+      "id": "kicad-10-0-3-regressions-allegro_capability_probe",
+      "fixture": "kicad-10-0-3-regressions",
+      "sequence": 4,
+      "severity": "info",
+      "source": "importer",
+      "code": "ALLEGRO_CAPABILITY_PROBE",
+      "message": "Allegro PCB importer capability is probed and recorded even when full import support is unavailable.",
+      "stale": false,
+      "file": "kicad-10-0-3-regressions.kicad_pro"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "fixture": "drc-courtyard-error",
+  "expectedOutcome": "fail",
+  "projectState": "blocked",
+  "diagnostics": {
+    "errors": 1,
+    "warnings": 0,
+    "infos": 0,
+    "stale": false
+  },
+  "schematic": {
+    "state": "absent"
+  },
+  "board": {
+    "state": "available",
+    "footprints": 2
+  },
+  "netlist": {
+    "state": "not-applicable"
+  },
+  "designRules": {
+    "state": "available"
+  },
+  "pathFeatures": {
+    "containsSpaces": false,
+    "containsNonAscii": false
+  }
+}

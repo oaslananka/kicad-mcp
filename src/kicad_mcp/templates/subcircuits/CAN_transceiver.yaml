@@ -1,0 +1,24 @@
+name: CAN_transceiver
+version: "1.0"
+description: SN65HVD230-style CAN transceiver with termination.
+symbols:
+  - ref_prefix: U
+    value: SN65HVD230
+    default_footprint: Package_SO:SOIC-8_3.9x4.9mm_P1.27mm
+    pins_left: [TXD, RXD, RS]
+    pins_right: [CANH, CANL, VCC, GND]
+  - ref_prefix: R
+    value: 120R
+    default_footprint: Resistor_SMD:R_0603_1608Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: CANH
+    type: differential
+  - name: CANL
+    type: differential
+  - name: GND
+    type: power
+placement_hints:
+  - Place split termination close to the CAN connector when used.
+  - Keep CANH/CANL tightly coupled.

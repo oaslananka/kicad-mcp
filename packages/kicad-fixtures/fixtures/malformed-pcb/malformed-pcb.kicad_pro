@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "filename": "malformed-pcb",
+    "version": 1,
+    "fixtureId": "malformed-pcb",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "malformed-pcb",
+    "expectedOutcome": "fail",
+    "tags": [
+      "pcb",
+      "malformed"
+    ]
+  },
+  "board": {
+    "file": "malformed-pcb.kicad_pcb"
+  }
+}

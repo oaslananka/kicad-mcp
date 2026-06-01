@@ -1,0 +1,381 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oaslananka.github.io/kicad-studio-kit/schemas/kicad-mcp-server-info.schema.json",
+  "title": "KiCad MCP Pro server-info contract",
+  "description": "Stable capability discovery payload. Breaking contract changes must increment the schemaVersion major.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "server",
+    "version",
+    "mcpProtocolVersion",
+    "toolSchemaVersion",
+    "compatibilityRange",
+    "transport",
+    "kicad",
+    "operatingMode",
+    "capabilities",
+    "diagnostics"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "server": {
+      "const": "kicad-mcp-pro"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "localizedDescriptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["en", "tr"],
+      "properties": {
+        "en": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tr": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mcpProtocolVersion": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "toolSchemaVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "compatibilityRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kicadStudio", "kicadMcpPro"],
+      "properties": {
+        "kicadStudio": {
+          "$ref": "#/$defs/productRangeWithRecommendation"
+        },
+        "kicadMcpPro": {
+          "$ref": "#/$defs/productRange"
+        }
+      }
+    },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "streamableHttp",
+        "statelessHttp",
+        "legacySse",
+        "authRequired",
+        "endpoint"
+      ],
+      "properties": {
+        "type": {
+          "enum": ["stdio", "streamable-http", "sse"]
+        },
+        "streamableHttp": {
+          "type": "boolean"
+        },
+        "statelessHttp": {
+          "type": "boolean"
+        },
+        "legacySse": {
+          "type": "boolean"
+        },
+        "authRequired": {
+          "type": "boolean"
+        },
+        "endpoint": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "kicad": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cliFound",
+        "cliPath",
+        "cliVersion",
+        "ipcAvailable",
+        "ipcVersion",
+        "ipcApiVersion",
+        "ipcMajorVersion",
+        "ipcEndpointSource",
+        "livePcbContext",
+        "liveSchematicContext",
+        "ipcDocumentLoaded"
+      ],
+      "properties": {
+        "cliFound": {
+          "type": "boolean"
+        },
+        "cliPath": {
+          "type": "string"
+        },
+        "cliVersion": {
+          "type": ["string", "null"]
+        },
+        "ipcAvailable": {
+          "type": "boolean"
+        },
+        "ipcVersion": {
+          "type": ["string", "null"]
+        },
+        "ipcApiVersion": {
+          "type": ["string", "null"]
+        },
+        "ipcMajorVersion": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "ipcEndpointSource": {
+          "enum": ["config", "environment", "default"]
+        },
+        "livePcbContext": {
+          "type": "boolean"
+        },
+        "liveSchematicContext": {
+          "type": "boolean"
+        },
+        "ipcDocumentLoaded": {
+          "type": "boolean"
+        }
+      }
+    },
+    "operatingMode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active",
+        "default",
+        "available",
+        "experimentalEnabled",
+        "toolAvailability"
+      ],
+      "properties": {
+        "active": {
+          "$ref": "#/$defs/operatingMode"
+        },
+        "default": {
+          "$ref": "#/$defs/operatingMode"
+        },
+        "available": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/operatingMode"
+          },
+          "uniqueItems": true,
+          "minItems": 4
+        },
+        "experimentalEnabled": {
+          "type": "boolean"
+        },
+        "toolAvailability": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/toolOperatingModeAvailability"
+          }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fileBackedDrc",
+        "fileBackedErc",
+        "fileBackedExports",
+        "livePcbRead",
+        "livePcbWrite",
+        "liveSchematicRead",
+        "liveSchematicWrite",
+        "liveEditingTools",
+        "chatgptConnectorCompatible",
+        "cliExports"
+      ],
+      "properties": {
+        "fileBackedDrc": {
+          "type": "boolean"
+        },
+        "fileBackedErc": {
+          "type": "boolean"
+        },
+        "fileBackedExports": {
+          "type": "boolean"
+        },
+        "livePcbRead": {
+          "type": "boolean"
+        },
+        "livePcbWrite": {
+          "type": "boolean"
+        },
+        "liveSchematicRead": {
+          "type": "boolean"
+        },
+        "liveSchematicWrite": {
+          "type": "boolean"
+        },
+        "liveEditingTools": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/liveEditingTool"
+          },
+          "required": [
+            "pcb_place_component",
+            "pcb_route_trace",
+            "pcb_add_zone",
+            "pcb_set_design_rules",
+            "pcb_move_component",
+            "pcb_delete_object",
+            "sch_add_component",
+            "sch_add_wire",
+            "sch_modify_property"
+          ]
+        },
+        "chatgptConnectorCompatible": {
+          "type": "boolean"
+        },
+        "cliExports": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ipc2581",
+            "odb",
+            "svg",
+            "dxf",
+            "step",
+            "render",
+            "spiceNetlist"
+          ],
+          "properties": {
+            "ipc2581": {
+              "type": "boolean"
+            },
+            "odb": {
+              "type": "boolean"
+            },
+            "svg": {
+              "type": "boolean"
+            },
+            "dxf": {
+              "type": "boolean"
+            },
+            "step": {
+              "type": "boolean"
+            },
+            "stepz": {
+              "type": "boolean"
+            },
+            "xao": {
+              "type": "boolean"
+            },
+            "render": {
+              "type": "boolean"
+            },
+            "spiceNetlist": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "operatingMode": {
+      "enum": ["readonly", "write", "manufacturing", "experimental"]
+    },
+    "toolOperatingModeAvailability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "requiredMode", "reason"],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "requiredMode": {
+          "$ref": "#/$defs/operatingMode"
+        },
+        "reason": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "liveEditingTool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "backend", "reason", "minimumKiCadMajor"],
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "backend": {
+          "enum": ["kicad-ipc", "hybrid-file-ipc"]
+        },
+        "reason": {
+          "type": ["string", "null"]
+        },
+        "minimumKiCadMajor": {
+          "type": "integer",
+          "minimum": 9
+        }
+      }
+    },
+    "productRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "testedAgainst"],
+      "properties": {
+        "required": {
+          "type": "string",
+          "minLength": 1
+        },
+        "testedAgainst": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "productRangeWithRecommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "recommended", "testedAgainst"],
+      "properties": {
+        "required": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recommended": {
+          "type": "string",
+          "minLength": 1
+        },
+        "testedAgainst": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "x-kicad-studio-kit": {
+    "trackingIssue": "OASLANA-52",
+    "schemaVersion": "1.0.0"
+  }
+}

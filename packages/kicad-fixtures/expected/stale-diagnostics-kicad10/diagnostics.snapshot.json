@@ -1,0 +1,17 @@
+{
+  "fixture": "stale-diagnostics-kicad10",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "diagnostics": [
+    {
+      "id": "stale-diagnostics-kicad10-stale_diagnostics",
+      "fixture": "stale-diagnostics-kicad10",
+      "sequence": 1,
+      "severity": "warning",
+      "source": "status",
+      "code": "STALE_DIAGNOSTICS",
+      "message": "Diagnostics are older than the active schematic hash.",
+      "stale": true,
+      "file": "stale-diagnostics-kicad10.kicad_pro"
+    }
+  ]
+}

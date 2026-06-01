@@ -1,0 +1,13 @@
+(export (version "D")
+  (design (source "unicode-çöğü.kicad_sch"))
+  (components
+    (comp (ref "R1") (value "1k"))
+    (comp (ref "LED1") (value "red"))
+    (comp (ref "C1") (value "100n"))
+  )
+  (nets
+    (net (code "1") (name "LED_A"))
+    (net (code "2") (name "LED_A"))
+    (net (code "3") (name "GND"))
+  )
+)

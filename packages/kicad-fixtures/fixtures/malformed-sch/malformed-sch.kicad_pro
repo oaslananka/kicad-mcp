@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "filename": "malformed-sch",
+    "version": 1,
+    "fixtureId": "malformed-sch",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "malformed-sch",
+    "expectedOutcome": "fail",
+    "tags": [
+      "schematic",
+      "malformed"
+    ]
+  },
+  "schematic": {
+    "file": "malformed-sch.kicad_sch"
+  }
+}

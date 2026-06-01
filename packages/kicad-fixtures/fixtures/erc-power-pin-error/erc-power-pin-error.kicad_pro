@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "filename": "erc-power-pin-error",
+    "version": 1,
+    "fixtureId": "erc-power-pin-error",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "erc-power-pin-error",
+    "expectedOutcome": "fail",
+    "tags": [
+      "erc",
+      "schematic",
+      "power-pin"
+    ]
+  },
+  "schematic": {
+    "file": "erc-power-pin-error.kicad_sch"
+  }
+}

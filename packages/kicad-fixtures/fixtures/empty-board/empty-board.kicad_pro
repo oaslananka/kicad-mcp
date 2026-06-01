@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "filename": "empty-board",
+    "version": 1,
+    "fixtureId": "empty-board",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "empty-board",
+    "expectedOutcome": "warn",
+    "tags": [
+      "pcb",
+      "empty-state"
+    ]
+  },
+  "board": {
+    "file": "empty-board.kicad_pcb"
+  }
+}

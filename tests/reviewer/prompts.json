@@ -1,0 +1,43 @@
+{
+  "fixture": "tests/fixtures/benchmark_projects/pass_sensor_node",
+  "prompts": [
+    {
+      "id": "p1-health",
+      "prompt": "Call kicad-mcp-pro's health check and tell me which subsystems are ready.",
+      "expected_tool_calls": ["kicad_get_version"],
+      "pass_criteria": "Response includes version string and KiCad CLI status."
+    },
+    {
+      "id": "p2-set-project-quality-gate",
+      "prompt": "Set the KiCad project to `tests/fixtures/benchmark_projects/pass_sensor_node/demo.kicad_pro` and run the full project quality gate without exporting manufacturing files.",
+      "expected_tool_calls": ["kicad_set_project", "project_quality_gate"],
+      "pass_criteria": "Response includes gate status, blocking issues, and next action."
+    },
+    {
+      "id": "p3-schematic-connectivity",
+      "prompt": "Inspect schematic connectivity for `tests/fixtures/benchmark_projects/pass_sensor_node/demo.kicad_pro` without editing files, then summarize any open connectivity risks.",
+      "expected_tool_calls": ["kicad_set_project", "schematic_connectivity_gate"],
+      "pass_criteria": "Response reports connectivity status and does not claim file writes."
+    },
+    {
+      "id": "p4-pcb-state",
+      "prompt": "Open `tests/fixtures/benchmark_projects/pass_sensor_node/demo.kicad_pro` and inspect PCB board state, layer summary, and placement quality without modifying the board.",
+      "expected_tool_calls": [
+        "kicad_set_project",
+        "pcb_get_board_state",
+        "pcb_placement_quality_gate"
+      ],
+      "pass_criteria": "Response includes board state and placement status."
+    },
+    {
+      "id": "p5-manufacturing-export-gate",
+      "prompt": "Attempt the gated manufacturing export flow for `tests/fixtures/benchmark_projects/pass_sensor_node/demo.kicad_pro` and explain whether export is allowed by project_quality_gate.",
+      "expected_tool_calls": [
+        "kicad_set_project",
+        "project_quality_gate",
+        "export_manufacturing_package"
+      ],
+      "pass_criteria": "Response explains gate-controlled export behavior and does not bypass blockers."
+    }
+  ]
+}

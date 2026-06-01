@@ -1,0 +1,23 @@
+{
+  "fixture": "malformed-sch",
+  "semanticName": "malformed-sch",
+  "root": "packages/kicad-fixtures/fixtures/malformed-sch",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "files": [
+    {
+      "role": "project",
+      "path": "malformed-sch.kicad_pro",
+      "exists": true
+    },
+    {
+      "role": "schematic",
+      "path": "malformed-sch.kicad_sch",
+      "exists": true
+    },
+    {
+      "role": "dru",
+      "path": null,
+      "exists": false
+    }
+  ]
+}

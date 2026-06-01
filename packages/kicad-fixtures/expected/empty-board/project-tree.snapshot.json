@@ -1,0 +1,23 @@
+{
+  "fixture": "empty-board",
+  "semanticName": "empty-board",
+  "root": "packages/kicad-fixtures/fixtures/empty-board",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "files": [
+    {
+      "role": "project",
+      "path": "empty-board.kicad_pro",
+      "exists": true
+    },
+    {
+      "role": "board",
+      "path": "empty-board.kicad_pcb",
+      "exists": true
+    },
+    {
+      "role": "dru",
+      "path": null,
+      "exists": false
+    }
+  ]
+}

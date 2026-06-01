@@ -1,0 +1,119 @@
+from __future__ import annotations
+
+import importlib.util
+import json
+from pathlib import Path
+from types import ModuleType, TracebackType
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+class _PypiResponse:
+    def __init__(self, payload: bytes) -> None:
+        self._payload = payload
+
+    def __enter__(self) -> _PypiResponse:
+        return self
+
+    def __exit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        _exc: BaseException | None,
+        _traceback: TracebackType | None,
+    ) -> bool:
+        return False
+
+    def read(self) -> bytes:
+        return self._payload
+
+
+def _load_script() -> ModuleType:
+    spec = importlib.util.spec_from_file_location(
+        "generate_release_evidence",
+        ROOT / "scripts" / "generate_release_evidence.py",
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_generate_release_evidence_writes_checksums_and_sbom(tmp_path: Path) -> None:
+    module = _load_script()
+    pyproject = tmp_path / "pyproject.toml"
+    dist = tmp_path / "dist"
+    output = tmp_path / "release-evidence"
+    dist.mkdir()
+    pyproject.write_text(
+        """
+[project]
+name = "kicad-mcp-pro"
+version = "1.2.3"
+dependencies = ["mcp>=1.27.1,<1.28", "typer>=0.12.0"]
+""".strip(),
+        encoding="utf-8",
+    )
+    (dist / "kicad_mcp_pro-1.2.3-py3-none-any.whl").write_bytes(b"wheel")
+    (dist / "kicad_mcp_pro-1.2.3.tar.gz").write_bytes(b"sdist")
+
+    module.generate(dist, output, pyproject)
+
+    checksums = (output / "SHA256SUMS.txt").read_text(encoding="utf-8")
+    sbom = json.loads((output / "sbom.cdx.json").read_text(encoding="utf-8"))
+    evidence = json.loads((output / "release-evidence.json").read_text(encoding="utf-8"))
+    assert "kicad_mcp_pro-1.2.3-py3-none-any.whl" in checksums
+    assert sbom["bomFormat"] == "CycloneDX"
+    assert {component["name"] for component in sbom["components"]} == {"mcp", "typer"}
+    assert evidence["surface"] == "python"
+
+
+def test_verify_local_rejects_checksum_mismatch(tmp_path: Path) -> None:
+    module = _load_script()
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    (artifacts / "artifact.whl").write_text("changed", encoding="utf-8")
+    checksums = tmp_path / "SHA256SUMS.txt"
+    checksums.write_text(f"{'0' * 64}  artifact.whl\n", encoding="utf-8")
+
+    try:
+        module.verify_local(checksums, artifacts)
+    except SystemExit as exc:
+        assert "sha256 mismatch" in str(exc)
+    else:  # pragma: no cover
+        raise AssertionError("verify_local should reject mismatched checksums")
+
+
+def test_verify_pypi_accepts_matching_published_digests(tmp_path: Path, monkeypatch) -> None:
+    module = _load_script()
+    checksums = tmp_path / "SHA256SUMS.txt"
+    checksums.write_text(f"{'a' * 64}  artifact.whl\n", encoding="utf-8")
+
+    payload = b'{"urls":[{"filename":"artifact.whl","digests":{"sha256":"' + b"a" * 64 + b'"}}]}'
+    monkeypatch.setattr(
+        module.urllib.request,
+        "urlopen",
+        lambda *_args, **_kwargs: _PypiResponse(payload),
+    )
+
+    module.verify_pypi("pypi", "kicad-mcp-pro", "1.0.0", checksums, retries=1, retry_delay=0)
+
+
+def test_verify_pypi_rejects_digest_mismatch(tmp_path: Path, monkeypatch) -> None:
+    module = _load_script()
+    checksums = tmp_path / "SHA256SUMS.txt"
+    checksums.write_text(f"{'0' * 64}  artifact.whl\n", encoding="utf-8")
+
+    payload = b'{"urls":[{"filename":"artifact.whl","digests":{"sha256":"' + b"1" * 64 + b'"}}]}'
+    monkeypatch.setattr(
+        module.urllib.request,
+        "urlopen",
+        lambda *_args, **_kwargs: _PypiResponse(payload),
+    )
+
+    try:
+        module.verify_pypi("pypi", "kicad-mcp-pro", "1.0.0", checksums, retries=1, retry_delay=0)
+    except SystemExit as exc:
+        assert "Published PyPI digest verification failed" in str(exc)
+    else:  # pragma: no cover
+        raise AssertionError("verify_pypi should reject mismatched checksums")

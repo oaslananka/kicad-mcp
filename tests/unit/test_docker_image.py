@@ -1,0 +1,131 @@
+from __future__ import annotations
+
+import json
+import platform
+import shutil
+import subprocess
+import uuid
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def _docker() -> str:
+    if platform.system() == "Windows":
+        pytest.skip("Docker image smoke test is covered on Linux runners")
+
+    docker = shutil.which("docker")
+    if docker is None:
+        pytest.skip("Docker CLI is not available")
+    info = subprocess.run(
+        [docker, "info"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=20,
+        check=False,
+    )
+    if info.returncode != 0:
+        pytest.skip(f"Docker daemon is not available: {info.stderr.strip() or info.stdout.strip()}")
+    return docker
+
+
+def test_docker_image_builds_and_exposes_stdio_cli_smoke() -> None:
+    docker = _docker()
+    tag = f"kicad-mcp-pro:test-{uuid.uuid4().hex[:12]}"
+    try:
+        build = subprocess.run(
+            [docker, "build", "-t", tag, "."],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=600,
+            check=False,
+        )
+        assert build.returncode == 0, build.stdout + build.stderr
+
+        inspect = subprocess.run(
+            [docker, "image", "inspect", tag],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )
+        assert inspect.returncode == 0, inspect.stdout + inspect.stderr
+        config = json.loads(inspect.stdout)[0]["Config"]
+        assert config["User"] == "kicadmcp"
+        assert config["Entrypoint"] == ["kicad-mcp-pro-entrypoint"]
+        assert config["Cmd"] == ["--transport", "streamable-http"]
+        assert "3334/tcp" in config["ExposedPorts"]
+        assert "KICAD_MCP_HOST=0.0.0.0" in config["Env"]
+        assert "KICAD_MCP_TRANSPORT=streamable-http" in config["Env"]
+
+        help_result = subprocess.run(
+            [docker, "run", "--rm", tag, "--help"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )
+        assert help_result.returncode == 0, help_result.stdout + help_result.stderr
+        assert "KiCad MCP Pro server" in help_result.stdout
+
+        explicit_help = subprocess.run(
+            [docker, "run", "--rm", tag, "kicad-mcp-pro", "--help"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )
+        assert explicit_help.returncode == 0, explicit_help.stdout + explicit_help.stderr
+        assert "KiCad MCP Pro server" in explicit_help.stdout
+
+        health = subprocess.run(
+            [
+                docker,
+                "run",
+                "--rm",
+                "-e",
+                "KICAD_MCP_AUTH_TOKEN=test-token-with-at-least-32-characters",
+                tag,
+                "health",
+                "--json",
+            ],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )
+        assert health.returncode == 0, health.stdout + health.stderr
+        payload = json.loads(health.stdout)
+        assert payload["ok"] is True
+        assert payload["kicad"]["ipc_reachable"] is False
+    finally:
+        subprocess.run(
+            [docker, "image", "rm", "-f", tag],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            check=False,
+        )

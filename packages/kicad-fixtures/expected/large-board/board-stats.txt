@@ -1,0 +1,6 @@
+fixture=large-board
+board=available
+footprints=36
+nets=36
+segments=36
+layers=F.Cu,B.Cu,Edge.Cuts

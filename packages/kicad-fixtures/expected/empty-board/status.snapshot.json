@@ -1,0 +1,28 @@
+{
+  "fixture": "empty-board",
+  "expectedOutcome": "warn",
+  "projectState": "ready",
+  "diagnostics": {
+    "errors": 0,
+    "warnings": 1,
+    "infos": 0,
+    "stale": false
+  },
+  "schematic": {
+    "state": "absent"
+  },
+  "board": {
+    "state": "available",
+    "footprints": 0
+  },
+  "netlist": {
+    "state": "not-applicable"
+  },
+  "designRules": {
+    "state": "absent"
+  },
+  "pathFeatures": {
+    "containsSpaces": false,
+    "containsNonAscii": false
+  }
+}

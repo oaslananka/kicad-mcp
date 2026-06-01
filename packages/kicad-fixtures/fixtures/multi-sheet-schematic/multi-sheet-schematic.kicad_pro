@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "filename": "multi-sheet-schematic",
+    "version": 1,
+    "fixtureId": "multi-sheet-schematic",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "multi-sheet-schematic",
+    "expectedOutcome": "pass",
+    "tags": [
+      "schematic",
+      "hierarchy",
+      "bom"
+    ]
+  },
+  "schematic": {
+    "file": "multi-sheet-schematic.kicad_sch"
+  },
+  "sheets": [
+    {
+      "file": "power.kicad_sch"
+    }
+  ],
+  "board": {
+    "file": "multi-sheet-schematic.kicad_pcb"
+  }
+}

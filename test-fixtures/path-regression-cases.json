@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "trackingIssue": "OASLANA-112",
+  "ciMatrix": ["ubuntu-24.04", "windows-2025-vs2026", "macos-15"],
+  "scenarios": [
+    {
+      "id": "project-path-with-spaces",
+      "directoryName": "project with spaces",
+      "fileBase": "board with spaces",
+      "expectedGroups": {
+        "Project Files": ["board with spaces.kicad_pro"],
+        "Schematic Sheets": ["board with spaces.kicad_sch"],
+        "PCB": ["board with spaces.kicad_pcb"],
+        "Design Rules": ["board with spaces.kicad_dru"]
+      },
+      "tags": ["project-discovery", "kicad-cli", "mcp", "spaces"]
+    },
+    {
+      "id": "unicode-project-path",
+      "directoryName": "Türkçe-路径-é",
+      "fileBase": "çin-é-board",
+      "expectedGroups": {
+        "Project Files": ["çin-é-board.kicad_pro"],
+        "Schematic Sheets": ["çin-é-board.kicad_sch"],
+        "PCB": ["çin-é-board.kicad_pcb"],
+        "Design Rules": ["çin-é-board.kicad_dru"]
+      },
+      "tags": ["project-discovery", "kicad-cli", "mcp", "unicode"]
+    },
+    {
+      "id": "reserved-url-characters",
+      "directoryName": "path #&%+ chars",
+      "fileBase": "board #&%+",
+      "expectedGroups": {
+        "Project Files": ["board #&%+.kicad_pro"],
+        "Schematic Sheets": ["board #&%+.kicad_sch"],
+        "PCB": ["board #&%+.kicad_pcb"],
+        "Design Rules": ["board #&%+.kicad_dru"]
+      },
+      "tags": ["project-discovery", "kicad-cli", "mcp", "special-chars"]
+    },
+    {
+      "id": "mixed-separators",
+      "rawRelativePath": "nested\\mixed/path board.kicad_pcb",
+      "expectedPosixPath": "nested/mixed/path board.kicad_pcb",
+      "tags": ["path-normalization", "mixed-slashes"]
+    },
+    {
+      "id": "long-path",
+      "directoryName": "long-path",
+      "fileBase": "long-board",
+      "minimumPathLength": 260,
+      "expectedGroups": {
+        "Project Files": ["long-board.kicad_pro"],
+        "Schematic Sheets": ["long-board.kicad_sch"],
+        "PCB": ["long-board.kicad_pcb"],
+        "Design Rules": ["long-board.kicad_dru"]
+      },
+      "tags": ["project-discovery", "kicad-cli", "mcp", "long-path"]
+    },
+    {
+      "id": "symlinked-project-root",
+      "directoryName": "symlink-target",
+      "linkName": "symlinked project root",
+      "fileBase": "linked-board",
+      "expectedGroups": {
+        "Project Files": ["linked-board.kicad_pro"],
+        "Schematic Sheets": ["linked-board.kicad_sch"],
+        "PCB": ["linked-board.kicad_pcb"],
+        "Design Rules": ["linked-board.kicad_dru"]
+      },
+      "tags": ["project-discovery", "mcp", "symlink"]
+    },
+    {
+      "id": "windows-unc-path",
+      "rawPath": "\\\\server\\share\\project\\board.kicad_pcb",
+      "expectedNonWindowsError": "Windows drive or UNC paths are not valid on this platform",
+      "tags": ["mcp", "windows", "unc"]
+    }
+  ]
+}

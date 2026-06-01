@@ -1,0 +1,28 @@
+{
+  "fixture": "multi-sheet-schematic",
+  "expectedOutcome": "pass",
+  "projectState": "ready",
+  "diagnostics": {
+    "errors": 0,
+    "warnings": 0,
+    "infos": 0,
+    "stale": false
+  },
+  "schematic": {
+    "state": "available"
+  },
+  "board": {
+    "state": "available",
+    "footprints": 5
+  },
+  "netlist": {
+    "state": "available"
+  },
+  "designRules": {
+    "state": "absent"
+  },
+  "pathFeatures": {
+    "containsSpaces": false,
+    "containsNonAscii": false
+  }
+}

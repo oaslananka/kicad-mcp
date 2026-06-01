@@ -1,0 +1,28 @@
+{
+  "fixture": "empty-project-kicad10",
+  "expectedOutcome": "warn",
+  "projectState": "ready",
+  "diagnostics": {
+    "errors": 0,
+    "warnings": 2,
+    "infos": 0,
+    "stale": false
+  },
+  "schematic": {
+    "state": "available"
+  },
+  "board": {
+    "state": "available",
+    "footprints": 0
+  },
+  "netlist": {
+    "state": "available"
+  },
+  "designRules": {
+    "state": "absent"
+  },
+  "pathFeatures": {
+    "containsSpaces": false,
+    "containsNonAscii": false
+  }
+}

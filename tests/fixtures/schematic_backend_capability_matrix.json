@@ -1,0 +1,205 @@
+{
+  "sch_get_symbols": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "ComponentCollection.get",
+      "ComponentCollection.filter",
+      "Component.to_dict"
+    ],
+    "notes": "kicad-sch-api exposes component collections, but the current text surface needs a compatibility wrapper."
+  },
+  "sch_get_wires": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "WireCollection.all"
+    ],
+    "notes": "Wire summaries are rebuilt from the verified WireCollection API."
+  },
+  "sch_get_labels": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "LabelCollection.all"
+    ],
+    "notes": "kicad-sch-api exposes local labels; compatibility readers extend that surface with global and hierarchical labels."
+  },
+  "sch_get_net_names": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "Schematic.get_net_for_pin",
+      "Schematic.get_connected_pins"
+    ],
+    "notes": "Net-name summaries can be rebuilt from pin connectivity helpers, but require a compatibility wrapper."
+  },
+  "sch_add_symbol": {
+    "kicad_sch_api_support": "native",
+    "verified_surface": [
+      "ComponentCollection.add"
+    ],
+    "notes": "Component placement maps directly to ComponentCollection.add()."
+  },
+  "sch_add_wire": {
+    "kicad_sch_api_support": "native",
+    "verified_surface": [
+      "Schematic.add_wire"
+    ],
+    "notes": "Straight wire creation exists directly in the verified public API."
+  },
+  "sch_add_label": {
+    "kicad_sch_api_support": "native",
+    "verified_surface": [
+      "Schematic.add_label"
+    ],
+    "notes": "Local label creation exists directly in the verified public API."
+  },
+  "sch_add_power_symbol": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "ComponentCollection.add"
+    ],
+    "notes": "Power symbols can be added as components, but hidden reference/value formatting needs a wrapper."
+  },
+  "sch_add_bus": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [],
+    "notes": "Bus creation remains a compatibility wrapper around the KiCad file format."
+  },
+  "sch_add_bus_wire_entry": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [],
+    "notes": "Bus-entry creation remains a compatibility wrapper around the KiCad file format."
+  },
+  "sch_add_no_connect": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [],
+    "notes": "No-connect markers remain a compatibility wrapper around the KiCad file format."
+  },
+  "sch_update_properties": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "ComponentCollection.get",
+      "Component.set_property"
+    ],
+    "notes": "Property updates are supported through component objects, but the current tool contract needs a wrapper."
+  },
+  "sch_build_circuit": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "create_schematic",
+      "ComponentCollection.add",
+      "Schematic.add_wire",
+      "Schematic.add_label"
+    ],
+    "notes": "Circuit construction can be rebuilt on top of verified primitives, but auto-layout and formatting require a wrapper."
+  },
+  "sch_get_pin_positions": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "Component.get_pin_position",
+      "Schematic.list_component_pins",
+      "get_symbol_info"
+    ],
+    "notes": "Pin positions are available through component and symbol helpers, but the current library-oriented contract needs a wrapper."
+  },
+  "sch_check_power_flags": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "Schematic.run_erc",
+      "Schematic.validate",
+      "Schematic.get_validation_summary"
+    ],
+    "notes": "Power-flag analysis can be derived from ERC/validation output, but there is no direct one-shot helper."
+  },
+  "sch_annotate": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "ComponentCollection.all",
+      "ComponentCollection.get"
+    ],
+    "notes": "Annotation remains a deterministic wrapper built on top of component metadata."
+  },
+  "sch_reload": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "KiCad IPC reload helper outside kicad-sch-api"
+    ],
+    "notes": "Reload is a KiCad IPC concern and will remain a wrapper around the active editor/session."
+  },
+  "sch_create_sheet": {
+    "kicad_sch_api_support": "native",
+    "verified_surface": [
+      "Schematic.add_sheet",
+      "create_schematic",
+      "Schematic.save"
+    ],
+    "notes": "Child sheet creation maps directly to the verified sheet manager helpers."
+  },
+  "sch_add_hierarchical_label": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "Schematic.add_hierarchical_label"
+    ],
+    "notes": "The public API can create hierarchical labels, but the wrapper preserves shape and formatting compatibility."
+  },
+  "sch_add_global_label": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "Schematic.add_global_label"
+    ],
+    "notes": "The public API can create global labels, but the wrapper preserves shape and formatting compatibility."
+  },
+  "sch_list_sheets": {
+    "kicad_sch_api_support": "native",
+    "verified_surface": [
+      "SheetManager.get_sheet_hierarchy",
+      "SheetManager.get_sheet_by_name"
+    ],
+    "notes": "Sheet listing is available directly from the verified sheet manager APIs."
+  },
+  "sch_get_sheet_info": {
+    "kicad_sch_api_support": "native",
+    "verified_surface": [
+      "SheetManager.get_sheet_by_name"
+    ],
+    "notes": "Detailed sheet metadata is available directly from SheetManager.get_sheet_by_name()."
+  },
+  "sch_route_wire_between_pins": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "Schematic.add_wire_between_pins",
+      "Component.get_pin_position"
+    ],
+    "notes": "Pin-to-pin routing is exposed in kicad-sch-api, but the wrapper keeps the current Manhattan-routing contract deterministic."
+  },
+  "sch_add_missing_junctions": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [],
+    "notes": "Missing schematic junctions are repaired from file-level wire geometry."
+  },
+  "sch_get_connectivity_graph": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "Schematic.get_connected_pins",
+      "Schematic.get_net_for_pin",
+      "WireCollection.all"
+    ],
+    "notes": "Connectivity summaries are composed from verified wire and component helpers to match the existing textual MCP surface."
+  },
+  "sch_trace_net": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "Schematic.get_net_for_pin",
+      "SheetManager.get_sheet_hierarchy",
+      "SheetManager.get_sheet_by_name"
+    ],
+    "notes": "Net tracing uses verified sheet metadata plus compatibility parsing to report cross-sheet matches."
+  },
+  "sch_auto_place_symbols": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "ComponentCollection.get",
+      "Component.move",
+      "Schematic.save"
+    ],
+    "notes": "Auto-placement is implemented as a deterministic wrapper around component move helpers."
+  }
+}

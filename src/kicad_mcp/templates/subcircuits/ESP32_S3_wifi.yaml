@@ -1,0 +1,26 @@
+name: ESP32_S3_wifi
+version: "1.0"
+description: ESP32-S3 module support circuit with USB, decoupling, and antenna keepout.
+symbols:
+  - ref_prefix: U
+    value: ESP32-S3-WROOM
+    default_footprint: RF_Module:ESP32-S3-WROOM-1
+    pins_left: [USB_D+, USB_D-, EN, IO0]
+    pins_right: [TXD0, RXD0, GPIO, 3V3]
+  - ref_prefix: C
+    value: 100nF
+    default_footprint: Capacitor_SMD:C_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: +3V3
+    type: power
+  - name: GND
+    type: power
+  - name: USB_D+
+    type: differential
+  - name: USB_D-
+    type: differential
+placement_hints:
+  - Keep copper, vias, and silkscreen clear under the antenna region.
+  - Place bulk and 100nF decoupling on the same side as the module.

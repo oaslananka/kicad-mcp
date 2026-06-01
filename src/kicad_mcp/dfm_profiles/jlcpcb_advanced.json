@@ -1,0 +1,19 @@
+{
+  "manufacturer": "JLCPCB",
+  "tier": "advanced",
+  "rules": {
+    "min_trace_width_mm": 0.1,
+    "min_trace_clearance_mm": 0.1,
+    "min_drill_mm": 0.2,
+    "min_annular_ring_mm": 0.13,
+    "min_silkscreen_text_height_mm": 0.12,
+    "copper_to_edge_mm": 0.25,
+    "max_layers": 32
+  },
+  "pricing": {
+    "setup_usd": 4.0,
+    "per_sq_cm_usd": 0.09,
+    "per_drill_usd": 0.003,
+    "extra_layer_multiplier": 0.22
+  }
+}

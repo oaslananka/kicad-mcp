@@ -1,0 +1,17 @@
+{
+  "fixture": "malformed-sch",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "diagnostics": [
+    {
+      "id": "malformed-sch-sch_parse",
+      "fixture": "malformed-sch",
+      "sequence": 1,
+      "severity": "error",
+      "source": "schematic",
+      "code": "SCH_PARSE",
+      "message": "Schematic S-expression is truncated before the closing form.",
+      "stale": false,
+      "file": "malformed-sch.kicad_sch"
+    }
+  ]
+}

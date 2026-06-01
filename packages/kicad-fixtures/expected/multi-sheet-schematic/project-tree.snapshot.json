@@ -1,0 +1,33 @@
+{
+  "fixture": "multi-sheet-schematic",
+  "semanticName": "multi-sheet-schematic",
+  "root": "packages/kicad-fixtures/fixtures/multi-sheet-schematic",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "files": [
+    {
+      "role": "project",
+      "path": "multi-sheet-schematic.kicad_pro",
+      "exists": true
+    },
+    {
+      "role": "schematic",
+      "path": "multi-sheet-schematic.kicad_sch",
+      "exists": true
+    },
+    {
+      "role": "schematic-sheet",
+      "path": "power.kicad_sch",
+      "exists": true
+    },
+    {
+      "role": "board",
+      "path": "multi-sheet-schematic.kicad_pcb",
+      "exists": true
+    },
+    {
+      "role": "dru",
+      "path": null,
+      "exists": false
+    }
+  ]
+}

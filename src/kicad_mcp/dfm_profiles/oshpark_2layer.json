@@ -1,0 +1,19 @@
+{
+  "manufacturer": "OSH Park",
+  "tier": "2layer",
+  "rules": {
+    "min_trace_width_mm": 0.127,
+    "min_trace_clearance_mm": 0.127,
+    "min_drill_mm": 0.254,
+    "min_annular_ring_mm": 0.127,
+    "min_silkscreen_text_height_mm": 0.15,
+    "copper_to_edge_mm": 0.381,
+    "max_layers": 2
+  },
+  "pricing": {
+    "setup_usd": 0.0,
+    "per_sq_cm_usd": 0.78,
+    "per_drill_usd": 0.0,
+    "extra_layer_multiplier": 0.0
+  }
+}

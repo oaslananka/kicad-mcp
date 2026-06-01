@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "filename": "empty-project-kicad10",
+    "version": 1,
+    "fixtureId": "empty-project-kicad10",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "empty-project-kicad10",
+    "expectedOutcome": "warn",
+    "tags": [
+      "kicad10",
+      "pcb",
+      "schematic",
+      "empty-state"
+    ]
+  },
+  "schematic": {
+    "file": "empty-project-kicad10.kicad_sch"
+  },
+  "board": {
+    "file": "empty-project-kicad10.kicad_pcb"
+  }
+}

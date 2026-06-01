@@ -1,0 +1,28 @@
+{
+  "fixture": "clean-led-kicad10",
+  "semanticName": "clean-led-kicad10",
+  "root": "packages/kicad-fixtures/fixtures/clean-led-kicad10",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "files": [
+    {
+      "role": "project",
+      "path": "clean-led-kicad10.kicad_pro",
+      "exists": true
+    },
+    {
+      "role": "schematic",
+      "path": "clean-led-kicad10.kicad_sch",
+      "exists": true
+    },
+    {
+      "role": "board",
+      "path": "clean-led-kicad10.kicad_pcb",
+      "exists": true
+    },
+    {
+      "role": "dru",
+      "path": "clean-led-kicad10.kicad_dru",
+      "exists": true
+    }
+  ]
+}

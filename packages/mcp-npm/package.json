@@ -1,0 +1,34 @@
+{
+  "name": "kicad-mcp-pro",
+  "version": "3.6.0",
+  "description": "npm wrapper for the KiCad MCP Pro Python package.",
+  "license": "MIT",
+  "homepage": "https://oaslananka.github.io/kicad-mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oaslananka/kicad-mcp.git",
+    "directory": "packages/mcp-npm"
+  },
+  "bugs": {
+    "url": "https://github.com/oaslananka/kicad-mcp/issues"
+  },
+  "mcpName": "io.github.oaslananka/kicad-mcp-pro",
+  "bin": {
+    "kicad-mcp-pro": "bin/kicad-mcp-pro.js"
+  },
+  "files": [
+    "bin/",
+    "scripts/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "check": "npm pack --dry-run",
+    "build": "node scripts/build-smoke.js"
+  }
+}

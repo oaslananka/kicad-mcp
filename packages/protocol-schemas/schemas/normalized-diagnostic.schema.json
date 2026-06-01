@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oaslananka.github.io/kicad-studio-kit/schemas/normalized-diagnostic.schema.json",
+  "title": "Normalized DRC/ERC diagnostic contract",
+  "description": "Product-neutral diagnostic record normalized from KiCad DRC, ERC, syntax, or cached validation output.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "source",
+    "severity",
+    "message",
+    "path",
+    "capturedAt"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "$ref": "#/$defs/semver"
+    },
+    "source": {
+      "enum": ["drc", "erc", "syntax"]
+    },
+    "severity": {
+      "enum": ["error", "warning", "info"]
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "path": {
+      "type": "string"
+    },
+    "code": {
+      "type": "string"
+    },
+    "line": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "column": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "reference": {
+      "type": "string"
+    },
+    "net": {
+      "type": "string"
+    },
+    "capturedAt": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    }
+  },
+  "x-kicad-studio-kit": {
+    "trackingIssue": "OASLANA-52",
+    "schemaVersion": "1.0.0"
+  }
+}
