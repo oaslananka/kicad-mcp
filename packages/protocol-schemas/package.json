@@ -3,6 +3,10 @@
   "version": "1.1.0",
   "description": "Shared versioned protocol schemas and validators for KiCad Studio Kit extension/MCP compatibility contracts.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oaslananka/kicad-mcp"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
