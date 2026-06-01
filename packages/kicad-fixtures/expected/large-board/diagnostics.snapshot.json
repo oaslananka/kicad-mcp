@@ -1,0 +1,5 @@
+{
+  "fixture": "large-board",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "diagnostics": []
+}

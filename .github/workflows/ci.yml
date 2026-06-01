@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mcp-server:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025-vs2026, macos-15]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          enable-cache: true
+          version-file: uv.toml
+      - run: corepack enable
+      - run: corepack pnpm install --frozen-lockfile
+      - run: uv sync --all-extras --frozen
+      - run: corepack pnpm run format:check
+      - run: corepack pnpm run lint
+      - run: corepack pnpm run typecheck
+      - run: corepack pnpm run test:unit
+      - run: corepack pnpm run metadata:check
+      - run: corepack pnpm run mcp:manifest:check
+      - run: corepack pnpm run package:check
+
+  mcp-npm:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025-vs2026, macos-15]
+    defaults:
+      run:
+        working-directory: packages/mcp-npm
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts=false
+      - run: npm pack --dry-run
+      - run: npm run build

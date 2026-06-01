@@ -1,0 +1,28 @@
+{
+  "fixture": "unicode-path-çöğü",
+  "semanticName": "unicode-path-çöğü",
+  "root": "packages/kicad-fixtures/fixtures/unicode-path-çöğü",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "files": [
+    {
+      "role": "project",
+      "path": "unicode-çöğü.kicad_pro",
+      "exists": true
+    },
+    {
+      "role": "schematic",
+      "path": "unicode-çöğü.kicad_sch",
+      "exists": true
+    },
+    {
+      "role": "board",
+      "path": "unicode-çöğü.kicad_pcb",
+      "exists": true
+    },
+    {
+      "role": "dru",
+      "path": "unicode-çöğü.kicad_dru",
+      "exists": true
+    }
+  ]
+}

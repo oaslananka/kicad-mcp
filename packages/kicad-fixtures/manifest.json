@@ -1,0 +1,398 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "trackingIssue": "OASLANA-53",
+  "githubIssue": 54,
+  "root": "packages/kicad-fixtures/fixtures",
+  "expectedRoot": "packages/kicad-fixtures/expected",
+  "fixtureCount": 16,
+  "expectedFiles": [
+    "project-tree.snapshot.json",
+    "diagnostics.snapshot.json",
+    "status.snapshot.json",
+    "erc-report.json",
+    "drc-report.json",
+    "bom.csv",
+    "netlist.net",
+    "board-stats.txt"
+  ],
+  "fixtures": [
+    {
+      "id": "clean-led-kicad10",
+      "semanticName": "clean-led-kicad10",
+      "path": "packages/kicad-fixtures/fixtures/clean-led-kicad10",
+      "projectFile": "clean-led-kicad10.kicad_pro",
+      "schematicFiles": ["clean-led-kicad10.kicad_sch"],
+      "boardFile": "clean-led-kicad10.kicad_pcb",
+      "designRulesFile": "clean-led-kicad10.kicad_dru",
+      "expectedPath": "packages/kicad-fixtures/expected/clean-led-kicad10",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "pass",
+      "tags": ["kicad10", "schematic", "pcb", "bom", "netlist"]
+    },
+    {
+      "id": "stale-diagnostics-kicad10",
+      "semanticName": "stale-diagnostics-kicad10",
+      "path": "packages/kicad-fixtures/fixtures/stale-diagnostics-kicad10",
+      "projectFile": "stale-diagnostics-kicad10.kicad_pro",
+      "schematicFiles": ["stale-diagnostics-kicad10.kicad_sch"],
+      "boardFile": "stale-diagnostics-kicad10.kicad_pcb",
+      "designRulesFile": "stale-diagnostics-kicad10.kicad_dru",
+      "expectedPath": "packages/kicad-fixtures/expected/stale-diagnostics-kicad10",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "warn",
+      "tags": ["kicad10", "diagnostics", "stale-state"]
+    },
+    {
+      "id": "kicad-10-0-3-regressions",
+      "semanticName": "kicad-10-0-3-regressions",
+      "path": "packages/kicad-fixtures/fixtures/kicad-10-0-3-regressions",
+      "projectFile": "kicad-10-0-3-regressions.kicad_pro",
+      "schematicFiles": ["kicad-10-0-3-regressions.kicad_sch"],
+      "boardFile": "kicad-10-0-3-regressions.kicad_pcb",
+      "designRulesFile": "kicad-10-0-3-regressions.kicad_dru",
+      "expectedPath": "packages/kicad-fixtures/expected/kicad-10-0-3-regressions",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "warn",
+      "tags": [
+        "kicad10",
+        "kicad10.0.3",
+        "regression",
+        "cli",
+        "drc",
+        "erc",
+        "pdf-property-popups",
+        "pads-import",
+        "allegro-capability",
+        "custom-padstack"
+      ],
+      "regressionCoverage": {
+        "kicadVersion": "10.0.3",
+        "source": "https://www.kicad.org/blog/2026/05/KiCad-10.0.3-Release/",
+        "cli": [
+          "drc_elapsed_or_status_output_parsing",
+          "erc_output_shape_stability",
+          "pcb_export_pdf_property_popup_suppression_probe"
+        ],
+        "importers": [
+          "pads_import_edge_case_fixture",
+          "allegro_import_capability_probe"
+        ],
+        "pcb": ["custom_padstack_non_copper_layer_fixture"]
+      }
+    },
+    {
+      "id": "erc-power-pin-error",
+      "semanticName": "erc-power-pin-error",
+      "path": "packages/kicad-fixtures/fixtures/erc-power-pin-error",
+      "projectFile": "erc-power-pin-error.kicad_pro",
+      "schematicFiles": ["erc-power-pin-error.kicad_sch"],
+      "boardFile": null,
+      "designRulesFile": null,
+      "expectedPath": "packages/kicad-fixtures/expected/erc-power-pin-error",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "fail",
+      "tags": ["erc", "schematic", "power-pin"]
+    },
+    {
+      "id": "drc-courtyard-error",
+      "semanticName": "drc-courtyard-error",
+      "path": "packages/kicad-fixtures/fixtures/drc-courtyard-error",
+      "projectFile": "drc-courtyard-error.kicad_pro",
+      "schematicFiles": [],
+      "boardFile": "drc-courtyard-error.kicad_pcb",
+      "designRulesFile": "drc-courtyard-error.kicad_dru",
+      "expectedPath": "packages/kicad-fixtures/expected/drc-courtyard-error",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "fail",
+      "tags": ["drc", "pcb", "courtyard"]
+    },
+    {
+      "id": "unconnected-pcb",
+      "semanticName": "unconnected-pcb",
+      "path": "packages/kicad-fixtures/fixtures/unconnected-pcb",
+      "projectFile": "unconnected-pcb.kicad_pro",
+      "schematicFiles": ["unconnected-pcb.kicad_sch"],
+      "boardFile": "unconnected-pcb.kicad_pcb",
+      "designRulesFile": null,
+      "expectedPath": "packages/kicad-fixtures/expected/unconnected-pcb",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "warn",
+      "tags": ["pcb", "ratsnest", "netlist"]
+    },
+    {
+      "id": "missing-netlist",
+      "semanticName": "missing-netlist",
+      "path": "packages/kicad-fixtures/fixtures/missing-netlist",
+      "projectFile": "missing-netlist.kicad_pro",
+      "schematicFiles": ["missing-netlist.kicad_sch"],
+      "boardFile": "missing-netlist.kicad_pcb",
+      "designRulesFile": null,
+      "expectedPath": "packages/kicad-fixtures/expected/missing-netlist",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "warn",
+      "tags": ["schematic", "pcb", "netlist"]
+    },
+    {
+      "id": "empty-board",
+      "semanticName": "empty-board",
+      "path": "packages/kicad-fixtures/fixtures/empty-board",
+      "projectFile": "empty-board.kicad_pro",
+      "schematicFiles": [],
+      "boardFile": "empty-board.kicad_pcb",
+      "designRulesFile": null,
+      "expectedPath": "packages/kicad-fixtures/expected/empty-board",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "warn",
+      "tags": ["pcb", "empty-state"]
+    },
+    {
+      "id": "empty-project-kicad10",
+      "semanticName": "empty-project-kicad10",
+      "path": "packages/kicad-fixtures/fixtures/empty-project-kicad10",
+      "projectFile": "empty-project-kicad10.kicad_pro",
+      "schematicFiles": ["empty-project-kicad10.kicad_sch"],
+      "boardFile": "empty-project-kicad10.kicad_pcb",
+      "designRulesFile": null,
+      "expectedPath": "packages/kicad-fixtures/expected/empty-project-kicad10",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "warn",
+      "tags": ["kicad10", "pcb", "schematic", "empty-state"]
+    },
+    {
+      "id": "no-dru-file",
+      "semanticName": "no-dru-file",
+      "path": "packages/kicad-fixtures/fixtures/no-dru-file",
+      "projectFile": "no-dru-file.kicad_pro",
+      "schematicFiles": ["no-dru-file.kicad_sch"],
+      "boardFile": "no-dru-file.kicad_pcb",
+      "designRulesFile": null,
+      "expectedPath": "packages/kicad-fixtures/expected/no-dru-file",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "pass",
+      "tags": ["pcb", "drc", "missing-dru"]
+    },
+    {
+      "id": "multi-sheet-schematic",
+      "semanticName": "multi-sheet-schematic",
+      "path": "packages/kicad-fixtures/fixtures/multi-sheet-schematic",
+      "projectFile": "multi-sheet-schematic.kicad_pro",
+      "schematicFiles": ["multi-sheet-schematic.kicad_sch", "power.kicad_sch"],
+      "boardFile": "multi-sheet-schematic.kicad_pcb",
+      "designRulesFile": null,
+      "expectedPath": "packages/kicad-fixtures/expected/multi-sheet-schematic",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "pass",
+      "tags": ["schematic", "hierarchy", "bom"]
+    },
+    {
+      "id": "large-board",
+      "semanticName": "large-board",
+      "path": "packages/kicad-fixtures/fixtures/large-board",
+      "projectFile": "large-board.kicad_pro",
+      "schematicFiles": ["large-board.kicad_sch"],
+      "boardFile": "large-board.kicad_pcb",
+      "designRulesFile": "large-board.kicad_dru",
+      "expectedPath": "packages/kicad-fixtures/expected/large-board",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "pass",
+      "tags": ["pcb", "large-board", "performance"]
+    },
+    {
+      "id": "malformed-sch",
+      "semanticName": "malformed-sch",
+      "path": "packages/kicad-fixtures/fixtures/malformed-sch",
+      "projectFile": "malformed-sch.kicad_pro",
+      "schematicFiles": ["malformed-sch.kicad_sch"],
+      "boardFile": null,
+      "designRulesFile": null,
+      "expectedPath": "packages/kicad-fixtures/expected/malformed-sch",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "fail",
+      "tags": ["schematic", "malformed"]
+    },
+    {
+      "id": "malformed-pcb",
+      "semanticName": "malformed-pcb",
+      "path": "packages/kicad-fixtures/fixtures/malformed-pcb",
+      "projectFile": "malformed-pcb.kicad_pro",
+      "schematicFiles": [],
+      "boardFile": "malformed-pcb.kicad_pcb",
+      "designRulesFile": null,
+      "expectedPath": "packages/kicad-fixtures/expected/malformed-pcb",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "fail",
+      "tags": ["pcb", "malformed"]
+    },
+    {
+      "id": "paths-with-spaces",
+      "semanticName": "paths-with-spaces",
+      "path": "packages/kicad-fixtures/fixtures/paths-with-spaces",
+      "projectFile": "path case.kicad_pro",
+      "schematicFiles": ["path case.kicad_sch"],
+      "boardFile": "path case.kicad_pcb",
+      "designRulesFile": "path case.kicad_dru",
+      "expectedPath": "packages/kicad-fixtures/expected/paths-with-spaces",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "pass",
+      "tags": ["path-spaces", "windows-paths"]
+    },
+    {
+      "id": "unicode-path-çöğü",
+      "semanticName": "unicode-path-çöğü",
+      "path": "packages/kicad-fixtures/fixtures/unicode-path-çöğü",
+      "projectFile": "unicode-çöğü.kicad_pro",
+      "schematicFiles": ["unicode-çöğü.kicad_sch"],
+      "boardFile": "unicode-çöğü.kicad_pcb",
+      "designRulesFile": "unicode-çöğü.kicad_dru",
+      "expectedPath": "packages/kicad-fixtures/expected/unicode-path-çöğü",
+      "expectedFiles": [
+        "project-tree.snapshot.json",
+        "diagnostics.snapshot.json",
+        "status.snapshot.json",
+        "erc-report.json",
+        "drc-report.json",
+        "bom.csv",
+        "netlist.net",
+        "board-stats.txt"
+      ],
+      "expectedOutcome": "pass",
+      "tags": ["unicode-path", "windows-paths"]
+    }
+  ]
+}

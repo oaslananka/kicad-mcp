@@ -1,0 +1,36 @@
+{
+  "name": "@oaslananka/kicad-fixtures",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared deterministic KiCad fixture corpus and path helpers for KiCad Studio Kit tests.",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "fixtures/",
+    "expected/",
+    "manifest.json",
+    "README.md"
+  ],
+  "packageManager": "pnpm@11.5.0",
+  "engines": {
+    "node": ">=24.11.0 <25",
+    "pnpm": ">=11.0.0 <12"
+  },
+  "scripts": {
+    "format": "prettier --ignore-unknown --no-error-on-unmatched-pattern --write package.json README.md manifest.json tsconfig*.json scripts/*.cjs src/**/*.ts test/**/*.ts",
+    "format:check": "prettier --ignore-unknown --no-error-on-unmatched-pattern --check package.json README.md manifest.json tsconfig*.json scripts/*.cjs src/**/*.ts test/**/*.ts",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "build:test": "tsc -p tsconfig.test.json",
+    "test": "pnpm run build:test && node scripts/run-tests.cjs",
+    "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build"
+  },
+  "devDependencies": {
+    "@types/node": "24.12.3",
+    "prettier": "3.8.3",
+    "typescript": "6.0.3"
+  }
+}

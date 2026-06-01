@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "filename": "missing-netlist",
+    "version": 1,
+    "fixtureId": "missing-netlist",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "missing-netlist",
+    "expectedOutcome": "warn",
+    "tags": [
+      "schematic",
+      "pcb",
+      "netlist"
+    ]
+  },
+  "schematic": {
+    "file": "missing-netlist.kicad_sch"
+  },
+  "board": {
+    "file": "missing-netlist.kicad_pcb"
+  }
+}

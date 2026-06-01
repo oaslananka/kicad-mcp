@@ -1,0 +1,3 @@
+setup:
+  - project: all
+    config: main

@@ -1,0 +1,6 @@
+fixture=kicad-10-0-3-regressions
+board=available
+footprints=2
+nets=2
+segments=2
+layers=F.Cu,B.Cu,Edge.Cuts

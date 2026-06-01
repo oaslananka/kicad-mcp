@@ -1,0 +1,8 @@
+{
+  "fixture": "paths-with-spaces",
+  "formatVersion": 1,
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "source": "erc",
+  "status": "pass",
+  "violations": []
+}

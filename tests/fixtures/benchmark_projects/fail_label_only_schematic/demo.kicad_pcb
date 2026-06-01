@@ -1,0 +1,5 @@
+(kicad_pcb
+  (version 20250216)
+  (generator "pytest")
+  (gr_rect (start 0 0) (end 25 20) (stroke (width 0.05) (type solid)) (fill no) (layer "Edge.Cuts"))
+)

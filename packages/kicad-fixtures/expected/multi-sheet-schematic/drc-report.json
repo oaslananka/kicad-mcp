@@ -1,0 +1,8 @@
+{
+  "fixture": "multi-sheet-schematic",
+  "formatVersion": 1,
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "source": "drc",
+  "status": "pass",
+  "violations": []
+}

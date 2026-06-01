@@ -1,0 +1,7 @@
+(rules
+	(rule "Fixture minimum clearance"
+		(condition "A.Type == 'track'")
+		(constraint clearance (min 0.1500mm))
+		(severity error)
+	)
+)

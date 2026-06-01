@@ -1,0 +1,81 @@
+name: ethernet_rj45_mag
+version: "1.0"
+description: >
+  10/100/1000BASE-T Ethernet interface with integrated magnetics in the
+  RJ45 connector (MagJack).  Includes ESD protection and optional PoE blocking.
+  Placeholder — binds to a MagJack connector (e.g. Würth 7499011221A).
+
+parameters:
+  speed:
+    type: string
+    description: "Ethernet speed: 100 or 1000"
+    default: "1000"
+  poe_blocking:
+    type: bool
+    description: Include PoE isolation capacitors on pair lines
+    default: false
+
+symbols:
+  - ref_prefix: J
+    value: "RJ45_MAG"
+    comment: "RJ45 with integrated magnetics (MagJack) — e.g. Würth 7499011221A"
+    default_footprint: "Connector_RJ:RJ45_Amphenol_RJHSE538X_Horizontal"
+    pins_left: [TX_P, TX_N, RX_P, RX_N, TD_P, TD_N, RD_P, RD_N]
+    pins_right: [LED_A, LED_B, GND, CHASSIS_GND]
+
+  - ref_prefix: U
+    value: "ESD_ETH"
+    comment: "Ethernet ESD protection array — e.g. PRTR5V0U4X or TPD4E001"
+    default_footprint: "Package_SO:TSSOP-14_4.4x5mm_P0.65mm"
+    pins_left: [IO1, IO2, IO3, IO4]
+    pins_right: [A1, A2, A3, A4, GND]
+
+  - ref_prefix: R
+    value: "49.9"
+    comment: "Termination / differential impedance matching (optional)"
+    default_footprint: "Resistor_SMD:R_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: C
+    value: "100nF"
+    comment: "PoE isolation cap on Tx+/Tx- (PoE blocking only)"
+    default_footprint: "Capacitor_SMD:C_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: C
+    value: "4.7uF"
+    comment: "VDD decoupling for PHY supply"
+    default_footprint: "Capacitor_SMD:C_0805_2012Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+nets:
+  - name: "ETH_TXP"
+    type: signal
+    impedance_ohm: 100
+    differential: true
+  - name: "ETH_TXN"
+    type: signal
+    impedance_ohm: 100
+    differential: true
+  - name: "ETH_RXP"
+    type: signal
+    impedance_ohm: 100
+    differential: true
+  - name: "ETH_RXN"
+    type: signal
+    impedance_ohm: 100
+    differential: true
+  - name: "CHASSIS_GND"
+    type: power
+    note: "Connect via 1MΩ || 1nF to digital GND for ESD and EMC."
+
+placement_hints:
+  - "Route 100Ω differential pairs for all four Ethernet wire pairs."
+  - "Keep pair trace lengths within 5mm of each other."
+  - "Place ESD diode as close to RJ45 pins as possible."
+  - "Connect CHASSIS_GND through 1MΩ || 1nF to DGND (EMC isolation)."
+  - "Add ground copper pour under RJ45 connector for shielding."
+  - "Maintain 3H clearance from Ethernet traces to unrelated signals."

@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oaslananka.github.io/kicad-mcp/schemas/mcp-tool-capability.schema.json",
+  "title": "MCP tool capability metadata contract",
+  "description": "Versioned metadata for a single advertised kicad-mcp-pro tool capability.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "name",
+    "profiles",
+    "tier",
+    "runtime",
+    "supports_dry_run",
+    "human_gate_required",
+    "description",
+    "verification_level"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "$ref": "#/$defs/semver"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_]*$"
+      },
+      "uniqueItems": true
+    },
+    "tier": {
+      "enum": [
+        "read",
+        "write",
+        "export",
+        "publish",
+        "human_only"
+      ]
+    },
+    "runtime": {
+      "enum": [
+        "none",
+        "kicad_cli",
+        "kicad_ipc",
+        "ngspice",
+        "freerouting",
+        "docker"
+      ]
+    },
+    "supports_dry_run": {
+      "type": "boolean"
+    },
+    "human_gate_required": {
+      "type": "boolean"
+    },
+    "description": {
+      "type": "string"
+    },
+    "verification_level": {
+      "enum": [
+        "verified",
+        "experimental",
+        "planned"
+      ]
+    },
+    "inputSchema": {
+      "type": "object"
+    },
+    "annotations": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    }
+  },
+  "x-kicad-studio-kit": {
+    "trackingIssue": "OASLANA-52",
+    "schemaVersion": "1.0.0"
+  },
+  "x-kicad-mcp": {
+    "trackingIssue": "OASLANA-52",
+    "schemaType": "protocol-contract"
+  }
+}

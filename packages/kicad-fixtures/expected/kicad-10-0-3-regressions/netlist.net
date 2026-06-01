@@ -1,0 +1,11 @@
+(export (version "D")
+  (design (source "kicad-10-0-3-regressions.kicad_sch"))
+  (components
+    (comp (ref "U1") (value "PADS_EDGE"))
+    (comp (ref "TP1") (value "MASK_PADSTACK"))
+  )
+  (nets
+    (net (code "1") (name "PADS_NET"))
+    (net (code "2") (name "MASK_PROBE"))
+  )
+)

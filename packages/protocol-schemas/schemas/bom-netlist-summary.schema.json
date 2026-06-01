@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oaslananka.github.io/kicad-mcp/schemas/bom-netlist-summary.schema.json",
+  "title": "BOM and netlist summary contract",
+  "description": "Product-neutral summary of BOM rows and netlist nodes exchanged between KiCad Studio and kicad-mcp-pro.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "project",
+    "bom",
+    "netlist"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "$ref": "#/$defs/semver"
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rootPath": {
+          "type": "string"
+        },
+        "projectFile": {
+          "type": "string"
+        }
+      }
+    },
+    "bom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "totalComponents",
+        "uniqueValues",
+        "entries"
+      ],
+      "properties": {
+        "totalComponents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "uniqueValues": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bomEntry"
+          }
+        }
+      }
+    },
+    "netlist": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "netCount",
+        "nodes"
+      ],
+      "properties": {
+        "netCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/netNode"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "bomEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "references",
+        "value",
+        "footprint",
+        "quantity"
+      ],
+      "properties": {
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "value": {
+          "type": "string"
+        },
+        "footprint": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "mpn": {
+          "type": "string"
+        },
+        "manufacturer": {
+          "type": "string"
+        },
+        "lcsc": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "dnp": {
+          "type": "boolean"
+        }
+      }
+    },
+    "netNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "netName",
+        "pins"
+      ],
+      "properties": {
+        "netName": {
+          "type": "string"
+        },
+        "pins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "reference",
+              "pin"
+            ],
+            "properties": {
+              "reference": {
+                "type": "string"
+              },
+              "pin": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-kicad-studio-kit": {
+    "trackingIssue": "OASLANA-52",
+    "schemaVersion": "1.0.0"
+  },
+  "x-kicad-mcp": {
+    "trackingIssue": "OASLANA-52",
+    "schemaType": "protocol-contract"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "meta": {
+    "filename": "clean-led-kicad10",
+    "version": 1,
+    "fixtureId": "clean-led-kicad10",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "clean-led-kicad10",
+    "expectedOutcome": "pass",
+    "tags": [
+      "kicad10",
+      "schematic",
+      "pcb",
+      "bom",
+      "netlist"
+    ]
+  },
+  "schematic": {
+    "file": "clean-led-kicad10.kicad_sch"
+  },
+  "board": {
+    "file": "clean-led-kicad10.kicad_pcb"
+  },
+  "designRules": {
+    "file": "clean-led-kicad10.kicad_dru"
+  }
+}

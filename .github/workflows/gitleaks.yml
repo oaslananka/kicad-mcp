@@ -1,0 +1,30 @@
+name: Gitleaks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Install gitleaks
+        shell: bash
+        env:
+          GITLEAKS_VERSION: v8.30.1
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION#v}_linux_x64.tar.gz" -o "${tmp}/gitleaks.tar.gz"
+          tar -xzf "${tmp}/gitleaks.tar.gz" -C "${tmp}" gitleaks
+          sudo install -m 0755 "${tmp}/gitleaks" /usr/local/bin/gitleaks
+      - run: gitleaks detect --source . --redact --verbose

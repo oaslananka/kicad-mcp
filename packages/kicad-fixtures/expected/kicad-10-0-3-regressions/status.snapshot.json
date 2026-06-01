@@ -1,0 +1,28 @@
+{
+  "fixture": "kicad-10-0-3-regressions",
+  "expectedOutcome": "warn",
+  "projectState": "ready",
+  "diagnostics": {
+    "errors": 0,
+    "warnings": 2,
+    "infos": 2,
+    "stale": false
+  },
+  "schematic": {
+    "state": "available"
+  },
+  "board": {
+    "state": "available",
+    "footprints": 2
+  },
+  "netlist": {
+    "state": "available"
+  },
+  "designRules": {
+    "state": "available"
+  },
+  "pathFeatures": {
+    "containsSpaces": false,
+    "containsNonAscii": false
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "filename": "large-board",
+    "version": 1,
+    "fixtureId": "large-board",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "large-board",
+    "expectedOutcome": "pass",
+    "tags": [
+      "pcb",
+      "large-board",
+      "performance"
+    ]
+  },
+  "schematic": {
+    "file": "large-board.kicad_sch"
+  },
+  "board": {
+    "file": "large-board.kicad_pcb"
+  },
+  "designRules": {
+    "file": "large-board.kicad_dru"
+  }
+}

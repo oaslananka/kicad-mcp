@@ -1,0 +1,28 @@
+{
+  "fixture": "empty-project-kicad10",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "diagnostics": [
+    {
+      "id": "empty-project-kicad10-sch_empty",
+      "fixture": "empty-project-kicad10",
+      "sequence": 1,
+      "severity": "warning",
+      "source": "schematic",
+      "code": "SCH_EMPTY",
+      "message": "Schematic has no symbols, wires, or named nets.",
+      "stale": false,
+      "file": "empty-project-kicad10.kicad_sch"
+    },
+    {
+      "id": "empty-project-kicad10-board_empty",
+      "fixture": "empty-project-kicad10",
+      "sequence": 2,
+      "severity": "warning",
+      "source": "pcb",
+      "code": "BOARD_EMPTY",
+      "message": "Board has no footprints, nets, or routed copper.",
+      "stale": false,
+      "file": "empty-project-kicad10.kicad_pcb"
+    }
+  ]
+}

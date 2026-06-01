@@ -1,0 +1,17 @@
+{
+  "fixture": "missing-netlist",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "diagnostics": [
+    {
+      "id": "missing-netlist-netlist_missing",
+      "fixture": "missing-netlist",
+      "sequence": 1,
+      "severity": "warning",
+      "source": "netlist",
+      "code": "NETLIST_MISSING",
+      "message": "No generated netlist is available for the active schematic.",
+      "stale": false,
+      "file": "missing-netlist.kicad_pro"
+    }
+  ]
+}

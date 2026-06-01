@@ -1,0 +1,144 @@
+version: "3"
+
+tasks:
+  install:
+    desc: Install all development dependencies
+    cmds:
+      - corepack pnpm install --frozen-lockfile
+      - uv sync --all-extras --frozen
+
+  hooks:
+    desc: Install local git hooks
+    cmds:
+      - uvx pre-commit install --install-hooks
+      - uvx pre-commit install --hook-type commit-msg
+      - uvx pre-commit install --hook-type pre-push
+
+  format:
+    desc: Auto-format the codebase
+    cmds:
+      - corepack pnpm run format
+
+  lint:
+    desc: Run read-only lint and metadata checks
+    cmds:
+      - corepack pnpm run metadata:check
+      - corepack pnpm run lint
+      - corepack pnpm run format:check
+
+  typecheck:
+    desc: Run strict static type checking
+    cmds:
+      - corepack pnpm run typecheck
+
+  compat:check:
+    desc: Check KiCad API compatibility constraints
+    cmds:
+      - corepack pnpm run compat:check
+
+  test:
+    desc: Run unit tests
+    cmds:
+      - corepack pnpm run test:unit
+
+  test:fast:
+    desc: Run fast tests
+    cmds:
+      - corepack pnpm run test:unit
+
+  test:cov:
+    desc: Run the full test suite with coverage
+    cmds:
+      - corepack pnpm run test
+
+  security:
+    desc: Run enforced security checks
+    cmds:
+      - corepack pnpm run security
+
+  security:local:
+    desc: Run local workstation security scanners with clear missing-tool failures
+    cmds:
+      - corepack pnpm run security:local
+
+  workflows:lint:
+    desc: Parse and lint GitHub Actions workflows
+    cmds:
+      - corepack pnpm run workflows:lint
+
+  workflows:security:
+    desc: Run workflow security checks
+    cmds:
+      - corepack pnpm run workflows:security
+
+  mcp:manifest:check:
+    desc: Validate MCP Registry metadata
+    cmds:
+      - corepack pnpm run mcp:manifest:check
+
+  docker:metadata:check:
+    desc: Validate Docker and OCI metadata
+    cmds:
+      - corepack pnpm run docker:metadata:check
+
+  build:
+    desc: Build release artifacts
+    cmds:
+      - corepack pnpm run build
+
+  release:dry-run:
+    desc: Run the release preflight without publishing
+    cmds:
+      - corepack pnpm run release:dry-run
+
+  package:check:
+    desc: Build and check package artifacts
+    cmds:
+      - corepack pnpm run package:check
+
+  pre-push:
+    desc: Run the pre-push parity gate
+    cmds:
+      - corepack pnpm run metadata:check
+      - corepack pnpm run format:check
+      - task: compat:check
+      - task: lint
+      - task: mcp:manifest:check
+      - task: docker:metadata:check
+      - task: typecheck
+      - task: test:fast
+      - task: workflows:lint
+
+  ci:
+    desc: Run the local equivalent of CI
+    cmds:
+      - task: install
+      - task: compat:check
+      - task: lint
+      - task: mcp:manifest:check
+      - task: docker:metadata:check
+      - task: typecheck
+      - task: test:cov
+      - task: security
+      - task: workflows:lint
+      - task: workflows:security
+      - task: package:check
+      - task: release:dry-run
+
+  ci:act:
+    desc: Run the GitHub Actions CI workflow locally with act
+    cmds:
+      - act -W .github/workflows/ci.yml --container-architecture linux/amd64
+
+  doppler:check:
+    desc: Verify required Doppler secrets
+    cmds:
+      - bash scripts/verify_doppler_secrets.sh
+
+  clean:
+    desc: Remove generated build and test artifacts
+    cmds:
+      - cmd: rm -rf dist build .pytest_cache .mypy_cache .ruff_cache htmlcov coverage.xml junit.xml
+        platforms: [linux, darwin]
+      - cmd: powershell -NoProfile -Command "Remove-Item -Recurse -Force dist,build,.pytest_cache,.mypy_cache,.ruff_cache,htmlcov,coverage.xml,junit.xml -ErrorAction SilentlyContinue"
+        platforms: [windows]

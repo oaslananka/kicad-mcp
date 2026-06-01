@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "filename": "no-dru-file",
+    "version": 1,
+    "fixtureId": "no-dru-file",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "no-dru-file",
+    "expectedOutcome": "pass",
+    "tags": [
+      "pcb",
+      "drc",
+      "missing-dru"
+    ]
+  },
+  "schematic": {
+    "file": "no-dru-file.kicad_sch"
+  },
+  "board": {
+    "file": "no-dru-file.kicad_pcb"
+  }
+}

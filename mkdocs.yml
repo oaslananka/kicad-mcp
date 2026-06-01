@@ -1,0 +1,106 @@
+site_name: KiCad MCP Pro
+site_url: https://oaslananka.github.io/kicad-mcp
+repo_url: https://github.com/oaslananka/kicad-mcp
+repo_name: oaslananka/kicad-mcp
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.sections
+    - content.code.copy
+plugins:
+  - search
+  - git-revision-date-localized:
+      enable_creation_date: true
+  - redirects
+  - minify:
+      minify_html: true
+  - glightbox
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - src
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Client Configuration: client-configuration.md
+  - Configuration: configuration.md
+  - Troubleshooting: troubleshooting.md
+  - FAQ: faq.md
+  - Comparison: comparison.md
+  - Tools Reference: tools-reference.md
+  - API Stability: api-stability.md
+  - Maintenance Policy: maintenance-policy.md
+  - Workflow Security: workflow-security.md
+  - Publishing: publishing.md
+  - Demo Media: demo-media.md
+  - Submission:
+      - Overview: submission/README.md
+      - Anthropic Directory: submission/anthropic-directory.md
+      - ChatGPT Apps: submission/chatgpt-apps.md
+      - MCP Registry: submission/openai-mcp-registry.md
+      - Reviewer Test Prompts: submission/reviewer-test-prompts.md
+      - Safety and Permissions: submission/safety-and-permissions.md
+  - Privacy Policy: privacy.md
+  - Public Listings: public-listing.md
+  - Install:
+      - Docker: install/docker.md
+      - Client Config Generator: install/client-config-generator.md
+  - KiCad 10:
+      - Variants: kicad10/variants.md
+      - Time-Domain Tuning: kicad10/time-domain.md
+      - Graphical DRC: kicad10/graphical-drc.md
+  - Integration:
+      - KiCad Studio: integration/kicad-studio.md
+      - Claude Desktop: integration/claude-desktop.md
+      - Cursor: integration/cursor.md
+      - Claude Code: integration/claude-code.md
+  - Deployment:
+      - Repository and CI/CD Topology: deployment/repository-topology.md
+      - Autonomy Model: autonomy.md
+      - Repository Operations: repository-operations.md
+      - Doppler Setup: doppler-setup.md
+      - Branch Protection: branch-protection.md
+      - Docker: deployment/docker.md
+      - HTTP Mode: deployment/http-mode.md
+      - Security: deployment/security.md
+      - Threat Model: security/threat-model.md
+      - Release Integrity: security/release-integrity.md
+      - Release Process: release-process.md
+      - Runtime Matrix: status/runtime-matrix.md
+  - Workflows:
+      - First PCB: workflows/first-pcb.md
+      - Schematic to PCB: workflows/schematic-to-pcb.md
+      - Professional Circuit Design: workflows/professional-circuit-design.md
+      - High-Speed Review: workflows/high-speed-review.md
+      - Manufacturing Export: workflows/manufacturing-export.md
+  - Development:
+      - Local Workflow: development.md
+      - Contributing: development/contributing.md
+      - Regression Fixtures: development/contributing-fixtures.md
+      - Architecture: development/architecture.md
+      - Production Principles: development/principles.md
+      - 2026 Roadmap: development/roadmap-2026.md
+      - RFCs: rfcs/README.md
+      - v2 Migration: development/v2-migration.md

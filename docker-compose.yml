@@ -1,0 +1,24 @@
+services:
+  kicad-mcp-pro:
+    build: .
+    ports:
+      - "127.0.0.1:3334:3334"
+    environment:
+      KICAD_MCP_PROJECT_DIR: /projects
+      KICAD_MCP_LOG_LEVEL: INFO
+      KICAD_MCP_LOG_FORMAT: json
+      KICAD_MCP_TRANSPORT: streamable-http
+      KICAD_MCP_HOST: 0.0.0.0
+      KICAD_MCP_AUTH_TOKEN: ${KICAD_MCP_AUTH_TOKEN:?set a 32+ character local token}
+      KICAD_MCP_OUTPUT_DIR: /tmp/kicad-mcp-output
+    volumes:
+      - ${KICAD_PROJECT_DIR:-./example}:/projects:ro
+      - kicad-mcp-output:/tmp/kicad-mcp-output
+
+  freerouting:
+    image: ghcr.io/freerouting/freerouting:2.1.0@sha256:2e3fd0275ce3baf62f6479bcf8e8ddb3b7795159a2f3db7e3fd057a5240e504f
+    volumes:
+      - ${KICAD_PROJECT_DIR:-./example}:/data
+
+volumes:
+  kicad-mcp-output:

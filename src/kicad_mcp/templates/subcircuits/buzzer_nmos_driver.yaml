@@ -1,0 +1,76 @@
+name: buzzer_nmos_driver
+version: "1.0"
+description: >
+  Low-side N-MOSFET driver for an active or magnetic buzzer.
+  Suitable for MCU GPIO drive when the buzzer current is too high for a direct pin.
+
+parameters:
+  supply_v:
+    type: float
+    description: Buzzer supply voltage (V)
+    default: 3.3
+  buzzer_current_ma:
+    type: float
+    description: Expected buzzer current in milliamps
+    default: 80.0
+  pwm_control:
+    type: bool
+    description: Whether the buzzer is expected to be PWM-driven
+    default: true
+
+symbols:
+  - ref_prefix: BZ
+    value: "BUZZER"
+    comment: "Active or magnetic buzzer transducer"
+    default_footprint: "Buzzer_Beeper:Buzzer_12x9.5RM7.6"
+    pins_left: [POS]
+    pins_right: [NEG]
+
+  - ref_prefix: Q
+    value: "NMOS"
+    comment: "Logic-level N-MOSFET low-side switch"
+    default_footprint: "Package_TO_SOT_SMD:SOT-23"
+    pins_left: [G, S]
+    pins_right: [D]
+
+  - ref_prefix: R
+    value: "100R"
+    comment: "Gate stopper resistor placed near MOSFET gate"
+    default_footprint: "Resistor_SMD:R_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: R
+    value: "100k"
+    comment: "Gate pull-down to keep the buzzer off at reset"
+    default_footprint: "Resistor_SMD:R_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: D
+    value: "FLYBACK"
+    comment: "Flyback diode for magnetic buzzers or inductive sounders"
+    default_footprint: "Diode_SMD:D_SOD-123"
+    pins_left: [A]
+    pins_right: [K]
+
+nets:
+  - name: "BUZZER_DRV"
+    type: signal
+    note: "GPIO or timer/PWM control net from the MCU."
+  - name: "BUZZER_PWR"
+    type: power
+    note: "Main buzzer supply rail."
+  - name: "GND"
+    type: power
+
+placement_hints:
+  - "Place the MOSFET and flyback diode close to the buzzer connector or transducer."
+  - "Keep the BUZZER_DRV gate trace short and add the gate pull-down at the MOSFET."
+  - "Route buzzer current return directly to the local ground pour, not through analog ground."
+  - "If the buzzer is inductive, place the flyback diode across the buzzer pins."
+
+part_search_hints:
+  mosfet: "logic level nmos sot23 low rds on {supply_v}V gate"
+  diode: "schottky or fast diode sod123 buzzer flyback"
+  buzzer: "{supply_v}V buzzer {buzzer_current_ma}mA"

@@ -1,0 +1,56 @@
+# syntax=docker/dockerfile:1.7
+
+FROM debian:bookworm-slim@sha256:0104b334637a5f19aa9c983a91b54c89887c0984081f2068983107a6f6c21eeb AS kicad
+
+ARG KICAD_APPIMAGE_URL
+ARG DEBIAN_FRONTEND=noninteractive
+RUN test -n "${KICAD_APPIMAGE_URL}" || (echo "Set KICAD_APPIMAGE_URL to an official KiCad 10 x86_64 AppImage URL from https://www.kicad.org/download/linux/" && exit 1)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl fuse libfuse2 file \
+    && rm -rf /var/lib/apt/lists/*
+RUN curl -fL "${KICAD_APPIMAGE_URL}" -o /tmp/kicad.AppImage \
+    && chmod +x /tmp/kicad.AppImage \
+    && /tmp/kicad.AppImage --appimage-extract \
+    && mkdir -p /opt/kicad-appimage \
+    && cp -a squashfs-root/. /opt/kicad-appimage/
+
+FROM python:3.13.12-slim@sha256:f1927c75e81efd1e091dbd64b6c0ecaa5630b38635a3d1c04034ac636e1f94c8 AS builder
+ARG UV_VERSION=0.11.16
+WORKDIR /app
+RUN python -m pip install --no-cache-dir --disable-pip-version-check --root-user-action=ignore "uv==${UV_VERSION}"
+COPY pyproject.toml uv.lock README.md LICENSE ./
+COPY src/ src/
+RUN uv sync --frozen --extra http --extra simulation --extra freerouting
+
+FROM python:3.13.12-slim@sha256:f1927c75e81efd1e091dbd64b6c0ecaa5630b38635a3d1c04034ac636e1f94c8 AS runtime
+ARG KICAD_MCP_VERSION=0.0.0
+ARG VCS_REF=unknown
+ARG DEBIAN_FRONTEND=noninteractive
+WORKDIR /app
+RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends ca-certificates libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system kicadmcp \
+    && useradd --system --gid kicadmcp --home-dir /app --shell /usr/sbin/nologin kicadmcp
+COPY --from=builder --chown=kicadmcp:kicadmcp /app/.venv .venv
+COPY --from=kicad /opt/kicad-appimage /opt/kicad-appimage
+COPY --chown=kicadmcp:kicadmcp src/ src/
+COPY --chown=kicadmcp:kicadmcp README.md LICENSE ./
+COPY docker-entrypoint.sh /usr/local/bin/kicad-mcp-pro-entrypoint
+RUN chmod 0755 /usr/local/bin/kicad-mcp-pro-entrypoint
+ENV PATH="/app/.venv/bin:/opt/kicad-appimage/usr/bin:$PATH"
+ENV KICAD_MCP_TRANSPORT=streamable-http
+ENV KICAD_MCP_HOST=127.0.0.1
+ENV KICAD_MCP_KICAD_CLI=/opt/kicad-appimage/usr/bin/kicad-cli
+LABEL io.modelcontextprotocol.server.name="io.github.oaslananka/kicad-mcp-pro" \
+    org.opencontainers.image.title="kicad-mcp-pro-kicad10" \
+    org.opencontainers.image.description="KiCad MCP Pro with KiCad 10 kicad-cli extracted from an official AppImage. Intended for CI, not shared hosting." \
+    org.opencontainers.image.source="https://github.com/oaslananka/kicad-mcp" \
+    org.opencontainers.image.version="${KICAD_MCP_VERSION}" \
+    org.opencontainers.image.revision="${VCS_REF}" \
+    org.opencontainers.image.licenses="MIT"
+EXPOSE 3334
+USER kicadmcp
+ENTRYPOINT ["kicad-mcp-pro-entrypoint"]
+CMD ["--transport", "streamable-http"]

@@ -1,0 +1,24 @@
+name: USB_ESD_protection
+version: "1.0"
+description: USBLC6-style USB ESD protection and optional series resistors.
+symbols:
+  - ref_prefix: D
+    value: USBLC6-2SC6
+    default_footprint: Package_TO_SOT_SMD:SOT-23-6
+    pins_left: [DP_IN, DN_IN]
+    pins_right: [DP_OUT, DN_OUT, GND]
+  - ref_prefix: R
+    value: 27R
+    default_footprint: Resistor_SMD:R_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: USB_DP
+    type: differential
+  - name: USB_DN
+    type: differential
+  - name: GND
+    type: power
+placement_hints:
+  - Place ESD diode closest to the connector.
+  - Route protected USB pair with continuous reference plane.

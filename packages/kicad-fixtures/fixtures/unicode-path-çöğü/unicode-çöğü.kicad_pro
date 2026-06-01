@@ -1,0 +1,25 @@
+{
+  "meta": {
+    "filename": "unicode-çöğü",
+    "version": 1,
+    "fixtureId": "unicode-path-çöğü",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "unicode-path-çöğü",
+    "expectedOutcome": "pass",
+    "tags": [
+      "unicode-path",
+      "windows-paths"
+    ]
+  },
+  "schematic": {
+    "file": "unicode-çöğü.kicad_sch"
+  },
+  "board": {
+    "file": "unicode-çöğü.kicad_pcb"
+  },
+  "designRules": {
+    "file": "unicode-çöğü.kicad_dru"
+  }
+}

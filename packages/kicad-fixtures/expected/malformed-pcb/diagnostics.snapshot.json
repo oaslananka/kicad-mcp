@@ -1,0 +1,17 @@
+{
+  "fixture": "malformed-pcb",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "diagnostics": [
+    {
+      "id": "malformed-pcb-pcb_parse",
+      "fixture": "malformed-pcb",
+      "sequence": 1,
+      "severity": "error",
+      "source": "pcb",
+      "code": "PCB_PARSE",
+      "message": "PCB S-expression is truncated before the board body closes.",
+      "stale": false,
+      "file": "malformed-pcb.kicad_pcb"
+    }
+  ]
+}

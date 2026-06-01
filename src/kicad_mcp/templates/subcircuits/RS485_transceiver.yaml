@@ -1,0 +1,24 @@
+name: RS485_transceiver
+version: "1.0"
+description: MAX485-style RS-485 transceiver with termination and TVS protection.
+symbols:
+  - ref_prefix: U
+    value: MAX485
+    default_footprint: Package_SO:SOIC-8_3.9x4.9mm_P1.27mm
+    pins_left: [RO, DI, DE, RE]
+    pins_right: [A, B, VCC, GND]
+  - ref_prefix: R
+    value: 120R
+    default_footprint: Resistor_SMD:R_0603_1608Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: RS485_A
+    type: differential
+  - name: RS485_B
+    type: differential
+  - name: GND
+    type: power
+placement_hints:
+  - Place TVS protection near the connector before the transceiver.
+  - Route A/B as a 120 ohm differential pair.

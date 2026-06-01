@@ -1,0 +1,3 @@
+Reference,Value,Footprint,Manufacturer,MPN
+U1,PADS_EDGE,Package_SO:SOIC-8_3.9x4.9mm_P1.27mm,Yageo,PADS_EDGE-U1
+TP1,MASK_PADSTACK,TestPoint:TestPoint_Pad_D1.0mm,Yageo,MASK_PADSTACK-TP1

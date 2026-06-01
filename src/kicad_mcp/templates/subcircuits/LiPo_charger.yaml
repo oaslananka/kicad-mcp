@@ -1,0 +1,24 @@
+name: LiPo_charger
+version: "1.0"
+description: MCP73831 single-cell LiPo charger with status LED.
+symbols:
+  - ref_prefix: U
+    value: MCP73831
+    default_footprint: Package_TO_SOT_SMD:SOT-23-5
+    pins_left: [VBAT, PROG, STAT]
+    pins_right: [VDD, VSS]
+  - ref_prefix: R
+    value: 2k
+    default_footprint: Resistor_SMD:R_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: USB_5V
+    type: power
+  - name: VBAT
+    type: power
+  - name: GND
+    type: power
+placement_hints:
+  - Keep thermal copper around the charger IC.
+  - Place input/output capacitors close to VDD and VBAT.

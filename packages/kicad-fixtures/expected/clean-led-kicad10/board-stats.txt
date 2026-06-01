@@ -1,0 +1,6 @@
+fixture=clean-led-kicad10
+board=available
+footprints=3
+nets=3
+segments=3
+layers=F.Cu,B.Cu,Edge.Cuts

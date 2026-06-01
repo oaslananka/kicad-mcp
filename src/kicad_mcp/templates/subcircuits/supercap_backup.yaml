@@ -1,0 +1,79 @@
+name: supercap_backup
+version: "1.0"
+description: >
+  Supercapacitor backup rail for short hold-up or graceful shutdown support.
+  Includes a charge-limiting element and diode-OR style isolation path.
+
+parameters:
+  rail_v:
+    type: float
+    description: Primary rail voltage feeding the backup path (V)
+    default: 3.3
+  hold_up_ms:
+    type: float
+    description: Target hold-up time in milliseconds
+    default: 150.0
+  supercap_f:
+    type: float
+    description: Nominal supercapacitor capacitance in farads
+    default: 0.47
+
+symbols:
+  - ref_prefix: C
+    value: "SUPERCAP"
+    comment: "Main energy storage capacitor for backup hold-up"
+    default_footprint: "Capacitor_THT:CP_Radial_D10.0mm_P5.00mm"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: R
+    value: "10R"
+    comment: "Charge-limiting resistor or NTC inrush element"
+    default_footprint: "Resistor_SMD:R_1206_3216Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: D
+    value: "SCHOTTKY"
+    comment: "Diode-OR path from main rail to protected system rail"
+    default_footprint: "Diode_SMD:D_SMA"
+    pins_left: [A]
+    pins_right: [K]
+
+  - ref_prefix: D
+    value: "SCHOTTKY"
+    comment: "Isolation diode from supercap backup node to protected rail"
+    default_footprint: "Diode_SMD:D_SMA"
+    pins_left: [A]
+    pins_right: [K]
+
+  - ref_prefix: R
+    value: "100k"
+    comment: "Optional bleed / voltage sense divider component"
+    default_footprint: "Resistor_SMD:R_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+nets:
+  - name: "VIN_MAIN"
+    type: power
+    note: "Primary source rail before diode OR."
+  - name: "VBACKUP"
+    type: power
+    note: "Charged supercap node."
+  - name: "VSYS_HOLD"
+    type: power
+    note: "Protected downstream rail that remains alive during brownout."
+  - name: "GND"
+    type: power
+
+placement_hints:
+  - "Place the supercap close to the protected load or PMIC input."
+  - "Keep the charge-limiting resistor on the main rail side to control inrush."
+  - "Use short, wide traces between the supercap, OR-ing diodes, and VSYS_HOLD."
+  - "Keep high-leakage sensing dividers away from sensitive analog nodes."
+
+part_search_hints:
+  supercap: "{supercap_f}F supercapacitor {rail_v}V low leakage"
+  diode: "schottky diode low vf sma power path"
+  limiter: "power resistor or ntc inrush limiter for supercap charging"

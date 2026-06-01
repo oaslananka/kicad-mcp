@@ -1,0 +1,6 @@
+fixture=empty-project-kicad10
+board=available
+footprints=0
+nets=0
+segments=0
+layers=F.Cu,B.Cu,Edge.Cuts

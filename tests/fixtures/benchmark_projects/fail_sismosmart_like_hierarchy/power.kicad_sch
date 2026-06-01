@@ -1,0 +1,18 @@
+(kicad_sch
+  (version 20250316)
+  (generator "pytest")
+  (uuid "60000000-0000-0000-0000-000000000010")
+  (paper "A4")
+  (lib_symbols)
+  (hierarchical_label "VIN"
+    (shape input)
+    (at 10.16 10.16 0)
+    (effects (font (size 1.27 1.27)))
+    (uuid "60000000-0000-0000-0000-000000000011")
+  )
+  (wire (pts (xy 10.16 10.16) (xy 20.32 10.16)) (uuid "60000000-0000-0000-0000-000000000012"))
+  (sheet_instances
+    (path "/" (page "1"))
+  )
+  (embedded_fonts no)
+)

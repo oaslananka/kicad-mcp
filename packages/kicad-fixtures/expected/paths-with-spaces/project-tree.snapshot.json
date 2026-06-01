@@ -1,0 +1,28 @@
+{
+  "fixture": "paths-with-spaces",
+  "semanticName": "paths-with-spaces",
+  "root": "packages/kicad-fixtures/fixtures/paths-with-spaces",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "files": [
+    {
+      "role": "project",
+      "path": "path case.kicad_pro",
+      "exists": true
+    },
+    {
+      "role": "schematic",
+      "path": "path case.kicad_sch",
+      "exists": true
+    },
+    {
+      "role": "board",
+      "path": "path case.kicad_pcb",
+      "exists": true
+    },
+    {
+      "role": "dru",
+      "path": "path case.kicad_dru",
+      "exists": true
+    }
+  ]
+}

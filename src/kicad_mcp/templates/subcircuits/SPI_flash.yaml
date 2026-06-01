@@ -1,0 +1,22 @@
+name: SPI_flash
+version: "1.0"
+description: W25Qxx-style SPI flash with decoupling and hold/write-protect bias.
+symbols:
+  - ref_prefix: U
+    value: W25Q32
+    default_footprint: Package_SO:SOIC-8_3.9x4.9mm_P1.27mm
+    pins_left: [CS, CLK, MISO, MOSI]
+    pins_right: [WP, HOLD, VCC, GND]
+  - ref_prefix: C
+    value: 100nF
+    default_footprint: Capacitor_SMD:C_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: +3V3
+    type: power
+  - name: GND
+    type: power
+placement_hints:
+  - Place flash close to the MCU to keep SPI edges clean.
+  - Put 100nF directly between VCC and GND pins.

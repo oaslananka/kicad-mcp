@@ -1,0 +1,28 @@
+{
+  "fixture": "unconnected-pcb",
+  "expectedOutcome": "warn",
+  "projectState": "ready",
+  "diagnostics": {
+    "errors": 0,
+    "warnings": 1,
+    "infos": 0,
+    "stale": false
+  },
+  "schematic": {
+    "state": "available"
+  },
+  "board": {
+    "state": "available",
+    "footprints": 3
+  },
+  "netlist": {
+    "state": "available"
+  },
+  "designRules": {
+    "state": "absent"
+  },
+  "pathFeatures": {
+    "containsSpaces": false,
+    "containsNonAscii": false
+  }
+}

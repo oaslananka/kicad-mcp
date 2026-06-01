@@ -1,0 +1,28 @@
+{
+  "fixture": "paths-with-spaces",
+  "expectedOutcome": "pass",
+  "projectState": "ready",
+  "diagnostics": {
+    "errors": 0,
+    "warnings": 0,
+    "infos": 0,
+    "stale": false
+  },
+  "schematic": {
+    "state": "available"
+  },
+  "board": {
+    "state": "available",
+    "footprints": 3
+  },
+  "netlist": {
+    "state": "available"
+  },
+  "designRules": {
+    "state": "available"
+  },
+  "pathFeatures": {
+    "containsSpaces": true,
+    "containsNonAscii": false
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "fixture": "unconnected-pcb",
+  "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs",
+  "diagnostics": [
+    {
+      "id": "unconnected-pcb-pcb_unconnected",
+      "fixture": "unconnected-pcb",
+      "sequence": 1,
+      "severity": "warning",
+      "source": "pcb",
+      "code": "PCB_UNCONNECTED",
+      "message": "Net LED_A has an unrouted connection between R1 and LED1.",
+      "stale": false,
+      "file": "unconnected-pcb.kicad_pcb"
+    }
+  ]
+}

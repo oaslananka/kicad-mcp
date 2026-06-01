@@ -1,0 +1,9 @@
+(export (version "D")
+  (design (source "empty-project-kicad10.kicad_sch"))
+  (components
+
+  )
+  (nets
+
+  )
+)

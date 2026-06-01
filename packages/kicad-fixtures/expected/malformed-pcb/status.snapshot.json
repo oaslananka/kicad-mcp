@@ -1,0 +1,28 @@
+{
+  "fixture": "malformed-pcb",
+  "expectedOutcome": "fail",
+  "projectState": "blocked",
+  "diagnostics": {
+    "errors": 1,
+    "warnings": 0,
+    "infos": 0,
+    "stale": false
+  },
+  "schematic": {
+    "state": "absent"
+  },
+  "board": {
+    "state": "parse-error",
+    "footprints": 0
+  },
+  "netlist": {
+    "state": "not-applicable"
+  },
+  "designRules": {
+    "state": "absent"
+  },
+  "pathFeatures": {
+    "containsSpaces": false,
+    "containsNonAscii": false
+  }
+}

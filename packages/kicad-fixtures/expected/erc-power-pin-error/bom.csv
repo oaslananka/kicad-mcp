@@ -1,0 +1,3 @@
+Reference,Value,Footprint,Manufacturer,MPN
+U1,MCU,Package_QFP:TQFP-32_7x7mm_P0.8mm,Yageo,MCU-U1
+J1,POWER_IN,Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm,Yageo,POWER_IN-J1

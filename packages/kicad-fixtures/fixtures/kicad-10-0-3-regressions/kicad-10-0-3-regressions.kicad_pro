@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "filename": "kicad-10-0-3-regressions",
+    "version": 1,
+    "fixtureId": "kicad-10-0-3-regressions",
+    "generatedBy": "scripts/generate-kicad-fixture-corpus.mjs"
+  },
+  "fixture": {
+    "id": "kicad-10-0-3-regressions",
+    "expectedOutcome": "warn",
+    "tags": [
+      "kicad10",
+      "kicad10.0.3",
+      "regression",
+      "cli",
+      "drc",
+      "erc",
+      "pdf-property-popups",
+      "pads-import",
+      "allegro-capability",
+      "custom-padstack"
+    ]
+  },
+  "schematic": {
+    "file": "kicad-10-0-3-regressions.kicad_sch"
+  },
+  "board": {
+    "file": "kicad-10-0-3-regressions.kicad_pcb"
+  },
+  "designRules": {
+    "file": "kicad-10-0-3-regressions.kicad_dru"
+  },
+  "regressionCoverage": {
+    "kicadVersion": "10.0.3",
+    "source": "https://www.kicad.org/blog/2026/05/KiCad-10.0.3-Release/",
+    "cli": [
+      "drc_elapsed_or_status_output_parsing",
+      "erc_output_shape_stability",
+      "pcb_export_pdf_property_popup_suppression_probe"
+    ],
+    "importers": [
+      "pads_import_edge_case_fixture",
+      "allegro_import_capability_probe"
+    ],
+    "pcb": [
+      "custom_padstack_non_copper_layer_fixture"
+    ]
+  }
+}

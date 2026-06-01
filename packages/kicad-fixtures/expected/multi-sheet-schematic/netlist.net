@@ -1,0 +1,17 @@
+(export (version "D")
+  (design (source "multi-sheet-schematic.kicad_sch"))
+  (components
+    (comp (ref "R1") (value "1k"))
+    (comp (ref "LED1") (value "red"))
+    (comp (ref "C1") (value "100n"))
+    (comp (ref "U2") (value "LDO"))
+    (comp (ref "C2") (value "10u"))
+  )
+  (nets
+    (net (code "1") (name "LED_A"))
+    (net (code "2") (name "LED_A"))
+    (net (code "3") (name "GND"))
+    (net (code "4") (name "VCC_3V3"))
+    (net (code "5") (name "VCC_3V3"))
+  )
+)

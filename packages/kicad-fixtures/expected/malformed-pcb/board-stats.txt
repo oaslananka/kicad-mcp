@@ -1,0 +1,6 @@
+fixture=malformed-pcb
+board=parse-error
+footprints=0
+nets=0
+segments=0
+layers=

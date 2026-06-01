@@ -1,0 +1,83 @@
+name: mcu_decoupling_template
+version: "1.0"
+description: >
+  Standard MCU decoupling capacitor network for ARM Cortex-M / RISC-V / AVR.
+  Apply to each VDD/VDDA/VDDIO power pin group on the MCU.
+
+parameters:
+  vcc_v:
+    type: float
+    description: MCU supply voltage (V)
+    default: 3.3
+  analog_supply:
+    type: bool
+    description: Include VDDA / analog supply decoupling network
+    default: false
+
+symbols:
+  - ref_prefix: C
+    value: "100nF"
+    comment: "HF bypass — one per VDD pin, placed within 1mm"
+    default_footprint: "Capacitor_SMD:C_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: C
+    value: "4.7uF"
+    comment: "Bulk capacitor — one per VDD power domain"
+    default_footprint: "Capacitor_SMD:C_0805_2012Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: C
+    value: "10uF"
+    comment: "Board-level bulk — one per supply rail entry"
+    default_footprint: "Capacitor_SMD:C_0805_2012Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: C
+    value: "1uF"
+    comment: "VDDA analog supply bypass — use low-noise ceramic X7R"
+    default_footprint: "Capacitor_SMD:C_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: L
+    value: "600Ω@100MHz"
+    comment: "Ferrite bead between VDDA and VDD — optional supply filtering"
+    default_footprint: "Inductor_SMD:L_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: C
+    value: "100nF"
+    comment: "NRST / RESET pin decoupling"
+    default_footprint: "Capacitor_SMD:C_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+  - ref_prefix: C
+    value: "1uF + 100nF"
+    comment: "VCAP / PLL supply (STM32 style) — check datasheet"
+    default_footprint: "Capacitor_SMD:C_0402_1005Metric"
+    pins_left: [1]
+    pins_right: [2]
+
+nets:
+  - name: "VDD"
+    type: power
+  - name: "VDDA"
+    type: power
+  - name: "GND"
+    type: power
+  - name: "AGND"
+    type: power
+
+placement_hints:
+  - "Place 100nF capacitors within 1mm of each VDD/VDDIO pin."
+  - "Place 4.7uF bulk as close as possible to the MCU."
+  - "Route VDDA through ferrite bead from VDD."
+  - "Place VDDA 100nF immediately after ferrite bead output."
+  - "Star-ground AGND to DGND at a single point near the MCU."
+  - "Avoid routing digital signals under the VDDA copper pour."
