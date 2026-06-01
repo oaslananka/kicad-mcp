@@ -19,13 +19,13 @@ monitoring.
 
 ## 2. Data We Collect
 
-| Data Type | Collected? | Notes |
-|-----------|-----------|-------|
-| Personal information | **No** | |
-| File contents (schematics, PCBs) | **No** | Processed locally only |
-| Usage telemetry | **No by default** | Optional OpenTelemetry export must be explicitly configured |
-| IP addresses | **No** | |
-| Cookies | **No** | |
+| Data Type                        | Collected?        | Notes                                                       |
+| -------------------------------- | ----------------- | ----------------------------------------------------------- |
+| Personal information             | **No**            |                                                             |
+| File contents (schematics, PCBs) | **No**            | Processed locally only                                      |
+| Usage telemetry                  | **No by default** | Optional OpenTelemetry export must be explicitly configured |
+| IP addresses                     | **No**            |                                                             |
+| Cookies                          | **No**            |                                                             |
 
 KiCad MCP Pro does not have a backend, does not phone home, and does not store
 any user data. Optional OpenTelemetry export sends only operational spans and
@@ -70,5 +70,5 @@ the change will be noted in the repository CHANGELOG.
 
 ## 7. Contact
 
-Open an issue at https://github.com/oaslananka/kicad-studio-kit/issues or contact
+Open an issue at https://github.com/oaslananka/kicad-mcp/issues or contact
 via GitHub profile: https://github.com/oaslananka

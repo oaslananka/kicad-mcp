@@ -5,11 +5,11 @@
 kicad-mcp-pro uses **pytest** with the **uv** toolchain. Tests are organised into
 three layers:
 
-| Layer | Path | Description |
-|---|---|---|
-| Unit | `tests/unit/` | Pure Python, no KiCad dependency |
-| Integration | `tests/integration/` | Requires kicad-cli in PATH |
-| Smoke | `tests/smoke/` | End-to-end MCP protocol over stdio |
+| Layer       | Path                 | Description                        |
+| ----------- | -------------------- | ---------------------------------- |
+| Unit        | `tests/unit/`        | Pure Python, no KiCad dependency   |
+| Integration | `tests/integration/` | Requires kicad-cli in PATH         |
+| Smoke       | `tests/smoke/`       | End-to-end MCP protocol over stdio |
 
 ## Running Tests Locally
 
@@ -29,7 +29,7 @@ uv run pytest --cov=kicad_mcp_pro --cov-report=term-missing
 
 ## CI Matrix
 
-CI runs in the canonical `oaslananka/kicad-studio-kit` GitHub repository on
+CI runs in the canonical `oaslananka/kicad-mcp` GitHub repository on
 GitHub-hosted runners. Python **3.13** is the required PR/push lane for the MCP
 server, and package publishing uses the release workflows documented in
 `docs/publishing.md`.

@@ -56,7 +56,13 @@ const CLASSES = [
   },
   {
     id: "sigstore-uv-config-conflict",
-    patterns: [/gh-action-sigstore-python/i, /sigstore/i, /UV_NO_CONFIG/i, /uv.*config/i, /No interpreter found/i],
+    patterns: [
+      /gh-action-sigstore-python/i,
+      /sigstore/i,
+      /UV_NO_CONFIG/i,
+      /uv.*config/i,
+      /No interpreter found/i,
+    ],
     root_cause:
       "Repository uv configuration leaked into the pinned Sigstore action runtime or changed the action-managed Python environment.",
     safe_fix:
@@ -67,7 +73,13 @@ const CLASSES = [
   },
   {
     id: "release-metadata-drift",
-    patterns: [/metadata.*drift/i, /version.*mismatch/i, /server\.json/i, /mcp\.json/i, /pyproject\.toml/i],
+    patterns: [
+      /metadata.*drift/i,
+      /version.*mismatch/i,
+      /server\.json/i,
+      /mcp\.json/i,
+      /pyproject\.toml/i,
+    ],
     root_cause:
       "Release metadata sources disagree on version, package identity, or canonical repository URL.",
     safe_fix:
@@ -78,7 +90,12 @@ const CLASSES = [
   },
   {
     id: "changelog-release-please-noise",
-    patterns: [/release-please/i, /CHANGELOG\.md/i, /stale release/i, /Bump version to/i],
+    patterns: [
+      /release-please/i,
+      /CHANGELOG\.md/i,
+      /stale release/i,
+      /Bump version to/i,
+    ],
     root_cause:
       "Release-please generated or retained stale changelog/version text that made release preflight noisy.",
     safe_fix:
@@ -107,7 +124,12 @@ const CLASSES = [
   },
   {
     id: "release-tag-collision",
-    patterns: [/would clobber existing tag/i, /stale tag/i, /refs\/tags\/v[\w.-]+.*rejected/i, /tag .* already exists/i],
+    patterns: [
+      /would clobber existing tag/i,
+      /stale tag/i,
+      /refs\/tags\/v[\w.-]+.*rejected/i,
+      /tag .* already exists/i,
+    ],
     root_cause:
       "The repository already has a version tag with the same name pointing at a different object.",
     safe_fix:
@@ -118,45 +140,85 @@ const CLASSES = [
   },
   {
     id: "workflow-syntax",
-    patterns: [/Invalid workflow file/i, /actionlint/i, /YAML/i, /unexpected key/i, /Unrecognized named-value/i, /workflow syntax/i],
-    root_cause: "A GitHub Actions workflow has invalid YAML, invalid expression syntax, or unsupported inputs.",
-    safe_fix: "Run workflow lint locally, fix the exact syntax or action input error, and keep action refs pinned.",
+    patterns: [
+      /Invalid workflow file/i,
+      /actionlint/i,
+      /YAML/i,
+      /unexpected key/i,
+      /Unrecognized named-value/i,
+      /workflow syntax/i,
+    ],
+    root_cause:
+      "A GitHub Actions workflow has invalid YAML, invalid expression syntax, or unsupported inputs.",
+    safe_fix:
+      "Run workflow lint locally, fix the exact syntax or action input error, and keep action refs pinned.",
     auto_fix_allowed: true,
     publish_must_stop: true,
     human_approval_required: false,
   },
   {
     id: "test-failure",
-    patterns: [/pytest/i, /FAILED/i, /AssertionError/i, /tests\/.*\.py/i, /tests\\.*\.py/i],
+    patterns: [
+      /pytest/i,
+      /FAILED/i,
+      /AssertionError/i,
+      /tests\/.*\.py/i,
+      /tests\\.*\.py/i,
+    ],
     root_cause: "A unit, integration, or smoke test failed.",
-    safe_fix: "Fix the regression first. Update tests only when behavior intentionally changed and the new expectation is documented.",
+    safe_fix:
+      "Fix the regression first. Update tests only when behavior intentionally changed and the new expectation is documented.",
     auto_fix_allowed: true,
     publish_must_stop: false,
     human_approval_required: false,
   },
   {
     id: "typecheck-failure",
-    patterns: [/mypy/i, /pyright/i, /typecheck/i, /incompatible type/i, /not assignable/i],
+    patterns: [
+      /mypy/i,
+      /pyright/i,
+      /typecheck/i,
+      /incompatible type/i,
+      /not assignable/i,
+    ],
     root_cause: "Static type checking failed.",
-    safe_fix: "Fix annotations or implementation types; add ignores only for narrow false positives with context.",
+    safe_fix:
+      "Fix annotations or implementation types; add ignores only for narrow false positives with context.",
     auto_fix_allowed: true,
     publish_must_stop: false,
     human_approval_required: false,
   },
   {
     id: "lint-failure",
-    patterns: [/ruff/i, /eslint/i, /lint/i, /format --check/i, /would reformat/i],
+    patterns: [
+      /ruff/i,
+      /eslint/i,
+      /lint/i,
+      /format --check/i,
+      /would reformat/i,
+    ],
     root_cause: "Formatting or lint rules failed.",
-    safe_fix: "Run the repo formatter/linter and commit the minimal resulting diff.",
+    safe_fix:
+      "Run the repo formatter/linter and commit the minimal resulting diff.",
     auto_fix_allowed: true,
     publish_must_stop: false,
     human_approval_required: false,
   },
   {
     id: "infra-flake",
-    patterns: [/timed out/i, /TLS/i, /ECONNRESET/i, /rate limit/i, /5\d\d/i, /temporarily unavailable/i, /runner.*lost/i],
-    root_cause: "The log resembles transient runner, network, or external service instability.",
-    safe_fix: "Rerun only after confirming no deterministic project failure appears in the failed logs.",
+    patterns: [
+      /timed out/i,
+      /TLS/i,
+      /ECONNRESET/i,
+      /rate limit/i,
+      /5\d\d/i,
+      /temporarily unavailable/i,
+      /runner.*lost/i,
+    ],
+    root_cause:
+      "The log resembles transient runner, network, or external service instability.",
+    safe_fix:
+      "Rerun only after confirming no deterministic project failure appears in the failed logs.",
     auto_fix_allowed: false,
     publish_must_stop: false,
     human_approval_required: false,
@@ -164,8 +226,10 @@ const CLASSES = [
   {
     id: "unknown",
     patterns: [/.*/],
-    root_cause: "The failure did not match a known repository operations class.",
-    safe_fix: "Inspect the failed job log and classify the root cause before applying a fix or rerunning release steps.",
+    root_cause:
+      "The failure did not match a known repository operations class.",
+    safe_fix:
+      "Inspect the failed job log and classify the root cause before applying a fix or rerunning release steps.",
     auto_fix_allowed: false,
     publish_must_stop: true,
     human_approval_required: true,
@@ -188,7 +252,10 @@ Options:
 }
 
 function parseArgs(argv) {
-  const args = { json: false, repo: process.env.GITHUB_REPOSITORY || "oaslananka/kicad-studio-kit" };
+  const args = {
+    json: false,
+    repo: process.env.GITHUB_REPOSITORY || "oaslananka/kicad-mcp",
+  };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--help" || arg === "-h") {
@@ -198,7 +265,8 @@ function parseArgs(argv) {
     } else if (["--file", "--text", "--run-id", "--repo"].includes(arg)) {
       const value = argv[index + 1];
       if (!value) throw new Error(`${arg} requires a value`);
-      args[arg.slice(2).replace(/-([a-z])/g, (_, char) => char.toUpperCase())] = value;
+      args[arg.slice(2).replace(/-([a-z])/g, (_, char) => char.toUpperCase())] =
+        value;
       index += 1;
     } else {
       throw new Error(`Unknown argument: ${arg}`);
@@ -208,15 +276,23 @@ function parseArgs(argv) {
 }
 
 function readRunLog(repo, runId) {
-  return execFileSync("gh", ["run", "view", runId, "--repo", repo, "--log-failed"], {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    maxBuffer: 20 * 1024 * 1024,
-  });
+  return execFileSync(
+    "gh",
+    ["run", "view", runId, "--repo", repo, "--log-failed"],
+    {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      maxBuffer: 20 * 1024 * 1024,
+    },
+  );
 }
 
 function classify(text) {
-  return CLASSES.find((entry) => entry.patterns.some((pattern) => pattern.test(text))) || CLASSES.at(-1);
+  return (
+    CLASSES.find((entry) =>
+      entry.patterns.some((pattern) => pattern.test(text)),
+    ) || CLASSES.at(-1)
+  );
 }
 
 function markdown(result) {
@@ -260,7 +336,9 @@ function main() {
     human_approval_required: match.human_approval_required,
   };
 
-  process.stdout.write(args.json ? `${JSON.stringify(result, null, 2)}\n` : markdown(result));
+  process.stdout.write(
+    args.json ? `${JSON.stringify(result, null, 2)}\n` : markdown(result),
+  );
 }
 
 try {

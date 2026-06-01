@@ -5,8 +5,8 @@ type: software
 authors:
   - family-names: Aslan
     given-names: Osman
-repository-code: "https://github.com/oaslananka/kicad-studio-kit"
-url: "https://oaslananka.github.io/kicad-studio-kit"
+repository-code: "https://github.com/oaslananka/kicad-mcp"
+url: "https://oaslananka.github.io/kicad-mcp"
 license: MIT
 version: "3.5.2"
 date-released: "2026-05-20"

@@ -17,7 +17,7 @@ back to `GITHUB_TOKEN` and hide token-sync drift.
 5. Confirm PyPI publish, SBOM, checksums, Sigstore signing artifacts,
    and GitHub attestations.
 6. Confirm docs deploy to the canonical repository `gh-pages` branch and
-   `https://oaslananka.github.io/kicad-studio-kit/` Pages site.
+   `https://oaslananka.github.io/kicad-mcp/` Pages site.
 7. Post a short GitHub Discussions announcement.
 
 ## Release Workflow

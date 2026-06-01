@@ -14,7 +14,7 @@ from html import unescape
 from html.parser import HTMLParser
 from typing import Any, Protocol, cast
 
-DEFAULT_USER_AGENT = "kicad-mcp-pro/1.0 (+https://github.com/oaslananka/kicad-studio-kit)"
+DEFAULT_USER_AGENT = "kicad-mcp-pro/1.0 (+https://github.com/oaslananka/kicad-mcp)"
 
 
 @dataclass(frozen=True)

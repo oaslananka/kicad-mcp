@@ -5,14 +5,14 @@ Rulesets are stored as code in `.github/rulesets/main.json`.
 Create in the canonical repository:
 
 ```bash
-gh api -X POST /repos/oaslananka/kicad-studio-kit/rulesets --input .github/rulesets/main.json
+gh api -X POST /repos/oaslananka/kicad-mcp/rulesets --input .github/rulesets/main.json
 ```
 
 If the ruleset already exists, use the ruleset id:
 
 ```bash
-gh api /repos/oaslananka/kicad-studio-kit/rulesets
-gh api -X PUT /repos/oaslananka/kicad-studio-kit/rulesets/<id> --input .github/rulesets/main.json
+gh api /repos/oaslananka/kicad-mcp/rulesets
+gh api -X PUT /repos/oaslananka/kicad-mcp/rulesets/<id> --input .github/rulesets/main.json
 ```
 
 The current policy requires pull requests, one review, code owner review,

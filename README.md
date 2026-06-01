@@ -2,7 +2,7 @@
 
 <!-- mcp-name: io.github.oaslananka/kicad-mcp-pro -->
 
-Canonical repository: https://github.com/oaslananka/kicad-mcp/tree/main
+Canonical repository: https://github.com/oaslananka/kicad-mcp
 
 - PyPI: `kicad-mcp-pro`
 - npm wrapper: `kicad-mcp-pro`

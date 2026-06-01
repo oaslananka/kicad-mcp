@@ -58,7 +58,7 @@ Options:
 
 function parseArgs(argv) {
   const args = {
-    repo: process.env.GITHUB_REPOSITORY || "oaslananka/kicad-studio-kit",
+    repo: process.env.GITHUB_REPOSITORY || "oaslananka/kicad-mcp",
     jsonOut: "review-thread-summary.json",
     markdownOut: "review-thread-summary.md",
     failOnBlocked: false,
@@ -69,10 +69,15 @@ function parseArgs(argv) {
       args.help = true;
     } else if (arg === "--fail-on-blocked") {
       args.failOnBlocked = true;
-    } else if (["--repo", "--pr", "--json-out", "--markdown-out", "--fixture"].includes(arg)) {
+    } else if (
+      ["--repo", "--pr", "--json-out", "--markdown-out", "--fixture"].includes(
+        arg,
+      )
+    ) {
       const value = argv[index + 1];
       if (!value) throw new Error(`${arg} requires a value`);
-      args[arg.slice(2).replace(/-([a-z])/g, (_, char) => char.toUpperCase())] = value;
+      args[arg.slice(2).replace(/-([a-z])/g, (_, char) => char.toUpperCase())] =
+        value;
       index += 1;
     } else {
       throw new Error(`Unknown argument: ${arg}`);
@@ -83,7 +88,8 @@ function parseArgs(argv) {
 
 function splitRepo(repo) {
   const [owner, name] = repo.split("/");
-  if (!owner || !name) throw new Error(`Repository must be owner/name, got ${repo}`);
+  if (!owner || !name)
+    throw new Error(`Repository must be owner/name, got ${repo}`);
   return { owner, name };
 }
 
@@ -102,7 +108,8 @@ function authToken() {
 
 async function graphql(query, variables) {
   const token = authToken();
-  if (!token) throw new Error("GITHUB_TOKEN or GH_TOKEN is required for GitHub GraphQL");
+  if (!token)
+    throw new Error("GITHUB_TOKEN or GH_TOKEN is required for GitHub GraphQL");
   const response = await fetch("https://api.github.com/graphql", {
     method: "POST",
     headers: {
@@ -116,7 +123,9 @@ async function graphql(query, variables) {
   });
   const payload = await response.json();
   if (!response.ok || payload.errors) {
-    throw new Error(`GitHub GraphQL request failed: ${JSON.stringify(payload.errors || payload)}`);
+    throw new Error(
+      `GitHub GraphQL request failed: ${JSON.stringify(payload.errors || payload)}`,
+    );
   }
   return payload.data;
 }
@@ -163,9 +172,15 @@ async function fetchPullRequest(owner, name, number) {
   let pullRequest = null;
   let cursor = null;
   do {
-    const data = await graphql(query, { owner, name, number: Number(number), cursor });
+    const data = await graphql(query, {
+      owner,
+      name,
+      number: Number(number),
+      cursor,
+    });
     pullRequest = data.repository?.pullRequest;
-    if (!pullRequest) throw new Error(`Pull request #${number} not found in ${owner}/${name}`);
+    if (!pullRequest)
+      throw new Error(`Pull request #${number} not found in ${owner}/${name}`);
     threads.push(...(pullRequest.reviewThreads?.nodes || []));
     cursor = pullRequest.reviewThreads?.pageInfo?.hasNextPage
       ? pullRequest.reviewThreads.pageInfo.endCursor
@@ -194,8 +209,12 @@ function summarizeThread(thread) {
   const comments = thread.comments?.nodes || [];
   const unresolvedCurrent = !thread.isResolved && !thread.isOutdated;
   const humanComments = comments.filter((comment) => !isBot(comment));
-  const actionableBotComments = comments.filter((comment) => isBot(comment) && containsActionableTerm(comment.body));
-  const blocking = unresolvedCurrent && (humanComments.length > 0 || actionableBotComments.length > 0);
+  const actionableBotComments = comments.filter(
+    (comment) => isBot(comment) && containsActionableTerm(comment.body),
+  );
+  const blocking =
+    unresolvedCurrent &&
+    (humanComments.length > 0 || actionableBotComments.length > 0);
   const reason = thread.isResolved
     ? "resolved"
     : thread.isOutdated
@@ -245,8 +264,11 @@ function buildSummary(repo, number, pullRequest) {
       ignored: threads.length - blockingThreads.length,
       resolved: threads.filter((thread) => thread.reason === "resolved").length,
       outdated: threads.filter((thread) => thread.reason === "outdated").length,
-      human: threads.filter((thread) => thread.reason === "human-review").length,
-      actionable_bot: threads.filter((thread) => thread.reason === "actionable-bot").length,
+      human: threads.filter((thread) => thread.reason === "human-review")
+        .length,
+      actionable_bot: threads.filter(
+        (thread) => thread.reason === "actionable-bot",
+      ).length,
     },
     blocked: blockingThreads.length > 0,
     blocking_threads: blockingThreads,
@@ -291,7 +313,9 @@ async function main() {
   }
   const prNumber = args.pr ? Number(args.pr) : prFromEvent();
   if (!Number.isInteger(prNumber) || prNumber <= 0) {
-    throw new Error("--pr, PR_NUMBER, or a pull_request/issue event payload is required");
+    throw new Error(
+      "--pr, PR_NUMBER, or a pull_request/issue event payload is required",
+    );
   }
   const { owner, name } = splitRepo(args.repo);
   const pullRequest = args.fixture
@@ -300,10 +324,15 @@ async function main() {
   const summary = buildSummary(args.repo, prNumber, pullRequest);
   const markdownText = markdown(summary);
 
-  fs.writeFileSync(args.jsonOut, `${JSON.stringify(summary, null, 2)}\n`, "utf8");
+  fs.writeFileSync(
+    args.jsonOut,
+    `${JSON.stringify(summary, null, 2)}\n`,
+    "utf8",
+  );
   fs.writeFileSync(args.markdownOut, markdownText, "utf8");
   process.stdout.write(markdownText);
-  if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdownText, "utf8");
+  if (process.env.GITHUB_STEP_SUMMARY)
+    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, markdownText, "utf8");
   process.exitCode = args.failOnBlocked && summary.blocked ? 1 : 0;
 }
 

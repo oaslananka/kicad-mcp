@@ -4,13 +4,13 @@ This repository is configured for a single canonical GitHub repository.
 
 ## Ownership
 
-- `oaslananka/kicad-studio-kit` is the canonical source-of-truth and release authority.
+- `oaslananka/kicad-mcp` is the canonical source-of-truth and release authority.
 - Source changes, issues, releases, package publishing, and documentation
   deployment all happen from that repository.
 
 ## CI/CD Authority
 
-Automation runs on `oaslananka/kicad-studio-kit`:
+Automation runs on `oaslananka/kicad-mcp`:
 
 - CI matrix
 - Security scanning

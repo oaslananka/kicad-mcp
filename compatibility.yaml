@@ -1,6 +1,6 @@
 schemaVersion: 1
 updated: "2026-05-28"
-source: "https://github.com/oaslananka/kicad-studio-kit"
+source: "https://github.com/oaslananka/kicad-mcp"
 
 kicad:
   # latestVerified must point to a published KiCad stable release confirmed by

@@ -2,7 +2,7 @@
 
 ## Repositories
 
-- Canonical source-of-truth: `oaslananka/kicad-studio-kit`
+- Canonical source-of-truth: `oaslananka/kicad-mcp`
 
 The canonical repository is the only source repository for CI/CD, release,
 publishing, registry updates, package-manager updates, signing, SBOM generation,
@@ -44,8 +44,9 @@ GitHub Actions OIDC. Long-lived package-index tokens are not required by
 `.github/workflows/release-please.yml`.
 
 Migration path:
+
 1. Configure a trusted publisher in the PyPI project settings pointing to
-   `oaslananka/kicad-studio-kit`, workflow `release-please.yml`, environment `release`.
+   `oaslananka/kicad-mcp`, workflow `release-please.yml`, environment `release`.
 2. Configure the matching trusted publisher in TestPyPI with the same owner,
    repository, workflow, and environment.
 3. Keep `id-token: write` on the release publish job so PyPI can mint short-lived
@@ -78,5 +79,5 @@ summary and does not create issues or delete branches.
 Recommended one-time setting on the canonical repository:
 
 ```bash
-gh api -X PATCH /repos/oaslananka/kicad-studio-kit -f delete_branch_on_merge=true
+gh api -X PATCH /repos/oaslananka/kicad-mcp -f delete_branch_on_merge=true
 ```

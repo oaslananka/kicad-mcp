@@ -10,7 +10,7 @@ Set exactly one GitHub secret manually in the canonical repository:
 
 The token must be a read-only Doppler service token scoped to project `all`, config `main`.
 
-Set it in `oaslananka/kicad-studio-kit`.
+Set it in `oaslananka/kicad-mcp`.
 
 Workflow service secrets such as `DOPPLER_GITHUB_SERVICE_TOKEN`,
 and `SAFETY_API_KEY` may be present as GitHub Actions secrets at runtime.
@@ -27,7 +27,7 @@ In the Doppler dashboard:
 
 1. Open project `all`, config `main`.
 2. Install the GitHub integration for `oaslananka`.
-3. Create a sync to `oaslananka/kicad-studio-kit` repository secrets.
+3. Create a sync to `oaslananka/kicad-mcp` repository secrets.
 4. Use replace mode so GitHub remains a projection of Doppler, not a second source of truth.
 
 ## Required Secrets
