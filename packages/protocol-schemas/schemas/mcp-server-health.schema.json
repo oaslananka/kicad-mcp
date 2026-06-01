@@ -28,11 +28,7 @@
       "minLength": 1
     },
     "status": {
-      "enum": [
-        "ok",
-        "degraded",
-        "error"
-      ]
+      "enum": ["ok", "degraded", "error"]
     },
     "mcpProtocolVersion": {
       "type": "string",
@@ -44,43 +40,26 @@
     "transport": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type",
-        "endpoint"
-      ],
+      "required": ["type", "endpoint"],
       "properties": {
         "type": {
-          "enum": [
-            "stdio",
-            "streamable-http",
-            "sse"
-          ]
+          "enum": ["stdio", "streamable-http", "sse"]
         },
         "endpoint": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       }
     },
     "kicad": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "cliFound",
-        "cliVersion",
-        "ipcAvailable"
-      ],
+      "required": ["cliFound", "cliVersion", "ipcAvailable"],
       "properties": {
         "cliFound": {
           "type": "boolean"
         },
         "cliVersion": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "ipcAvailable": {
           "type": "boolean"

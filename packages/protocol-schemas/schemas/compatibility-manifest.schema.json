@@ -5,12 +5,7 @@
   "description": "Cross-product manifest describing supported schema majors and migration policy.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schemaVersion",
-    "products",
-    "schemas",
-    "policy"
-  ],
+  "required": ["schemaVersion", "products", "schemas", "policy"],
   "properties": {
     "schemaVersion": {
       "$ref": "#/$defs/semver"
@@ -21,10 +16,7 @@
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "version",
-          "supportedSchemaMajors"
-        ],
+        "required": ["version", "supportedSchemaMajors"],
         "properties": {
           "version": {
             "$ref": "#/$defs/semver"
@@ -46,10 +38,7 @@
       "additionalProperties": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "current",
-          "compatibility"
-        ],
+        "required": ["current", "compatibility"],
         "properties": {
           "current": {
             "$ref": "#/$defs/semver"

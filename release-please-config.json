@@ -67,6 +67,12 @@
       "package-name": "kicad-mcp-pro",
       "component": "mcp-npm",
       "changelog-path": "CHANGELOG.md"
+    },
+    "packages/protocol-schemas": {
+      "release-type": "node",
+      "package-name": "@oaslananka/kicad-protocol-schemas",
+      "component": "protocol-schemas",
+      "changelog-path": "CHANGELOG.md"
     }
   }
 }

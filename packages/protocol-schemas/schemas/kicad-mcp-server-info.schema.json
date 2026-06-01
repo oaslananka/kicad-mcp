@@ -33,10 +33,7 @@
     "localizedDescriptions": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "en",
-        "tr"
-      ],
+      "required": ["en", "tr"],
       "properties": {
         "en": {
           "type": "string",
@@ -63,10 +60,7 @@
     "compatibilityRange": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "kicadStudio",
-        "kicadMcpPro"
-      ],
+      "required": ["kicadStudio", "kicadMcpPro"],
       "properties": {
         "kicadStudio": {
           "$ref": "#/$defs/productRangeWithRecommendation"
@@ -89,11 +83,7 @@
       ],
       "properties": {
         "type": {
-          "enum": [
-            "stdio",
-            "streamable-http",
-            "sse"
-          ]
+          "enum": ["stdio", "streamable-http", "sse"]
         },
         "streamableHttp": {
           "type": "boolean"
@@ -108,10 +98,7 @@
           "type": "boolean"
         },
         "endpoint": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       }
     },
@@ -139,39 +126,23 @@
           "type": "string"
         },
         "cliVersion": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "ipcAvailable": {
           "type": "boolean"
         },
         "ipcVersion": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "ipcApiVersion": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "ipcMajorVersion": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "minimum": 0
         },
         "ipcEndpointSource": {
-          "enum": [
-            "config",
-            "environment",
-            "default"
-          ]
+          "enum": ["config", "environment", "default"]
         },
         "livePcbContext": {
           "type": "boolean"
@@ -330,21 +301,12 @@
   },
   "$defs": {
     "operatingMode": {
-      "enum": [
-        "readonly",
-        "write",
-        "manufacturing",
-        "experimental"
-      ]
+      "enum": ["readonly", "write", "manufacturing", "experimental"]
     },
     "toolOperatingModeAvailability": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "available",
-        "requiredMode",
-        "reason"
-      ],
+      "required": ["available", "requiredMode", "reason"],
       "properties": {
         "available": {
           "type": "boolean"
@@ -353,37 +315,23 @@
           "$ref": "#/$defs/operatingMode"
         },
         "reason": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       }
     },
     "liveEditingTool": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "available",
-        "backend",
-        "reason",
-        "minimumKiCadMajor"
-      ],
+      "required": ["available", "backend", "reason", "minimumKiCadMajor"],
       "properties": {
         "available": {
           "type": "boolean"
         },
         "backend": {
-          "enum": [
-            "kicad-ipc",
-            "hybrid-file-ipc"
-          ]
+          "enum": ["kicad-ipc", "hybrid-file-ipc"]
         },
         "reason": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "minimumKiCadMajor": {
           "type": "integer",
@@ -394,10 +342,7 @@
     "productRange": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "required",
-        "testedAgainst"
-      ],
+      "required": ["required", "testedAgainst"],
       "properties": {
         "required": {
           "type": "string",
@@ -412,11 +357,7 @@
     "productRangeWithRecommendation": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "required",
-        "recommended",
-        "testedAgainst"
-      ],
+      "required": ["required", "recommended", "testedAgainst"],
       "properties": {
         "required": {
           "type": "string",

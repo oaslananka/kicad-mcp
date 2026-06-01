@@ -18,18 +18,10 @@
       "$ref": "#/$defs/semver"
     },
     "source": {
-      "enum": [
-        "drc",
-        "erc",
-        "syntax"
-      ]
+      "enum": ["drc", "erc", "syntax"]
     },
     "severity": {
-      "enum": [
-        "error",
-        "warning",
-        "info"
-      ]
+      "enum": ["error", "warning", "info"]
     },
     "message": {
       "type": "string",

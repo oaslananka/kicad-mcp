@@ -63,3 +63,20 @@ jobs:
       - run: npm ci --ignore-scripts=false
       - run: npm pack --dry-run
       - run: npm run build
+
+  protocol-schemas:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - run: corepack enable
+      - run: corepack pnpm install --frozen-lockfile
+      - run: corepack pnpm --filter @oaslananka/kicad-protocol-schemas run format:check
+      - run: corepack pnpm --filter @oaslananka/kicad-protocol-schemas run lint
+      - run: corepack pnpm --filter @oaslananka/kicad-protocol-schemas run typecheck
+      - run: corepack pnpm --filter @oaslananka/kicad-protocol-schemas run test

@@ -5,9 +5,7 @@
   "description": "Tool/resource/prompt discovery payload returned by MCP initialize or tools/list flows.",
   "type": "object",
   "additionalProperties": true,
-  "required": [
-    "tools"
-  ],
+  "required": ["tools"],
   "properties": {
     "schemaVersion": {
       "$ref": "#/$defs/semver"
@@ -46,9 +44,7 @@
     "tool": {
       "type": "object",
       "additionalProperties": true,
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "properties": {
         "name": {
           "type": "string",
@@ -83,9 +79,7 @@
     "prompt": {
       "type": "object",
       "additionalProperties": true,
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "properties": {
         "name": {
           "type": "string",

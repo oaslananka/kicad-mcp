@@ -5,12 +5,7 @@
   "description": "Product-neutral summary of BOM rows and netlist nodes exchanged between KiCad Studio and kicad-mcp-pro.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schemaVersion",
-    "project",
-    "bom",
-    "netlist"
-  ],
+  "required": ["schemaVersion", "project", "bom", "netlist"],
   "properties": {
     "schemaVersion": {
       "$ref": "#/$defs/semver"
@@ -18,9 +13,7 @@
     "project": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "properties": {
         "name": {
           "type": "string",
@@ -37,11 +30,7 @@
     "bom": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "totalComponents",
-        "uniqueValues",
-        "entries"
-      ],
+      "required": ["totalComponents", "uniqueValues", "entries"],
       "properties": {
         "totalComponents": {
           "type": "integer",
@@ -62,10 +51,7 @@
     "netlist": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "netCount",
-        "nodes"
-      ],
+      "required": ["netCount", "nodes"],
       "properties": {
         "netCount": {
           "type": "integer",
@@ -88,12 +74,7 @@
     "bomEntry": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "references",
-        "value",
-        "footprint",
-        "quantity"
-      ],
+      "required": ["references", "value", "footprint", "quantity"],
       "properties": {
         "references": {
           "type": "array",
@@ -132,10 +113,7 @@
     "netNode": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "netName",
-        "pins"
-      ],
+      "required": ["netName", "pins"],
       "properties": {
         "netName": {
           "type": "string"
@@ -145,10 +123,7 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "reference",
-              "pin"
-            ],
+            "required": ["reference", "pin"],
             "properties": {
               "reference": {
                 "type": "string"

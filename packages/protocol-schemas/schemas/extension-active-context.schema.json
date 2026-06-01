@@ -5,26 +5,16 @@
   "description": "Product-neutral IDE context payload pushed from the extension to MCP tools.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "fileType",
-    "drcErrors"
-  ],
+  "required": ["fileType", "drcErrors"],
   "properties": {
     "schemaVersion": {
       "$ref": "#/$defs/semver"
     },
     "activeFile": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": ["string", "null"]
     },
     "fileType": {
-      "enum": [
-        "schematic",
-        "pcb",
-        "other"
-      ]
+      "enum": ["schematic", "pcb", "other"]
     },
     "drcErrors": {
       "type": "array",
@@ -74,10 +64,7 @@
     "cursorPosition": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "line",
-        "character"
-      ],
+      "required": ["line", "character"],
       "properties": {
         "line": {
           "type": "integer",
@@ -92,12 +79,7 @@
     "selectedArea": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "x1",
-        "y1",
-        "x2",
-        "y2"
-      ],
+      "required": ["x1", "y1", "x2", "y2"],
       "properties": {
         "x1": {
           "type": "number"
