@@ -21,7 +21,9 @@ REPOSITORY = "https://github.com/oaslananka/kicad-mcp"
 WEBSITE = "https://oaslananka.github.io/kicad-mcp"
 GHCR_IMAGE = "ghcr.io/oaslananka/kicad-mcp-pro"
 REGISTRY_META_KEY = "io.github.oaslananka/kicad-mcp-pro"
-CANONICAL_PACKAGE_URL = f"{REPOSITORY}/tree/main"
+# In standalone kicad-mcp the root IS the package, so canonicalRepository
+# is the bare repository URL (no /tree/main suffix).
+CANONICAL_PACKAGE_URL = REPOSITORY
 CHANGELOG_URL = f"{REPOSITORY}/blob/main/CHANGELOG.md"
 TOOLS_REFERENCE_URL = f"{REPOSITORY}/blob/main/docs/tools-reference.generated.md"
 MCP_PROTOCOL_VERSION = "2025-11-25"
