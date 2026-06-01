@@ -7,7 +7,7 @@ import tomllib
 from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = PACKAGE_ROOT.parents[1]
+REPO_ROOT = PACKAGE_ROOT
 MCP_SERVER_NAME = "io.github.oaslananka/kicad-mcp-pro"
 GHCR_IMAGE = "ghcr.io/oaslananka/kicad-mcp-pro"
 OLD_GHCR_IMAGE = "ghcr.io/oaslananka/kicad-mcp/kicad-mcp-pro"

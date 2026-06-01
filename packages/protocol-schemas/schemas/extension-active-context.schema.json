@@ -1,20 +1,30 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://oaslananka.github.io/kicad-studio-kit/schemas/extension-active-context.schema.json",
+  "$id": "https://oaslananka.github.io/kicad-mcp/schemas/extension-active-context.schema.json",
   "title": "KiCad Studio active context payload",
   "description": "Product-neutral IDE context payload pushed from the extension to MCP tools.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["fileType", "drcErrors"],
+  "required": [
+    "fileType",
+    "drcErrors"
+  ],
   "properties": {
     "schemaVersion": {
       "$ref": "#/$defs/semver"
     },
     "activeFile": {
-      "type": ["string", "null"]
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "fileType": {
-      "enum": ["schematic", "pcb", "other"]
+      "enum": [
+        "schematic",
+        "pcb",
+        "other"
+      ]
     },
     "drcErrors": {
       "type": "array",
@@ -64,7 +74,10 @@
     "cursorPosition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["line", "character"],
+      "required": [
+        "line",
+        "character"
+      ],
       "properties": {
         "line": {
           "type": "integer",
@@ -79,7 +92,12 @@
     "selectedArea": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["x1", "y1", "x2", "y2"],
+      "required": [
+        "x1",
+        "y1",
+        "x2",
+        "y2"
+      ],
       "properties": {
         "x1": {
           "type": "number"
@@ -105,5 +123,9 @@
   "x-kicad-studio-kit": {
     "trackingIssue": "OASLANA-52",
     "schemaVersion": "1.0.0"
+  },
+  "x-kicad-mcp": {
+    "trackingIssue": "OASLANA-52",
+    "schemaType": "protocol-contract"
   }
 }

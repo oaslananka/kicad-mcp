@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://oaslananka.github.io/kicad-studio-kit/schemas/mcp-tool-capability.schema.json",
+  "$id": "https://oaslananka.github.io/kicad-mcp/schemas/mcp-tool-capability.schema.json",
   "title": "MCP tool capability metadata contract",
   "description": "Versioned metadata for a single advertised kicad-mcp-pro tool capability.",
   "type": "object",
@@ -33,7 +33,13 @@
       "uniqueItems": true
     },
     "tier": {
-      "enum": ["read", "write", "export", "publish", "human_only"]
+      "enum": [
+        "read",
+        "write",
+        "export",
+        "publish",
+        "human_only"
+      ]
     },
     "runtime": {
       "enum": [
@@ -55,7 +61,11 @@
       "type": "string"
     },
     "verification_level": {
-      "enum": ["verified", "experimental", "planned"]
+      "enum": [
+        "verified",
+        "experimental",
+        "planned"
+      ]
     },
     "inputSchema": {
       "type": "object"
@@ -73,5 +83,9 @@
   "x-kicad-studio-kit": {
     "trackingIssue": "OASLANA-52",
     "schemaVersion": "1.0.0"
+  },
+  "x-kicad-mcp": {
+    "trackingIssue": "OASLANA-52",
+    "schemaType": "protocol-contract"
   }
 }

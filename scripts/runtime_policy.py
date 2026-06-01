@@ -17,7 +17,7 @@ from typing import Any
 import yaml
 
 MCP_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = MCP_ROOT.parents[1]
+REPO_ROOT = MCP_ROOT
 
 VSCODE_STABLE_RELEASES_URL = "https://update.code.visualstudio.com/api/releases/stable"
 VSCODE_INSIDER_RELEASES_URL = (
@@ -27,7 +27,11 @@ PYTHON_RELEASES_URL = "https://peps.python.org/api/python-releases.json"
 KICAD_LINUX_DOWNLOAD_URL = "https://www.kicad.org/download/linux/"
 HTTP_HEADERS = {"User-Agent": "kicad-mcp-runtime-drift/1.0"}
 
-DEFAULT_VSCODE_CHANGELOG = Path("apps/vscode-extension/CHANGELOG.md")
+DEFAULT_VSCODE_CHANGELOG = (
+    Path("apps/vscode-extension/CHANGELOG.md")
+    if (Path(__file__).resolve().parents[1] / "apps" / "vscode-extension").is_dir()
+    else Path("CHANGELOG.md")
+)
 DEFAULT_MCP_CHANGELOG = Path("CHANGELOG.md")
 SUPPORT_MATRIX_DOC = Path("docs/support-matrix.md")
 
@@ -286,11 +290,19 @@ def _snapshot_from_metadata(
     )
 
 
+def _extension_package(root: Path) -> dict[str, Any]:
+    """Read VS Code extension package.json, or return an empty fallback."""
+    ext_path = root / "apps/vscode-extension/package.json"
+    if ext_path.is_file():
+        return _read_json(ext_path)
+    return {"engines": {"vscode": "^0.0.0", "node": ">=0.0.0"}}
+
+
 def snapshot_from_repo(root: Path = REPO_ROOT) -> RuntimeSupportSnapshot:
     """Build the current runtime support snapshot from repository files."""
     return _snapshot_from_metadata(
         compatibility=_read_yaml(root / "compatibility.yaml"),
-        extension_package=_read_json(root / "apps/vscode-extension/package.json"),
+        extension_package=_extension_package(root),
         pyproject=_read_pyproject(root / "pyproject.toml"),
     )
 
@@ -306,12 +318,20 @@ def _show_text(ref: str, path: Path) -> str:
     return result.stdout
 
 
+def _extension_package_from_git(ref: str) -> dict[str, Any]:
+    """Read VS Code extension package.json from a git ref, or return an empty fallback."""
+    try:
+        return json.loads(_show_text(ref, Path("apps/vscode-extension/package.json")))
+    except subprocess.CalledProcessError:
+        return {"engines": {"vscode": "^0.0.0", "node": ">=0.0.0"}}
+
+
 def snapshot_from_git_ref(ref: str) -> RuntimeSupportSnapshot:
     """Build a runtime support snapshot from files at a git ref."""
     compatibility = _read_yaml_text(
         _show_text(ref, Path("compatibility.yaml")), label="compatibility.yaml"
     )
-    extension_package = json.loads(_show_text(ref, Path("apps/vscode-extension/package.json")))
+    extension_package = _extension_package_from_git(ref)
     pyproject = _read_toml_text(_show_text(ref, Path("pyproject.toml")))
     return _snapshot_from_metadata(
         compatibility=compatibility,
@@ -340,7 +360,7 @@ def validate_runtime_policy(root: Path = REPO_ROOT) -> list[str]:
     """Return local runtime policy metadata errors without remote release checks."""
     errors: list[str] = []
     matrix = _read_yaml(root / "compatibility.yaml")
-    extension_package = _read_json(root / "apps/vscode-extension/package.json")
+    extension_package = _extension_package(root)
     pyproject = _read_pyproject(root / "pyproject.toml")
 
     try:
@@ -354,17 +374,18 @@ def validate_runtime_policy(root: Path = REPO_ROOT) -> list[str]:
         pyproject=pyproject,
     )
 
-    try:
-        vscode_minimum = _parse_vscode_engine_range(snapshot.vscode_engines_range)
-    except ValueError as exc:
-        errors.append(str(exc))
-    else:
-        if matrix["vscode"]["minimum"] != vscode_minimum.format():
-            errors.append(
-                "VS Code minimum drift: "
-                f"compatibility.yaml={matrix['vscode']['minimum']!r}, "
-                f"engines.vscode={snapshot.vscode_engines_range!r}"
-            )
+    if (root / "apps" / "vscode-extension").is_dir():
+        try:
+            vscode_minimum = _parse_vscode_engine_range(snapshot.vscode_engines_range)
+        except ValueError as exc:
+            errors.append(str(exc))
+        else:
+            if matrix["vscode"]["minimum"] != vscode_minimum.format():
+                errors.append(
+                    "VS Code minimum drift: "
+                    f"compatibility.yaml={matrix['vscode']['minimum']!r}, "
+                    f"engines.vscode={snapshot.vscode_engines_range!r}"
+                )
 
     try:
         python_minimum = _parse_python_requires(snapshot.python_requires)

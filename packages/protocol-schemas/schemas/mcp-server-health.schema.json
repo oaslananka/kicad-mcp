@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://oaslananka.github.io/kicad-studio-kit/schemas/mcp-server-health.schema.json",
+  "$id": "https://oaslananka.github.io/kicad-mcp/schemas/mcp-server-health.schema.json",
   "title": "MCP server health and version contract",
   "description": "Health/version payload advertised by kicad-mcp-pro without VS Code or Python implementation details.",
   "type": "object",
@@ -28,7 +28,11 @@
       "minLength": 1
     },
     "status": {
-      "enum": ["ok", "degraded", "error"]
+      "enum": [
+        "ok",
+        "degraded",
+        "error"
+      ]
     },
     "mcpProtocolVersion": {
       "type": "string",
@@ -40,26 +44,43 @@
     "transport": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "endpoint"],
+      "required": [
+        "type",
+        "endpoint"
+      ],
       "properties": {
         "type": {
-          "enum": ["stdio", "streamable-http", "sse"]
+          "enum": [
+            "stdio",
+            "streamable-http",
+            "sse"
+          ]
         },
         "endpoint": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     },
     "kicad": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["cliFound", "cliVersion", "ipcAvailable"],
+      "required": [
+        "cliFound",
+        "cliVersion",
+        "ipcAvailable"
+      ],
       "properties": {
         "cliFound": {
           "type": "boolean"
         },
         "cliVersion": {
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "ipcAvailable": {
           "type": "boolean"
@@ -82,5 +103,9 @@
   "x-kicad-studio-kit": {
     "trackingIssue": "OASLANA-52",
     "schemaVersion": "1.0.0"
+  },
+  "x-kicad-mcp": {
+    "trackingIssue": "OASLANA-52",
+    "schemaType": "protocol-contract"
   }
 }

@@ -35,7 +35,8 @@ def test_repository_runtime_policy_is_parseable_and_in_sync() -> None:
 def test_repository_runtime_metadata_matches_current_bugfix_window() -> None:
     snapshot = runtime_policy.snapshot_from_repo()
 
-    assert snapshot.vscode_engines_range == "^1.120.0"
+    if (Path(__file__).resolve().parents[2] / "apps" / "vscode-extension").is_dir():
+        assert snapshot.vscode_engines_range == "^1.120.0"
     assert snapshot.python_requires == ">=3.13"
     assert snapshot.python_supported_minors == ("3.13", "3.14")
 

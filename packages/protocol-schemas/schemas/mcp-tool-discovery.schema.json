@@ -1,11 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://oaslananka.github.io/kicad-studio-kit/schemas/mcp-tool-discovery.schema.json",
+  "$id": "https://oaslananka.github.io/kicad-mcp/schemas/mcp-tool-discovery.schema.json",
   "title": "MCP tool discovery contract",
   "description": "Tool/resource/prompt discovery payload returned by MCP initialize or tools/list flows.",
   "type": "object",
   "additionalProperties": true,
-  "required": ["tools"],
+  "required": [
+    "tools"
+  ],
   "properties": {
     "schemaVersion": {
       "$ref": "#/$defs/semver"
@@ -44,7 +46,9 @@
     "tool": {
       "type": "object",
       "additionalProperties": true,
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -79,7 +83,9 @@
     "prompt": {
       "type": "object",
       "additionalProperties": true,
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -94,5 +100,9 @@
   "x-kicad-studio-kit": {
     "trackingIssue": "OASLANA-52",
     "schemaVersion": "1.0.0"
+  },
+  "x-kicad-mcp": {
+    "trackingIssue": "OASLANA-52",
+    "schemaType": "protocol-contract"
   }
 }

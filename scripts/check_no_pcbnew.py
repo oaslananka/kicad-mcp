@@ -16,9 +16,13 @@ from pathlib import Path
 import yaml
 
 MCP_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = MCP_ROOT.parents[1]
+REPO_ROOT = MCP_ROOT
 MATRIX_PATH = REPO_ROOT / "compatibility.yaml"
-SCAN_DIRS = (REPO_ROOT / "apps", MCP_ROOT / "src", MCP_ROOT / "scripts", MCP_ROOT / "tests")
+SCAN_DIRS = tuple(
+    d
+    for d in (REPO_ROOT / "apps", MCP_ROOT / "src", MCP_ROOT / "scripts", MCP_ROOT / "tests")
+    if d.is_dir()
+)
 DEFAULT_ALLOWED_PATHS = ("scripts/check_no_pcbnew.py",)
 
 

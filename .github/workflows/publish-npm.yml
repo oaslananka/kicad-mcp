@@ -1,0 +1,97 @@
+name: Publish npm
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    environment: npm
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    defaults:
+      run:
+        working-directory: packages/mcp-npm
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: .node-version
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - run: npm --version
+      - run: npm ci --ignore-scripts=false
+      - name: Pack npm launcher and generate evidence
+        id: npm-evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm pack --json > npm-pack.json
+          tarball="$(node -e "const fs = require('node:fs'); const pack = JSON.parse(fs.readFileSync('npm-pack.json', 'utf8')); console.log(pack[0].filename);")"
+          test -f "$tarball"
+          evidence_dir="../../release-assets/mcp-npm"
+          mkdir -p "$evidence_dir"
+          cp "$tarball" "$evidence_dir/"
+          (
+            cd "$evidence_dir"
+            sha256sum "$(basename "$tarball")" > SHA256SUMS.txt
+          )
+          npm sbom --sbom-format cyclonedx --sbom-type application > "$evidence_dir/sbom.cdx.json"
+          (cd "$evidence_dir" && sha256sum --check SHA256SUMS.txt)
+          echo "tarball=$tarball" >> "$GITHUB_OUTPUT"
+      - name: Attest npm launcher tarball
+        id: attest-npm
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
+        with:
+          subject-checksums: release-assets/mcp-npm/SHA256SUMS.txt
+          sbom-path: release-assets/mcp-npm/sbom.cdx.json
+      - name: Store npm release evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: npm-release-evidence
+          path: release-assets/mcp-npm
+          if-no-files-found: error
+          retention-days: 14
+      - name: Attach npm evidence to GitHub Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          upload_dir="../../release-assets/upload/mcp-npm"
+          mkdir -p "$upload_dir"
+          cp ../../release-assets/mcp-npm/*.tgz "$upload_dir/"
+          cp ../../release-assets/mcp-npm/SHA256SUMS.txt "$upload_dir/mcp-npm-SHA256SUMS.txt"
+          cp ../../release-assets/mcp-npm/sbom.cdx.json "$upload_dir/mcp-npm-sbom.cdx.json"
+          gh release upload "$RELEASE_TAG" "$upload_dir"/* --clobber
+      - name: Verify npm checksums before publish
+        run: (cd ../../release-assets/mcp-npm && sha256sum --check SHA256SUMS.txt)
+      - run: npm publish "${{ steps.npm-evidence.outputs.tarball }}" --access public --provenance
+      - name: Verify npm published tarball digest
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          node ../../scripts/verify-npm-release.mjs \
+            --package kicad-mcp-pro \
+            --version "$version" \
+            --checksums ../../release-assets/mcp-npm/SHA256SUMS.txt \
+            --output-dir ../../release-assets/npm-verify
+      - name: Attach npm post-publish verification to GitHub Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" ../../release-assets/npm-verify/npm-published-digest.json --clobber

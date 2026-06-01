@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://oaslananka.github.io/kicad-studio-kit/schemas/normalized-diagnostic.schema.json",
+  "$id": "https://oaslananka.github.io/kicad-mcp/schemas/normalized-diagnostic.schema.json",
   "title": "Normalized DRC/ERC diagnostic contract",
   "description": "Product-neutral diagnostic record normalized from KiCad DRC, ERC, syntax, or cached validation output.",
   "type": "object",
@@ -18,10 +18,18 @@
       "$ref": "#/$defs/semver"
     },
     "source": {
-      "enum": ["drc", "erc", "syntax"]
+      "enum": [
+        "drc",
+        "erc",
+        "syntax"
+      ]
     },
     "severity": {
-      "enum": ["error", "warning", "info"]
+      "enum": [
+        "error",
+        "warning",
+        "info"
+      ]
     },
     "message": {
       "type": "string",
@@ -61,5 +69,9 @@
   "x-kicad-studio-kit": {
     "trackingIssue": "OASLANA-52",
     "schemaVersion": "1.0.0"
+  },
+  "x-kicad-mcp": {
+    "trackingIssue": "OASLANA-52",
+    "schemaType": "protocol-contract"
   }
 }

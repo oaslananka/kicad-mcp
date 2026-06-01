@@ -18,7 +18,7 @@ from typing import Any
 import yaml
 
 MCP_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = MCP_ROOT.parents[1]
+REPO_ROOT = MCP_ROOT
 FIXTURE_ROOT = REPO_ROOT / "packages" / "kicad-fixtures" / "fixtures"
 DEFAULT_TIMEOUT_SECONDS = 180
 KICAD_VIOLATION_EXIT_CODE = 5

@@ -13,7 +13,8 @@ from typing import Any
 import yaml
 
 MCP_ROOT = Path(__file__).resolve().parents[1]
-REPO_ROOT = MCP_ROOT.parents[1]
+REPO_ROOT = MCP_ROOT
+HAS_VSCODE_EXTENSION = (REPO_ROOT / "apps" / "vscode-extension").is_dir()
 PCBNEW_POLICY = "forbidden-in-production"
 REQUIRED_IPC_AREAS = (
     "projectDiscovery",
@@ -105,6 +106,9 @@ def _validate_evidence_entry(value: object, label: str) -> list[str]:
     if prefix == "path":
         errors = _validate_repo_relative_path(payload, label)
         if not errors and not _repo_path_exists(payload):
+            # In standalone repo, skip paths under apps/vscode-extension/
+            if not HAS_VSCODE_EXTENSION and payload.startswith("apps/vscode-extension/"):
+                return errors
             errors.append(f"{label} path does not exist: {payload!r}")
         return errors
     if prefix == "fixture":
@@ -169,7 +173,7 @@ def _validate_kicad10_feature(
         errors.extend(_validate_issue_url(detail.get("issue"), f"{label}.issue"))
     elif "issue" in detail:
         errors.extend(_validate_issue_url(detail.get("issue"), f"{label}.issue"))
-    if feature not in docs_text:
+    if docs_text and feature not in docs_text:
         errors.append(f"{label} is not documented in the parity docs page")
     return errors
 
@@ -236,10 +240,11 @@ def _validate_kicad10_surface_groups(
         "exports",
         "gui_editor",
         "ipc",
-        "vscode_extension",
         "mcp_server",
         "release",
     }
+    if HAS_VSCODE_EXTENSION:
+        required_groups.add("vscode_extension")
     if not isinstance(surfaces, dict):
         return ["kicad10FeatureParity.surfaces must be a mapping"]
     errors: list[str] = []
@@ -360,7 +365,8 @@ def _validate_ipc_readiness(
 
 def _validate_required_shape(matrix: dict[str, Any]) -> list[str]:
     errors: list[str] = []
-    for key in ("schemaVersion", "kicad", "vscode", "node", "pnpm", "python", "mcp", "products"):
+    required_top = {"schemaVersion", "kicad", "vscode", "node", "pnpm", "python", "mcp", "products"}
+    for key in required_top:
         if key not in matrix:
             errors.append(f"compatibility.yaml missing top-level {key!r}")
     if errors:
@@ -368,7 +374,10 @@ def _validate_required_shape(matrix: dict[str, Any]) -> list[str]:
     products = matrix["products"]
     if not isinstance(products, dict):
         return ["compatibility.yaml products must be a mapping"]
-    for key in ("kicad-studio", "kicad-mcp-pro"):
+    required_products = {"kicad-mcp-pro"}
+    if HAS_VSCODE_EXTENSION:
+        required_products.add("kicad-studio")
+    for key in required_products:
         if key not in products:
             errors.append(f"compatibility.yaml products missing {key!r}")
     return errors
@@ -420,30 +429,29 @@ def validate_compatibility_matrix() -> list[str]:
     errors = _validate_required_shape(matrix)
     errors.extend(_validate_kicad_support_policy(matrix))
     errors.extend(_validate_kicad10_feature_parity(matrix))
+
+    # Standalone repo: tolerate evidence paths for Studio-owned files that are
+    # intentionally absent because the VS Code extension is not part of the
+    # kicad-mcp standalone repository.
+    if not HAS_VSCODE_EXTENSION:
+        _ALLOWED_MISSING_PATHS = frozenset(
+            {
+                ".github/workflows/publish-extension.yml",  # VS Code extension workflow
+            }
+        )
+        errors = [e for e in errors if not any(f"'{p}'" in e for p in _ALLOWED_MISSING_PATHS)]
+
     if errors:
         return errors
 
-    extension_pkg = _read_json(REPO_ROOT / "apps/vscode-extension/package.json")
     root_pkg = _read_json(REPO_ROOT / "package.json")
     pyproject = _pyproject()
     server_json = _read_json(MCP_ROOT / "server.json")
     mcp_json = _read_json(MCP_ROOT / "mcp.json")
 
-    studio = matrix["products"]["kicad-studio"]
     mcp_product = matrix["products"]["kicad-mcp-pro"]
 
     expected_pairs = [
-        ("kicad-studio version", studio["version"], extension_pkg["version"]),
-        (
-            "kicad-studio VS Code engines range",
-            matrix["vscode"]["enginesRange"],
-            extension_pkg["engines"]["vscode"],
-        ),
-        (
-            "kicad-studio Node runtime",
-            matrix["vscode"]["nodeRuntime"],
-            extension_pkg["engines"]["node"],
-        ),
         ("root Node range", matrix["node"]["range"], root_pkg["engines"]["node"]),
         ("root pnpm range", matrix["pnpm"]["range"], root_pkg["engines"]["pnpm"]),
         ("kicad-mcp-pro version", mcp_product["version"], pyproject["project"]["version"]),
@@ -455,25 +463,47 @@ def validate_compatibility_matrix() -> list[str]:
         if expected != actual:
             errors.append(f"{label} drift: compatibility.yaml={expected!r}, metadata={actual!r}")
 
-    ts_compat = _mcp_compat_from_ts()
-    for key, expected in studio["compatibleMcpPro"].items():
-        if ts_compat.get(key) != expected:
-            errors.append(
-                f"extension MCP compatibility {key} drift: "
-                f"compatibility.yaml={expected!r}, TS={ts_compat.get(key)!r}"
-            )
+    if HAS_VSCODE_EXTENSION:
+        extension_pkg = _read_json(REPO_ROOT / "apps/vscode-extension/package.json")
+        studio = matrix["products"]["kicad-studio"]
+        expected_pairs_vscode = [
+            ("kicad-studio version", studio["version"], extension_pkg["version"]),
+            (
+                "kicad-studio VS Code engines range",
+                matrix["vscode"]["enginesRange"],
+                extension_pkg["engines"]["vscode"],
+            ),
+            (
+                "kicad-studio Node runtime",
+                matrix["vscode"]["nodeRuntime"],
+                extension_pkg["engines"]["node"],
+            ),
+        ]
+        for label, expected, actual in expected_pairs_vscode:
+            if expected != actual:
+                errors.append(
+                    f"{label} drift: compatibility.yaml={expected!r}, metadata={actual!r}"
+                )
 
-    extension_protocol = _extension_protocol_from_ts()
-    if extension_protocol != matrix["mcp"]["protocolVersion"]:
-        errors.append(
-            "extension MCP protocol version drift: "
-            f"compatibility.yaml={matrix['mcp']['protocolVersion']!r}, TS={extension_protocol!r}"
+        ts_compat = _mcp_compat_from_ts()
+        for key, expected in studio["compatibleMcpPro"].items():
+            if ts_compat.get(key) != expected:
+                errors.append(
+                    f"extension MCP compatibility {key} drift: "
+                    f"compatibility.yaml={expected!r}, TS={ts_compat.get(key)!r}"
+                )
+
+        extension_protocol = _extension_protocol_from_ts()
+        if extension_protocol != matrix["mcp"]["protocolVersion"]:
+            errors.append(
+                "extension MCP protocol version drift: "
+                f"compatibility.yaml={matrix['mcp']['protocolVersion']!r}, TS={extension_protocol!r}"
+            )
+        mcp_client_source = (REPO_ROOT / "apps/vscode-extension/src/mcp/mcpClient.ts").read_text(
+            encoding="utf-8"
         )
-    mcp_client_source = (REPO_ROOT / "apps/vscode-extension/src/mcp/mcpClient.ts").read_text(
-        encoding="utf-8"
-    )
-    if "protocolVersion: MCP_PROTOCOL_VERSION" not in mcp_client_source:
-        errors.append("extension MCP client must initialize with MCP_PROTOCOL_VERSION")
+        if "protocolVersion: MCP_PROTOCOL_VERSION" not in mcp_client_source:
+            errors.append("extension MCP client must initialize with MCP_PROTOCOL_VERSION")
 
     sys.path.insert(0, str(MCP_ROOT / "src"))
     from kicad_mcp.compatibility import COMPATIBILITY_MATRIX as PY_COMPATIBILITY_MATRIX

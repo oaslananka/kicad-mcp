@@ -85,7 +85,7 @@ kicad:
 kicad10FeatureParity:
   reviewed: "2026-05-27"
   baseline: "10.0.3"
-  primaryIssue: "https://github.com/oaslananka/kicad-studio-kit/issues/177"
+  primaryIssue: "https://github.com/oaslananka/kicad-mcp/issues/177"
   documentation: "docs/compatibility/kicad-10-0-3-feature-parity.md"
   allowedStatuses:
     - "supported"
@@ -107,17 +107,17 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli pcb import --format altium"
         productSurface: "KiCad Studio extension command and MCP manufacturing probe"
         evidence:
-          - "path:apps/vscode-extension/test/unit/importCommands.test.ts"
-          - "path:apps/vscode-extension/test/integration/extension.test.ts"
+          - "path:tests/integration/test_export_tools.py"
+          - "path:tests/integration/test_manufacturing_tools.py"
           - "command:kicad-cli pcb import --help includes altium"
         notes: "Extension and MCP import paths are gated by CLI help before use."
       allegro:
         status: "blocked"
         nativeSurface: "KiCad PCB Editor GUI Cadence Allegro .brd import"
         productSurface: "KiCad Studio extension command registered but hidden unless CLI support appears"
-        issue: "https://github.com/oaslananka/kicad-studio-kit/issues/179"
+        issue: "https://github.com/oaslananka/kicad-mcp/issues/179"
         evidence:
-          - "path:apps/vscode-extension/test/unit/importCommands.test.ts"
+          - "path:tests/integration/test_export_tools.py"
           - "fixture:kicad-10-0-3-regressions"
           - "command:kicad-cli pcb import --help does not advertise allegro in KiCad 10.0.3"
         notes: "KiCad 10.0.3 documents GUI Allegro import, but the stable CLI surface is not available."
@@ -126,7 +126,7 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli pcb import --format cadstar"
         productSurface: "KiCad Studio extension command"
         evidence:
-          - "path:apps/vscode-extension/test/unit/importCommands.test.ts"
+          - "path:tests/integration/test_export_tools.py"
           - "command:kicad-cli pcb import --help includes cadstar"
         notes: "Command remains probe-gated like other importer workflows."
       eagle:
@@ -134,7 +134,7 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli pcb import --format eagle"
         productSurface: "KiCad Studio extension command"
         evidence:
-          - "path:apps/vscode-extension/test/unit/importCommands.test.ts"
+          - "path:tests/integration/test_export_tools.py"
           - "command:kicad-cli pcb import --help includes eagle"
         notes: "Command remains probe-gated like other importer workflows."
       fabmaster:
@@ -142,7 +142,7 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli pcb import --format fabmaster"
         productSurface: "KiCad Studio extension command"
         evidence:
-          - "path:apps/vscode-extension/test/unit/importCommands.test.ts"
+          - "path:tests/integration/test_export_tools.py"
           - "command:kicad-cli pcb import --help includes fabmaster"
         notes: "Command remains probe-gated like other importer workflows."
       geda_lepton:
@@ -150,8 +150,8 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli pcb import --format geda when help advertises the token"
         productSurface: "KiCad Studio extension command and MCP manufacturing import"
         evidence:
-          - "path:apps/vscode-extension/test/unit/importCommands.test.ts"
-          - "path:packages/mcp-server/tests/integration/test_manufacturing_tools.py"
+          - "path:tests/integration/test_export_tools.py"
+          - "path:tests/integration/test_manufacturing_tools.py"
           - "command:kicad-cli pcb import --help includes geda"
         notes: "The product treats gEDA/Lepton as supported only after capability probing passes."
       pads:
@@ -159,8 +159,8 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli pcb import --format pads"
         productSurface: "KiCad Studio extension command, MCP manufacturing import, and KiCad 10.0.3 fixture probe"
         evidence:
-          - "path:packages/mcp-server/tests/unit/test_kicad_canary.py"
-          - "path:packages/mcp-server/tests/integration/test_manufacturing_tools.py"
+          - "path:tests/unit/test_kicad_canary.py"
+          - "path:tests/integration/test_manufacturing_tools.py"
           - "fixture:kicad-10-0-3-regressions"
         notes: "KiCad 10.0.3 PADS importer regressions are covered by canary and fixture metadata."
       pcad:
@@ -168,7 +168,7 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli pcb import --format pcad"
         productSurface: "KiCad Studio extension command"
         evidence:
-          - "path:apps/vscode-extension/test/unit/importCommands.test.ts"
+          - "path:tests/integration/test_export_tools.py"
           - "command:kicad-cli pcb import --help includes pcad"
         notes: "Command remains probe-gated like other importer workflows."
       solidworks:
@@ -176,7 +176,7 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli pcb import --format solidworks"
         productSurface: "KiCad Studio extension command"
         evidence:
-          - "path:apps/vscode-extension/test/unit/importCommands.test.ts"
+          - "path:tests/integration/test_export_tools.py"
           - "command:kicad-cli pcb import --help includes solidworks"
         notes: "Command remains probe-gated like other importer workflows."
     exports:
@@ -185,8 +185,8 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli pcb export gerbers"
         productSurface: "MCP manufacturing package and extension export workflows"
         evidence:
-          - "path:packages/mcp-server/scripts/kicad_canary.py"
-          - "path:packages/mcp-server/tests/integration/test_export_tools.py"
+          - "path:scripts/kicad_canary.py"
+          - "path:tests/integration/test_export_tools.py"
           - "command:corepack pnpm run test:kicad-cli-contract"
         notes: "Primary KiCad canary requires Gerber export artifacts."
       drill:
@@ -194,8 +194,8 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli pcb export drill"
         productSurface: "MCP manufacturing package and extension export workflows"
         evidence:
-          - "path:packages/mcp-server/scripts/kicad_canary.py"
-          - "path:packages/mcp-server/tests/integration/test_export_tools.py"
+          - "path:scripts/kicad_canary.py"
+          - "path:tests/integration/test_export_tools.py"
           - "command:corepack pnpm run test:kicad-cli-contract"
         notes: "Primary KiCad canary requires drill export artifacts."
       pdf:
@@ -203,8 +203,8 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli sch export pdf and pcb export pdf"
         productSurface: "MCP schematic/PCB export and extension PDF commands"
         evidence:
-          - "path:packages/mcp-server/scripts/kicad_canary.py"
-          - "path:packages/mcp-server/tests/unit/test_kicad_canary.py"
+          - "path:scripts/kicad_canary.py"
+          - "path:tests/unit/test_kicad_canary.py"
           - "command:kicad-cli sch export pdf and pcb export pdf"
         notes: "Schematic and PCB PDF exports are part of the KiCad 10 canary plan."
       pcb_pdf_property_popup_suppression:
@@ -212,8 +212,8 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli sch export pdf --exclude-pdf-property-popups"
         productSurface: "KiCad 10.0.3 regression canary and fixture metadata"
         evidence:
-          - "path:packages/mcp-server/scripts/kicad_canary.py"
-          - "path:packages/mcp-server/tests/unit/test_kicad_canary.py"
+          - "path:scripts/kicad_canary.py"
+          - "path:tests/unit/test_kicad_canary.py"
           - "fixture:kicad-10-0-3-regressions"
         notes: "The KiCad 10.0.3 CLI release note feature has a dedicated canary probe."
       ipc2581:
@@ -221,9 +221,9 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli pcb export ipc2581"
         productSurface: "KiCad Studio extension command and MCP export_ipc2581 tool"
         evidence:
-          - "path:apps/vscode-extension/test/integration/extension.test.ts"
-          - "path:packages/mcp-server/tests/integration/test_pcb_export_validation_surface.py"
-          - "path:packages/mcp-server/tests/integration/test_export_tools.py"
+          - "path:tests/integration/test_manufacturing_tools.py"
+          - "path:tests/integration/test_pcb_export_validation_surface.py"
+          - "path:tests/integration/test_export_tools.py"
         notes: "Extension and MCP surfaces both expose IPC-2581 with command-level tests."
       odbpp:
         status: "supported"
@@ -231,26 +231,26 @@ kicad10FeatureParity:
         productSurface: "KiCad Studio extension command and MCP export_odb tool"
         evidence:
           - "path:apps/vscode-extension/test/unit/exportPresets.test.ts"
-          - "path:packages/mcp-server/tests/integration/test_export_tools.py"
-          - "path:packages/mcp-server/tests/e2e/test_server.py"
+          - "path:tests/integration/test_export_tools.py"
+          - "path:tests/e2e/test_server.py"
         notes: "ODB++ remains capability-gated by KiCad CLI detection."
       step:
         status: "supported"
         nativeSurface: "kicad-cli pcb export step"
         productSurface: "MCP export_step and export_3d_step tools"
         evidence:
-          - "path:packages/mcp-server/tests/integration/test_export_tools.py"
-          - "path:packages/mcp-server/tests/unit/test_release_hardening.py"
-          - "path:packages/mcp-server/scripts/kicad_canary.py"
+          - "path:tests/integration/test_export_tools.py"
+          - "path:tests/unit/test_release_hardening.py"
+          - "path:scripts/kicad_canary.py"
         notes: "STEP is a release-gated 3D export with path-safety tests."
       stepz:
         status: "supported"
         nativeSurface: "kicad-cli pcb export stpz (STEPZ/GZIP-compressed STEP)"
         productSurface: "MCP export_stepz tool; no VS Code command-palette surface"
         evidence:
-          - "path:packages/mcp-server/tests/integration/test_export_tools.py"
-          - "path:packages/mcp-server/tests/integration/test_pcb_export_validation_surface.py"
-          - "path:packages/mcp-server/tests/unit/test_server_info_contract.py"
+          - "path:tests/integration/test_export_tools.py"
+          - "path:tests/integration/test_pcb_export_validation_surface.py"
+          - "path:tests/unit/test_server_info_contract.py"
           - "source:https://docs.kicad.org/10.0/en/cli/cli.html"
         notes: "KiCad documents the user-facing export as STEPZ while the CLI subcommand is stpz; the product exposes it through MCP for agent/headless workflows."
       xao:
@@ -258,9 +258,9 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli pcb export xao"
         productSurface: "MCP export_xao tool; no VS Code command-palette surface"
         evidence:
-          - "path:packages/mcp-server/tests/integration/test_export_tools.py"
-          - "path:packages/mcp-server/tests/integration/test_pcb_export_validation_surface.py"
-          - "path:packages/mcp-server/tests/unit/test_server_info_contract.py"
+          - "path:tests/integration/test_export_tools.py"
+          - "path:tests/integration/test_pcb_export_validation_surface.py"
+          - "path:tests/unit/test_server_info_contract.py"
           - "source:https://docs.kicad.org/10.0/en/cli/cli.html"
         notes: "XAO is exposed through MCP for headless interchange workflows rather than as a niche VS Code command."
     gui_editor:
@@ -270,7 +270,7 @@ kicad10FeatureParity:
         productSurface: "S-expression parser and MCP pcb_block_* tools"
         evidence:
           - "path:apps/vscode-extension/test/unit/sExpressionParser.test.ts"
-          - "path:packages/mcp-server/tests/integration/test_pcb_tools.py"
+          - "path:tests/integration/test_pcb_tools.py"
           - "path:docs/mcp/tools.md"
         notes: "Product support is headless and tool-oriented, not a replacement for the native GUI editor."
       graphical_drc_rule_editor:
@@ -287,15 +287,15 @@ kicad10FeatureParity:
         productSurface: "Extension variants view and MCP variant_* tools"
         evidence:
           - "path:apps/vscode-extension/test/unit/variantProvider.test.ts"
-          - "path:packages/mcp-server/tests/unit/test_variant_diff.py"
-          - "path:packages/mcp-server/tests/integration/test_export_tools.py"
+          - "path:tests/unit/test_variant_diff.py"
+          - "path:tests/integration/test_export_tools.py"
         notes: "Variant listing, activation, BOM diffing, and export integration are covered."
       barcode_support:
         status: "supported"
         nativeSurface: "KiCad 10 PCB Editor barcode tool"
         productSurface: "MCP pcb_add_barcode tool"
         evidence:
-          - "path:packages/mcp-server/tests/unit/test_kicad10_parity_tools.py"
+          - "path:tests/unit/test_kicad10_parity_tools.py"
           - "path:docs/mcp/tools.md"
           - "source:https://docs.kicad.org/10.0/en/pcbnew/pcbnew.html"
         notes: "Headless barcode insertion is supported; native visual editing remains in KiCad."
@@ -304,8 +304,8 @@ kicad10FeatureParity:
         nativeSurface: "KiCad 10 interactive time-domain tuning workflows"
         productSurface: "MCP route_tune_time_domain and tuning profile helpers"
         evidence:
-          - "path:packages/mcp-server/tests/unit/test_kicad10_parity_tools.py"
-          - "path:packages/mcp-server/tests/integration/test_routing_tools.py"
+          - "path:tests/unit/test_kicad10_parity_tools.py"
+          - "path:tests/integration/test_routing_tools.py"
         notes: "Product support models and documents tuning intent for headless workflows; native interactive routing UX remains a KiCad GUI surface."
     ipc:
       kicad_python_ipc:
@@ -313,7 +313,7 @@ kicad10FeatureParity:
         nativeSurface: "KiCad IPC API"
         productSurface: "MCP live context discovery and scheduled GUI smoke coverage"
         evidence:
-          - "path:packages/mcp-server/tests/gui/test_kicad_gui_live_context.py"
+          - "path:tests/gui/test_kicad_gui_live_context.py"
           - "path:docs/compatibility/kicad-10-to-11-migration.md"
           - "smoke:corepack pnpm run test:kicad-gui-smoke"
         notes: "IPC is the supported live-editor direction for KiCad 10 and KiCad 11 readiness."
@@ -321,9 +321,9 @@ kicad10FeatureParity:
         status: "blocked"
         nativeSurface: "Deprecated SWIG pcbnew Python bindings"
         productSurface: "Production direct pcbnew imports are forbidden"
-        issue: "https://github.com/oaslananka/kicad-studio-kit/issues/197"
+        issue: "https://github.com/oaslananka/kicad-mcp/issues/197"
         evidence:
-          - "path:packages/mcp-server/scripts/check_no_pcbnew.py"
+          - "path:scripts/check_no_pcbnew.py"
           - "path:docs/compatibility/kicad-10-to-11-migration.md"
           - "source:https://dev-docs.kicad.org/en/apis-and-binding/pcbnew/"
         notes: "The guard blocks production reliance on an API planned for removal in KiCad 11."
@@ -342,8 +342,8 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli pcb import --help"
         productSurface: "Command palette availability and deterministic unsupported warnings"
         evidence:
-          - "path:apps/vscode-extension/test/unit/importCommands.test.ts"
-          - "path:apps/vscode-extension/test/integration/extension.test.ts"
+          - "path:tests/integration/test_export_tools.py"
+          - "path:tests/integration/test_manufacturing_tools.py"
         notes: "Importer commands cannot run without the corresponding CLI token."
     mcp_server:
       server_info_capability_contract:
@@ -351,7 +351,7 @@ kicad10FeatureParity:
         nativeSurface: "KiCad CLI and IPC runtime discovery"
         productSurface: "kicad_get_server_info compatibility and capability payload"
         evidence:
-          - "path:packages/mcp-server/tests/unit/test_server_info_contract.py"
+          - "path:tests/unit/test_server_info_contract.py"
           - "path:packages/protocol-schemas/test/index.test.ts"
           - "path:docs/mcp/api-reference.md"
         notes: "Server-info schema and generated docs are release-gated."
@@ -359,19 +359,19 @@ kicad10FeatureParity:
         status: "partial"
         nativeSurface: "Empty KiCad 10.0.3 project files"
         productSurface: "File-backed MCP read tools and quality gates"
-        issue: "https://github.com/oaslananka/kicad-studio-kit/issues/228"
+        issue: "https://github.com/oaslananka/kicad-mcp/issues/228"
         evidence:
-          - "path:packages/mcp-server/tests/integration/test_pcb_tools.py"
-          - "path:packages/mcp-server/tests/integration/test_schematic_tools.py"
+          - "path:tests/integration/test_pcb_tools.py"
+          - "path:tests/integration/test_schematic_tools.py"
         notes: "Regression coverage is tracked separately so the parity matrix stays bounded."
       ipc_state_consistency:
         status: "partial"
         nativeSurface: "KiCad IPC lifecycle"
         productSurface: "kicad_get_server_info and tool diagnostics"
-        issue: "https://github.com/oaslananka/kicad-studio-kit/issues/223"
+        issue: "https://github.com/oaslananka/kicad-mcp/issues/223"
         evidence:
-          - "path:packages/mcp-server/tests/unit/test_server_info_contract.py"
-          - "path:packages/mcp-server/tests/gui/test_kicad_gui_live_context.py"
+          - "path:tests/unit/test_server_info_contract.py"
+          - "path:tests/gui/test_kicad_gui_live_context.py"
         notes: "Issue #229 tracks additional lifecycle transition coverage."
     release:
       vsix_provenance:
@@ -389,7 +389,7 @@ kicad10FeatureParity:
         productSurface: "PyPI trusted publishing, checksums, SBOM, and attestations"
         evidence:
           - "path:.github/workflows/publish-python.yml"
-          - "path:packages/mcp-server/tests/unit/test_release_hardening.py"
+          - "path:tests/unit/test_release_hardening.py"
           - "path:docs/publishing.md"
         notes: "Release evidence is product-scoped for the Python package."
       npm_tarball_provenance:
@@ -406,7 +406,7 @@ kicad10FeatureParity:
       status: "future"
       nativeSurface: "MCP protocol and KiCad 11 readiness"
       productSurface: "Protocol upgrade plan and KiCad 11 manual canary path"
-      issue: "https://github.com/oaslananka/kicad-studio-kit/issues/197"
+      issue: "https://github.com/oaslananka/kicad-mcp/issues/197"
       evidence:
         - "path:docs/compatibility/kicad-10-to-11-migration.md"
         - "command:corepack pnpm run test:kicad-cli-contract:future"
@@ -416,7 +416,7 @@ kicad10FeatureParity:
       nativeSurface: "KiCad development-branch nightly CLI"
       productSurface: "Manual prerelease smoke command and scheduled canary metadata"
       evidence:
-        - "path:packages/mcp-server/scripts/kicad_canary.py"
+        - "path:scripts/kicad_canary.py"
         - "path:docs/compatibility/kicad-10-to-11-migration.md"
         - "command:corepack pnpm run test:kicad-cli-contract:nightly"
       notes: "Nightly runs remain non-release and do not change the stable support line."
@@ -425,8 +425,8 @@ kicad10FeatureParity:
       nativeSurface: "KiCad 11 planned removal of SWIG pcbnew bindings"
       productSurface: "Production direct-pcbnew import guard"
       evidence:
-        - "path:packages/mcp-server/scripts/check_no_pcbnew.py"
-        - "path:packages/mcp-server/tests/unit/test_compatibility_matrix.py"
+        - "path:scripts/check_no_pcbnew.py"
+        - "path:tests/unit/test_compatibility_matrix.py"
         - "source:https://dev-docs.kicad.org/en/apis-and-binding/pcbnew/"
       notes: "The guard keeps KiCad 11 preparation independent from current KiCad 10 parity."
 
@@ -439,8 +439,8 @@ kicadIpcReadiness:
   directPcbnewImports:
     policy: "forbidden-in-production"
     allowedPaths:
-      - "packages/mcp-server/scripts/check_no_pcbnew.py"
-      - "packages/mcp-server/tests/**"
+      - "scripts/check_no_pcbnew.py"
+      - "tests/**"
   manualCanary:
     currentNightlyRange: "10.99.x"
     releaseCandidateRange: "11.0.x"
@@ -457,8 +457,8 @@ kicadIpcReadiness:
             "unicode-path-board-stats",
           ]
         evidence:
-          - "packages/mcp-server/tests/integration/test_project_library_surface.py"
-          - "packages/mcp-server/tests/unit/test_discovery.py"
+          - "tests/integration/test_project_library_surface.py"
+          - "tests/unit/test_discovery.py"
       pcbRead:
         tools:
           [
@@ -474,26 +474,26 @@ kicadIpcReadiness:
             "unicode-path-board-stats",
           ]
         evidence:
-          - "packages/mcp-server/tests/integration/test_pcb_tools.py"
-          - "packages/mcp-server/tests/gui/test_kicad_gui_live_context.py"
+          - "tests/integration/test_pcb_tools.py"
+          - "tests/gui/test_kicad_gui_live_context.py"
       schematicRead:
         tools: ["sch_get_symbols", "sch_get_sheet_info", "sch_get_net_names"]
         canaryProbes: ["clean-erc", "schematic-pdf", "bom", "netlist"]
         evidence:
-          - "packages/mcp-server/tests/integration/test_schematic_tools.py"
-          - "packages/mcp-server/tests/integration/test_project_library_surface.py"
+          - "tests/integration/test_schematic_tools.py"
+          - "tests/integration/test_project_library_surface.py"
       drc:
         tools: ["run_drc", "validate_design", "check_design_for_manufacture"]
         canaryProbes: ["clean-drc", "dirty-drc"]
         evidence:
-          - "packages/mcp-server/tests/integration/test_export_tools.py"
-          - "packages/mcp-server/tests/integration/test_pcb_export_validation_surface.py"
+          - "tests/integration/test_export_tools.py"
+          - "tests/integration/test_pcb_export_validation_surface.py"
       erc:
         tools: ["run_erc", "validate_design", "schematic_quality_gate"]
         canaryProbes: ["clean-erc", "dirty-erc"]
         evidence:
-          - "packages/mcp-server/tests/integration/test_export_tools.py"
-          - "packages/mcp-server/tests/integration/test_schematic_connectivity_gate.py"
+          - "tests/integration/test_export_tools.py"
+          - "tests/integration/test_schematic_connectivity_gate.py"
       export:
         tools:
           [
@@ -515,14 +515,14 @@ kicadIpcReadiness:
             "step",
           ]
         evidence:
-          - "packages/mcp-server/tests/integration/test_export_tools.py"
-          - "packages/mcp-server/tests/unit/test_kicad_canary.py"
+          - "tests/integration/test_export_tools.py"
+          - "tests/unit/test_kicad_canary.py"
       diagnostics:
         tools: ["kicad_get_version", "kicad_get_server_info", "kicad_help"]
         canaryProbes: ["version", "read-only-output-failure"]
         evidence:
-          - "packages/mcp-server/tests/unit/test_server_info_contract.py"
-          - "packages/mcp-server/tests/unit/test_cli_diagnostics.py"
+          - "tests/unit/test_server_info_contract.py"
+          - "tests/unit/test_cli_diagnostics.py"
 
 vscode:
   minimum: "1.120.0"
@@ -556,15 +556,14 @@ runtimePolicy:
     kicadDownloads: "https://www.kicad.org/download/linux/"
   vscode:
     maxMinimumMinorLag: 1
-    loweringRequiresChangelog: "apps/vscode-extension/CHANGELOG.md"
+    loweringRequiresChangelog: "CHANGELOG.md"
   python:
     supportedMinorWindow: 2
-    loweringRequiresChangelog: "packages/mcp-server/CHANGELOG.md"
+    loweringRequiresChangelog: "CHANGELOG.md"
   kicad:
     primaryMajorLag: 0
     loweringRequiresChangelogs:
-      - "apps/vscode-extension/CHANGELOG.md"
-      - "packages/mcp-server/CHANGELOG.md"
+      - "CHANGELOG.md"
 
 mcp:
   protocolVersion: "2025-11-25"
@@ -581,7 +580,7 @@ products:
       recommended: ">=3.5.2 <4.0.0"
       testedAgainst: "3.5.2"
   kicad-mcp-pro:
-    packagePath: "packages/mcp-server/pyproject.toml"
+    packagePath: "pyproject.toml"
     version: "3.6.0"
     compatibleExtension:
       required: ">=1.0.0 <2.0.0"
