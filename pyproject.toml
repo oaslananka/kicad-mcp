@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kicad-mcp-pro"
-version = "3.7.0"
+version = "3.7.1"
 description = "A Model Context Protocol server for KiCad EDA workflows."
 readme = "README.md"
 license = { text = "MIT" }
@@ -151,6 +151,4 @@ omit = ["tests/*"]
 fail_under = 90
 
 [dependency-groups]
-dev = [
-    "ruamel-yaml>=0.17.0",
-]
+dev = []

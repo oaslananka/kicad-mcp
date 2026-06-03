@@ -80,3 +80,21 @@ jobs:
       - run: corepack pnpm --filter @oaslananka/kicad-protocol-schemas run lint
       - run: corepack pnpm --filter @oaslananka/kicad-protocol-schemas run typecheck
       - run: corepack pnpm --filter @oaslananka/kicad-protocol-schemas run test
+
+  security:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          version: v0.70.0

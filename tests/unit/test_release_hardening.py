@@ -743,7 +743,7 @@ def test_docker_metadata_contains_mcp_oci_label_and_release_image_contract() -> 
     assert "ghcr.io/oaslananka/kicad-mcp-pro" in container_workflow
     assert "linux/amd64,linux/arm64" in container_workflow
     assert "outputs: type=cacheonly" in container_workflow
-    assert "mcp-server-v" in container_workflow
+    assert "mcp-npm-v" in container_workflow
     assert "ghcr.io/oaslananka/kicad-mcp-pro:latest" in container_workflow
     assert "packages: write" in container_workflow
     assert "id-token: write" in container_workflow

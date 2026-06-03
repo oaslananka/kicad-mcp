@@ -9,6 +9,7 @@ site/
 coverage/
 htmlcov/
 coverage.xml
+.coverage
 performance-results/
 artifacts/
 .pytest-tmp*/
