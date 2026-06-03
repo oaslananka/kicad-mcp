@@ -141,8 +141,8 @@ cosign verify ghcr.io/oaslananka/kicad-mcp-pro:${VERSION} \
 - [ ] Confirm `server.json` remains the registry payload source of truth.
 - [ ] Confirm `server.json` schema validation passes before dry run.
 - [ ] Confirm `server.json` stays synchronized with `pyproject.toml`.
-- [ ] Confirm `pyproject.toml` version matches both manifest files.
-- [ ] Confirm `src/kicad_mcp/__init__.py` version matches the manifests.
+- [ ] Confirm `pyproject.toml` version matches `server.json`.
+- [ ] Confirm `src/kicad_mcp/__init__.py` version matches `server.json`.
 - [ ] Confirm PyPI package `kicad-mcp-pro` is reachable for the current version.
 - [ ] Confirm registry package transport is `stdio`.
 - [ ] Confirm registry package runtime hint is `uvx` for PyPI.
