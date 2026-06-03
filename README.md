@@ -52,4 +52,4 @@ schemas, common development ports, and optional Cloudflare tunnel tooling.
 
 ## Package Metadata
 
-The canonical package metadata lives in `mcp.json` and `server.json`. Both files report the same repository, package, and version data for PyPI, npm, OCI, and MCP Registry publishing.
+The canonical metadata source of truth is `server.json`, which defines the MCP server contract. `mcp.json` is the generated mirror used for tooling compatibility and packaging. Both files must report the same repository, package, and version data for PyPI, npm, OCI, and MCP Registry publishing.
