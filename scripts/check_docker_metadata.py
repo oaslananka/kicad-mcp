@@ -108,7 +108,7 @@ def main() -> int:
     container_workflow = _read_repo(".github/workflows/publish-mcp-container.yml")
     workflow_markers = {
         GHCR_IMAGE: "container workflow must publish the canonical GHCR image",
-        "mcp-server-v": "container workflow must only publish tagged MCP server releases",
+        "mcp-npm-v": "container workflow must only publish tagged MCP server releases",
         f"{GHCR_IMAGE}:latest": "container workflow must publish latest for stable releases",
         "linux/amd64,linux/arm64": "container workflow must build amd64 and arm64 images",
         "outputs: type=cacheonly": "container workflow must verify multi-arch builds on PRs",
