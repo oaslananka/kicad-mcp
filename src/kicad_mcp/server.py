@@ -230,6 +230,7 @@ _TOOL_LIMITERS_LOCK = threading.Lock()
 _METRICS_LOCK = threading.Lock()
 _TOOL_CALL_COUNTS: dict[tuple[str, str], int] = {}
 _TOOL_LATENCIES_MS: dict[str, deque[float]] = {}
+IPC_CAPABILITY_CACHE_TTL_SEC = 1.0
 
 
 def _tool_limiter(tool_name: str) -> anyio.CapacityLimiter | None:
@@ -511,8 +512,11 @@ def _ipc_runtime_allows_tool(tool_name: str, state: KiCadIpcCapabilityState) -> 
     return state.reachable
 
 
-def _filter_ipc_runtime_tools(tools: list[mcp_types.Tool]) -> list[mcp_types.Tool]:
-    state = get_ipc_capability_state()
+def _filter_ipc_runtime_tools(
+    tools: list[mcp_types.Tool],
+    state: KiCadIpcCapabilityState | None = None,
+) -> list[mcp_types.Tool]:
+    state = state or get_ipc_capability_state()
     return [tool for tool in tools if _ipc_runtime_allows_tool(tool.name, state)]
 
 
@@ -530,6 +534,8 @@ class KiCadFastMCP(FastMCP):
     _lazy_registration_thread: threading.Thread | None = None
     _telemetry_catalog_hash: str | None = None
     _telemetry_kicad_version: str | None = None
+    _ipc_capability_state: KiCadIpcCapabilityState | None = None
+    _ipc_capability_checked_at: float = 0.0
 
     def set_lazy_registration(self, register: Callable[[], None]) -> None:
         """Defer heavy tool/resource registration until after stdio initialize can bind."""
@@ -622,7 +628,7 @@ class KiCadFastMCP(FastMCP):
         mode = getattr(self, "operating_mode", active_operating_mode())
         tools = filter_tools_for_mode(tools, mode)
         if getattr(self, "filter_runtime_tools", True):
-            tools = _filter_ipc_runtime_tools(tools)
+            tools = _filter_ipc_runtime_tools(tools, self._runtime_ipc_capability_state())
         if mode is OperatingMode.EXPERIMENTAL:
             return tools
         if (
@@ -633,6 +639,17 @@ class KiCadFastMCP(FastMCP):
         return [
             tool for tool in tools if getattr(tool, "name", None) not in EXPERIMENTAL_TOOL_NAMES
         ]
+
+    def _runtime_ipc_capability_state(self) -> KiCadIpcCapabilityState:
+        """Return a short-lived KiCad IPC capability snapshot for discovery filtering."""
+        now = time.monotonic()
+        cached = getattr(self, "_ipc_capability_state", None)
+        checked_at = getattr(self, "_ipc_capability_checked_at", 0.0)
+        if cached is None or now - checked_at > IPC_CAPABILITY_CACHE_TTL_SEC:
+            cached = get_ipc_capability_state()
+            self._ipc_capability_state = cached
+            self._ipc_capability_checked_at = now
+        return cached
 
     def list_tools_sync(self) -> list[mcp_types.Tool]:
         """List filtered tools without needing to drive an asyncio event loop."""

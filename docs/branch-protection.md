@@ -16,8 +16,9 @@ gh api -X PUT /repos/oaslananka/kicad-mcp/rulesets/<id> --input .github/rulesets
 ```
 
 The current policy requires pull requests, one review, code owner review,
-signed commits, non-fast-forward protection, and the current monorepo workflow
-check-run contexts listed in `docs/architecture/branch-protection.md`.
+signed commits, linear history, non-fast-forward protection, and the required
+CI, Gitleaks, and CodeQL check-run contexts listed in
+`.github/rulesets/main.json`.
 
 When a required workflow job name changes, update the root branch-protection
 document and `.github/rulesets/main.json` together before applying the ruleset.

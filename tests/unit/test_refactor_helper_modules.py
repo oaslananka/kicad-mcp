@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 import subprocess
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -142,8 +143,9 @@ def test_gate_history_records_trends_and_regressions(tmp_path: Path) -> None:
 
 def test_gate_history_rejects_newer_schema(tmp_path: Path) -> None:
     db_path = tmp_path / "future_gate_history.db"
-    with sqlite3.connect(db_path) as db:
-        db.execute("PRAGMA user_version = 999")
+    with closing(sqlite3.connect(db_path)) as db:
+        with db:
+            db.execute("PRAGMA user_version = 999")
 
     with pytest.raises(RuntimeError, match="newer than this server supports"):
         GateHistory(db_path)._init()

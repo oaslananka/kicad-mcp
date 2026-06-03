@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from contextlib import closing
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -46,54 +47,56 @@ class GateHistory:
         return history
 
     def _init(self) -> None:
-        with sqlite3.connect(self.db_path) as db:
-            version = int(db.execute("PRAGMA user_version").fetchone()[0])
-            if version > SCHEMA_VERSION:
-                raise RuntimeError(
-                    f"Gate history schema version {version} is newer than this server supports."
+        with closing(sqlite3.connect(self.db_path)) as db:
+            with db:
+                version = int(db.execute("PRAGMA user_version").fetchone()[0])
+                if version > SCHEMA_VERSION:
+                    raise RuntimeError(
+                        f"Gate history schema version {version} is newer than this server supports."
+                    )
+                db.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS gate_history (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        timestamp TEXT NOT NULL,
+                        gate_name TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        issue_count INTEGER NOT NULL,
+                        auto_fixed INTEGER NOT NULL,
+                        payload TEXT NOT NULL
+                    )
+                    """
                 )
-            db.execute(
-                """
-                CREATE TABLE IF NOT EXISTS gate_history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    timestamp TEXT NOT NULL,
-                    gate_name TEXT NOT NULL,
-                    status TEXT NOT NULL,
-                    issue_count INTEGER NOT NULL,
-                    auto_fixed INTEGER NOT NULL,
-                    payload TEXT NOT NULL
-                )
-                """
-            )
-            db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+                db.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
     def record(self, outcome: GateOutcome, auto_fixed: int = 0) -> None:
         issue_count = 0 if outcome.status == "PASS" else max(1, len(outcome.details))
-        with sqlite3.connect(self.db_path) as db:
-            db.execute(
-                """
-                INSERT INTO gate_history
-                    (timestamp, gate_name, status, issue_count, auto_fixed, payload)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    datetime.now(UTC).isoformat(),
-                    outcome.name,
-                    outcome.status,
-                    issue_count,
-                    auto_fixed,
-                    json.dumps(
-                        {
-                            "summary": outcome.summary,
-                            "details": outcome.details,
-                        },
-                        sort_keys=True,
+        with closing(sqlite3.connect(self.db_path)) as db:
+            with db:
+                db.execute(
+                    """
+                    INSERT INTO gate_history
+                        (timestamp, gate_name, status, issue_count, auto_fixed, payload)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        datetime.now(UTC).isoformat(),
+                        outcome.name,
+                        outcome.status,
+                        issue_count,
+                        auto_fixed,
+                        json.dumps(
+                            {
+                                "summary": outcome.summary,
+                                "details": outcome.details,
+                            },
+                            sort_keys=True,
+                        ),
                     ),
-                ),
-            )
+                )
 
     def trend(self, gate_name: str, last_n: int = 10) -> list[GateHistoryRecord]:
-        with sqlite3.connect(self.db_path) as db:
+        with closing(sqlite3.connect(self.db_path)) as db:
             rows = db.execute(
                 """
                 SELECT timestamp, gate_name, status, issue_count, auto_fixed
@@ -116,7 +119,7 @@ class GateHistory:
         ]
 
     def latest(self, last_n: int = 10) -> list[GateHistoryRecord]:
-        with sqlite3.connect(self.db_path) as db:
+        with closing(sqlite3.connect(self.db_path)) as db:
             rows = db.execute(
                 """
                 SELECT timestamp, gate_name, status, issue_count, auto_fixed
@@ -139,7 +142,7 @@ class GateHistory:
 
     def regression_check(self) -> list[str]:
         warnings: list[str] = []
-        with sqlite3.connect(self.db_path) as db:
+        with closing(sqlite3.connect(self.db_path)) as db:
             names = [row[0] for row in db.execute("SELECT DISTINCT gate_name FROM gate_history")]
             for name in names:
                 rows = db.execute(

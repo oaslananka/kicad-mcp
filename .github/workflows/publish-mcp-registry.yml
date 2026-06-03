@@ -1,0 +1,95 @@
+name: Publish MCP Registry
+
+on:
+  pull_request:
+    paths:
+      - server.json
+      - mcp.json
+      - pyproject.toml
+      - src/kicad_mcp/__init__.py
+      - scripts/publish_mcp_registry.py
+      - scripts/validate_mcp_manifest.py
+      - .github/workflows/publish-mcp-registry.yml
+      - docs/submission/openai-mcp-registry.md
+      - PUBLIC_LISTING.md
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Validate and print the registry payload without publishing.
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-mcp-registry-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  MCP_PUBLISHER_VERSION: v1.7.9
+
+jobs:
+  dry-run:
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == true)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          enable-cache: true
+          version-file: uv.toml
+      - run: uv sync --all-extras --frozen
+      - run: uv run --all-extras python scripts/validate_mcp_manifest.py server.json
+      - run: uv run --all-extras python scripts/publish_mcp_registry.py --dry-run
+
+  publish:
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.dry_run != true)
+    runs-on: ubuntu-24.04
+    environment: mcp-registry
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          enable-cache: true
+          version-file: uv.toml
+      - run: uv sync --all-extras --frozen
+      - name: Install mcp-publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz" -o mcp-publisher.tar.gz
+          tar -xzf mcp-publisher.tar.gz mcp-publisher
+          chmod +x mcp-publisher
+          mkdir -p "$HOME/.local/bin"
+          mv mcp-publisher "$HOME/.local/bin/mcp-publisher"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: uv run --all-extras python scripts/validate_mcp_manifest.py server.json
+      - name: Verify package artifacts before registry publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")"
+
+          for attempt in {1..30}; do
+            if python -c "import json, tomllib, urllib.request; version = tomllib.load(open('pyproject.toml', 'rb'))['project']['version']; payload = json.load(urllib.request.urlopen(f'https://pypi.org/pypi/kicad-mcp-pro/{version}/json', timeout=30)); assert payload['info']['version'] == version" \
+              && npm view "kicad-mcp-pro@${version}" version --json \
+              && docker buildx imagetools inspect "ghcr.io/oaslananka/kicad-mcp-pro:${version}"; then
+              exit 0
+            fi
+            echo "Package artifacts for ${version} are not ready yet (attempt ${attempt}/30)."
+            sleep 20
+          done
+
+          echo "Package artifacts for ${version} were not available after waiting." >&2
+          exit 1
+      - run: uv run --all-extras python scripts/publish_mcp_registry.py
