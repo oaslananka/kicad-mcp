@@ -447,7 +447,6 @@ def validate_compatibility_matrix() -> list[str]:
     root_pkg = _read_json(REPO_ROOT / "package.json")
     pyproject = _pyproject()
     server_json = _read_json(MCP_ROOT / "server.json")
-    mcp_json = _read_json(MCP_ROOT / "mcp.json")
 
     mcp_product = matrix["products"]["kicad-mcp-pro"]
 
@@ -456,7 +455,6 @@ def validate_compatibility_matrix() -> list[str]:
         ("root pnpm range", matrix["pnpm"]["range"], root_pkg["engines"]["pnpm"]),
         ("kicad-mcp-pro version", mcp_product["version"], pyproject["project"]["version"]),
         ("kicad-mcp-pro server.json version", mcp_product["version"], server_json["version"]),
-        ("kicad-mcp-pro mcp.json version", mcp_product["version"], mcp_json["version"]),
         ("Python range", matrix["python"]["range"], pyproject["project"]["requires-python"]),
     ]
     for label, expected, actual in expected_pairs:

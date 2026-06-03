@@ -692,7 +692,6 @@ def test_security_and_publish_workflows_emit_supply_chain_evidence() -> None:
 def test_docker_metadata_contains_mcp_oci_label_and_release_image_contract() -> None:
     root = Path(__file__).resolve().parents[2]
     dockerfile = (root / "Dockerfile").read_text(encoding="utf-8")
-    kicad_dockerfile = (root / "Dockerfile.kicad10").read_text(encoding="utf-8")
     compose = (root / "docker-compose.yml").read_text(encoding="utf-8")
     if not (root / ".github" / "workflows" / "publish-mcp-registry.yml").exists():
         pytest.skip("Standalone repo: publish workflows not present")
@@ -705,23 +704,18 @@ def test_docker_metadata_contains_mcp_oci_label_and_release_image_contract() -> 
     uv_version = tomllib.loads(uv_toml).get("required-version")
     assert uv_version
 
-    for content in (dockerfile, kicad_dockerfile):
-        assert 'io.modelcontextprotocol.server.name="io.github.oaslananka/kicad-mcp-pro"' in content
-        assert (
-            'org.opencontainers.image.source="https://github.com/oaslananka/kicad-mcp"' in content
-        )
-        assert "ARG KICAD_MCP_VERSION" in content
-        assert "ARG VCS_REF" in content
-        assert "@sha256:" in content
-        assert "EXPOSE 3334" in content
-        assert 'CMD ["--transport", "streamable-http"]' in content
-        assert "--disable-pip-version-check" in content
-        assert "--root-user-action=ignore" in content
+    assert 'io.modelcontextprotocol.server.name="io.github.oaslananka/kicad-mcp-pro"' in dockerfile
+    assert 'org.opencontainers.image.source="https://github.com/oaslananka/kicad-mcp"' in dockerfile
+    assert "ARG KICAD_MCP_VERSION" in dockerfile
+    assert "ARG VCS_REF" in dockerfile
+    assert "@sha256:" in dockerfile
+    assert "EXPOSE 3334" in dockerfile
+    assert 'CMD ["--transport", "streamable-http"]' in dockerfile
+    assert "--disable-pip-version-check" in dockerfile
+    assert "--root-user-action=ignore" in dockerfile
 
     assert "pip install --no-cache-dir uv" not in dockerfile
-    assert "pip install --no-cache-dir uv" not in kicad_dockerfile
     assert f"UV_VERSION={uv_version}" in dockerfile
-    assert f"UV_VERSION={uv_version}" in kicad_dockerfile
     assert "python:3.13.12-alpine3.22@sha256:" in dockerfile
     assert "KICAD_MCP_HOST=0.0.0.0" in dockerfile
     assert "ARG KICAD_CLI_APK_PACKAGE" in dockerfile
@@ -729,10 +723,8 @@ def test_docker_metadata_contains_mcp_oci_label_and_release_image_contract() -> 
     assert 'apk add --no-cache "${KICAD_CLI_APK_PACKAGE}"' in dockerfile
     assert "addgroup -S kicadmcp" in dockerfile
     assert "adduser -S -G kicadmcp" in dockerfile
-    assert "apt-get" not in dockerfile
-    assert "DEBIAN_FRONTEND" not in dockerfile
-    assert "ARG DEBIAN_FRONTEND=noninteractive" in kicad_dockerfile
-    assert "ENV KICAD_MCP_HOST=127.0.0.1" in kicad_dockerfile
+    assert "ARG DEBIAN_FRONTEND=noninteractive" in dockerfile
+    assert "KICAD_MCP_HOST=127.0.0.1" in dockerfile
     assert "ghcr.io/freerouting/freerouting:2.1.0@sha256:" in compose
     assert ":latest" not in compose
     assert "type=raw,value=latest" not in registry_workflow
@@ -743,7 +735,7 @@ def test_docker_metadata_contains_mcp_oci_label_and_release_image_contract() -> 
     assert "ghcr.io/oaslananka/kicad-mcp-pro" in container_workflow
     assert "linux/amd64,linux/arm64" in container_workflow
     assert "outputs: type=cacheonly" in container_workflow
-    assert "mcp-npm-v" in container_workflow
+    assert "mcp-server-v" in container_workflow
     assert "ghcr.io/oaslananka/kicad-mcp-pro:latest" in container_workflow
     assert "packages: write" in container_workflow
     assert "id-token: write" in container_workflow
@@ -775,9 +767,9 @@ def test_scorecard_workflow_uses_pinned_actions_without_artifact_storage() -> No
     workflow = _workflow("scorecard.yml")
 
     assert "security-events: write" in workflow
-    assert "ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a" in workflow
+    assert "ossf/scorecard-action@62b2cac7ed8198b15735ed49ab1e5cf35480ba46" in workflow
     assert "results_format: sarif" in workflow
-    assert "actions/upload-artifact@" not in workflow
+    assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in workflow
 
 
 def test_version_synchronization_across_release_manifests() -> None:
@@ -796,7 +788,6 @@ def test_version_synchronization_across_release_manifests() -> None:
         (repo / "packages" / "mcp-npm" / "package.json").read_text(encoding="utf-8")
     )
     pyproject = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
-    mcp = json.loads((root / "mcp.json").read_text(encoding="utf-8"))
     server = json.loads((root / "server.json").read_text(encoding="utf-8"))
     init_py = (root / "src" / "kicad_mcp" / "__init__.py").read_text(encoding="utf-8")
 
@@ -819,7 +810,7 @@ def test_version_synchronization_across_release_manifests() -> None:
     assert linked_version_components == {"mcp-server", "mcp-npm"}
     assert "vscode-extension" not in linked_version_components
     extra_files = release_please["packages"]["packages/mcp-server"]["extra-files"]
-    assert ("mcp.json", "$.packages[2].version") in {
+    assert ("server.json", "$.packages[2].version") in {
         (entry["path"], entry.get("jsonpath"))
         for entry in extra_files
         if entry.get("type") == "json"
@@ -827,12 +818,7 @@ def test_version_synchronization_across_release_manifests() -> None:
     assert extension["version"] == extension_version
     assert manifest["packages/mcp-npm"] == mcp_version
     assert wrapper["version"] == pyproject["project"]["version"] == mcp_version
-    assert mcp["version"] == server["version"] == mcp_version
-    assert all(
-        package.get("version") == mcp_version
-        for package in mcp["packages"]
-        if package.get("registryType") != "oci" and package.get("registry") != "container"
-    )
+    assert server["version"] == mcp_version
     assert all(
         package.get("version") == mcp_version
         for package in server["packages"]

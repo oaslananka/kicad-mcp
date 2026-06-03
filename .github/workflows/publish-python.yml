@@ -15,6 +15,10 @@ permissions:
 
 jobs:
   build:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'release' &&
+       startsWith(github.event.release.tag_name, 'mcp-server-v'))
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -118,7 +122,9 @@ jobs:
             --checksums release-evidence/SHA256SUMS.txt
 
   publish-pypi:
-    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi')
+    if: >-
+      (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'mcp-server-v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi')
     needs: build
     runs-on: ubuntu-24.04
     environment:

@@ -13,7 +13,6 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = ROOT / "pyproject.toml"
 PACKAGE_INIT = ROOT / "src" / "kicad_mcp" / "__init__.py"
-MCP_JSON = ROOT / "mcp.json"
 SERVER_JSON = ROOT / "server.json"
 NPM_WRAPPER_PACKAGE = ROOT / "packages" / "mcp-npm" / "package.json"
 MCP_SERVER_NAME = "io.github.oaslananka/kicad-mcp-pro"
@@ -239,7 +238,6 @@ def _planned_updates() -> dict[Path, str]:
     registry = _registry_metadata(metadata)
     return {
         PACKAGE_INIT: _updated_init(metadata, PACKAGE_INIT.read_text(encoding="utf-8")),
-        MCP_JSON: _dump_json(registry),
         SERVER_JSON: _dump_json(registry),
         NPM_WRAPPER_PACKAGE: _dump_json(
             _updated_npm_wrapper_package(metadata, _load_json(NPM_WRAPPER_PACKAGE))

@@ -11,8 +11,9 @@
   ],
   "packages": {
     ".": {
-      "release-type": "python",
       "package-name": "kicad-mcp-pro",
+      "tag-prefix": "mcp-server-v",
+      "release-type": "python",
       "component": "mcp-server",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
@@ -22,26 +23,6 @@
         },
         {
           "type": "json",
-          "path": "mcp.json",
-          "jsonpath": "$.version"
-        },
-        {
-          "type": "json",
-          "path": "mcp.json",
-          "jsonpath": "$.packages[0].version"
-        },
-        {
-          "type": "json",
-          "path": "mcp.json",
-          "jsonpath": "$.packages[1].version"
-        },
-        {
-          "type": "json",
-          "path": "mcp.json",
-          "jsonpath": "$.packages[2].version"
-        },
-        {
-          "type": "json",
           "path": "server.json",
           "jsonpath": "$.version"
         },
@@ -59,18 +40,25 @@
           "type": "json",
           "path": "server.json",
           "jsonpath": "$.packages[2].version"
+        },
+        {
+          "type": "json",
+          "path": "package.json",
+          "jsonpath": "$.version"
         }
       ]
     },
     "packages/mcp-npm": {
-      "release-type": "node",
       "package-name": "kicad-mcp-pro",
+      "tag-prefix": "mcp-npm-v",
+      "release-type": "node",
       "component": "mcp-npm",
       "changelog-path": "CHANGELOG.md"
     },
     "packages/protocol-schemas": {
-      "release-type": "node",
       "package-name": "@oaslananka/kicad-protocol-schemas",
+      "tag-prefix": "proto-v",
+      "release-type": "node",
       "component": "protocol-schemas",
       "changelog-path": "CHANGELOG.md"
     }

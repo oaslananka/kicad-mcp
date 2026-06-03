@@ -22,7 +22,7 @@ def _load_validator() -> object:
 
 def test_checked_mcp_manifest_is_valid() -> None:
     module = _load_validator()
-    manifest = module.validate_manifest_file(ROOT / "mcp.json")
+    manifest = module.validate_manifest_file(ROOT / "server.json")
 
     assert manifest["name"] == "io.github.oaslananka/kicad-mcp-pro"
     assert manifest["repository"]["url"] == "https://github.com/oaslananka/kicad-mcp"
@@ -42,7 +42,7 @@ def test_checked_mcp_manifest_is_valid() -> None:
 
 def test_checked_mcp_manifest_has_public_registry_listing_metadata() -> None:
     module = _load_validator()
-    manifest = module.validate_manifest_file(ROOT / "mcp.json")
+    manifest = module.validate_manifest_file(ROOT / "server.json")
     registry_meta = manifest["_meta"][REGISTRY_META_KEY]
 
     assert len(manifest["description"]) <= 100
@@ -119,10 +119,10 @@ def test_checked_mcp_manifest_has_public_registry_listing_metadata() -> None:
 
 def test_validator_rejects_missing_public_registry_metadata(tmp_path: Path) -> None:
     module = _load_validator()
-    manifest = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     manifest.pop("_meta", None)
     manifest.pop("icons", None)
-    path = tmp_path / "mcp.json"
+    path = tmp_path / "server.json"
     path.write_text(json.dumps(manifest), encoding="utf-8")
 
     errors = module.validate_manifest(module.load_manifest(path))
@@ -133,7 +133,7 @@ def test_validator_rejects_missing_public_registry_metadata(tmp_path: Path) -> N
 
 def test_validator_lints_against_official_schema() -> None:
     module = _load_validator()
-    manifest = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     manifest["icons"][0]["mimeType"] = "text/plain"
 
     errors = module.validate_manifest(manifest)
@@ -146,7 +146,7 @@ def test_validator_lints_against_official_schema() -> None:
 
 def test_validator_rejects_invalid_license_and_broken_metadata_link() -> None:
     module = _load_validator()
-    manifest = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     manifest["license"] = "MIT License"
     manifest["_meta"][REGISTRY_META_KEY]["changelog"] = (
         "https://github.com/oaslananka/kicad-mcp/blob/main/MISSING.md"
@@ -160,11 +160,11 @@ def test_validator_rejects_invalid_license_and_broken_metadata_link() -> None:
 
 def test_validator_rejects_missing_command(tmp_path: Path) -> None:
     module = _load_validator()
-    manifest = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     for package in manifest["packages"]:
         package.pop("command", None)
         package.pop("runtimeHint", None)
-    path = tmp_path / "mcp.json"
+    path = tmp_path / "server.json"
     path.write_text(json.dumps(manifest), encoding="utf-8")
 
     errors = module.validate_manifest(module.load_manifest(path))
@@ -174,9 +174,9 @@ def test_validator_rejects_missing_command(tmp_path: Path) -> None:
 
 def test_validator_rejects_duplicate_packages(tmp_path: Path) -> None:
     module = _load_validator()
-    manifest = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     manifest["packages"].append(dict(manifest["packages"][0]))
-    path = tmp_path / "mcp.json"
+    path = tmp_path / "server.json"
     path.write_text(json.dumps(manifest), encoding="utf-8")
 
     errors = module.validate_manifest(module.load_manifest(path))
@@ -186,7 +186,7 @@ def test_validator_rejects_duplicate_packages(tmp_path: Path) -> None:
 
 def test_validator_rejects_unsupported_transport() -> None:
     module = _load_validator()
-    manifest = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     manifest["packages"][0]["transport"]["type"] = "websocket"
 
     errors = module.validate_manifest(manifest)
@@ -196,7 +196,7 @@ def test_validator_rejects_unsupported_transport() -> None:
 
 def test_validator_rejects_oci_registry_base_url() -> None:
     module = _load_validator()
-    manifest = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     manifest["packages"][2]["registryBaseUrl"] = "https://ghcr.io"
 
     errors = module.validate_manifest(manifest)
@@ -209,7 +209,7 @@ def test_validator_rejects_oci_registry_base_url() -> None:
 
 def test_validator_rejects_missing_package_version() -> None:
     module = _load_validator()
-    manifest = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     manifest["packages"][0].pop("version")
 
     errors = module.validate_manifest(manifest)
@@ -219,7 +219,7 @@ def test_validator_rejects_missing_package_version() -> None:
 
 def test_validator_rejects_oci_package_with_version() -> None:
     module = _load_validator()
-    manifest = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     manifest["packages"][2]["version"] = "3.6.0"
 
     errors = module.validate_manifest(manifest)
@@ -229,7 +229,7 @@ def test_validator_rejects_oci_package_with_version() -> None:
 
 def test_validator_accepts_oci_without_version() -> None:
     module = _load_validator()
-    manifest = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     # OCI package (index 2) should not have version — confirm it passes
     assert "version" not in manifest["packages"][2]
 
@@ -240,7 +240,7 @@ def test_validator_accepts_oci_without_version() -> None:
 
 def test_validator_accepts_oci_identifier_with_digest() -> None:
     module = _load_validator()
-    manifest = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     digest = "a" * 64
     manifest["packages"][2]["identifier"] = f"ghcr.io/oaslananka/kicad-mcp-pro@sha256:{digest}"
 
@@ -251,7 +251,7 @@ def test_validator_accepts_oci_identifier_with_digest() -> None:
 
 def test_validator_accepts_oci_identifier_with_single_repository_segment() -> None:
     module = _load_validator()
-    manifest = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     manifest["packages"][2]["identifier"] = "ghcr.io/kicad-mcp-pro:3.4.0"
 
     errors = module.validate_manifest(manifest)
@@ -270,7 +270,7 @@ def test_validator_accepts_oci_identifier_with_single_repository_segment() -> No
 )
 def test_validator_rejects_malformed_oci_identifier(identifier: str) -> None:
     module = _load_validator()
-    manifest = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     manifest["packages"][2]["identifier"] = identifier
 
     errors = module.validate_manifest(manifest)

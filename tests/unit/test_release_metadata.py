@@ -74,7 +74,7 @@ def test_release_metadata_is_synchronised() -> None:
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     version = pyproject["project"]["version"]
     server_json = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
-    mcp_json = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    mcp_json = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     npm_wrapper = json.loads((WRAPPER_ROOT / "package.json").read_text(encoding="utf-8"))
     package_init = (ROOT / "src" / "kicad_mcp" / "__init__.py").read_text(encoding="utf-8")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")

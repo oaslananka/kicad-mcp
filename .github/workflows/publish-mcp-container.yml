@@ -4,7 +4,6 @@ on:
   pull_request:
     paths:
       - Dockerfile
-      - Dockerfile.kicad10
       - docker-entrypoint.sh
       - pyproject.toml
       - uv.lock
@@ -35,6 +34,11 @@ env:
 
 jobs:
   build:
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'release' &&
+       startsWith(github.event.release.tag_name, 'mcp-server-v'))
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -59,8 +63,8 @@ jobs:
         with:
           images: ${{ env.GHCR_IMAGE }}
           tags: |
-            type=match,pattern=mcp-npm-v(.*),group=1
-            type=raw,value=latest,enable=${{ github.event_name == 'release' && startsWith(github.event.release.tag_name, 'mcp-npm-v') }}
+            type=match,pattern=mcp-server-v(.*),group=1
+            type=raw,value=latest,enable=${{ github.event_name == 'release' && startsWith(github.event.release.tag_name, 'mcp-server-v') }}
 
       - uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.publish != true)
