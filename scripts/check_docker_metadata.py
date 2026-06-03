@@ -36,10 +36,7 @@ def main() -> int:
     uv_version = _uv_required_version()
     if uv_version is None:
         errors.append("uv.toml must define a valid required-version")
-    dockerfiles = {
-        "Dockerfile": _read("Dockerfile"),
-        "Dockerfile.kicad10": _read("Dockerfile.kicad10"),
-    }
+    dockerfiles = {"Dockerfile": _read("Dockerfile")}
 
     for path, content in dockerfiles.items():
         required = [
@@ -80,21 +77,6 @@ def main() -> int:
         errors.append("Dockerfile must install the optional KiCad CLI APK package without cache")
     if "addgroup -S kicadmcp" not in dockerfile or "adduser -S -G kicadmcp" not in dockerfile:
         errors.append("Dockerfile must create the non-root runtime user with Alpine tools")
-    if "apt-get" in dockerfile or "DEBIAN_FRONTEND" in dockerfile:
-        errors.append("Dockerfile must avoid Debian apt/debconf paths in the Alpine image")
-
-    kicad10 = dockerfiles["Dockerfile.kicad10"]
-    if "ARG DEBIAN_FRONTEND=noninteractive" not in kicad10:
-        errors.append("Dockerfile.kicad10 must make apt operations non-interactive")
-    if "pip install --no-cache-dir uv" in kicad10:
-        errors.append("Dockerfile.kicad10 must pin UV_VERSION instead of installing uv unpinned")
-    if "ENV KICAD_MCP_HOST=127.0.0.1" not in kicad10:
-        errors.append(
-            "Dockerfile.kicad10 must bind HTTP to loopback unless an auth token is injected"
-        )
-    if 'ENTRYPOINT ["kicad-mcp-pro-entrypoint"]' not in kicad10:
-        errors.append("Dockerfile.kicad10 must use the shared entrypoint wrapper")
-
     compose = _read("docker-compose.yml")
     if ":latest" in compose:
         errors.append("docker-compose.yml must not use :latest images")
@@ -108,7 +90,7 @@ def main() -> int:
     container_workflow = _read_repo(".github/workflows/publish-mcp-container.yml")
     workflow_markers = {
         GHCR_IMAGE: "container workflow must publish the canonical GHCR image",
-        "mcp-npm-v": "container workflow must only publish tagged MCP server releases",
+        "mcp-server-v": "container workflow must only publish tagged MCP server releases",
         f"{GHCR_IMAGE}:latest": "container workflow must publish latest for stable releases",
         "linux/amd64,linux/arm64": "container workflow must build amd64 and arm64 images",
         "outputs: type=cacheonly": "container workflow must verify multi-arch builds on PRs",

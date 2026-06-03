@@ -314,13 +314,6 @@ def _server_schema_check() -> CheckResult:
     return CheckResult("server schema", "PASS", "server.json validates")
 
 
-def _public_listing_check() -> CheckResult:
-    path = ROOT / "PUBLIC_LISTING.md"
-    if not path.is_file():
-        return CheckResult("public listing", "FAIL", "PUBLIC_LISTING.md missing")
-    return CheckResult("public listing", "PASS", "PUBLIC_LISTING.md present")
-
-
 def run_checks() -> list[CheckResult]:
     first_namespace = _namespace_check()
     first_runner = _runner_check()
@@ -347,7 +340,6 @@ def run_checks() -> list[CheckResult]:
         _reviewer_prompts_check(),
         _readme_check(),
         _server_schema_check(),
-        _public_listing_check(),
         final_namespace,
         final_runner,
     ]

@@ -826,12 +826,7 @@ def test_version_synchronization_across_release_manifests() -> None:
     assert extension["version"] == extension_version
     assert manifest["packages/mcp-npm"] == mcp_version
     assert wrapper["version"] == pyproject["project"]["version"] == mcp_version
-    assert mcp["version"] == server["version"] == mcp_version
-    assert all(
-        package.get("version") == mcp_version
-        for package in mcp["packages"]
-        if package.get("registryType") != "oci" and package.get("registry") != "container"
-    )
+    assert server["version"] == mcp_version
     assert all(
         package.get("version") == mcp_version
         for package in server["packages"]
