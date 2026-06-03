@@ -3,7 +3,7 @@
   "name": "io.github.oaslananka/kicad-mcp-pro",
   "title": "KiCad MCP Pro",
   "description": "A Model Context Protocol server for KiCad EDA workflows.",
-  "version": "3.6.0",
+  "version": "3.7.0",
   "repository": {
     "url": "https://github.com/oaslananka/kicad-mcp",
     "source": "github",
@@ -31,7 +31,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "kicad-mcp-pro",
-      "version": "3.6.0",
+      "version": "3.7.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -41,7 +41,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "kicad-mcp-pro",
-      "version": "3.6.0",
+      "version": "3.7.0",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
@@ -49,7 +49,7 @@
     },
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/oaslananka/kicad-mcp-pro:3.6.0",
+      "identifier": "ghcr.io/oaslananka/kicad-mcp-pro:3.7.0",
       "registry": "container",
       "image": "ghcr.io/oaslananka/kicad-mcp-pro",
       "runtimeHint": "docker",
