@@ -40,7 +40,7 @@ def test_publish_adapter_dry_run_success(monkeypatch) -> None:
     monkeypatch.delenv("MCP_REGISTRY_URL", raising=False)
     monkeypatch.delenv("MCP_REGISTRY_TOKEN", raising=False)
 
-    result = module.publish_manifest(ROOT / "mcp.json", dry_run=True)
+    result = module.publish_manifest(ROOT / "server.json", dry_run=True)
 
     assert result["dry_run"] is True
     assert result["target"] == "generic"
@@ -54,7 +54,7 @@ def test_publish_adapter_fails_without_token_on_real_publish(monkeypatch) -> Non
     monkeypatch.delenv("MCP_REGISTRY_TOKEN", raising=False)
 
     try:
-        module.publish_manifest(ROOT / "mcp.json", dry_run=False)
+        module.publish_manifest(ROOT / "server.json", dry_run=False)
     except module.PublishError as exc:
         assert "MCP_REGISTRY_TOKEN is required" in str(exc)
     else:
@@ -68,7 +68,7 @@ def test_publish_adapter_fails_without_url_for_generic_target(monkeypatch) -> No
     monkeypatch.delenv("MCP_REGISTRY_URL", raising=False)
 
     try:
-        module.publish_manifest(ROOT / "mcp.json", dry_run=False)
+        module.publish_manifest(ROOT / "server.json", dry_run=False)
     except module.PublishError as exc:
         assert str(exc) == module.NOT_CONFIGURED
     else:
@@ -78,8 +78,8 @@ def test_publish_adapter_fails_without_url_for_generic_target(monkeypatch) -> No
 def test_publish_adapter_fails_for_invalid_manifest(tmp_path: Path, monkeypatch) -> None:
     module = _load_publisher()
     monkeypatch.setenv("MCP_REGISTRY_TARGET", "generic")
-    path = tmp_path / "mcp.json"
-    manifest = json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))
+    path = tmp_path / "server.json"
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     manifest.pop("packages")
     path.write_text(json.dumps(manifest), encoding="utf-8")
 

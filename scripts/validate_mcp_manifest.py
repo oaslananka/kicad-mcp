@@ -16,7 +16,7 @@ import jsonschema
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = ROOT
-DEFAULT_MANIFEST = ROOT / "mcp.json"
+DEFAULT_MANIFEST = ROOT / "server.json"
 SERVER_SCHEMA = ROOT / "scripts" / "schemas" / "server.schema.json"
 SUPPORTED_TRANSPORTS = frozenset({"stdio", "streamable-http", "sse"})
 NAME_RE = re.compile(r"^[a-zA-Z0-9.-]+/[a-zA-Z0-9._-]+$")

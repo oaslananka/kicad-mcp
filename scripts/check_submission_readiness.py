@@ -155,7 +155,6 @@ def _version_check() -> CheckResult:
     versions = {
         "pyproject.toml": pyproject["project"]["version"],
         "server.json": json.loads((ROOT / "server.json").read_text(encoding="utf-8"))["version"],
-        "mcp.json": json.loads((ROOT / "mcp.json").read_text(encoding="utf-8"))["version"],
     }
     init_text = (ROOT / "src" / "kicad_mcp" / "__init__.py").read_text(encoding="utf-8")
     match = re.search(r'__version__\s*=\s*"([^"]+)"', init_text)

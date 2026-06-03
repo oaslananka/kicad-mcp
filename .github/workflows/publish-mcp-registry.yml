@@ -4,14 +4,12 @@ on:
   pull_request:
     paths:
       - server.json
-      - mcp.json
       - pyproject.toml
       - src/kicad_mcp/__init__.py
       - scripts/publish_mcp_registry.py
       - scripts/validate_mcp_manifest.py
       - .github/workflows/publish-mcp-registry.yml
       - docs/submission/openai-mcp-registry.md
-      - PUBLIC_LISTING.md
   release:
     types: [published]
   workflow_dispatch:
@@ -48,7 +46,9 @@ jobs:
       - run: uv run --all-extras python scripts/publish_mcp_registry.py --dry-run
 
   publish:
-    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.dry_run != true)
+    if: >-
+      (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'mcp-server-v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.dry_run != true)
     runs-on: ubuntu-24.04
     environment: mcp-registry
     permissions:

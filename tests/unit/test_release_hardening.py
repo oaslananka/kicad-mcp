@@ -796,7 +796,6 @@ def test_version_synchronization_across_release_manifests() -> None:
         (repo / "packages" / "mcp-npm" / "package.json").read_text(encoding="utf-8")
     )
     pyproject = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
-    mcp = json.loads((root / "mcp.json").read_text(encoding="utf-8"))
     server = json.loads((root / "server.json").read_text(encoding="utf-8"))
     init_py = (root / "src" / "kicad_mcp" / "__init__.py").read_text(encoding="utf-8")
 
@@ -819,7 +818,7 @@ def test_version_synchronization_across_release_manifests() -> None:
     assert linked_version_components == {"mcp-server", "mcp-npm"}
     assert "vscode-extension" not in linked_version_components
     extra_files = release_please["packages"]["packages/mcp-server"]["extra-files"]
-    assert ("mcp.json", "$.packages[2].version") in {
+    assert ("server.json", "$.packages[2].version") in {
         (entry["path"], entry.get("jsonpath"))
         for entry in extra_files
         if entry.get("type") == "json"
