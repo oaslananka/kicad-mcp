@@ -22,13 +22,12 @@ skipping the scan.
 
 ## Dependency Updates
 
-Renovate remains responsible for security updates and alerts. Renovate handles
-regular version update PRs using `renovate.json`.
+Dependabot remains responsible for security updates and regular dependency
+version PRs using `.github/dependabot.yml`.
 
 Patch and minor updates for development tooling and GitHub Actions may automerge
 only after protected checks pass. Runtime dependencies, major updates, and core
-KiCad/MCP/Pydantic/Typer ecosystem updates require Dependency Dashboard approval
-and maintainer review.
+KiCad/MCP/Pydantic/Typer ecosystem updates require maintainer review.
 
 ## Security Scans
 

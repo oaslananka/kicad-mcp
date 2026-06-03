@@ -7,11 +7,55 @@ from pathlib import Path
 
 import pytest
 
+from kicad_mcp.ipc.capabilities import KiCadIpcCapabilityState
+from kicad_mcp.ipc.discovery import KiCadIpcEndpoint
 from kicad_mcp.server import build_server
 
 PERFORMANCE_CATALOG_PATH = Path(__file__).resolve().parents[2] / "performance" / "baselines.json"
 MEASUREMENT_OUTPUT_ENV = "KICAD_PERFORMANCE_MEASUREMENTS_JSON"
 TOOLS_LIST_METRIC = "mcp.tools_list.response_ms"
+
+
+def _unavailable_ipc_state() -> KiCadIpcCapabilityState:
+    """Return a deterministic unavailable IPC state for discovery tests."""
+    return KiCadIpcCapabilityState(
+        endpoint=KiCadIpcEndpoint(
+            socket_path=None,
+            source="default",
+            token_configured=False,
+            timeout_ms=10_000,
+        ),
+        reachable=False,
+        version=None,
+        api_version=None,
+        major_version=None,
+        live_pcb_context=False,
+        live_schematic_context=False,
+        operations={},
+        diagnostics=(),
+    )
+
+
+def test_tools_list_reuses_runtime_capability_probe(
+    monkeypatch: pytest.MonkeyPatch,
+    sample_project: Path,
+) -> None:
+    """Avoid repeated cold KiCad IPC probes during one tools/list burst."""
+    _ = sample_project
+    calls = 0
+
+    def fake_ipc_state() -> KiCadIpcCapabilityState:
+        nonlocal calls
+        calls += 1
+        return _unavailable_ipc_state()
+
+    monkeypatch.setattr("kicad_mcp.server.get_ipc_capability_state", fake_ipc_state)
+    server = build_server("full")
+
+    server.list_tools_sync()
+    server.list_tools_sync()
+
+    assert calls == 1
 
 
 @pytest.mark.benchmark

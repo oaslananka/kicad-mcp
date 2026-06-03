@@ -20,7 +20,7 @@ KiCad MCP Pro runs local automation against KiCad projects. The main risks are f
 
 - Project path resolution keeps normal writes inside the active project.
 - Optional bearer-token auth protects HTTP transport.
-- Renovate, CodeQL, Gitleaks, Scorecard, Trivy, Hadolint, Bandit, and pip-audit cover the main automated scan layers.
+- Dependabot, CodeQL, Gitleaks, Trivy, Hadolint, Bandit, and pip-audit cover the main automated scan layers.
 - SBOM, Sigstore signing, checksums, and GitHub artifact attestations accompany release artifacts.
 
 ## Reporting
