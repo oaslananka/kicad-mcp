@@ -58,8 +58,8 @@
     "release:dry-run": "corepack pnpm run metadata:check && corepack pnpm run release:check"
   },
   "devDependencies": {
-    "@commitlint/cli": "21.0.0",
-    "@commitlint/config-conventional": "21.0.0",
+    "@commitlint/cli": "21.0.2",
+    "@commitlint/config-conventional": "21.0.2",
     "husky": "9.1.7"
   },
   "engines": {
