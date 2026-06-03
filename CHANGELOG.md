@@ -10,6 +10,23 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.7.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.6.0...mcp-server-v3.7.0) (2026-06-03)
+
+
+### Features
+
+* initial migration from kicad-studio-kit monorepo ([#1](https://github.com/oaslananka/kicad-mcp/issues/1)) ([be9b16f](https://github.com/oaslananka/kicad-mcp/commit/be9b16f33aaea94fbea525edd173a93a7e3e5012))
+* publish protocol-schemas as public npm package ([f09a57e](https://github.com/oaslananka/kicad-mcp/commit/f09a57ebedeab9a28c5bab6f34052baf1a4aed49))
+
+
+### Bug Fixes
+
+* add repository.url for npm provenance verification ([42045f5](https://github.com/oaslananka/kicad-mcp/commit/42045f5d35404c22c3023806c1714e768ba4f1f0))
+* handle scoped tarball name mismatch in verify-npm-release, make publish idempotent ([#5](https://github.com/oaslananka/kicad-mcp/issues/5)) ([6e8f09b](https://github.com/oaslananka/kicad-mcp/commit/6e8f09b92fdae9ab0cd6f2a97ad2df26ccc2c731))
+* pass NPM_TOKEN as NODE_AUTH_TOKEN for publish ([48a27fa](https://github.com/oaslananka/kicad-mcp/commit/48a27fa4e5f26bf276076962446c150ccb22f4ec))
+* **protocol-schemas:** export package.json for require.resolve consumers ([e4c6f6f](https://github.com/oaslananka/kicad-mcp/commit/e4c6f6f75c70ea63eec5fd55063fcdc913e7ac94))
+* restore release readiness baseline ([bc08eca](https://github.com/oaslananka/kicad-mcp/commit/bc08eca753a32da76355ad1c1fb20a8ddcceb6b2)), closes [#6](https://github.com/oaslananka/kicad-mcp/issues/6)
+
 ## [3.6.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.5.2...mcp-server-v3.6.0) (2026-05-27)
 
 

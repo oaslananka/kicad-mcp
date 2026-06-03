@@ -10,6 +10,13 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.7.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-npm-v3.6.0...mcp-npm-v3.7.0) (2026-06-03)
+
+
+### Features
+
+* initial migration from kicad-studio-kit monorepo ([#1](https://github.com/oaslananka/kicad-mcp/issues/1)) ([be9b16f](https://github.com/oaslananka/kicad-mcp/commit/be9b16f33aaea94fbea525edd173a93a7e3e5012))
+
 ## [3.6.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-npm-v3.5.2...mcp-npm-v3.6.0) (2026-05-27)
 
 
