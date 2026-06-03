@@ -72,13 +72,7 @@ reserved for a future explicitly gated workflow.
 
 ## MCP Registry
 
-`server.json` is the official MCP registry manifest because the current MCP
-registry documentation points publishers at the `server.json` schema hosted by
-Model Context Protocol. `mcp.json` is kept as a compatibility manifest for
-clients and registries that still expect the older repository-root metadata
-shape.
-
-Both files must remain synchronized with:
+`server.json` is the official MCP registry manifest. It must remain synchronized with:
 
 - `pyproject.toml` project name and version
 - Canonical repository URL

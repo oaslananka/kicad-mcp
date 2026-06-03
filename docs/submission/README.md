@@ -1,7 +1,7 @@
 # Submission Readiness Checklist
 
 This page is the working index for public listing submissions.
-It links platform-specific instructions to the root listing source of truth: [`PUBLIC_LISTING.md`](../public-listing.md).
+It links platform-specific instructions to the listing source of truth: [`docs/public-listing.md`](../public-listing.md).
 Use this checklist before entering any external review form.
 
 ## Platform Documents
@@ -11,7 +11,7 @@ Use this checklist before entering any external review form.
 - [ ] Open [`openai-mcp-registry.md`](openai-mcp-registry.md) before publishing to the OpenAI/MCP registry.
 - [ ] Open [`reviewer-test-prompts.md`](reviewer-test-prompts.md) before sending reviewer instructions.
 - [ ] Open [`safety-and-permissions.md`](safety-and-permissions.md) before answering security questions.
-- [ ] Open [`PUBLIC_LISTING.md`](../public-listing.md) before recording submission status.
+- [ ] Open [`docs/public-listing.md`](../public-listing.md) before recording submission status.
 
 ## Identity Fields
 
@@ -30,11 +30,11 @@ Use this checklist before entering any external review form.
 
 ## Repository Evidence
 
-- [ ] Confirm `pyproject.toml` version matches `server.json`, `mcp.json`, and `src/kicad_mcp/__init__.py`.
+- [ ] Confirm `pyproject.toml` version matches `server.json` and `src/kicad_mcp/__init__.py`.
 - [ ] Confirm `server.json` declares `name` as `io.github.oaslananka/kicad-mcp-pro`.
-- [ ] Confirm `mcp.json` declares repository URL as `https://github.com/oaslananka/kicad-mcp`.
+- [ ] Confirm `server.json` declares repository URL as `https://github.com/oaslananka/kicad-mcp`.
 - [ ] Confirm README references the demo media slot `docs/assets/demo.gif`.
-- [ ] Confirm README links to `PUBLIC_LISTING.md`.
+- [ ] Confirm README links to the public listing page.
 - [ ] Confirm README links to the privacy policy.
 - [ ] Confirm `docs/privacy.md` states telemetry is disabled by default and optional OpenTelemetry export is explicit.
 - [ ] Confirm `docs/assets/icon.svg` exists and is the canonical vector icon.
@@ -108,7 +108,7 @@ Use this checklist before entering any external review form.
 
 ## Manual Submission Log
 
-- [ ] Record every submission in `PUBLIC_LISTING.md` after the external form is sent.
+- [ ] Record every submission in [`docs/public-listing.md`](../public-listing.md) after the external form is sent.
 - [ ] Record target name exactly as `Anthropic Connector Directory`, `ChatGPT Apps`, or `OpenAI/MCP Registry`.
 - [ ] Record submitted timestamp in UTC.
 - [ ] Record approved timestamp in UTC when approval arrives.
@@ -126,13 +126,10 @@ Use this checklist before entering any external review form.
 - [ ] Do not submit with any secret value in logs or screenshots.
 - [ ] Do not submit with old organization namespace strings.
 - [ ] Confirm CI and trusted publishing workflows use GitHub-hosted runners.
-- [ ] Do not submit before `PUBLIC_LISTING_READY.md` says `READY FOR SUBMISSION`.
-
 ## Final Evidence Controls
 
 - [ ] Confirm every platform-specific document has been reviewed in the same branch as the submission.
-- [ ] Confirm `PUBLIC_LISTING.md` is the only place where external submission status is recorded.
-- [ ] Confirm `PUBLIC_LISTING_READY.md` reflects the latest local gate result before merge.
+- [ ] Confirm [`docs/public-listing.md`](../public-listing.md) is the only place where external submission status is recorded.
 - [ ] Confirm the README public listing section links to the root status file.
 - [ ] Confirm the README documentation section does not duplicate the same public listing link.
 - [ ] Confirm the demo GIF exists locally and is committed.

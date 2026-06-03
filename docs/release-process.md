@@ -46,4 +46,4 @@ pnpm run metadata:sync
 pnpm run metadata:check
 ```
 
-`pyproject.toml` is the source of truth for `mcp.json` and `server.json`.
+`pyproject.toml` is the source of truth for `server.json`.

@@ -89,8 +89,8 @@ of these paths:
 - mount a host-managed KiCad install and set `KICAD_MCP_KICAD_CLI`;
 - build locally with `--build-arg KICAD_CLI_APK_PACKAGE=kicad` when the Alpine
   distribution package is acceptable for the target platform;
-- use `Dockerfile.kicad10` for CI images that extract an official KiCad 10
-  AppImage at build time.
+- build with `--build-arg KICAD_VERSION=kicad10` for CI images that extract an official KiCad 10
+  AppImage at build time (see [`Dockerfile multi-stage`](../../Dockerfile)).
 
 Redistributing images that bundle KiCad CLI brings KiCad's upstream license
 terms into the image supply chain. Review the official

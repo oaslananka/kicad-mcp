@@ -7,7 +7,7 @@ Use this document for the ChatGPT Apps submission path.
 - Dashboard URL: `https://platform.openai.com/apps`.
 - Use the OpenAI Developer Platform account controlled by Osman Aslan.
 - Track review status in the platform dashboard after submission.
-- Keep public status mirrored in `PUBLIC_LISTING.md`.
+- Keep public status mirrored in [`docs/public-listing.md`](../public-listing.md).
 
 ## Domain Verification
 
@@ -18,7 +18,7 @@ Use this document for the ChatGPT Apps submission path.
 - [ ] Keep the TXT record until the dashboard reports verified.
 - [ ] Do not put the TXT token into repository files.
 - [ ] If verification fails, check registrar DNS, Cloudflare proxy state, and record name.
-- [ ] Record verification completion in `PUBLIC_LISTING.md` notes.
+- [ ] Record verification completion in [`docs/public-listing.md`](../public-listing.md) notes.
 
 ## App Metadata
 
@@ -84,7 +84,7 @@ Use this document for the ChatGPT Apps submission path.
 - [ ] Attach only screenshots that avoid private paths and hostnames.
 - [ ] Use fixture project evidence for all reviewer tests.
 - [ ] Do not upload secrets, logs with tokens, or private KiCad designs.
-- [ ] Update `PUBLIC_LISTING.md` after submission.
+- [ ] Update [`docs/public-listing.md`](../public-listing.md) after submission.
 
 ## Final ChatGPT Apps Dashboard Controls
 
@@ -142,7 +142,7 @@ Use this document for the ChatGPT Apps submission path.
 - [ ] Confirm PyPI, GHCR, and documentation links match the current version being reviewed.
 - [ ] Confirm reviewer-facing copy remains in English at launch.
 - [ ] Confirm Turkish localization is described only as future work.
-- [ ] Confirm approval and rejection status are recorded in `PUBLIC_LISTING.md` after dashboard updates.
+- [ ] Confirm approval and rejection status are recorded in [`docs/public-listing.md`](../public-listing.md) after dashboard updates.
 - [ ] Confirm no private dashboard screenshots are committed.
 - [ ] Confirm no API keys, OAuth secrets, or auth cookies appear in evidence.
 - [ ] Confirm no customer board files are attached to the submission.

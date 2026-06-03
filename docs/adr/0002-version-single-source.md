@@ -10,14 +10,14 @@ The package exposes version metadata through Python imports, Python packaging me
 
 ## Decision
 
-`pyproject.toml` and `src/kicad_mcp/__init__.py` are the authoritative version sources. Generated public metadata in `mcp.json` and `server.json` is synchronized by `scripts/sync_mcp_metadata.py` and checked in CI with `pnpm run metadata:check`.
+`pyproject.toml` and `src/kicad_mcp/__init__.py` are the authoritative version sources. Generated public metadata in `server.json` is synchronized by `scripts/sync_mcp_metadata.py` and checked in CI with `pnpm run metadata:check`.
 
 ## Consequences
 
 - Release changes must update the Python package version and Python module version together.
-- `mcp.json` and `server.json` should be treated as generated metadata surfaces, not hand-edited version authorities.
+- `server.json` should be treated as a generated metadata surface, not a hand-edited version authority.
 - Pull requests must fail when metadata parity drifts.
 
 ## Verification
 
-`pnpm run metadata:check` exits with status 0, and `mcp.json`, `server.json`, `pyproject.toml`, and `src/kicad_mcp/__init__.py` report the same version.
+`pnpm run metadata:check` exits with status 0, and `server.json`, `pyproject.toml`, and `src/kicad_mcp/__init__.py` report the same version.
