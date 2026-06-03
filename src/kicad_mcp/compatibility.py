@@ -30,7 +30,7 @@ COMPATIBILITY_MATRIX: Final[dict[str, object]] = {
             },
         },
         "kicad-mcp-pro": {
-            "version": "3.7.0",
+            "version": "3.7.1",
             "compatibleExtension": {
                 "required": ">=1.0.0 <2.0.0",
                 "testedAgainst": "1.0.0",
