@@ -6,7 +6,7 @@ This document covers the registry publish path driven by `server.json`.
 
 - Use `server.json` as the single source of truth for registry metadata.
 - Do not hand-edit registry payloads after generation.
-- Keep `mcp.json` synchronized with `server.json` and `pyproject.toml`.
+- Keep `server.json` synchronized with `pyproject.toml`.
 - Version must match `src/kicad_mcp/__init__.py`.
 
 ## Verified Registry Status (2026-05-31)
@@ -26,12 +26,12 @@ version, tag, or release identity was changed.
 Findings:
 
 - The server **is** listed and active in the official registry, so the historical
-  "Not submitted" entry in `PUBLIC_LISTING.md` was inaccurate and has been corrected.
+  "Not submitted" entry in the public listing was inaccurate and has been corrected.
 - The listing is **stale**: the registry shows `2.1.0` while the current product line is
   `3.6.0` (PyPI already has `3.6.0`). The record predates the monorepo migration, so its
   `repository.url` still points at the legacy standalone repository and it advertises only
   the PyPI package.
-- `server.json` and `mcp.json` both validate against the official
+- `server.json` validates against the official
   `2025-12-11` `server.schema.json`, and `metadata:check` / `submission:check` pass, so the
   current manifest is publish-ready.
 
@@ -82,8 +82,8 @@ OIDC under the `oaslananka` namespace (`id-token: write`).
 
 - [ ] Run live publish only after dry-run output is reviewed.
 - [ ] Use the maintainer account controlled by Osman Aslan.
-- [ ] Record live publish UTC timestamp in `PUBLIC_LISTING.md`.
-- [ ] Record registry response URL in `PUBLIC_LISTING.md` only after it is public.
+- [ ] Record live publish UTC timestamp in [`docs/public-listing.md`](../public-listing.md).
+- [ ] Record registry response URL in [`docs/public-listing.md`](../public-listing.md) only after it is public.
 - [ ] Do not publish from a dirty working tree.
 - [ ] Do not publish with placeholder screenshots if the registry requires production media.
 
@@ -140,9 +140,9 @@ cosign verify ghcr.io/oaslananka/kicad-mcp-pro:${VERSION} \
 
 - [ ] Confirm `server.json` remains the registry payload source of truth.
 - [ ] Confirm `server.json` schema validation passes before dry run.
-- [ ] Confirm `mcp.json` stays synchronized with `server.json`.
-- [ ] Confirm `pyproject.toml` version matches both manifest files.
-- [ ] Confirm `src/kicad_mcp/__init__.py` version matches the manifests.
+- [ ] Confirm `server.json` stays synchronized with `pyproject.toml`.
+- [ ] Confirm `pyproject.toml` version matches `server.json`.
+- [ ] Confirm `src/kicad_mcp/__init__.py` version matches `server.json`.
 - [ ] Confirm PyPI package `kicad-mcp-pro` is reachable for the current version.
 - [ ] Confirm registry package transport is `stdio`.
 - [ ] Confirm registry package runtime hint is `uvx` for PyPI.
@@ -200,7 +200,7 @@ cosign verify ghcr.io/oaslananka/kicad-mcp-pro:${VERSION} \
 - [ ] Confirm no temporary payload files are left in the repository after publish.
 - [ ] Confirm local logs are redacted before copying into public issues.
 - [ ] Confirm live publish is postponed if network reachability is unstable.
-- [ ] Confirm the final outcome is reflected in `PUBLIC_LISTING.md`.
+- [ ] Confirm the final outcome is reflected in [`docs/public-listing.md`](../public-listing.md).
 - [ ] Confirm the next release repeats this checklist rather than copying stale evidence.
 - [ ] Confirm registry docs are updated if the registry schema version changes.
 - [ ] Confirm `scripts/schemas/server.schema.json` is updated only from the official schema.

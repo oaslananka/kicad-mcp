@@ -5,7 +5,7 @@ Use this document when submitting KiCad MCP Pro to the Anthropic Connector Direc
 ## Submission URL
 
 - Submit at `https://clau.de/mcp-directory-submission`.
-- Keep a copy of the submitted field values in `PUBLIC_LISTING.md`.
+- Keep a copy of the submitted field values in [`docs/public-listing.md`](../public-listing.md).
 - Use UTC timestamps for submitted and approved dates.
 - Do not paste secret values into the submission form.
 
@@ -78,7 +78,7 @@ Use this document when submitting KiCad MCP Pro to the Anthropic Connector Direc
 - [ ] Do not promise a fixed Anthropic approval date.
 - [ ] Check email and GitHub issues daily during the review period.
 - [ ] If rejected, copy only actionable technical requirements into a public issue.
-- [ ] If approved, update `PUBLIC_LISTING.md` with the public listing URL.
+- [ ] If approved, update [`docs/public-listing.md`](../public-listing.md) with the public listing URL.
 
 ## Rejection-Prevention Checklist
 
@@ -140,7 +140,7 @@ Use this document when submitting KiCad MCP Pro to the Anthropic Connector Direc
 - [ ] Confirm `pnpm run docs:tools:check` passes after tool metadata changes.
 - [ ] Confirm `uv run --all-extras properdocs build -f mkdocs.yml --strict` passes after docs edits.
 - [ ] Confirm `lychee --verbose --no-progress README.md docs/**/*.md` passes after link edits.
-- [ ] Confirm `server.json` and `mcp.json` versions match the package version.
+- [ ] Confirm `server.json` version matches the package version.
 - [ ] Confirm the PyPI package name remains `kicad-mcp-pro`.
 - [ ] Confirm the OCI image namespace remains `ghcr.io/oaslananka/kicad-mcp-pro`.
 - [ ] Confirm no retired owner namespace appears in copied form text.
@@ -149,7 +149,7 @@ Use this document when submitting KiCad MCP Pro to the Anthropic Connector Direc
 - [ ] Confirm optional Nexar or Freerouting notes do not imply default network egress.
 - [ ] Confirm the expected review timeline is recorded as an estimate, not a promise.
 - [ ] Confirm any rejection response is tracked in a GitHub issue before resubmission.
-- [ ] Confirm `PUBLIC_LISTING.md` is updated only after the form is actually sent.
+- [ ] Confirm [`docs/public-listing.md`](../public-listing.md) is updated only after the form is actually sent.
 - [ ] Confirm approval status is recorded only after the public listing URL is visible.
 - [ ] Confirm the maintainer identity is Osman Aslan with handle `oaslananka`.
 - [ ] Confirm the final submission packet contains this document, reviewer prompts, and safety statement.

@@ -87,13 +87,13 @@ docker build \
   -t kicad-mcp-pro:kicad-cli .
 ```
 
-For CI jobs that need a self-contained KiCad 10 CLI, use `Dockerfile.kicad10`.
+For CI jobs that need a self-contained KiCad 10 CLI, build with the `kicad10` variant.
 Pass an official Linux x86_64 KiCad 10 AppImage URL from the
 [KiCad Linux download page](https://www.kicad.org/download/linux/):
 
 ```bash
 docker build \
-  -f Dockerfile.kicad10 \
+  --build-arg KICAD_VERSION=kicad10 \
   --build-arg KICAD_APPIMAGE_URL="https://downloads.kicad.org/path/to/KiCad-10.x-x86_64.AppImage" \
   -t ghcr.io/oaslananka/kicad-mcp-pro:kicad10-ci .
 ```
