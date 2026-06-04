@@ -103,6 +103,9 @@ def parse_dru(content: str) -> tuple[SExprNode, str | None]:
         version = tokens[index + 2]
         index += 4
 
+    if index >= len(tokens):
+        return ["rules"], version
+
     node, next_index = _parse_expression(tokens, index)
     if next_index != len(tokens):
         raise ValueError("Unexpected trailing tokens in .kicad_dru content.")

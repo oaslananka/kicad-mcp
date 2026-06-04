@@ -1615,7 +1615,7 @@ def _normalize_schematic_wire_connectivity(content: str) -> str:
     uuid_map: dict[tuple[float, float, float, float], str] = {}
     for w in wires:
         key = (w["x1"], w["y1"], w["x2"], w["y2"])
-        if key in segments and "uuid" in w:
+        if "uuid" in w:
             uuid_map[key] = w["uuid"]
     updated = _remove_wire_blocks(content)
     for segment in deduped:
