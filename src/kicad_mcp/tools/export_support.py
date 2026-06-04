@@ -69,6 +69,7 @@ def _run_cli(*args: str, timeout: float | None = None) -> tuple[int, str, str]:
                         [str(cfg.kicad_cli), *args],
                         capture_output=True,
                         text=True,
+                        errors="replace",
                         timeout=timeout or cfg.cli_timeout,
                         check=False,
                     )

@@ -186,8 +186,10 @@ def test_cli_and_pcb_parser_telemetry_avoid_paths_and_content(
         text: bool,
         timeout: float,
         check: bool,
+        **kwargs: object,
     ) -> subprocess.CompletedProcess[str]:
         del capture_output, text, timeout, check
+        _ = kwargs
         return subprocess.CompletedProcess(args=args, returncode=0, stdout="", stderr="")
 
     monkeypatch.setattr(export_support.subprocess, "run", fake_run)

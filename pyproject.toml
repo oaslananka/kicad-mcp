@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kicad-mcp-pro"
-version = "3.7.3"
+version = "3.7.4"
 description = "A Model Context Protocol server for KiCad EDA workflows."
 readme = "README.md"
 license = { text = "MIT" }

@@ -71,8 +71,10 @@ def test_export_support_retries_transient_cli_errors(
         text: bool,
         timeout: float,
         check: bool,
+        **kwargs: object,
     ) -> subprocess.CompletedProcess[str]:
         del capture_output, text, timeout, check
+        _ = kwargs
         attempts.append(args)
         if len(attempts) == 1:
             return subprocess.CompletedProcess(
@@ -205,8 +207,10 @@ def test_schematic_transfer_parses_netlist_and_exports_map(
         text: bool,
         timeout: float,
         check: bool,
+        **kwargs: object,
     ) -> subprocess.CompletedProcess[str]:
         del capture_output, text, timeout, check
+        _ = kwargs
         out_path = Path(args[args.index("--output") + 1])
         out_path.write_text(netlist, encoding="utf-8")
         return subprocess.CompletedProcess(args=args, returncode=0, stdout="", stderr="")

@@ -140,6 +140,7 @@ def find_kicad_version(cli_path: Path) -> str | None:
             [str(cli_path), "--version"],
             capture_output=True,
             text=True,
+            errors="replace",
             timeout=10,
             check=False,
         )
@@ -176,6 +177,7 @@ def get_cli_capabilities(cli_path: Path) -> CliCapabilities:
                 command,
                 capture_output=True,
                 text=True,
+                errors="replace",
                 timeout=10,
                 check=False,
             )

@@ -263,6 +263,7 @@ def register(mcp: FastMCP) -> None:
                 cmd,
                 capture_output=True,
                 text=True,
+                errors="replace",
                 timeout=120,
             )
         except subprocess.TimeoutExpired:

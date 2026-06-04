@@ -262,6 +262,7 @@ class FreeRoutingRunner:
                 command,
                 capture_output=True,
                 text=True,
+                errors="replace",
                 timeout=timeout or cfg.freerouting_timeout_sec,
                 check=False,
             )

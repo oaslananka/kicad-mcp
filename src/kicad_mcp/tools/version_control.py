@@ -51,6 +51,7 @@ def _run_git(
         cwd=repo_dir,
         capture_output=True,
         text=True,
+        errors="replace",
         timeout=30,
         check=False,
     )

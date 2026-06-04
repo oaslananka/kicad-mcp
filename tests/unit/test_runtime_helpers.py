@@ -220,8 +220,10 @@ def test_cli_version_and_capabilities_are_detected(tmp_path: Path, monkeypatch) 
         text: bool,
         timeout: float,
         check: bool,
+        **kwargs: object,
     ) -> subprocess.CompletedProcess[str]:
         _ = (capture_output, text, timeout, check)
+        _ = kwargs
         if "--version" in cmd:
             return subprocess.CompletedProcess(cmd, 0, stdout="KiCad 10.0.1", stderr="")
         help_blob = "gerbers Gerber files positions ipc2581 odb ODB++ svg dxf step render spice"
@@ -259,8 +261,10 @@ def test_cli_capabilities_are_cached(tmp_path: Path, monkeypatch) -> None:
         text: bool,
         timeout: float,
         check: bool,
+        **kwargs: object,
     ) -> subprocess.CompletedProcess[str]:
         _ = (capture_output, text, timeout, check)
+        _ = kwargs
         calls.append(cmd)
         if "--version" in cmd:
             return subprocess.CompletedProcess(cmd, 0, stdout="KiCad 10.0.1", stderr="")
@@ -287,8 +291,10 @@ def test_cli_capabilities_cache_refreshes_when_binary_changes(tmp_path: Path, mo
         text: bool,
         timeout: float,
         check: bool,
+        **kwargs: object,
     ) -> subprocess.CompletedProcess[str]:
         _ = (capture_output, text, timeout, check)
+        _ = kwargs
         calls.append(cmd)
         if "--version" in cmd:
             return subprocess.CompletedProcess(cmd, 0, stdout="KiCad 10.0.1", stderr="")
