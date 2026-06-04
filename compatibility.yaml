@@ -581,7 +581,7 @@ products:
       testedAgainst: "3.5.2"
   kicad-mcp-pro:
     packagePath: "pyproject.toml"
-    version: "3.7.2"
+    version: "3.7.3"
     compatibleExtension:
       required: ">=1.0.0 <2.0.0"
       testedAgainst: "1.0.0"
