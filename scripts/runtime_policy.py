@@ -6,13 +6,15 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tomllib
+import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO
 
 import yaml
 
@@ -26,6 +28,7 @@ VSCODE_INSIDER_RELEASES_URL = (
 PYTHON_RELEASES_URL = "https://peps.python.org/api/python-releases.json"
 KICAD_LINUX_DOWNLOAD_URL = "https://www.kicad.org/download/linux/"
 HTTP_HEADERS = {"User-Agent": "kicad-mcp-runtime-drift/1.0"}
+GIT_EXECUTABLE = shutil.which("git") or "git"
 
 DEFAULT_VSCODE_CHANGELOG = (
     Path("apps/vscode-extension/CHANGELOG.md")
@@ -126,15 +129,22 @@ def _read_pyproject(path: Path) -> dict[str, Any]:
     return _read_toml_text(path.read_text(encoding="utf-8"))
 
 
-def _fetch_json(url: str) -> Any:
-    request = urllib.request.Request(url, headers=HTTP_HEADERS)
-    with urllib.request.urlopen(request, timeout=30) as response:
+def _validated_https_url(url: str) -> str:
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ValueError(f"Runtime policy fetches require https URLs, got {url!r}")
+    return url
+
+
+def _fetch_json(url: str) -> object:
+    request = urllib.request.Request(_validated_https_url(url), headers=HTTP_HEADERS)  # noqa: S310
+    with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
         return json.loads(response.read().decode("utf-8"))
 
 
 def _fetch_text(url: str) -> str:
-    request = urllib.request.Request(url, headers=HTTP_HEADERS)
-    with urllib.request.urlopen(request, timeout=30) as response:
+    request = urllib.request.Request(_validated_https_url(url), headers=HTTP_HEADERS)  # noqa: S310
+    with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
         return response.read().decode("utf-8", errors="replace")
 
 
@@ -309,7 +319,7 @@ def snapshot_from_repo(root: Path = REPO_ROOT) -> RuntimeSupportSnapshot:
 
 def _show_text(ref: str, path: Path) -> str:
     result = subprocess.run(
-        ["git", "show", f"{ref}:{path.as_posix()}"],
+        [GIT_EXECUTABLE, "show", f"{ref}:{path.as_posix()}"],
         cwd=REPO_ROOT,
         check=True,
         capture_output=True,
@@ -342,7 +352,7 @@ def snapshot_from_git_ref(ref: str) -> RuntimeSupportSnapshot:
 
 def _changed_files(base_ref: str) -> tuple[Path, ...]:
     result = subprocess.run(
-        ["git", "diff", "--name-only", f"{base_ref}...HEAD"],
+        [GIT_EXECUTABLE, "diff", "--name-only", f"{base_ref}...HEAD"],
         cwd=REPO_ROOT,
         check=True,
         capture_output=True,
@@ -451,7 +461,7 @@ def _python_bugfix_minors_from_peps(data: dict[str, Any], window: int) -> tuple[
     return tuple(bugfix[-window:])
 
 
-def _latest_vscode_release(data: Any) -> str:
+def _latest_vscode_release(data: object) -> str:
     if isinstance(data, dict):
         for key in ("name", "productVersion"):
             value = data.get(key)
@@ -724,7 +734,7 @@ def detect_runtime_lowering(
     return findings
 
 
-def _print_findings(title: str, findings: list[RuntimePolicyFinding], *, stream: Any) -> None:
+def _print_findings(title: str, findings: list[RuntimePolicyFinding], *, stream: TextIO) -> None:
     if not findings:
         print(f"{title}: passed.", file=stream)
         return

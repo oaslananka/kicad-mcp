@@ -44,7 +44,12 @@ jobs:
           (cd "$evidence_dir" && sha256sum -- *.tgz > SHA256SUMS.txt)
           corepack pnpm sbom --sbom-format cyclonedx --sbom-type application > "$evidence_dir/sbom.cdx.json"
           (cd "$evidence_dir" && sha256sum --check SHA256SUMS.txt)
-          echo "tarball=../../release-assets/protocol-schemas/$(ls "$evidence_dir"/*.tgz | xargs -n1 basename)" >> "$GITHUB_OUTPUT"
+          tarball_path="$(find "$evidence_dir" -maxdepth 1 -type f -name '*.tgz' -print -quit)"
+          if [ -z "$tarball_path" ]; then
+            echo "No protocol schema tarball was produced." >&2
+            exit 1
+          fi
+          echo "tarball=../../release-assets/protocol-schemas/$(basename "$tarball_path")" >> "$GITHUB_OUTPUT"
       - name: Attest tarball
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26
         with:
