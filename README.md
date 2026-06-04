@@ -9,7 +9,7 @@ Canonical repository: https://github.com/oaslananka/kicad-mcp
 - PyPI: `kicad-mcp-pro`
 - npm wrapper: `kicad-mcp-pro`
 - MCP Registry name: `io.github.oaslananka/kicad-mcp-pro`
-- Version: `3.7.4`
+- Version: `3.7.5`
 
 KiCad MCP Pro is a Model Context Protocol server for KiCad EDA workflows. It exposes tools, resources, and prompts for schematic, PCB, validation, DFM, and manufacturing export automation.
 
