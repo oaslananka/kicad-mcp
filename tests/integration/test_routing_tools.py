@@ -17,8 +17,9 @@ async def test_route_autoroute_freerouting_smoke_handles_large_dsn(
     nets = "\n".join(f"  (net NET{i})" for i in range(60))
     (sample_project / "demo.dsn").write_text(f"(pcb\n{nets}\n)\n", encoding="utf-8")
 
-    def fake_run(cmd, capture_output, text, timeout, check):
+    def fake_run(cmd, capture_output, text, timeout, check, **kwargs: object):
         _ = (capture_output, text, timeout, check)
+        _ = kwargs
         if "--version" in cmd:
             return subprocess.CompletedProcess(cmd, 0, stdout="KiCad 10.0.1", stderr="")
         if "--help" in cmd:

@@ -38,8 +38,9 @@ def test_run_freerouting_docker_builds_expected_command(
     dsn_path.write_text("dsn", encoding="utf-8")
     observed: list[list[str]] = []
 
-    def fake_run(cmd, capture_output, text, timeout, check):
+    def fake_run(cmd, capture_output, text, timeout, check, **kwargs: object):
         _ = (capture_output, text, timeout, check)
+        _ = kwargs
         observed.append(cmd)
         ses_path.write_text("ses", encoding="utf-8")
         return subprocess.CompletedProcess(cmd, 0, stdout="pass 3\n100% routed\nok", stderr="")
@@ -87,8 +88,9 @@ def test_run_freerouting_falls_back_to_jar_when_docker_missing(
 
     monkeypatch.setattr("kicad_mcp.utils.freerouting.shutil.which", lambda _: None)
 
-    def fake_run(cmd, capture_output, text, timeout, check):
+    def fake_run(cmd, capture_output, text, timeout, check, **kwargs: object):
         _ = (capture_output, text, timeout, check)
+        _ = kwargs
         observed.append(cmd)
         ses_path.write_text("ses", encoding="utf-8")
         return subprocess.CompletedProcess(cmd, 0, stdout="unrouted net B", stderr="")

@@ -52,8 +52,10 @@ def test_version_control_helper_functions(monkeypatch, tmp_path: Path) -> None:
         text: bool,
         timeout: int,
         check: bool,
+        **kwargs: object,
     ) -> subprocess.CompletedProcess[str]:
         _ = (cmd, cwd, capture_output, text, timeout, check)
+        _ = kwargs
         return subprocess.CompletedProcess(["git"], 1, stdout="", stderr="broken")
 
     monkeypatch.setattr(version_control.subprocess, "run", failing_run)

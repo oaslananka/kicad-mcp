@@ -503,6 +503,7 @@ class NgspiceRunner:
             [str(cli), "-b", "-o", str(log_path), str(deck_path)],
             capture_output=True,
             text=True,
+            errors="replace",
             timeout=self._cli_timeout,
             check=False,
         )
