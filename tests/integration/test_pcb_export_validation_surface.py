@@ -119,6 +119,7 @@ def _fake_cli_run_factory(sample_project: Path):
         **kwargs: object,
     ) -> subprocess.CompletedProcess[str]:
         _ = (capture_output, text, timeout, check)
+        _ = kwargs
         if "--version" in cmd:
             return subprocess.CompletedProcess(cmd, 0, stdout="KiCad 10.0.1", stderr="")
         if "--help" in cmd:
