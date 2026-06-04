@@ -3454,15 +3454,19 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
     def sch_add_label(
-        name: str,
-        x_mm: float,
-        y_mm: float,
+        name: str | None = None,
+        x_mm: float = 0.0,
+        y_mm: float = 0.0,
         rotation: int = 0,
         snap_to_grid: bool = True,
+        text: str | None = None,
     ) -> str:
         """Add a schematic label, snapping its anchor to the 2.54 mm grid by default."""
+        label_text = name or text
+        if not label_text:
+            raise ValueError("Either name or text parameter is required.")
         payload = AddLabelInput(
-            name=name,
+            name=label_text,
             x_mm=x_mm,
             y_mm=y_mm,
             rotation=rotation,
@@ -4286,16 +4290,20 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
     def sch_add_hierarchical_label(
-        text: str,
-        x_mm: float,
-        y_mm: float,
+        text: str | None = None,
+        x_mm: float = 0.0,
+        y_mm: float = 0.0,
         shape: str = "input",
         rotation: int = 0,
         snap_to_grid: bool = True,
+        name: str | None = None,
     ) -> str:
         """Add a hierarchical label, preserving the requested shape and rotation."""
+        label_text = text or name
+        if not label_text:
+            raise ValueError("Either text or name parameter is required.")
         payload = HierarchicalLabelInput(
-            text=text,
+            text=label_text,
             x_mm=x_mm,
             y_mm=y_mm,
             shape=shape,
@@ -4322,16 +4330,20 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
     def sch_add_global_label(
-        text: str,
-        x_mm: float,
-        y_mm: float,
+        text: str | None = None,
+        x_mm: float = 0.0,
+        y_mm: float = 0.0,
         shape: str = "bidirectional",
         rotation: int = 0,
         snap_to_grid: bool = True,
+        name: str | None = None,
     ) -> str:
         """Add a global label, preserving the requested shape and rotation."""
+        label_text = text or name
+        if not label_text:
+            raise ValueError("Either text or name parameter is required.")
         payload = GlobalLabelInput(
-            text=text,
+            text=label_text,
             x_mm=x_mm,
             y_mm=y_mm,
             shape=shape,

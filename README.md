@@ -1,5 +1,7 @@
 # KiCad MCP Pro
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/oaslananka/kicad-mcp)
+
 <!-- mcp-name: io.github.oaslananka/kicad-mcp-pro -->
 
 Canonical repository: https://github.com/oaslananka/kicad-mcp

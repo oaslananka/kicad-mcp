@@ -119,6 +119,10 @@ class KiCadMCPConfig(BaseSettings):
     log_backup_count: int = Field(default=3, ge=1, le=20)
 
     enable_experimental_tools: bool = Field(default=False)
+    filter_runtime_tools: bool = Field(
+        default=True,
+        description="Filter out tools requiring live KiCad IPC if the connection is down.",
+    )
     ipc_connection_timeout: float = Field(default=10.0, gt=0.1, le=120.0)
     ipc_retries: int = Field(default=2, ge=0, le=10)
     headless: bool = Field(default=False)
@@ -136,6 +140,16 @@ class KiCadMCPConfig(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
+        import sys
+
+        # Skip loading local .env files during pytest runs to avoid test pollution
+        if "pytest" in sys.modules:
+            return (
+                init_settings,
+                env_settings,
+                TomlConfigSettingsSource(settings_cls, toml_file=CONFIG_FILE),
+                file_secret_settings,
+            )
         return (
             init_settings,
             env_settings,

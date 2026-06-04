@@ -23,7 +23,9 @@ def _tool_names_for_mode(mode: str, *, profile: str = "full") -> set[str]:
     return {tool.name for tool in server.list_tools_sync()}
 
 
-def test_operating_mode_policy_matches_required_risk_levels() -> None:
+def test_operating_mode_policy_matches_required_risk_levels(monkeypatch) -> None:
+    monkeypatch.setenv("KICAD_MCP_OPERATING_MODE", "readonly")
+    reset_config()
     assert active_operating_mode().value == "readonly"
 
     assert tool_required_mode("kicad_get_version") is OperatingMode.READONLY

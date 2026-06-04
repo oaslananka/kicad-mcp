@@ -627,7 +627,8 @@ class KiCadFastMCP(FastMCP):
             tools = [tool for tool in tools if tool.name in allowed_tool_names]
         mode = getattr(self, "operating_mode", active_operating_mode())
         tools = filter_tools_for_mode(tools, mode)
-        if getattr(self, "filter_runtime_tools", True):
+        filter_enabled = get_config().filter_runtime_tools
+        if getattr(self, "filter_runtime_tools", True) and filter_enabled:
             tools = _filter_ipc_runtime_tools(tools, self._runtime_ipc_capability_state())
         if mode is OperatingMode.EXPERIMENTAL:
             return tools

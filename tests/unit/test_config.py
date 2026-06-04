@@ -167,3 +167,10 @@ def test_watch_dir_auto_selection_does_not_create_explicit_lock(tmp_path: Path) 
     poll_studio_watch_dir(watch_root, previous=previous)
     assert cfg.project_dir == second_project.resolve()
     assert cfg.project_dir_is_explicit is False
+
+
+def test_config_filter_runtime_tools(monkeypatch) -> None:
+    monkeypatch.setenv("KICAD_MCP_FILTER_RUNTIME_TOOLS", "false")
+    cfg = KiCadMCPConfig()
+    assert cfg.filter_runtime_tools is False
+
