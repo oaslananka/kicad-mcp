@@ -101,7 +101,6 @@ def _registry_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
         "repository": {
             "url": REPOSITORY,
             "source": "github",
-            "subfolder": ".",
         },
         "websiteUrl": WEBSITE,
         "icons": [
