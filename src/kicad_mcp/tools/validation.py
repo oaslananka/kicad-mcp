@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from ..config import get_config
 from ..connection import KiCadConnectionError, get_board
+from ..discovery import get_cli_capabilities
 from ..models.component_contracts import find_component_contract
 from ..utils.dru import (
     SExprNode,
@@ -26,7 +27,6 @@ from ..utils.dru import (
     parse_dru,
     upsert_rule,
 )
-from ..discovery import get_cli_capabilities
 from .export_support import _ensure_output_dir, _get_pcb_file, _get_sch_file, _run_cli_variants
 from .gates import GateOutcome, GateStatus, _combined_status
 from .metadata import headless_compatible
