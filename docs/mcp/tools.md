@@ -1,11 +1,10 @@
 # MCP Tool Catalog
 
 Machine-maintained from `kicad-mcp-pro` source via
-`packages/mcp-server/scripts/generate_tools_reference.py`.
+`scripts/generate_tools_reference.py`.
 
 The canonical source catalog remains
-`packages/mcp-server/docs/tools-reference.generated.md`; this page is copied into the
-unified documentation site by `corepack pnpm run docs:generate`.
+`docs/tools-reference.generated.md`; this page is refreshed by `pnpm run docs:tools`.
 
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
