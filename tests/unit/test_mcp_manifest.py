@@ -26,7 +26,7 @@ def test_checked_mcp_manifest_is_valid() -> None:
 
     assert manifest["name"] == "io.github.oaslananka/kicad-mcp-pro"
     assert manifest["repository"]["url"] == "https://github.com/oaslananka/kicad-mcp"
-    assert manifest["repository"]["subfolder"] == "."
+    assert manifest["repository"].get("subfolder") is None
     assert [package["runtimeHint"] for package in manifest["packages"]] == [
         "uvx",
         "npx",
