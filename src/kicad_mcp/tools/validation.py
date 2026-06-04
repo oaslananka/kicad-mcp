@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from ..config import get_config
 from ..connection import KiCadConnectionError, get_board
+from ..discovery import get_cli_capabilities
 from ..models.component_contracts import find_component_contract
 from ..utils.dru import (
     SExprNode,
@@ -154,6 +155,15 @@ def _format_violations(title: str, entries: list[dict[str, object]]) -> str:
 def _run_drc_report(report_name: str) -> tuple[Path, dict[str, object] | None, str | None]:
     pcb_file = _get_pcb_file()
     out_file = _ensure_output_dir() / report_name
+
+    cfg = get_config()
+    capabilities = get_cli_capabilities(cfg.kicad_cli)
+    drc_flags: list[str] = []
+    if capabilities.supports_drc_severity_all:
+        drc_flags.append("--severity-all")
+    if capabilities.supports_drc_exit_code_violations:
+        drc_flags.append("--exit-code-violations")
+
     code, _, stderr = _run_cli_variants(
         [
             [
@@ -163,8 +173,7 @@ def _run_drc_report(report_name: str) -> tuple[Path, dict[str, object] | None, s
                 str(out_file),
                 "--format",
                 "json",
-                "--severity-all",
-                "--exit-code-violations",
+                *drc_flags,
                 str(pcb_file),
             ],
             [
@@ -176,8 +185,7 @@ def _run_drc_report(report_name: str) -> tuple[Path, dict[str, object] | None, s
                 str(out_file),
                 "--format",
                 "json",
-                "--severity-all",
-                "--exit-code-violations",
+                *drc_flags,
             ],
         ]
     )
@@ -1680,7 +1688,7 @@ def register(mcp: FastMCP) -> None:
             return json.dumps({"rules": built_in}, indent=2)
 
         content = _load_rules_content(_rules_file_path())
-        root = parse_dru(content)
+        root, _version = parse_dru(content)
         state = _load_drc_state()
         custom = [_rule_payload(rule, state) for rule in iter_rule_nodes(root)]
         return json.dumps({"rules": [*built_in, *custom]}, indent=2)
@@ -1711,9 +1719,9 @@ def register(mcp: FastMCP) -> None:
             ["severity", severity],
         ]
         path = _rules_file_path()
-        root = parse_dru(_load_rules_content(path))
+        root, version = parse_dru(_load_rules_content(path))
         upsert_rule(root, rule_node)
-        path.write_text(dump_dru(root), encoding="utf-8")
+        path.write_text(dump_dru(root, version=version), encoding="utf-8")
         state = _load_drc_state()
         cast(dict[str, bool], state.setdefault("enabled", {}))[name] = True
         cast(dict[str, str], state.setdefault("severity", {}))[name] = severity
@@ -1727,10 +1735,10 @@ def register(mcp: FastMCP) -> None:
         from .routing_rules import _load_rules_content, _rules_file_path
 
         path = _rules_file_path()
-        root = parse_dru(_load_rules_content(path))
+        root, version = parse_dru(_load_rules_content(path))
         if not delete_rule(root, rule_name):
             raise ValueError(f"Rule '{rule_name}' was not found.")
-        path.write_text(dump_dru(root), encoding="utf-8")
+        path.write_text(dump_dru(root, version=version), encoding="utf-8")
         state = _load_drc_state()
         cast(dict[str, bool], state.setdefault("enabled", {})).pop(rule_name, None)
         cast(dict[str, str], state.setdefault("severity", {})).pop(rule_name, None)
@@ -1744,7 +1752,7 @@ def register(mcp: FastMCP) -> None:
         from .routing_rules import _load_rules_content, _rules_file_path
 
         path = _rules_file_path()
-        root = parse_dru(_load_rules_content(path))
+        root, version = parse_dru(_load_rules_content(path))
         rule = find_rule(root, rule_name)
         if rule is None:
             return f"Custom DRC rule '{rule_name}' was not found."
@@ -1770,7 +1778,7 @@ def register(mcp: FastMCP) -> None:
             ["severity", "ignore" if not enabled else existing_severity],
         )
         upsert_rule(root, replacement)
-        path.write_text(dump_dru(root), encoding="utf-8")
+        path.write_text(dump_dru(root, version=version), encoding="utf-8")
         _save_drc_state(state)
         state_text = "enabled" if enabled else "disabled"
         return f"Custom DRC rule '{rule_name}' {state_text}."

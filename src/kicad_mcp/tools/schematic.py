@@ -1607,13 +1607,21 @@ def _remove_wire_blocks(content: str) -> str:
 
 
 def _normalize_schematic_wire_connectivity(content: str) -> str:
-    segments = _deduplicate_segments(_wire_segments_from_content(content))
-    if not segments:
+    wires = _extract_wires(content)
+    segments = _wire_segments_from_content(content)
+    deduped = _deduplicate_segments(segments)
+    if not deduped:
         return content
+    uuid_map: dict[tuple[float, float, float, float], str] = {}
+    for w in wires:
+        key = (w["x1"], w["y1"], w["x2"], w["y2"])
+        if "uuid" in w:
+            uuid_map[key] = w["uuid"]
     updated = _remove_wire_blocks(content)
-    for segment in segments:
-        updated = _append_before_sheet_instances(updated, wire_block(*segment))
-    return _insert_junctions_for_batch(updated, _detect_t_intersections(segments))
+    for segment in deduped:
+        uid = uuid_map.get(segment)
+        updated = _append_before_sheet_instances(updated, wire_block(*segment, uuid_str=uid))
+    return _insert_junctions_for_batch(updated, _detect_t_intersections(deduped))
 
 
 def _extract_labels(content: str) -> list[dict[str, Any]]:
@@ -2799,13 +2807,16 @@ def _iter_child_sheet_paths(sch_file: Path) -> list[tuple[str, Path]]:
     return discovered
 
 
-def wire_block(x1: float, y1: float, x2: float, y2: float, kind: str = "wire") -> str:
+def wire_block(
+    x1: float, y1: float, x2: float, y2: float, kind: str = "wire", uuid_str: str | None = None
+) -> str:
     """Create a schematic wire or bus block."""
+    uid = uuid_str if uuid_str is not None else new_uuid()
     return (
         f"\t({kind}\n"
         f"\t\t(pts (xy {_fmt_mm(x1)} {_fmt_mm(y1)}) (xy {_fmt_mm(x2)} {_fmt_mm(y2)}))\n"
         "\t\t(stroke (width 0) (type solid))\n"
-        f'\t\t(uuid "{new_uuid()}")\n'
+        f'\t\t(uuid "{uid}")\n'
         "\t)"
     )
 

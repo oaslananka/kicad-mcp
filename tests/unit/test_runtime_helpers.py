@@ -273,7 +273,7 @@ def test_cli_capabilities_are_cached(tmp_path: Path, monkeypatch) -> None:
     second = get_cli_capabilities(cli)
 
     assert first == second
-    assert len(calls) == 5
+    assert len(calls) == 6
 
 
 def test_cli_capabilities_cache_refreshes_when_binary_changes(tmp_path: Path, monkeypatch) -> None:
@@ -303,7 +303,7 @@ def test_cli_capabilities_cache_refreshes_when_binary_changes(tmp_path: Path, mo
     os.utime(cli, ns=(now_ns, now_ns))
     _ = get_cli_capabilities(cli)
 
-    assert len(calls) == 10
+    assert len(calls) == 12
 
 
 def test_board_transaction_uses_reentrant_lock() -> None:

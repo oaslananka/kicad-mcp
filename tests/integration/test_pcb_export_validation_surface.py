@@ -120,6 +120,13 @@ def _fake_cli_run_factory(sample_project: Path):
         _ = (capture_output, text, timeout, check)
         if "--version" in cmd:
             return subprocess.CompletedProcess(cmd, 0, stdout="KiCad 10.0.1", stderr="")
+        if "--help" in cmd:
+            return subprocess.CompletedProcess(
+                cmd,
+                0,
+                stdout="gerber drill positions ipc2581 svg dxf step stpz xao render spice",
+                stderr="",
+            )
 
         output_path = None
         if "--output" in cmd:
@@ -203,13 +210,6 @@ def _fake_cli_run_factory(sample_project: Path):
                     {"violations": [{"severity": "error", "description": "Missing driver"}]}
                 ),
                 encoding="utf-8",
-            )
-        elif "--help" in cmd:
-            return subprocess.CompletedProcess(
-                cmd,
-                0,
-                stdout="gerber drill positions ipc2581 svg dxf step stpz xao render spice",
-                stderr="",
             )
 
         return subprocess.CompletedProcess(cmd, 0, stdout=str(sample_project), stderr="")
