@@ -2910,6 +2910,8 @@ def register(mcp: FastMCP) -> None:
         drill_mm: float = 0.4,
         net_name: str = "",
         via_type: str = "through",
+        from_layer: str = "",
+        to_layer: str = "",
     ) -> str:
         """Add a via."""
         payload = AddViaInput(
@@ -2930,6 +2932,12 @@ def register(mcp: FastMCP) -> None:
         via.diameter = mm_to_nm(payload.diameter_mm)
         via.drill_diameter = mm_to_nm(payload.drill_mm)
         via.type = type_map[payload.via_type]
+        if payload.via_type in ("blind", "micro"):
+            if not from_layer or not to_layer:
+                raise ValueError(
+                    f"from_layer and to_layer are required when via_type='{payload.via_type}'."
+                )
+            _configure_layer_via(via, from_layer=from_layer, to_layer=to_layer)
         if payload.net_name:
             via.net = _find_net(payload.net_name)
         with board_transaction() as board:
@@ -3171,19 +3179,28 @@ def register(mcp: FastMCP) -> None:
         layer: str = "F.Fab",
         barcode_type: str = "qr",
         size_mm: float = 10.0,
+        text_height_mm: float | None = None,
+        hide_text: bool = True,
     ) -> str:
-        """Add a production barcode marker to the board file."""
+        """Add a production barcode marker to the board file using KiCad's native barcode format."""
         normalized_type = barcode_type.casefold()
-        if normalized_type not in {"qr", "datamatrix", "code128"}:
-            return "barcode_type must be one of 'qr', 'datamatrix', or 'code128'."
+        if normalized_type not in {"qr", "datamatrix", "code128", "code39"}:
+            return "barcode_type must be one of 'qr', 'datamatrix', 'code128', or 'code39'."
+        text_h = text_height_mm if text_height_mm is not None else size_mm / 4
         board_block = (
-            f'(gr_text "{normalized_type.upper()}:{content}" (at {x_mm:.4f} {y_mm:.4f} 0) '
-            f'(layer "{layer}") (effects (font (size {size_mm / 4:.4f} {size_mm / 4:.4f}))))'
+            f"(barcode (at {x_mm:.4f} {y_mm:.4f} 0) "
+            f'(layer "{layer}") '
+            f"(size {size_mm:.4f} {size_mm:.4f}) "
+            f'(text "{content}") '
+            f"(text_height {text_h:.4f}) "
+            f'(type "{normalized_type}") '
+            f"(hide {'yes' if hide_text else 'no'})"
+            f")"
         )
         _transactional_board_write(lambda current: _append_board_blocks(current, [board_block]))
         return (
-            f"Barcode marker added at ({x_mm:.2f}, {y_mm:.2f}) mm on {layer}. "
-            "The KiCad 10 native barcode renderer can refine the appearance in the GUI."
+            f"Barcode added at ({x_mm:.2f}, {y_mm:.2f}) mm on {layer} "
+            f"with type '{normalized_type}'."
         )
 
     @mcp.tool()
@@ -3199,8 +3216,11 @@ def register(mcp: FastMCP) -> None:
             kiid = KIID()
             kiid.value = item_id
             kiids.append(kiid)
-        with board_transaction() as board:
-            board.remove_items_by_id(kiids)
+        try:
+            with board_transaction() as board:
+                board.remove_items_by_id(kiids)
+        except Exception as exc:
+            return f"Failed to delete items: {exc}"
         return f"Deleted {len(kiids)} item(s)."
 
     @mcp.tool()

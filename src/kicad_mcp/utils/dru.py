@@ -79,17 +79,36 @@ def _parse_expression(tokens: list[str], start_index: int = 0) -> tuple[SExprVal
     raise ValueError("Unbalanced parentheses in .kicad_dru content.")
 
 
-def parse_dru(content: str) -> SExprNode:
-    """Parse a KiCad ``.kicad_dru`` file into a simple S-expression tree."""
+def parse_dru(content: str) -> tuple[SExprNode, str | None]:
+    """Parse a KiCad ``.kicad_dru`` file into a simple S-expression tree.
+
+    Returns ``(rules_node, version)`` where *version* is ``None`` or a
+    version string (e.g. ``"1"``) extracted from a leading ``(version N)``
+    declaration.
+    """
     tokens = _tokenize(content)
     if not tokens:
-        return ["rules"]
-    node, next_index = _parse_expression(tokens, 0)
+        return ["rules"], None
+
+    index = 0
+    version: str | None = None
+    # Consume leading (version N) declarations
+    while (
+        index < len(tokens)
+        and tokens[index] == "("
+        and index + 3 < len(tokens)
+        and tokens[index + 1] == "version"
+        and tokens[index + 3] == ")"
+    ):
+        version = tokens[index + 2]
+        index += 4
+
+    node, next_index = _parse_expression(tokens, index)
     if next_index != len(tokens):
         raise ValueError("Unexpected trailing tokens in .kicad_dru content.")
     if not isinstance(node, list) or not node or node[0] != "rules":
         raise ValueError("A KiCad .kicad_dru file must have a root '(rules ...)' form.")
-    return node
+    return node, version
 
 
 def _format_atom(value: str) -> str:
@@ -122,9 +141,13 @@ def _dump_expression(node: SExprValue, indent: int = 0) -> str:
     return "\n".join(lines)
 
 
-def dump_dru(node: SExprNode) -> str:
-    """Serialize a parsed KiCad ``.kicad_dru`` tree."""
-    return _dump_expression(node) + "\n"
+def dump_dru(node: SExprNode, version: str | None = None) -> str:
+    """Serialize a parsed KiCad ``.kicad_dru`` tree.
+
+    If *version* is provided, a ``(version ...)`` declaration is prepended.
+    """
+    header = f"(version {version})\n" if version else ""
+    return header + _dump_expression(node) + "\n"
 
 
 def iter_rule_nodes(root: SExprNode) -> list[SExprNode]:

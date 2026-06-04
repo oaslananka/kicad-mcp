@@ -14,7 +14,9 @@ from kicad_mcp.utils.dru import (
 
 
 def test_parse_dru_handles_empty_content_and_invalid_root() -> None:
-    assert parse_dru("") == ["rules"]
+    tree, ver = parse_dru("")
+    assert tree == ["rules"]
+    assert ver is None
     with pytest.raises(ValueError, match="root"):
         parse_dru("(not_rules)")
 
@@ -27,7 +29,7 @@ def test_parse_dru_rejects_unterminated_and_unbalanced_content() -> None:
 
 
 def test_dump_and_mutate_dru_rules_round_trip() -> None:
-    root = parse_dru("(rules)")
+    root, _ver = parse_dru("(rules)")
     rule = [
         "rule",
         "Length Match",
@@ -38,7 +40,7 @@ def test_dump_and_mutate_dru_rules_round_trip() -> None:
 
     upsert_rule(root, rule)
     serialized = dump_dru(root)
-    reparsed = parse_dru(serialized)
+    reparsed, _ver2 = parse_dru(serialized)
     reparsed_rule = find_rule(reparsed, "Length Match")
 
     assert reparsed_rule is not None

@@ -58,12 +58,16 @@ class CliCapabilities:
     supports_pads_import: bool = False
     supports_geda_import: bool = False
     supports_cli_variant: bool = False
+    supports_drc_severity_all: bool = False
+    supports_drc_exit_code_violations: bool = False
 
 
 def _candidate_cli_paths() -> list[Path]:
     system = platform.system()
     if system == "Windows":
         return [
+            Path(r"C:\Program Files\KiCad\11.0\bin\kicad-cli.exe"),
+            Path(r"C:\Program Files\KiCad\11.0\bin\kicad-cli"),
             Path(r"C:\Program Files\KiCad\10.0\bin\kicad-cli.exe"),
             Path(r"C:\Program Files\KiCad\10.0\bin\kicad-cli"),
             Path(r"C:\Program Files\KiCad\9.0\bin\kicad-cli.exe"),
@@ -164,6 +168,7 @@ def get_cli_capabilities(cli_path: Path) -> CliCapabilities:
         [str(cli_path), "pcb", "import", "--help"],
         [str(cli_path), "sch", "export", "--help"],
         [str(cli_path), "pcb", "--help"],
+        [str(cli_path), "pcb", "drc", "--help"],
     )
     for command in commands:
         try:
@@ -203,6 +208,9 @@ def get_cli_capabilities(cli_path: Path) -> CliCapabilities:
         supports_pads_import="pads" in blob,
         supports_geda_import="geda" in blob,
         supports_cli_variant="--variant" in blob,
+        supports_drc_severity_all="--severity-all" in blob or "severity-all" in blob,
+        supports_drc_exit_code_violations="--exit-code-violations" in blob
+        or "exit-code-violations" in blob,
     )
     _CLI_CAPABILITIES_CACHE[cache_key] = capabilities
     return capabilities
@@ -241,6 +249,7 @@ def discover_library_paths(cli_path: Path) -> dict[str, Path | None]:
     if system == "Windows":
         candidates.extend(
             [
+                Path(r"C:\Program Files\KiCad\11.0\share\kicad"),
                 Path(r"C:\Program Files\KiCad\10.0\share\kicad"),
                 Path(r"C:\Program Files\KiCad\9.0\share\kicad"),
                 Path(r"C:\Program Files\KiCad\8.0\share\kicad"),
@@ -275,13 +284,18 @@ def find_recent_projects(limit: int = 10) -> list[Path]:
     system = platform.system()
     if system == "Windows":
         config_dirs = [
+            Path.home() / "AppData" / "Roaming" / "kicad" / "11.0",
             Path.home() / "AppData" / "Roaming" / "kicad" / "10.0",
             Path.home() / "AppData" / "Roaming" / "kicad" / "9.0",
         ]
     elif system == "Darwin":
-        config_dirs = [Path.home() / "Library" / "Preferences" / "kicad" / "10.0"]
+        config_dirs = [
+            Path.home() / "Library" / "Preferences" / "kicad" / "11.0",
+            Path.home() / "Library" / "Preferences" / "kicad" / "10.0",
+        ]
     else:
         config_dirs = [
+            Path.home() / ".config" / "kicad" / "11.0",
             Path.home() / ".config" / "kicad" / "10.0",
             Path.home() / ".config" / "kicad" / "9.0",
         ]

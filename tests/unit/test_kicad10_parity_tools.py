@@ -167,6 +167,8 @@ async def test_pcb_add_barcode_accepts_code128_and_inner_layer_graphics_require_
     )
 
     pcb_text = (sample_project / "demo.kicad_pcb").read_text(encoding="utf-8")
-    assert "Barcode marker added" in barcode
-    assert "CODE128:SN-001" in pcb_text
+    assert "Barcode added" in barcode
+    assert "(barcode" in pcb_text
+    assert '(text "SN-001")' in pcb_text
+    assert '(type "code128")' in pcb_text
     assert "at least four copper layers" in inner_layer
