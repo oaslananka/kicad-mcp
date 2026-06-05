@@ -94,20 +94,15 @@ published.
 * **repo:** align ownership policy checks ([fa52a74](https://github.com/oaslananka/kicad-mcp/commit/fa52a746c9bc19a5ab307f3327acab6a054a5a31)), closes [#64](https://github.com/oaslananka/kicad-mcp/issues/64)
 * **repo:** clarify MCP client config destinations ([6049ca3](https://github.com/oaslananka/kicad-mcp/commit/6049ca3077db5b8e6490205a55b4581b367a0009))
 
+## [3.7.6](https://github.com/oaslananka/kicad-mcp/compare/v3.7.5...v3.7.6) (2026-06-05)
+
+
+### Bug Fixes
+
+* **ci:** harden scorecard workflow ([#27](https://github.com/oaslananka/kicad-mcp/issues/27)) ([f5a163d](https://github.com/oaslananka/kicad-mcp/commit/f5a163dfc297839c6752a83669af4d0ee55af18b))
+* **security:** add gitleaks pre-commit hook ([#28](https://github.com/oaslananka/kicad-mcp/issues/28)) ([5dad852](https://github.com/oaslananka/kicad-mcp/commit/5dad85216ef50fc6feb8e4feac2fc39e84f0f29e))
+
 ## [Unreleased]
-
-### Added
-
-- Added `kicad-mcp-pro doctor`, JSON diagnostics, and redacted support bundles for
-  setup troubleshooting.
-- Added real KiCad CLI contract canaries with shared fixtures, Windows primary
-  KiCad 10.0.3 smoke coverage, scheduled 9.x/10.x lanes, and structured
-  unsupported-feature artifacts.
-
-### Deprecated
-
-- Marked KiCad 9.x as a deprecated best-effort compatibility line in MCP
-  discovery metadata while retaining scheduled non-blocking canary coverage.
 
 ## [1.0.0] - 2026-05-20
 
