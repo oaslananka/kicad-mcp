@@ -14,3 +14,9 @@ repos:
       - id: ruff-format
       - id: ruff
         args: [--fix]
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+        args: [--config=.gitleaks.toml]
