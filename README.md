@@ -1,6 +1,12 @@
 # KiCad MCP Pro
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/oaslananka/kicad-mcp)
+[![PyPI - Version](https://img.shields.io/pypi/v/kicad-mcp-pro)](https://pypi.org/project/kicad-mcp-pro/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/kicad-mcp-pro)](https://pypi.org/project/kicad-mcp-pro/)
+[![npm - Version](https://img.shields.io/npm/v/kicad-mcp-pro)](https://www.npmjs.com/package/kicad-mcp-pro)
+[![CI](https://github.com/oaslananka/kicad-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/oaslananka/kicad-mcp/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/oaslananka/kicad-mcp/badge)](https://securityscorecards.dev/viewer/?uri=github.com/oaslananka/kicad-mcp)
 
 <!-- mcp-name: io.github.oaslananka/kicad-mcp-pro -->
 
