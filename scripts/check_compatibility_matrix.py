@@ -434,12 +434,12 @@ def validate_compatibility_matrix() -> list[str]:
     # intentionally absent because the VS Code extension is not part of the
     # kicad-mcp standalone repository.
     if not HAS_VSCODE_EXTENSION:
-        _ALLOWED_MISSING_PATHS = frozenset(
+        allowed_missing_paths = frozenset(
             {
                 ".github/workflows/publish-extension.yml",  # VS Code extension workflow
             }
         )
-        errors = [e for e in errors if not any(f"'{p}'" in e for p in _ALLOWED_MISSING_PATHS)]
+        errors = [e for e in errors if not any(f"'{p}'" in e for p in allowed_missing_paths)]
 
     if errors:
         return errors
@@ -495,7 +495,8 @@ def validate_compatibility_matrix() -> list[str]:
         if extension_protocol != matrix["mcp"]["protocolVersion"]:
             errors.append(
                 "extension MCP protocol version drift: "
-                f"compatibility.yaml={matrix['mcp']['protocolVersion']!r}, TS={extension_protocol!r}"
+                "compatibility.yaml="
+                f"{matrix['mcp']['protocolVersion']!r}, TS={extension_protocol!r}"
             )
         mcp_client_source = (REPO_ROOT / "apps/vscode-extension/src/mcp/mcpClient.ts").read_text(
             encoding="utf-8"
