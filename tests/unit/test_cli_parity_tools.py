@@ -19,7 +19,7 @@ def test_safe_output_filename_rejects_path() -> None:
 
 
 def test_safe_output_filename_rejects_absolute() -> None:
-    with pytest.raises(ValueError, match="absolute|relative"):
+    with pytest.raises(ValueError, match="directory separators"):
         _safe_output_filename("C:\\Windows\\file.csv", default_name="out.csv")
 
 

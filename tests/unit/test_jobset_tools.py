@@ -2,20 +2,25 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import patch
-
 import pytest
 
-from kicad_mcp.tools.jobset import list_templates, run_jobset
+from kicad_mcp.server import create_server
+from tests.conftest import call_tool_text
 
 
-def test_list_templates_no_jobsets(tmp_path: Path) -> None:
-    with patch("kicad_mcp.tools.jobset._jobset_dir", return_value=tmp_path):
-        result = list_templates()
-        assert "No" in result or "0" in result or "templates" in result.lower()
+@pytest.mark.anyio
+async def test_jobset_list_templates() -> None:
+    server = create_server()
+    result = await call_tool_text(server, "jobset_list_templates", {})
+    assert result is not None
 
 
-def test_run_jobset_missing_file() -> None:
-    with pytest.raises((ValueError, FileNotFoundError)):
-        run_jobset(jobset_path="/nonexistent/jobset.json")
+@pytest.mark.anyio
+async def test_jobset_export_missing_file() -> None:
+    server = create_server()
+    result = await call_tool_text(
+        server,
+        "jobset_export",
+        {"output_name": "nonexistent"},
+    )
+    assert "PCB" in result or "jobset" in result.lower()

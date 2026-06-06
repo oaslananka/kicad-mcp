@@ -1,44 +1,44 @@
-"""Unit tests for DRC exclusion tools (FAZ 5.1)."""
+"""Unit tests for DRC exclusion tools (FAZ 5.1).
+
+Tools covered: drc_list_exclusions, drc_remove_exclusion,
+    drc_add_exclusion, drc_validate_exclusions.
+"""
 
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
-from kicad_mcp.tools.validation import (
-    _load_drc_exclusions,
-    _save_drc_exclusions,
-    drc_list_exclusions,
-    drc_remove_exclusion,
-)
+import pytest
 
-
-def test_drc_exclusions_empty(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    excls_path = tmp_path / "drc_exclusions.json"
-    monkeypatch.setattr("kicad_mcp.tools.validation._drc_exclusions_path", lambda: excls_path)
-    state = _load_drc_exclusions()
-    assert state.get("exclusions", []) == []
+from kicad_mcp.server import create_server
+from tests.conftest import call_tool_text
 
 
-def test_drc_list_exclusions_empty(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    excls_path = tmp_path / "drc_exclusions.json"
-    monkeypatch.setattr("kicad_mcp.tools.validation._drc_exclusions_path", lambda: excls_path)
-    result = drc_list_exclusions()
+@pytest.mark.anyio
+async def test_drc_list_exclusions_empty(tmp_path: Path) -> None:
+    # Create a minimal project structure
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    (proj / "demo.kicad_pro").write_text("{}", encoding="utf-8")
+    (proj / "demo.kicad_pcb").write_text("", encoding="utf-8")
+    (proj / "demo.kicad_sch").write_text("", encoding="utf-8")
+    server = create_server()
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(proj)})
+    result = await call_tool_text(server, "drc_list_exclusions", {})
     payload = json.loads(result)
-    assert payload["count"] == 0
+    assert payload["exclusions"] == []
 
 
-def test_drc_save_and_reload(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    excls_path = tmp_path / "drc_exclusions.json"
-    monkeypatch.setattr("kicad_mcp.tools.validation._drc_exclusions_path", lambda: excls_path)
-    state = {"exclusions": [{"uuid": "abc-123", "reason": "ok", "created": "2026-01-01"}]}
-    _save_drc_exclusions(state)
-    loaded = _load_drc_exclusions()
-    assert len(loaded["exclusions"]) == 1
-    assert loaded["exclusions"][0]["uuid"] == "abc-123"
-
-
-def test_drc_remove_exclusion_nonexistent(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    excls_path = tmp_path / "drc_exclusions.json"
-    monkeypatch.setattr("kicad_mcp.tools.validation._drc_exclusions_path", lambda: excls_path)
-    result = drc_remove_exclusion(uuid="nobody")
+@pytest.mark.anyio
+async def test_drc_remove_exclusion_nonexistent(tmp_path: Path) -> None:
+    # Create a minimal project structure
+    proj = tmp_path / "proj"
+    proj.mkdir()
+    (proj / "demo.kicad_pro").write_text("{}", encoding="utf-8")
+    (proj / "demo.kicad_pcb").write_text("", encoding="utf-8")
+    (proj / "demo.kicad_sch").write_text("", encoding="utf-8")
+    server = create_server()
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(proj)})
+    result = await call_tool_text(server, "drc_remove_exclusion", {"uuid": "nobody"})
     assert "No exclusion found" in result

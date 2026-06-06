@@ -1,4 +1,7 @@
-"""Unit tests for 3D model management tools (FAZ 7)."""
+"""Unit tests for 3D model management tools (FAZ 7).
+Tools: lib_bulk_assign_3d_models, lib_remove_3d_model,
+lib_search_3d_models, lib_set_3d_model_path.
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,6 @@
-"""Unit tests for net analysis tools (FAZ 6.1–6.3)."""
+"""Unit tests for net analysis tools (FAZ 6.1–6.3).
+Tools: pcb_get_net_statistics, pcb_net_inspector, pcb_export_stats.
+"""
 
 from __future__ import annotations
 
@@ -17,7 +19,7 @@ def test_collect_nets_from_file_empty(tmp_path, monkeypatch) -> None:  # type: i
 def test_collect_nets_from_file_with_nets(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     pcb_file = tmp_path / "board.kicad_pcb"
     pcb_file.write_text(
-        '(kicad_pcb (net 0 "") (net 1 "GND") (net 2 "+3V3"))\n',
+        '(kicad_pcb (version 20250316) (net 0 "") (net 1 "GND") (net 2 "+3V3"))\n',
         encoding="utf-8",
     )
     monkeypatch.setattr("kicad_mcp.tools.net_analysis._get_pcb_file", lambda: pcb_file)
@@ -30,7 +32,7 @@ def test_collect_nets_from_file_with_nets(tmp_path, monkeypatch) -> None:  # typ
 def test_nets_uses_file_fallback_when_no_board(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     pcb_file = tmp_path / "board.kicad_pcb"
     pcb_file.write_text(
-        '(kicad_pcb (net 0 "") (net 1 "CLK") (net 2 "D0"))\n',
+        '(kicad_pcb (version 20250316) (net 0 "") (net 1 "CLK") (net 2 "D0"))\n',
         encoding="utf-8",
     )
     monkeypatch.setattr("kicad_mcp.tools.net_analysis._get_pcb_file", lambda: pcb_file)

@@ -15,7 +15,7 @@ from mcp.server.fastmcp import FastMCP
 
 from ..connection import KiCadConnectionError, get_board
 from ..utils.units import nm_to_mm
-from .export_support import _ensure_output_dir, _get_pcb_file, _run_cli_variants
+from .export_support import _get_pcb_file
 from .metadata import headless_compatible
 
 
@@ -194,53 +194,3 @@ def register(mcp: FastMCP) -> None:
         }
         return json.dumps(payload, indent=2)
 
-    @mcp.tool()
-    @headless_compatible
-    def pcb_export_stats(output_name: str | None = None) -> str:
-        """Export board statistics (net count, component count, layer count, etc.)
-        via the KiCad CLI ``pcb export stats`` command.
-
-        Parameters
-        ----------
-        output_name : str | None
-            Optional output file name (saved under the project output directory).
-            Defaults to ``board_stats.json``.
-        """
-        pcb_file = _get_pcb_file()
-        out_dir = _ensure_output_dir("stats")
-        out_file = out_dir / (output_name.strip() if output_name else "board_stats.json")
-        if "/" in str(out_file.relative_to(out_dir)) or "\\" in str(out_file.relative_to(out_dir)):
-            raise ValueError("Output name must be a single file name, not a path.")
-
-        code, stdout, stderr = _run_cli_variants(
-            [
-                [
-                    "pcb",
-                    "export",
-                    "stats",
-                    "--output",
-                    str(out_file),
-                    str(pcb_file),
-                ],
-                [
-                    "pcb",
-                    "export",
-                    "stats",
-                    "--input",
-                    str(pcb_file),
-                    "--output",
-                    str(out_file),
-                ],
-            ]
-        )
-        if code != 0:
-            return f"Board stats export failed: {stderr or 'unknown error'}"
-        if not out_file.exists():
-            return "Board stats export completed but no output file was produced."
-
-        # Try to read and pretty-print the stats
-        try:
-            stats = json.loads(out_file.read_text(encoding="utf-8"))
-            return json.dumps(stats, indent=2)
-        except (json.JSONDecodeError, OSError):
-            return f"Board stats exported to {out_file}."

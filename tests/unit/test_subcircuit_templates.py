@@ -2,21 +2,33 @@
 
 from __future__ import annotations
 
-from kicad_mcp.tools.schematic import sch_get_template_info, sch_list_templates
+import pytest
+
+from kicad_mcp.server import create_server
+from tests.conftest import call_tool_text
 
 
-def test_list_templates_returns_list() -> None:
-    result = sch_list_templates()
+@pytest.mark.anyio
+async def test_list_templates_returns_list() -> None:
+    server = create_server()
+    result = await call_tool_text(server, "sch_list_templates", {})
     assert "nrf52840" in result or "ws2812b" in result or "templates" in result.lower()
 
 
-def test_get_template_info_exists() -> None:
-    # The nrf52840_minimal template should exist
-    result = sch_get_template_info("nrf52840_minimal")
+@pytest.mark.anyio
+async def test_get_template_info_exists() -> None:
+    server = create_server()
+    result = await call_tool_text(
+        server, "sch_get_template_info", {"template_name": "nrf52840_minimal"}
+    )
     assert result is not None
     assert "nrf" in result.lower() or "not found" not in result.lower()
 
 
-def test_get_template_info_missing() -> None:
-    result = sch_get_template_info("nonexistent_template_xyz")
+@pytest.mark.anyio
+async def test_get_template_info_missing() -> None:
+    server = create_server()
+    result = await call_tool_text(
+        server, "sch_get_template_info", {"template_name": "nonexistent_template_xyz"}
+    )
     assert "not found" in result.lower() or "error" in result.lower()
