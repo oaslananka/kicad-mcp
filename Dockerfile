@@ -16,7 +16,7 @@ RUN if [ -n "${KICAD_APPIMAGE_URL}" ]; then \
     mkdir -p /opt/kicad-appimage
 
 FROM python:3.13.12-alpine3.22@sha256:41351b07080ccfaa27bf38dde20de79ee6a0ac74a58c00c6d7a7d96ac4e69716 AS builder
-ARG UV_VERSION=0.11.16
+ARG UV_VERSION=0.11.19
 ENV UV_NO_CACHE=1
 WORKDIR /build
 RUN python -m pip install --no-cache-dir --disable-pip-version-check --root-user-action=ignore "uv==${UV_VERSION}"
@@ -29,7 +29,7 @@ RUN uv build --wheel --out-dir /dist \
     --output-file /dist/requirements.txt
 
 FROM python:3.13.12-slim@sha256:f1927c75e81efd1e091dbd64b6c0ecaa5630b38635a3d1c04034ac636e1f94c8 AS builder-kicad10
-ARG UV_VERSION=0.11.16
+ARG UV_VERSION=0.11.19
 ENV UV_NO_CACHE=1
 WORKDIR /app
 RUN python -m pip install --no-cache-dir --disable-pip-version-check --root-user-action=ignore "uv==${UV_VERSION}"

@@ -5,6 +5,10 @@ lib_search_3d_models, lib_set_3d_model_path.
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from kicad_mcp.tools.three_d_models import (
     _find_3d_model_refs,
     _find_footprint_file,
@@ -12,7 +16,8 @@ from kicad_mcp.tools.three_d_models import (
 )
 
 
-def test_find_footprint_file_not_found(tmp_path) -> None:  # type: ignore[no-untyped-def]
+def test_find_footprint_file_not_found(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setenv("KICAD_MCP_FOOTPRINT_LIBRARY_DIR", str(tmp_path))
     fp = _find_footprint_file("Missing", "Nonexistent")
     assert fp is None
 
