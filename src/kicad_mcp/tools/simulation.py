@@ -487,7 +487,7 @@ def register(mcp: FastMCP) -> None:
         payload: dict[str, Any],
     ) -> list[dict[str, Any]]:
         """Return the SPICE library entries from a project-file payload."""
-        raw: list[dict[str, Any]] = payload.get("libraries", [])  # type: ignore[assignment]
+        raw: list[dict[str, Any]] = payload.get("libraries", [])
         if not isinstance(raw, list):
             return []
         return [lib for lib in raw if lib.get("type") == "Spice"]
@@ -521,7 +521,7 @@ def register(mcp: FastMCP) -> None:
         """
         payload = SpiceLibraryEntry(name=name, uri=uri)
         project = _read_project_json()
-        libraries: list[dict[str, Any]] = project.setdefault("libraries", [])  # type: ignore[type-arg]
+        libraries: list[dict[str, Any]] = project.setdefault("libraries", [])
         if not isinstance(libraries, list):
             raise ValueError("The 'libraries' field in the project file must be an array.")
 
@@ -541,7 +541,7 @@ def register(mcp: FastMCP) -> None:
     def sim_remove_spice_library(name: str) -> str:
         """Unregister a SPICE model library from the active project file."""
         project = _read_project_json()
-        libraries: list[dict[str, Any]] = project.get("libraries", [])  # type: ignore[type-arg]
+        libraries: list[dict[str, Any]] = project.get("libraries", [])
         if not isinstance(libraries, list):
             return "No SPICE libraries are configured in the active project."
 

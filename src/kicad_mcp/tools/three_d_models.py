@@ -47,9 +47,9 @@ def _write_footprint_text(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def _find_3d_model_refs(text: str) -> list[dict[str, str]]:
+def _find_3d_model_refs(text: str) -> list[dict[str, object]]:
     """Return list of ``{path, offset_xyz, scale_xyz, rotate_xyz}`` entries."""
-    refs: list[dict[str, str]] = []
+    refs: list[dict[str, object]] = []
     for match in re.finditer(
         r'\(model\s+"([^"]+)"\s*(.*?)\)\s*',
         text,
@@ -57,15 +57,15 @@ def _find_3d_model_refs(text: str) -> list[dict[str, str]]:
     ):
         model_path = match.group(1)
         inner = match.group(2)
-        ox = _sexpr_float(inner, "offset", "xyz", 0)
-        oy = _sexpr_float(inner, "offset", "xyz", 1)
-        oz = _sexpr_float(inner, "offset", "xyz", 2)
-        sx = _sexpr_float(inner, "scale", "xyz", 0)
-        sy = _sexpr_float(inner, "scale", "xyz", 1)
-        sz = _sexpr_float(inner, "scale", "xyz", 2)
-        rx = _sexpr_float(inner, "rotate", "xyz", 0)
-        ry = _sexpr_float(inner, "rotate", "xyz", 1)
-        rz = _sexpr_float(inner, "rotate", "xyz", 2)
+        ox = _sexpr_float(inner, "offset", "xyz", index=0)
+        oy = _sexpr_float(inner, "offset", "xyz", index=1)
+        oz = _sexpr_float(inner, "offset", "xyz", index=2)
+        sx = _sexpr_float(inner, "scale", "xyz", index=0)
+        sy = _sexpr_float(inner, "scale", "xyz", index=1)
+        sz = _sexpr_float(inner, "scale", "xyz", index=2)
+        rx = _sexpr_float(inner, "rotate", "xyz", index=0)
+        ry = _sexpr_float(inner, "rotate", "xyz", index=1)
+        rz = _sexpr_float(inner, "rotate", "xyz", index=2)
         refs.append(
             {
                 "path": model_path,

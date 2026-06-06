@@ -71,15 +71,15 @@ def _collect_board_nets() -> list[dict[str, Any]]:
     # File fallback
     try:
         content = _get_pcb_file().read_text(encoding="utf-8", errors="ignore")
-        nets: list[dict[str, Any]] = []
+        fallback_nets: list[dict[str, Any]] = []
         seen_codes: set[int] = set()
         for m in re.finditer(r'\(net\s+(\d+)\s+"((?:\\.|[^"\\])*)"', content):
             code = int(m.group(1))
             name = m.group(2)
             if code not in seen_codes:
                 seen_codes.add(code)
-                nets.append({"code": code, "name": name})
-        return nets
+                fallback_nets.append({"code": code, "name": name})
+        return fallback_nets
     except (OSError, ValueError):
         return []
 
@@ -173,7 +173,7 @@ def register(mcp: FastMCP) -> None:
 
                 # Check existing pads on this net
                 for fp in board.get_footprints():
-                    for pad in fp.get_pads():
+                    for pad in fp.get_pads():  # type: ignore[attr-defined]
                         if hasattr(pad, "net") and pad.net and pad.net.code == net_code:
                             pos = getattr(pad, "position", None)
                             if pos:
@@ -189,7 +189,7 @@ def register(mcp: FastMCP) -> None:
 
                 # Check vias on this net
                 try:
-                    for via in board.get_vias_for_net(net_code):
+                    for via in board.get_vias_for_net(net_code):  # type: ignore[attr-defined]
                         pos = getattr(via, "position", None)
                         if pos:
                             candidates.append(

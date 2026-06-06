@@ -35,21 +35,21 @@ def _collect_nets_from_board() -> list[dict[str, Any]]:
             "class_name": getattr(net, "class_name", "") or "",
         }
         try:
-            net_info["track_count"] = len(board.get_tracks_for_net(net.code))
+            net_info["track_count"] = len(board.get_tracks_for_net(net.code))  # type: ignore[attr-defined]
         except Exception:
             net_info["track_count"] = 0
         try:
-            net_info["via_count"] = len(board.get_vias_for_net(net.code))
+            net_info["via_count"] = len(board.get_vias_for_net(net.code))  # type: ignore[attr-defined]
         except Exception:
             net_info["via_count"] = 0
         try:
-            net_info["pad_count"] = len(board.get_pads_for_net(net.code))
+            net_info["pad_count"] = len(board.get_pads_for_net(net.code))  # type: ignore[attr-defined]
         except Exception:
             net_info["pad_count"] = 0
         # Total track length
         total_length_mm = 0.0
         try:
-            for track in board.get_tracks_for_net(net.code):
+            for track in board.get_tracks_for_net(net.code):  # type: ignore[attr-defined]
                 length = getattr(track, "length", None)
                 if length is not None:
                     total_length_mm += nm_to_mm(length)
@@ -145,7 +145,7 @@ def register(mcp: FastMCP) -> None:
         try:
             board = get_board()
             for footprint in board.get_footprints():
-                for pad in footprint.get_pads():
+                for pad in footprint.get_pads():  # type: ignore[attr-defined]
                     if pad.net and pad.net.code == net_code:
                         pads_on_net.append(
                             {
