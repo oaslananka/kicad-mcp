@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -12,8 +11,8 @@ from kicad_mcp.tools.validation import (
     _load_erc_severity,
     _save_erc_severity,
     erc_list_rules,
-    erc_set_rule_severity,
     erc_reset_rules,
+    erc_set_rule_severity,
 )
 
 

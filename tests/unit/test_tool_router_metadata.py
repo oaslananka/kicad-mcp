@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from kicad_mcp.tools.router import (
-    TOOL_CATEGORIES,
-    PROFILE_CATEGORIES,
     EXPERIMENTAL_TOOL_NAMES,
+    TOOL_CATEGORIES,
     available_profiles,
     categories_for_profile,
 )

@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
-import pytest
-
 from kicad_mcp.tools.net_analysis import _collect_nets_from_file, _nets
 
 

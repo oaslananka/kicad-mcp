@@ -374,7 +374,10 @@ def register(mcp: FastMCP) -> None:
         if state.get("active_variant") == name:
             state["active_variant"] = state.get("default_variant", "default")
         path = _save_state(state)
-        return f"Deleted variant '{name}' from {path}. Active variant reset to '{state['active_variant']}'."
+        return (
+            f"Deleted variant '{name}' from {path}."
+            f" Active variant reset to '{state['active_variant']}'."
+        )
 
     @mcp.tool()
     @headless_compatible
@@ -410,7 +413,7 @@ def register(mcp: FastMCP) -> None:
         output_name : str | None
             Output filename (defaults to ``<variant>_schematic.pdf``).
         """
-        from .export_support import _get_sch_file, _ensure_output_dir, _run_cli_variants
+        from .export_support import _ensure_output_dir, _get_sch_file, _run_cli_variants
 
         state = _load_state()
         _ensure_variant(state, variant)
@@ -479,14 +482,14 @@ def register(mcp: FastMCP) -> None:
 
         state = _load_state()
         _ensure_variant(state, variant)
-        cfg = get_config()
+        get_config()
         out_dir = _ensure_output_dir("variants")
         manifest_path = out_dir / (output_name or f"{variant}_manufacturing.json")
 
         is_default = variant == state.get("default_variant", "default")
         variant_args = [f"--variant={variant}"] if not is_default else []
         pcb_file = _get_pcb_file()
-        sch_file = _get_sch_file()
+        _get_sch_file()
 
         artifacts: dict[str, str] = {}
         errors: list[str] = []

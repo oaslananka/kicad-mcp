@@ -3,17 +3,12 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-
-import pytest
 
 from kicad_mcp.tools.test_points import (
+    _collect_board_nets,
     _load_test_points,
     _save_test_points,
-    _collect_board_nets,
-    pcb_add_test_point,
     pcb_list_test_points,
-    pcb_check_test_coverage,
 )
 
 

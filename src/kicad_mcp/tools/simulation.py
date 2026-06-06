@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from mcp.server.fastmcp import Context, FastMCP
 

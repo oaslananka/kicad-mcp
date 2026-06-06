@@ -3,17 +3,12 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-
-import pytest
 
 from kicad_mcp.tools.validation import (
     _load_drc_exclusions,
     _save_drc_exclusions,
     drc_list_exclusions,
-    drc_add_exclusion,
     drc_remove_exclusion,
-    drc_validate_exclusions,
 )
 
 

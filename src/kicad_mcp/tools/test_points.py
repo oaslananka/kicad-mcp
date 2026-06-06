@@ -7,6 +7,7 @@ FAZ 8.1 — pcb_add_test_point, pcb_list_test_points,
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any, cast
@@ -200,7 +201,7 @@ def register(mcp: FastMCP) -> None:
                                 }
                             )
                 except Exception:
-                    pass
+                    logging.exception("Failed to suggest test point via via")
 
                 suggestions.append(
                     {

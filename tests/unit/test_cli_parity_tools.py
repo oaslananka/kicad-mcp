@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from kicad_mcp.tools.export_support import _run_cli_variants
 from kicad_mcp.tools.export import _safe_output_filename
+from kicad_mcp.tools.export_support import _run_cli_variants
 
 
 def test_safe_output_filename_valid() -> None:

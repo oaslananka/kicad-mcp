@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 import pytest
 
@@ -131,7 +131,7 @@ def test_ttl_expiry_triggers_reconnect() -> None:
     session = _make_session(client_factory=factory, config=config)
 
     # Override time.monotonic with clock
-    setattr(session, "_last_connect_time", 0.0)  # ensure no time bias
+    session._last_connect_time = 0.0  # ensure no time bias
 
     # First call connects
     with pytest.MonkeyPatch().context() as mp:

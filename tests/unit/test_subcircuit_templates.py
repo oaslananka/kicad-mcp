@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
-from kicad_mcp.tools.schematic import sch_list_templates, sch_get_template_info
+from kicad_mcp.tools.schematic import sch_get_template_info, sch_list_templates
 
 
 def test_list_templates_returns_list() -> None:

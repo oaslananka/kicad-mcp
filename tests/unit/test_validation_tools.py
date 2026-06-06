@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-
 from kicad_mcp.tools.validation import (
-    _compute_scores,
     _ERC_RULE_NAMES,
+    _compute_scores,
     _load_erc_severity,
 )
 

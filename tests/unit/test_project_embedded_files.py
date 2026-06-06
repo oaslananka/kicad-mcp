@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from kicad_mcp.tools.embedded_files import _load_project_payload, _project_file
+from kicad_mcp.tools.embedded_files import _load_project_payload
 
 
 def test_load_project_payload_valid(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
@@ -28,8 +28,6 @@ def test_load_project_payload_rejects_bad_json(tmp_path, monkeypatch) -> None:  
 def test_embed_rejects_large_file(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     """A file > 1 MB should be rejected."""
     from kicad_mcp.tools.embedded_files import project_embed_file
-    from kicad_mcp.config import get_config
-    from kicad_mcp.path_safety import assert_within
 
     large = tmp_path / "large.bin"
     large.write_bytes(b"x" * 1_000_001)

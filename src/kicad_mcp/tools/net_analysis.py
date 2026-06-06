@@ -8,12 +8,11 @@ FAZ 6.3 — pcb_export_stats
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from typing import Any, cast
+import logging
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from ..config import get_config
 from ..connection import KiCadConnectionError, get_board
 from ..utils.units import nm_to_mm
 from .export_support import _ensure_output_dir, _get_pcb_file, _run_cli_variants
@@ -55,7 +54,7 @@ def _collect_nets_from_board() -> list[dict[str, Any]]:
                 if length is not None:
                     total_length_mm += nm_to_mm(length)
         except Exception:
-            pass
+            logging.exception("Failed to get track length for net %s", getattr(net, "name", "?"))
         net_info["total_track_length_mm"] = round(total_length_mm, 4)
         result.append(net_info)
     return result

@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-
 from kicad_mcp.tools.three_d_models import (
-    _find_footprint_file,
     _find_3d_model_refs,
+    _find_footprint_file,
     _search_3d_model_files,
 )
 

@@ -2160,7 +2160,7 @@ def register(mcp: FastMCP) -> None:
 
     # ── FAZ 5.2 — ERC Rule Severity tools ──────────────────────────────
 
-    _ERC_RULE_NAMES: list[str] = [
+    _erc_rule_names: list[str] = [
         "power_pin_not_driven",
         "pin_not_connected",
         "pin_to_pin_warning",
@@ -2189,7 +2189,7 @@ def register(mcp: FastMCP) -> None:
     def _load_erc_severity() -> dict[str, str]:
         path = _erc_severity_path()
         if not path.exists():
-            payload: dict[str, str] = {rule: "error" for rule in _ERC_RULE_NAMES}
+            payload: dict[str, str] = {rule: "error" for rule in _erc_rule_names}
             path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
             return payload
         return cast(dict[str, str], json.loads(path.read_text(encoding="utf-8")))
@@ -2210,7 +2210,7 @@ def register(mcp: FastMCP) -> None:
         payload = {
             "rules": [
                 {"name": name, "severity": severity_map.get(name, "error")}
-                for name in _ERC_RULE_NAMES
+                for name in _erc_rule_names
             ]
         }
         return json.dumps(payload, indent=2)
@@ -2230,9 +2230,9 @@ def register(mcp: FastMCP) -> None:
         severity_lower = severity.casefold().strip()
         if severity_lower not in {"error", "warning", "ignore"}:
             raise ValueError("Severity must be one of: error, warning, ignore.")
-        if rule_name not in _ERC_RULE_NAMES:
+        if rule_name not in _erc_rule_names:
             raise ValueError(
-                f"Unknown ERC rule '{rule_name}'. Available rules: {', '.join(_ERC_RULE_NAMES)}"
+                f"Unknown ERC rule '{rule_name}'. Available rules: {', '.join(_erc_rule_names)}"
             )
         state = _load_erc_severity()
         state[rule_name] = severity_lower
@@ -2251,14 +2251,14 @@ def register(mcp: FastMCP) -> None:
         """
         state = _load_erc_severity()
         if rule_name:
-            if rule_name not in _ERC_RULE_NAMES:
+            if rule_name not in _erc_rule_names:
                 raise ValueError(
-                    f"Unknown ERC rule '{rule_name}'. Available rules: {', '.join(_ERC_RULE_NAMES)}"
+                    f"Unknown ERC rule '{rule_name}'. Available rules: {', '.join(_erc_rule_names)}"
                 )
             state[rule_name] = "error"
             _save_erc_severity(state)
             return f"ERC rule '{rule_name}' reset to default severity (error)."
-        for name in _ERC_RULE_NAMES:
+        for name in _erc_rule_names:
             state[name] = "error"
         _save_erc_severity(state)
-        return f"All {len(_ERC_RULE_NAMES)} ERC rules reset to default severity (error)."
+        return f"All {len(_erc_rule_names)} ERC rules reset to default severity (error)."

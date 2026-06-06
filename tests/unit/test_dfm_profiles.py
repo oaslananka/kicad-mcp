@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-import json
-
-import pytest
-
-from kicad_mcp.tools.dfm import _load_profile, _profile_paths, pcbway_standard_profile
+from kicad_mcp.tools.dfm import _load_profile, _profile_paths
 
 
 def test_profile_paths_returns_list() -> None:

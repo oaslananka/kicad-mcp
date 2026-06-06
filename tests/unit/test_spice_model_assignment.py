@@ -7,8 +7,6 @@ import pytest
 from kicad_mcp.tools.simulation import (
     sim_assign_spice_model,
     sim_list_spice_libraries,
-    sim_add_spice_library,
-    sim_remove_spice_library,
     sim_validate_spice_setup,
 )
 

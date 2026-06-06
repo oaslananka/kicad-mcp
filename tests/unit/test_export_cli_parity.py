@@ -5,9 +5,8 @@ from __future__ import annotations
 import pytest
 
 from kicad_mcp.tools.export import (
-    _safe_output_filename,
-    _human_size,
     _format_file_list,
+    _human_size,
 )
 
 
@@ -33,6 +32,7 @@ def test_format_file_list_with_files(tmp_path) -> None:  # type: ignore[no-untyp
 def test_export_pick_and_place_args(fmt: str) -> None:
     """export_pick_and_place should accept 'variant' param after FAZ 8.2."""
     from inspect import signature
+
     from kicad_mcp.tools.export import export_pick_and_place
 
     sig = signature(export_pick_and_place)
