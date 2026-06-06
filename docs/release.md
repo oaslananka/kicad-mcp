@@ -3,26 +3,19 @@
 Current product versions are represented in:
 
 - `.release-please-manifest.json`
-- `apps/vscode-extension/package.json`
-- `packages/mcp-server/pyproject.toml`
-- `packages/mcp-server/src/kicad_mcp/__init__.py`
-- `packages/mcp-server/server.json`
+- `pyproject.toml`
+- `src/kicad_mcp/__init__.py`
+- `src/kicad_mcp/server.json`
 - `packages/mcp-npm/package.json`
 
 `.release-please-manifest.json` tracks product package paths only. The private repository root is not released.
 
-Release PRs are created by `.github/workflows/release-please.yml` with separate Release Please pull requests per product package path. The VS Code extension can release independently from `kicad-mcp-pro`; the MCP server Python package and npm launcher stay version-linked as one MCP product. Release publication workflows run from GitHub Releases and protected environments.
+Release PRs are created by `.github/workflows/release-please.yml` with separate Release Please pull requests per product package path. The VS Code extension (KiCad Studio) releases independently from its own repository; `kicad-mcp-pro` Python package and npm launcher stay version-linked as one MCP product. Release publication workflows run from GitHub Releases and protected environments.
 
 The publish workflows keep release evidence product-scoped:
 
-- `publish-extension.yml` validates the VSIX, emits `SHA256SUMS.txt` and a
-  CycloneDX SBOM, creates GitHub artifact attestations for the checksummed
-  extension package, publishes the shared VSIX to the Visual Studio Marketplace,
-  verifies the Marketplace version, and then publishes the same VSIX to Open VSX
-  in a separate non-blocking job that downloads the published VSIX and compares
-  its digest with the release checksum.
 - `publish-python.yml` validates the wheel and source distribution, emits
-  `packages/mcp-server/release-evidence/SHA256SUMS.txt`, emits a CycloneDX SBOM,
+  `release-evidence/SHA256SUMS.txt`, emits a CycloneDX SBOM,
   uploads that evidence as `python-release-evidence`, and creates GitHub
   artifact attestations for the Python wheel and source distribution before PyPI
   trusted publishing. The publish jobs verify local checksums before upload and
@@ -42,8 +35,8 @@ Release dry-runs also validate `compatibility.yaml` through the MCP server relea
 
 Release Please derives product changelogs from Conventional Commits, so pull request titles and product-changing commits must use one of these scopes:
 
-- `kicad-studio` for `apps/vscode-extension`.
-- `kicad-mcp-pro` for `packages/mcp-server` and `packages/mcp-npm`.
+- `kicad-studio` for the VS Code extension (separate repository).
+- `kicad-mcp-pro` for `src/kicad_mcp` and `packages/mcp-npm`.
 - `repo` for repository governance, documentation, workflow, and shared release policy changes.
 - `deps` for dependency-only updates.
 
@@ -52,8 +45,6 @@ Commits that touch both product directories must be split by product or use the 
 Run product dry-runs before merging release-related changes:
 
 ```bash
-corepack pnpm run release:dry-run:kicad-studio
-corepack pnpm run release:dry-run:kicad-mcp-pro
 corepack pnpm run release:dry-run
 corepack pnpm run check:release-please
 ```

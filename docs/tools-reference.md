@@ -216,7 +216,7 @@ Total public tools: 257.
 | `mfg_import_geda` | agent_full, full, manufacturing | no | yes | yes | yes | no | Import a gEDA PCB into a KiCad project directory. This KiCad MCP Pro tool supports production EDA automation workflow... |
 | `mfg_import_pads` | agent_full, full, manufacturing | no | yes | yes | yes | no | Import a PADS PCB into a KiCad project directory. This KiCad MCP Pro tool supports production EDA automation workflow... |
 | `mfg_panelize` | agent_full, full, manufacturing | no | yes | yes | yes | no | Panelize the active PCB using KiKit. |
-| `pcb_add_barcode` | agent_full, builder, full, high_speed, pcb, pcb_only, power | no | yes | no | yes | no | Add a production barcode marker to the board file. This KiCad MCP Pro tool supports production EDA automation workflo... |
+| `pcb_add_barcode` | agent_full, builder, full, high_speed, pcb, pcb_only, power | no | yes | no | yes | no | Add a production barcode marker to the board file using KiCad's native barcode format. |
 | `pcb_add_blind_via` | agent_full, builder, full, high_speed, pcb, pcb_only, power | no | yes | no | no | no | Add a blind or buried via between the requested copper layers. |
 | `pcb_add_circle` | agent_full, builder, full, high_speed, pcb, pcb_only, power | no | yes | no | no | no | Add a board graphic circle. This KiCad MCP Pro tool supports production EDA automation workflows for MCP clients. |
 | `pcb_add_copper_zone` | agent_full, builder, full, high_speed, pcb, pcb_only, power | no | yes | no | no | yes | Backward-compatible alias for pcb_add_zone(). This KiCad MCP Pro tool supports production EDA automation workflows fo... |

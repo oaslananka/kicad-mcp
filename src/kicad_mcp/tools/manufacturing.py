@@ -685,18 +685,105 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @headless_compatible
+    def pcb_import_board(
+        input_file: str,
+        output_file: str = "",
+        format: str = "auto",
+        report_format: str = "none",
+        report_file: str = "",
+    ) -> str:
+        """Import a non-KiCad PCB file to KiCad format.
+
+        Parameters
+        ----------
+        input_file : str
+            Path to the non-KiCad board file.
+        output_file : str
+            Optional path for the imported KiCad PCB file.
+        format : str
+            Input format: auto, pads, altium, eagle, cadstar, fabmaster, pcad, solidworks.
+        report_format : str
+            Import report format: none, json, text.
+        report_file : str
+            Optional file path for the import report.
+        """
+        cfg = get_config()
+        if format.strip().casefold() == "allegro":
+            return "blocked: KiCad CLI does not support allegro import in 10.0.3"
+
+        from .export import _run_cli_variants
+
+        try:
+            from ..path_safety import resolve_under
+            if cfg.project_dir is not None:
+                in_path = resolve_under(cfg.project_dir, input_file)
+            else:
+                in_path = Path(input_file).expanduser().resolve()
+        except Exception as exc:
+            return f"Unsafe input file path: {exc}"
+
+        if not in_path.exists():
+            return f"Input file was not found: {input_file}"
+
+        cmd = ["pcb", "import"]
+        cmd.extend(["--format", format])
+        cmd.extend(["--report-format", report_format])
+        if report_file:
+            try:
+                if cfg.project_dir is not None:
+                    rep_path = resolve_under(cfg.project_dir, report_file)
+                else:
+                    rep_path = Path(report_file).expanduser().resolve()
+                cmd.extend(["--report-file", str(rep_path)])
+            except Exception as exc:
+                return f"Unsafe report file path: {exc}"
+
+        if output_file:
+            try:
+                if cfg.project_dir is not None:
+                    out_path = resolve_under(cfg.project_dir, output_file)
+                else:
+                    out_path = Path(output_file).expanduser().resolve()
+                cmd.extend(["--output", str(out_path)])
+            except Exception as exc:
+                return f"Unsafe output file path: {exc}"
+
+        cmd.append(str(in_path))
+
+        code, stdout, stderr = _run_cli_variants([cmd])
+        if code != 0:
+            return f"Board import failed: {stderr or stdout or 'unknown error'}"
+        return f"Board imported successfully. Output: {output_file or 'default location'}"
+
+    @mcp.tool()
+    @headless_compatible
     def mfg_import_allegro(allegro_brd_path: str, output_dir: str = "") -> str:
         """Import an Allegro board into a KiCad project directory."""
-        return _run_import_cli("allegro", allegro_brd_path, output_dir or None)
+        return "blocked: KiCad CLI does not support allegro import in 10.0.3"
 
     @mcp.tool()
     @headless_compatible
     def mfg_import_pads(pads_pcb_path: str, output_dir: str = "") -> str:
         """Import a PADS PCB into a KiCad project directory."""
-        return _run_import_cli("pads", pads_pcb_path, output_dir or None)
+        res = pcb_import_board(pads_pcb_path, output_file=output_dir, format="pads")
+        if "Board import failed" in res:
+            return res.replace("Board import failed", "pads import failed")
+        return res.replace("Board imported successfully", "pads import completed")
 
     @mcp.tool()
     @headless_compatible
     def mfg_import_geda(geda_pcb_path: str, output_dir: str = "") -> str:
         """Import a gEDA PCB into a KiCad project directory."""
-        return _run_import_cli("geda", geda_pcb_path, output_dir or None)
+        res = pcb_import_board(geda_pcb_path, output_file=output_dir, format="geda")
+        if "Board import failed" in res:
+            return res.replace("Board import failed", "geda import failed")
+        return res.replace("Board imported successfully", "geda import completed")
+
+    @mcp.tool()
+    @headless_compatible
+    def mfg_import_specctra(specctra_ses_path: str, output_dir: str = "") -> str:
+        """Import a Specctra DSN/SES file into a KiCad project directory."""
+        res = pcb_import_board(specctra_ses_path, output_file=output_dir, format="specctra")
+        if "Board import failed" in res:
+            return res.replace("Board import failed", "specctra import failed")
+        return res.replace("Board imported successfully", "specctra import completed")

@@ -168,8 +168,8 @@ def _fake_cli_run_factory(sample_project: Path):
             output_path.write_text("png", encoding="utf-8")
         elif "pos" in cmd or "positions" in cmd:
             assert output_path is not None
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text("ref,x,y\nR1,1,2\n", encoding="utf-8")
+            output_path.mkdir(parents=True, exist_ok=True)
+            (output_path / "demo-pos.csv").write_text("ref,x,y\nR1,1,2\n", encoding="utf-8")
         elif "ipc2581" in cmd:
             assert output_path is not None
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -677,6 +677,9 @@ async def test_export_and_validation_surface(
         await call_tool_text(server, "export_spice_netlist", {}),
         await call_tool_text(server, "export_pcb_pdf", {"layers": ["F.Cu"]}),
         await call_tool_text(server, "export_sch_pdf", {}),
+        await call_tool_text(server, "export_sch_svg", {}),
+        await call_tool_text(server, "export_sch_dxf", {}),
+        await call_tool_text(server, "export_sch_python_bom", {}),
         await call_tool_text(server, "export_step", {"output_path": ""}),
         await call_tool_text(server, "export_3d_step", {}),
         await call_tool_text(server, "export_stepz", {"output_path": ""}),

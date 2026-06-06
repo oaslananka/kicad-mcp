@@ -62,6 +62,10 @@ from .operating_modes import (
     is_tool_allowed_in_mode,
 )
 from .tools import router
+from .tools import footprint as _footprint
+from .tools import jobset as _jobset
+from .tools import symbol as _symbol
+from .tools import upgrade as _upgrade
 from .tools.fixers import validate_callable_imports
 from .tools.metadata import get_tool_metadata, infer_tool_annotations
 from .tools.router import EXPERIMENTAL_TOOL_NAMES, available_profiles, categories_for_profile
@@ -1298,6 +1302,10 @@ def _register_profile_components(
         version_control.register(server)
     if "manufacturing" in enabled:
         manufacturing.register(server)
+    _footprint.register(server)
+    _jobset.register(server)
+    _symbol.register(server)
+    _upgrade.register(server)
 
     analysis.register(server)
     board_state.register(server)
