@@ -1,0 +1,29 @@
+name: ch32v003_minimal
+version: "1.0"
+description: Minimal CH32V003 RISC-V MCU with SWD and basic decoupling.
+symbols:
+  - ref_prefix: U
+    value: CH32V003
+    default_footprint: Package_SO:TSSOP-20_4.4x6.5mm_P0.65mm
+    pins_left: [PA1, PA2, PD1, PD2, PD3, PD4, PD5, PD6, PD7, VDD, VSS]
+    pins_right: [PC1, PC2, PC3, PC4, PC5, PC6, NRST, SWDIO, SWCLK, VDD_IO]
+  - ref_prefix: C
+    value: 100nF
+    default_footprint: Capacitor_SMD:C_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+  - ref_prefix: C
+    value: 10uF
+    default_footprint: Capacitor_SMD:C_0805_2012Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: +3V3
+    type: power
+  - name: GND
+    type: power
+placement_hints:
+  - Place 100nF ceramic cap near each VDD/VSS pair.
+  - Place 10uF bulk cap near where VDD enters the board.
+  - Keep SWDIO/SWCLK traces short and away from noisy signals.
+  - NRST pin needs 10k pull-up to VDD.

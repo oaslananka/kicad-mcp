@@ -1,0 +1,21 @@
+{
+  "manufacturer": "Eurocircuits",
+  "tier": "pool",
+  "rules": {
+    "min_trace_width_mm": 0.15,
+    "min_trace_clearance_mm": 0.15,
+    "min_drill_mm": 0.25,
+    "min_annular_ring_mm": 0.18,
+    "min_silkscreen_text_height_mm": 0.2,
+    "copper_to_edge_mm": 0.3,
+    "max_layers": 8,
+    "min_solder_mask_swell_mm": 0.05
+  },
+  "pricing": {
+    "setup_usd": 8.0,
+    "per_sq_cm_usd": 0.1,
+    "per_drill_usd": 0.003,
+    "extra_layer_multiplier": 0.25,
+    "pooling_discount_pct": 15.0
+  }
+}

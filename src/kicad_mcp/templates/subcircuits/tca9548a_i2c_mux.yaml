@@ -1,0 +1,32 @@
+name: tca9548a_i2c_mux
+version: "1.0"
+description: TCA9548A 8-channel I2C switch / multiplexer with address-select and reset.
+symbols:
+  - ref_prefix: U
+    value: TCA9548A
+    default_footprint: Package_SO:TSSOP-24_4.4x7.8mm_P0.65mm
+    pins_left: [SCL_MASTER, SDA_MASTER, RESET, A0, A1, A2, VCC, GND]
+    pins_right: [SCL0, SDA0, SCL1, SDA1, SCL2, SDA2, SCL3, SDA3, SCL4, SDA4, SCL5, SDA5, SCL6, SDA6, SCL7, SDA7]
+  - ref_prefix: R
+    value: 10k
+    default_footprint: Resistor_SMD:R_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+  - ref_prefix: C
+    value: 100nF
+    default_footprint: Capacitor_SMD:C_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: +3V3
+    type: power
+  - name: GND
+    type: power
+  - name: I2C_MASTER
+    type: signal
+placement_hints:
+  - Pull-up resistors (4.7k-10k) required on both SCL_MASTER and SDA_MASTER lines.
+  - Each downstream channel (SCLn/SDAn) may need its own pull-ups depending on bus length.
+  - Set A0/A1/A2 address pins to VCC or GND to select device I2C address.
+  - RESET pin must be pulled high (10k to VCC) for normal operation.
+  - Keep VCC decoupling cap within 5 mm of the IC power pin.

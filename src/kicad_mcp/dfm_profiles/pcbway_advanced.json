@@ -1,0 +1,22 @@
+{
+  "manufacturer": "PCBWay",
+  "tier": "advanced",
+  "rules": {
+    "min_trace_width_mm": 0.076,
+    "min_trace_clearance_mm": 0.076,
+    "min_drill_mm": 0.15,
+    "min_annular_ring_mm": 0.1,
+    "min_silkscreen_text_height_mm": 0.12,
+    "copper_to_edge_mm": 0.2,
+    "max_layers": 64,
+    "min_impedance_control_tolerance_pct": 5.0,
+    "max_aspect_ratio": 16.0
+  },
+  "pricing": {
+    "setup_usd": 10.0,
+    "per_sq_cm_usd": 0.15,
+    "per_drill_usd": 0.004,
+    "extra_layer_multiplier": 0.35,
+    "min_impedance_control_usd": 30.0
+  }
+}

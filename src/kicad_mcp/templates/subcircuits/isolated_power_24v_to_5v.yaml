@@ -1,0 +1,59 @@
+name: isolated_power_24v_to_5v
+version: "1.0"
+description: Isolated DC-DC power supply (24V to 5V) using a module converter and input/output filtering.
+parameters:
+  vin_min_v:
+    type: float
+    description: Minimum input voltage (V)
+    default: 18.0
+  vin_max_v:
+    type: float
+    description: Maximum input voltage (V)
+    default: 36.0
+  iout_max_a:
+    type: float
+    description: Maximum output current (A)
+    default: 0.5
+symbols:
+  - ref_prefix: U
+    value: DCDC_ISOLATED
+    comment: "Isolated DC-DC converter module (e.g. Recom R-78E, Traco TMA series)"
+    default_footprint: Converter_DCDC:Converter_DCDC_RECOM_R-78B-2.0_THT
+    pins_left: [VIN, GND_IN]
+    pins_right: [VOUT, GND_OUT]
+  - ref_prefix: C
+    value: 47uF
+    default_footprint: Capacitor_SMD:C_1206_3216Metric
+    pins_left: [1]
+    pins_right: [2]
+  - ref_prefix: C
+    value: 10uF
+    default_footprint: Capacitor_SMD:C_0805_2012Metric
+    pins_left: [1]
+    pins_right: [2]
+  - ref_prefix: C
+    value: 100nF
+    default_footprint: Capacitor_SMD:C_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+  - ref_prefix: F
+    value: 500mA
+    comment: "Input fuse for overcurrent protection"
+    default_footprint: Fuse:Fuse_1206_3216Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: +24V
+    type: power
+  - name: +5V_ISO
+    type: power
+  - name: GND
+    type: power
+  - name: GND_ISO
+    type: power
+placement_hints:
+  - Place input fuse and bulk cap (47uF) before the converter input.
+  - Keep high-current input loop small to reduce EMI.
+  - Place output caps close to converter output pins.
+  - Do not connect GND and GND_ISO on the PCB — isolation is intentional.
+  - Maintain isolation creepage gap per converter datasheet (>5 mm typical).

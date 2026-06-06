@@ -1,0 +1,31 @@
+name: ws2812b_strip
+version: "1.0"
+description: WS2812B addressable RGB LED with decoupling capacitor.
+parameters:
+  led_cursor:
+    type: int
+    description: The WS2812B LED index (0-based) when instantiated inside a loop.
+    default: 0
+symbols:
+  - ref_prefix: D
+    value: WS2812B
+    default_footprint: LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm
+    pins_left: [VDD, DIN]
+    pins_right: [DOUT, VSS]
+  - ref_prefix: C
+    value: 100nF
+    default_footprint: Capacitor_SMD:C_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: +5V
+    type: power
+  - name: GND
+    type: power
+  - name: LED_DATA
+    type: signal
+placement_hints:
+  - Place 100nF capacitor as close as possible to VDD/VSS pins.
+  - Route DIN from previous LED DOUT; total daisy-chain length may need level shifter.
+  - Use star-ground for VSS returns to avoid ground bounce on long strips.
+  - Keep LED_DATA away from sensitive analog signals (800 kHz timing).

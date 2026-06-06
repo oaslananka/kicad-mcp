@@ -1302,15 +1302,19 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         return _format_file_list(files, f"Pick and place data exported to {out_dir}:")
 
     @headless_compatible
-    def export_pick_and_place(format: str = "csv") -> str:
+    def export_pick_and_place(format: str = "csv", variant: str | None = None) -> str:
         """Export pick and place (CPL) data for the active PCB.
 
         Parameters
         ----------
         format : str
             Output format (e.g. ``csv``, ``ascii``).
+        variant : str | None
+            Optional design variant name. When set, exports variant-specific
+            pick-and-place data (component population, value, footprint
+            overrides). Uses the active variant when omitted.
         """
-        return _with_low_level_export_notice(_export_pick_and_place(format=format))
+        return _with_low_level_export_notice(_export_pick_and_place(format=format, variant_name=variant))
 
     def _export_ipc2581(variant_name: str | None = None) -> str:
         pcb_file = _get_pcb_file()

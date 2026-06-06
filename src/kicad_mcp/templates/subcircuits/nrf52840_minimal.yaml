@@ -1,0 +1,42 @@
+name: nrf52840_minimal
+version: "1.0"
+description: Minimal nRF52840 Cortex-M4F BLE circuit with DCDC, SWD, and RF matching.
+symbols:
+  - ref_prefix: U
+    value: nRF52840
+    default_footprint: Package_DFN_QFN:QFN-73-1EP_9x9mm_P0.5mm_EP5.9x5.9mm
+    pins_left: [SWDIO, SWCLK, RESET, DCDCEN, DEC1, DEC2, DEC3, DEC4]
+    pins_right: [ANT, XL1, XL2, VDD, VDDH, GND]
+  - ref_prefix: L
+    value: 3.9nH
+    default_footprint: Inductor_SMD:L_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+  - ref_prefix: C
+    value: 10pF
+    default_footprint: Capacitor_SMD:C_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+  - ref_prefix: C
+    value: 22pF
+    default_footprint: Capacitor_SMD:C_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: +3V3
+    type: power
+  - name: VDDH
+    type: power
+  - name: GND
+    type: power
+  - name: ANT
+    type: rf
+    note: 50-ohm controlled impedance trace to RF connector.
+placement_hints:
+  - Place DCDC inductor and decoupling caps adjacent to their respective pins.
+  - Keep RF trace short and on a controlled-impedance layer (50 Ohm).
+  - Use 32 MHz crystal with 12-22 pF loading caps close to XL1/XL2.
+  - Connect all GND and exposed pad to solid ground plane.
+part_search_hints:
+  ic: "nRF52840 QFN73 BLE 5.4 SoC"
+  inductor: "3.9nH 0402 RF inductor"

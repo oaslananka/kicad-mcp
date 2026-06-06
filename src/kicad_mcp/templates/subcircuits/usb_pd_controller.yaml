@@ -1,0 +1,35 @@
+name: usb_pd_controller
+version: "1.0"
+description: USB Power Delivery controller circuit with CC detection (e.g. FUSB302, IP2721).
+symbols:
+  - ref_prefix: U
+    value: FUSB302
+    default_footprint: Package_DFN_QFN:QFN-14-1EP_3x3mm_P0.5mm_EP1.9x1.9mm
+    pins_left: [VDD, GND, SCL, SDA, INT_N]
+    pins_right: [CC1, CC2, VBUS_EN, VCONN_EN, VIN_SENSE]
+  - ref_prefix: R
+    value: 5.1k
+    default_footprint: Resistor_SMD:R_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+  - ref_prefix: Q
+    value: PMOS_PD
+    default_footprint: Package_TO_SOT_SMD:SOT-23-3
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: +3V3
+    type: power
+  - name: VBUS
+    type: power
+  - name: GND
+    type: power
+  - name: CC1
+    type: signal
+  - name: CC2
+    type: signal
+placement_hints:
+  - Place 5.1k pull-down resistors on CC1 and CC2 lines.
+  - Route VBUS_EN to external VBUS PMOS switch gate.
+  - Keep SDA/SCL traces clean with appropriate pull-ups to 3.3V.
+  - VIN_SENSE resistor divider scales VBUS to ADC range.

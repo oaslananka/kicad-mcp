@@ -1,0 +1,38 @@
+name: isolated_rs232
+version: "1.0"
+description: Galvanically isolated RS-232 interface with ISO7221-style digital isolation and MAX3232 transceiver.
+symbols:
+  - ref_prefix: U
+    value: MAX3232
+    default_footprint: Package_SO:SOIC-16_3.9x9.9mm_P1.27mm
+    pins_left: [C1+, C1-, C2+, C2-, VCC, GND]
+    pins_right: [T1OUT, R1IN, T2OUT, R2IN, T1IN, R1OUT, T2IN, R2OUT]
+  - ref_prefix: U
+    value: ISO7221
+    default_footprint: Package_SO:SOIC-8_3.9x4.9mm_P1.27mm
+    pins_left: [VCC1, GND1, IN_A, IN_B]
+    pins_right: [VCC2, GND2, OUT_A, OUT_B]
+  - ref_prefix: C
+    value: 100nF
+    default_footprint: Capacitor_SMD:C_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+  - ref_prefix: C
+    value: 1uF
+    default_footprint: Capacitor_SMD:C_0805_2012Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: +3V3_ISO
+    type: power
+  - name: +3V3
+    type: power
+  - name: GND
+    type: power
+  - name: GND_ISO
+    type: power
+placement_hints:
+  - Keep the isolation barrier clear of traces; no copper under isolator.
+  - Place 1uF charge-pump caps close to MAX3232 C1+/C1- and C2+/C2- pins.
+  - Route T1OUT/R1IN as short as possible to DB9 connector.
+  - Use separate power domains for isolated and non-isolated sides.

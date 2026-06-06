@@ -69,6 +69,11 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "kicad_get_tools_in_category",
             "kicad_help",
             "studio_push_context",
+            # v3.8.0 — embedded file management
+            "project_list_embedded_files",
+            "project_embed_file",
+            "project_extract_embedded_file",
+            "project_remove_embedded_file",
         ],
     },
     "pcb_read": {
@@ -92,6 +97,14 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "pcb_get_impedance_for_trace",
             "pcb_check_creepage_clearance",
             "pcb_block_list",
+            # v3.8.0 — net analysis
+            "pcb_get_net_statistics",
+            "pcb_net_inspector",
+            # v3.8.0 — test point tools
+            "pcb_add_test_point",
+            "pcb_list_test_points",
+            "pcb_optimize_test_point_placement",
+            "pcb_check_test_coverage",
         ],
     },
     "pcb_write": {
@@ -196,6 +209,12 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "variant_set_component_override",
             "variant_diff_bom",
             "variant_export_bom",
+            # v3.8.0 — variant extended
+            "variant_clone",
+            "variant_delete",
+            "variant_get_component_status",
+            "variant_export_schematic",
+            "variant_export_manufacturing_package",
         ],
     },
     "library": {
@@ -223,6 +242,11 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "lib_generate_symbol_from_pintable",
             "lib_recommend_part",
             "lib_bind_part_to_symbol",
+            # v3.8.0 — 3D model management
+            "lib_set_3d_model_path",
+            "lib_remove_3d_model",
+            "lib_bulk_assign_3d_models",
+            "lib_search_3d_models",
         ],
     },
     "export": {
@@ -249,6 +273,18 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "export_sch_dxf",
             "export_sch_python_bom",
             "pcb_export_3d_pdf",
+            # v2.5.0 — additional PCB export parity formats
+            "export_brep",
+            "export_glb",
+            "export_gencad",
+            "export_ipc_d356",
+            "export_ply",
+            "export_stl",
+            "export_u3d",
+            "export_vrml",
+            "export_ps",
+            # v3.8.0 — board stats CLI
+            "pcb_export_stats",
         ],
     },
     "release_export": {
@@ -307,6 +343,15 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "drc_rule_delete",
             "drc_rule_enable",
             "drc_export_rules",
+            # v3.8.0 — DRC exclusion management
+            "drc_list_exclusions",
+            "drc_add_exclusion",
+            "drc_remove_exclusion",
+            "drc_validate_exclusions",
+            # v3.8.0 — ERC rule severity
+            "erc_list_rules",
+            "erc_set_rule_severity",
+            "erc_reset_rules",
         ],
     },
     "dfm": {

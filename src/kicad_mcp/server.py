@@ -1254,10 +1254,12 @@ def _register_profile_components(
     from .resources import analysis, board_state, server_info, studio_context
     from .tools import (
         dfm,
+        embedded_files,
         emc_compliance,
         export,
         library,
         manufacturing,
+        net_analysis,
         pcb,
         power_integrity,
         project,
@@ -1265,6 +1267,8 @@ def _register_profile_components(
         schematic,
         signal_integrity,
         simulation,
+        test_points,
+        three_d_models,
         validation,
         variants,
         version_control,
@@ -1274,14 +1278,18 @@ def _register_profile_components(
 
     router.register(server)
     project.register(server)
+    embedded_files.register(server)
 
     if "pcb_read" in enabled or "pcb_write" in enabled:
         pcb.register(server)
+        net_analysis.register(server)
+        test_points.register(server)
     if "schematic" in enabled:
         schematic.register(server)
         variants.register(server)
     if "library" in enabled:
         library.register(server)
+        three_d_models.register(server)
     if "export" in enabled or "release_export" in enabled:
         export.register(server, include_low_level_exports="export" in enabled)
     if "validation" in enabled:

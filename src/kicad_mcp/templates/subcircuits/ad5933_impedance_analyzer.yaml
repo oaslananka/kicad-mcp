@@ -1,0 +1,39 @@
+name: ad5933_impedance_analyzer
+version: "1.0"
+description: AD5933 impedance converter / network analyzer front-end with I2C interface and analog output stage.
+symbols:
+  - ref_prefix: U
+    value: AD5933
+    default_footprint: Package_SO:SOIC-16_3.9x9.9mm_P1.27mm
+    pins_left: [SCL, SDA, AVDD, DVDD, AGND, DGND, MCLK, VREF]
+    pins_right: [VOUT, VIN, RFB, RFB_REF, PGA_GAIN, VDD_IO, NC1, NC2]
+  - ref_prefix: R
+    value: 200k
+    default_footprint: Resistor_SMD:R_0603_1608Metric
+    pins_left: [1]
+    pins_right: [2]
+  - ref_prefix: C
+    value: 100nF
+    default_footprint: Capacitor_SMD:C_0402_1005Metric
+    pins_left: [1]
+    pins_right: [2]
+  - ref_prefix: C
+    value: 10uF
+    default_footprint: Capacitor_SMD:C_0805_2012Metric
+    pins_left: [1]
+    pins_right: [2]
+nets:
+  - name: +3V3
+    type: power
+  - name: +3V3_ANALOG
+    type: power
+  - name: AGND
+    type: power
+  - name: DGND
+    type: power
+placement_hints:
+  - Place feedback resistor (RFB) between VOUT and RFB pin; value sets impedance range.
+  - Connect VREF to AVDD via 100nF decoupling.
+  - Keep AGND and DGND separate and connect at a single star point.
+  - Use 16.776 MHz external oscillator at MCLK for accurate frequency sweeps.
+  - Place analog supply filtering before AVDD pin.

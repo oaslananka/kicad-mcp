@@ -1,0 +1,21 @@
+{
+  "manufacturer": "NextPCB",
+  "tier": "standard",
+  "rules": {
+    "min_trace_width_mm": 0.127,
+    "min_trace_clearance_mm": 0.127,
+    "min_drill_mm": 0.3,
+    "min_annular_ring_mm": 0.15,
+    "min_silkscreen_text_height_mm": 0.15,
+    "copper_to_edge_mm": 0.3,
+    "max_layers": 32,
+    "min_solder_mask_clearance_mm": 0.07
+  },
+  "pricing": {
+    "setup_usd": 2.0,
+    "per_sq_cm_usd": 0.05,
+    "per_drill_usd": 0.0015,
+    "extra_layer_multiplier": 0.15,
+    "stencil_discount_with_pcb_pct": 50.0
+  }
+}
