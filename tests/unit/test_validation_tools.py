@@ -37,9 +37,7 @@ async def test_erc_severity_defaults(tmp_path: Path) -> None:
     sev_dir = proj / ".kicad-mcp"
     sev_dir.mkdir(parents=True, exist_ok=True)
     custom = {"power_pin_not_driven": "warning", "pin_not_connected": "ignore"}
-    (sev_dir / "erc_severity.json").write_text(
-        json.dumps(custom, indent=2), encoding="utf-8"
-    )
+    (sev_dir / "erc_severity.json").write_text(json.dumps(custom, indent=2), encoding="utf-8")
     server = create_server()
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(proj)})
     result = await call_tool_text(server, "erc_list_rules", {})

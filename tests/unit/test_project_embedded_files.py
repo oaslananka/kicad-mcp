@@ -46,7 +46,5 @@ async def test_embed_rejects_large_file(tmp_path: Path, monkeypatch: pytest.Monk
 
     server = create_server()
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(tmp_path)})
-    result = await call_tool_text(
-        server, "project_embed_file", {"source_path": str(large)}
-    )
+    result = await call_tool_text(server, "project_embed_file", {"source_path": str(large)})
     assert "too large" in result.lower() or "1 mb" in result.lower()

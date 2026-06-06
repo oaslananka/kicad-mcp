@@ -193,4 +193,3 @@ def register(mcp: FastMCP) -> None:
             "footprint_pads": pads_on_net[:100],
         }
         return json.dumps(payload, indent=2)
-

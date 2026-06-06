@@ -44,9 +44,7 @@ async def test_variant_clone_rejects_duplicate(sample_project: Path) -> None:
 
     server = create_server()
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
-    result = await call_tool_text(
-        server, "variant_clone", {"name": "default", "new_name": "dup"}
-    )
+    result = await call_tool_text(server, "variant_clone", {"name": "default", "new_name": "dup"})
     assert "already exists" in result.lower()
 
 
