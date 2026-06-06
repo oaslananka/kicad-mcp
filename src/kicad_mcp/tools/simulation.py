@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import math
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from mcp.server.fastmcp import Context, FastMCP
 
@@ -14,12 +15,15 @@ from ..models.simulation import (
     DCSweepInput,
     OperatingPointInput,
     SpiceDirectiveInput,
+    SpiceLibraryEntry,
+    SpiceModelAssignmentInput,
     StabilityCheckInput,
     TransientAnalysisInput,
 )
 from ..utils.ngspice import NgspiceRunner, SimulationResult, prepare_spice_netlist
 from .export_support import _ensure_output_dir, _get_sch_file, _run_cli_variants
 from .metadata import headless_compatible
+from .schematic import update_symbol_property
 
 DIRECTIVE_FILENAME = ".kicad_mcp_spice_directives.cir"
 _ALLOWED_DIRECTIVE_PREFIXES = (
@@ -410,3 +414,174 @@ def register(mcp: FastMCP) -> None:
             points_per_decade=payload.points_per_decade,
         )
         return _format_stability(result, payload.output_net, payload.feedback_net)
+
+    # ── SPICE model assignment ──────────────────────────────────────────────
+
+    @mcp.tool()
+    @headless_compatible
+    def sim_assign_spice_model(
+        reference: str,
+        model_name: str = "",
+        library: str = "",
+        model_type: str = "",
+        pins: str = "",
+        params: str = "",
+    ) -> str:
+        """Assign SPICE model properties to a component in the active schematic.
+
+        Sets Sim.Name, Sim.Library, Sim.Type, Sim.Pins, and Sim.Params symbol
+        properties.  Empty strings are skipped so you can update a single field
+        without overwriting the others.
+        """
+        payload = SpiceModelAssignmentInput(
+            reference=reference,
+            model_name=model_name,
+            library=library,
+            model_type=model_type,
+            pins=pins,
+            params=params,
+        )
+        results: list[str] = []
+        mapping = {
+            "Sim.Name": payload.model_name,
+            "Sim.Library": payload.library,
+            "Sim.Type": payload.model_type,
+            "Sim.Pins": payload.pins,
+            "Sim.Params": payload.params,
+        }
+        for field, value in mapping.items():
+            if not value:
+                continue
+            result = update_symbol_property(payload.reference, field, value)
+            results.append(result)
+        if not results:
+            return (
+                f"No fields were provided for {payload.reference}. "
+                "Pass at least one of model_name, library, model_type, pins, or params."
+            )
+        return "\n".join(results)
+
+    # ── SPICE library management ────────────────────────────────────────────
+
+    def _read_project_json() -> dict[str, Any]:
+        """Return the parsed .kicad_pro file as a dict."""
+        cfg = get_config()
+        if cfg.project_file is None or not cfg.project_file.exists():
+            raise ValueError("No project file is configured. Call kicad_set_project() first.")
+        try:
+            raw = cfg.project_file.read_text(encoding="utf-8")
+            payload: dict[str, Any] = json.loads(raw)
+            return payload
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Project file '{cfg.project_file}' is not valid JSON.") from exc
+
+    def _write_project_json(payload: dict[str, Any]) -> str:
+        """Write the dict back to .kicad_pro and return a status message."""
+        cfg = get_config()
+        if cfg.project_file is None:
+            raise ValueError("No project file is configured.")
+        cfg.project_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        return str(cfg.project_file)
+
+    def _spice_libraries(
+        payload: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Return the SPICE library entries from a project-file payload."""
+        raw: list[dict[str, Any]] = payload.get("libraries", [])  # type: ignore[assignment]
+        if not isinstance(raw, list):
+            return []
+        return [lib for lib in raw if lib.get("type") == "Spice"]
+
+    @mcp.tool()
+    @headless_compatible
+    def sim_list_spice_libraries() -> str:
+        """List SPICE model libraries registered in the active project."""
+        payload = _read_project_json()
+        libs = _spice_libraries(payload)
+        if not libs:
+            return "No SPICE libraries are configured in the active project."
+        lines = [f"SPICE libraries ({len(libs)}):"]
+        for entry in libs:
+            lines.append(f"  - {entry.get('name', '(unnamed)')}: {entry.get('uri', '(no uri)')}")
+        return "\n".join(lines)
+
+    @mcp.tool()
+    @headless_compatible
+    def sim_add_spice_library(name: str, uri: str) -> str:
+        """Register a SPICE model library in the active project file.
+
+        Parameters
+        ----------
+        name : str
+            Display / key name for the library entry.
+        uri : str
+            Path or URI to the SPICE model file.  Absolute paths, relative
+            paths (resolved from the project directory), and KiCad environment
+            variable references (e.g. ${KICAD_USER_LIB}) are all valid.
+        """
+        payload = SpiceLibraryEntry(name=name, uri=uri)
+        project = _read_project_json()
+        libraries: list[dict[str, Any]] = project.setdefault("libraries", [])  # type: ignore[type-arg]
+        if not isinstance(libraries, list):
+            raise ValueError("The 'libraries' field in the project file must be an array.")
+
+        for existing in libraries:
+            if existing.get("name") == payload.name:
+                return (
+                    f"A library named '{payload.name}' already exists. "
+                    f"Remove it first with sim_remove_spice_library() if you want to replace it."
+                )
+
+        libraries.append({"name": payload.name, "type": "Spice", "uri": payload.uri})
+        saved = _write_project_json(project)
+        return f"Added SPICE library '{payload.name}' -> {payload.uri}. Saved to {saved}."
+
+    @mcp.tool()
+    @headless_compatible
+    def sim_remove_spice_library(name: str) -> str:
+        """Unregister a SPICE model library from the active project file."""
+        project = _read_project_json()
+        libraries: list[dict[str, Any]] = project.get("libraries", [])  # type: ignore[type-arg]
+        if not isinstance(libraries, list):
+            return "No SPICE libraries are configured in the active project."
+
+        before = len(libraries)
+        project["libraries"] = [lib for lib in libraries if lib.get("name") != name]
+        after = len(project["libraries"])
+        if before == after:
+            return f"No SPICE library named '{name}' was found."
+
+        _write_project_json(project)
+        return f"Removed SPICE library '{name}'."
+
+    @mcp.tool()
+    @headless_compatible
+    def sim_validate_spice_setup() -> str:
+        """Check that registered SPICE libraries are resolvable from the project
+        directory."""
+        payload = _read_project_json()
+        libs = _spice_libraries(payload)
+        if not libs:
+            return "No SPICE libraries are configured. Nothing to validate."
+
+        cfg = get_config()
+        project_dir = cfg.project_file.parent if cfg.project_file else Path.cwd()
+
+        resolved_count = 0
+        missing_count = 0
+        lines = [f"SPICE library validation ({len(libs)} entries):"]
+        for entry in libs:
+            name = str(entry.get("name", "(unnamed)"))
+            uri = str(entry.get("uri", ""))
+            candidate = Path(uri)
+            if not candidate.is_absolute():
+                candidate = (project_dir / uri).resolve()
+            exists = candidate.exists()
+            status = "OK" if exists else "NOT FOUND"
+            if exists:
+                resolved_count += 1
+            else:
+                missing_count += 1
+            lines.append(f"  {status}: {name} -> {candidate}")
+        lines.append(f"Resolved: {resolved_count}, Missing: {missing_count}")
+        return "\n".join(lines)

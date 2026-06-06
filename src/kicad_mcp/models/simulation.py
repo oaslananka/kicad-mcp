@@ -55,3 +55,49 @@ class SpiceDirectiveInput(BaseModel):
     """Persisted MCP simulation directive parameters."""
 
     directive: str = Field(min_length=1, max_length=4000)
+
+
+class SpiceModelAssignmentInput(BaseModel):
+    """Assign SPICE model properties to a symbol in the schematic."""
+
+    reference: str = Field(
+        min_length=1,
+        max_length=120,
+        description="Component reference designator (e.g. U1, Q1, D3).",
+    )
+    model_name: str = Field(
+        default="",
+        max_length=240,
+        description="SPICE model name assigned to Sim.Name.",
+    )
+    library: str = Field(
+        default="",
+        max_length=500,
+        description="SPICE library path or name assigned to Sim.Library.",
+    )
+    model_type: str = Field(
+        default="",
+        max_length=60,
+        description="Device sub-type (e.g. op-amp, comparator) assigned to Sim.Type.",
+    )
+    pins: str = Field(
+        default="",
+        max_length=500,
+        description="Pin map string assigned to Sim.Pins.",
+    )
+    params: str = Field(
+        default="",
+        max_length=2000,
+        description="Instance parameters assigned to Sim.Params.",
+    )
+    enabled: bool | None = Field(
+        default=None,
+        description="Sim.Enabled override (None leaves unchanged).",
+    )
+
+
+class SpiceLibraryEntry(BaseModel):
+    """A SPICE model library entry in the KiCad project file."""
+
+    name: str = Field(min_length=1, max_length=240)
+    uri: str = Field(min_length=1, max_length=1000)

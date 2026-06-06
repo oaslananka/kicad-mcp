@@ -385,7 +385,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
         ],
     },
     "simulation": {
-        "description": "Run SPICE operating-point, AC, transient, DC sweep, and stability checks.",
+        "description": "SPICE analysis, model assignment, and library management.",
         "tools": [
             "sim_run_operating_point",
             "sim_run_ac_analysis",
@@ -393,6 +393,11 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "sim_run_dc_sweep",
             "sim_check_stability",
             "sim_add_spice_directive",
+            "sim_assign_spice_model",
+            "sim_list_spice_libraries",
+            "sim_add_spice_library",
+            "sim_remove_spice_library",
+            "sim_validate_spice_setup",
         ],
     },
     "version_control": {
