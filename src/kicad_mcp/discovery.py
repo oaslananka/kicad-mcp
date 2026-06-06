@@ -60,6 +60,15 @@ class CliCapabilities:
     supports_cli_variant: bool = False
     supports_drc_severity_all: bool = False
     supports_drc_exit_code_violations: bool = False
+    supports_brep: bool = False
+    supports_glb: bool = False
+    supports_gencad: bool = False
+    supports_ipc_d356: bool = False
+    supports_ply: bool = False
+    supports_stl: bool = False
+    supports_u3d: bool = False
+    supports_vrml: bool = False
+    supports_ps: bool = False
 
 
 def _candidate_cli_paths() -> list[Path]:
@@ -210,6 +219,15 @@ def get_cli_capabilities(cli_path: Path) -> CliCapabilities:
         supports_pads_import="pads" in blob,
         supports_geda_import="geda" in blob,
         supports_cli_variant="--variant" in blob,
+        supports_brep=" brep " in blob or "brep" in tokens,
+        supports_glb=" glb " in blob or "glb" in tokens,
+        supports_gencad="gencad" in tokens,
+        supports_ipc_d356="d356" in tokens or "ipc-d356" in blob,
+        supports_ply=" ply " in blob or "ply" in tokens,
+        supports_stl=" stl " in blob or "stl" in tokens,
+        supports_u3d="u3d" in tokens,
+        supports_vrml="vrml" in tokens,
+        supports_ps=" ps " in blob or "postscript" in blob,
         supports_drc_severity_all="--severity-all" in blob or "severity-all" in blob,
         supports_drc_exit_code_violations="--exit-code-violations" in blob
         or "exit-code-violations" in blob,

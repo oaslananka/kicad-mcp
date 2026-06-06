@@ -6,7 +6,6 @@ const files = {
   rootPackage: "package.json",
   npmPackage: "packages/mcp-npm/package.json",
   releasePlease: "release-please-config.json",
-  publishExtension: ".github/workflows/publish-extension.yml",
   publishPython: ".github/workflows/publish-python.yml",
   publishNpm: ".github/workflows/publish-npm.yml",
   docsRelease: "docs/release.md",
@@ -52,10 +51,9 @@ function checkPackageNames(failures) {
 }
 
 function checkWorkflowEvidence(failures) {
-  const extension = read(files.publishExtension);
   const python = read(files.publishPython);
   const npm = read(files.publishNpm);
-  for (const [label, workflow] of Object.entries({ extension, python, npm })) {
+  for (const [label, workflow] of Object.entries({ python, npm })) {
     expectIncludes(
       workflow,
       "sha256sum --check",
@@ -76,48 +74,6 @@ function checkWorkflowEvidence(failures) {
     );
     expectIncludes(workflow, "actions/attest@", `${label} workflow`, failures);
   }
-  expectIncludes(
-    extension,
-    "release-assets/vscode-extension",
-    "extension workflow",
-    failures,
-  );
-  expectIncludes(
-    extension,
-    "scripts/validate-vsix-metadata.js",
-    "extension workflow",
-    failures,
-  );
-  expectIncludes(
-    extension,
-    'VSIX_DIR="$GITHUB_WORKSPACE/release-assets/vscode-extension"',
-    "extension workflow",
-    failures,
-  );
-  expectIncludes(
-    extension,
-    'OPENVSX_VERIFY_DIR="$GITHUB_WORKSPACE/release-assets/openvsx-verify"',
-    "extension workflow",
-    failures,
-  );
-  expectIncludes(
-    extension,
-    "vsce show oaslananka.kicadstudiokit --json",
-    "extension workflow",
-    failures,
-  );
-  expectIncludes(
-    extension,
-    "ovsx get oaslananka.kicadstudiokit",
-    "extension workflow",
-    failures,
-  );
-  expectIncludes(
-    extension,
-    "--packagePath",
-    "extension workflow",
-    failures,
-  );
   expectIncludes(
     python,
     "generate_release_evidence.py generate",

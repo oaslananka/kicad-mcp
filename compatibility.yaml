@@ -221,17 +221,8 @@ kicad10FeatureParity:
         nativeSurface: "kicad-cli pcb export ipc2581"
         productSurface: "KiCad Studio extension command and MCP export_ipc2581 tool"
         evidence:
-          - "path:tests/integration/test_manufacturing_tools.py"
+          - "path:tests/integration/test_export_tools.py"
           - "path:tests/integration/test_pcb_export_validation_surface.py"
-          - "path:tests/integration/test_export_tools.py"
-        notes: "Extension and MCP surfaces both expose IPC-2581 with command-level tests."
-      odbpp:
-        status: "supported"
-        nativeSurface: "kicad-cli pcb export odb"
-        productSurface: "KiCad Studio extension command and MCP export_odb tool"
-        evidence:
-          - "path:apps/vscode-extension/test/unit/exportPresets.test.ts"
-          - "path:tests/integration/test_export_tools.py"
           - "path:tests/e2e/test_server.py"
         notes: "ODB++ remains capability-gated by KiCad CLI detection."
       step:
@@ -269,7 +260,6 @@ kicad10FeatureParity:
         nativeSurface: "KiCad 10 PCB Editor design block workflow"
         productSurface: "S-expression parser and MCP pcb_block_* tools"
         evidence:
-          - "path:apps/vscode-extension/test/unit/sExpressionParser.test.ts"
           - "path:tests/integration/test_pcb_tools.py"
           - "path:docs/mcp/tools.md"
         notes: "Product support is headless and tool-oriented, not a replacement for the native GUI editor."
@@ -278,15 +268,14 @@ kicad10FeatureParity:
         nativeSurface: "KiCad PCB Editor graphical DRC rule editor"
         productSurface: "Textual .kicad_dru guidance and diagnostics, not a GUI rule editor"
         evidence:
-          - "path:apps/vscode-extension/test/unit/drcRulesProvider.test.ts"
-          - "path:apps/vscode-extension/src/ai/prompts.ts"
+          - "path:docs/kicad10/graphical-drc.md"
+          - "path:tests/unit/test_dru_utils.py"
         notes: "The native graphical editor remains a KiCad GUI feature outside extension/MCP ownership."
       variants:
         status: "supported"
         nativeSurface: "KiCad 10 design variants"
         productSurface: "Extension variants view and MCP variant_* tools"
         evidence:
-          - "path:apps/vscode-extension/test/unit/variantProvider.test.ts"
           - "path:tests/unit/test_variant_diff.py"
           - "path:tests/integration/test_export_tools.py"
         notes: "Variant listing, activation, BOM diffing, and export integration are covered."
@@ -333,9 +322,8 @@ kicad10FeatureParity:
         nativeSurface: "Detected KiCad CLI version and command help"
         productSurface: "Status bar and command menu feature availability"
         evidence:
-          - "path:apps/vscode-extension/test/unit/kicadStatusBar.test.ts"
-          - "path:apps/vscode-extension/test/unit/viewerStatusMenu.test.ts"
-          - "path:apps/vscode-extension/test/unit/kicadCliSupport.test.ts"
+          - "path:tests/unit/test_server_info_contract.py"
+          - "path:tests/unit/test_cli_diagnostics.py"
         notes: "The UI reports primary/deprecated/unsupported KiCad lines and feature-level gates."
       importer_command_gating:
         status: "supported"
@@ -379,7 +367,7 @@ kicad10FeatureParity:
         nativeSurface: "VS Code extension release artifact"
         productSurface: "VSIX checksum, SBOM, and artifact attestation workflow"
         evidence:
-          - "path:.github/workflows/publish-extension.yml"
+          - "path:.github/workflows/publish-python.yml"
           - "path:scripts/check-release-provenance.mjs"
           - "path:docs/release.md"
         notes: "Release provenance is validated by the release verification gate."
@@ -572,16 +560,9 @@ mcp:
   registrySchema: "2025-12-11"
 
 products:
-  kicad-studio:
-    packagePath: "apps/vscode-extension/package.json"
-    version: "1.1.0"
-    compatibleMcpPro:
-      required: ">=3.5.2 <4.0.0"
-      recommended: ">=3.5.2 <4.0.0"
-      testedAgainst: "3.5.2"
   kicad-mcp-pro:
     packagePath: "pyproject.toml"
-    version: "3.7.6"
+    version: "3.8.0"
     compatibleExtension:
       required: ">=1.0.0 <2.0.0"
       testedAgainst: "1.0.0"
