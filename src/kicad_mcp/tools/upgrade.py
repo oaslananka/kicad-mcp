@@ -11,7 +11,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 from ..config import get_config
-from .export_support import _run_cli_variants, _run_cli
+from .export_support import _run_cli
 from .metadata import headless_compatible
 
 

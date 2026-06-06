@@ -61,9 +61,9 @@ from .operating_modes import (
     filter_tools_for_mode,
     is_tool_allowed_in_mode,
 )
-from .tools import router
 from .tools import footprint as _footprint
 from .tools import jobset as _jobset
+from .tools import router
 from .tools import symbol as _symbol
 from .tools import upgrade as _upgrade
 from .tools.fixers import validate_callable_imports

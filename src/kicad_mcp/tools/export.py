@@ -772,7 +772,9 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
 
     @headless_compatible
     def pcb_export_brep(
-        output_file: str = "", variant_name: str | None = None, **kwargs: Any
+        output_file: str = "",
+        variant_name: str | None = None,
+        **kwargs: Any,  # noqa: ANN401
     ) -> str:
         """Export solid model to BREP format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
@@ -793,7 +795,9 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
 
     @headless_compatible
     def pcb_export_glb(
-        output_file: str = "", variant_name: str | None = None, **kwargs: Any
+        output_file: str = "",
+        variant_name: str | None = None,
+        **kwargs: Any,  # noqa: ANN401
     ) -> str:
         """Export solid model to GLB format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
@@ -813,7 +817,7 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         return _with_low_level_export_notice(pcb_export_glb(output_file=output_path))
 
     @headless_compatible
-    def pcb_export_gencad(output_file: str = "", **kwargs: Any) -> str:
+    def pcb_export_gencad(output_file: str = "", **kwargs: Any) -> str:  # noqa: ANN401
         """Export board to GenCAD format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _export_3d_model(
@@ -849,7 +853,9 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
 
     @headless_compatible
     def pcb_export_ply(
-        output_file: str = "", variant_name: str | None = None, **kwargs: Any
+        output_file: str = "",
+        variant_name: str | None = None,
+        **kwargs: Any,  # noqa: ANN401
     ) -> str:
         """Export solid model to PLY format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
@@ -870,7 +876,9 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
 
     @headless_compatible
     def pcb_export_stl(
-        output_file: str = "", variant_name: str | None = None, **kwargs: Any
+        output_file: str = "",
+        variant_name: str | None = None,
+        **kwargs: Any,  # noqa: ANN401
     ) -> str:
         """Export solid model to STL format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
@@ -891,7 +899,9 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
 
     @headless_compatible
     def pcb_export_u3d(
-        output_file: str = "", variant_name: str | None = None, **kwargs: Any
+        output_file: str = "",
+        variant_name: str | None = None,
+        **kwargs: Any,  # noqa: ANN401
     ) -> str:
         """Export solid model to U3D format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
@@ -917,7 +927,7 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         models_dir: str = "",
         models_relative: bool = False,
         variant_name: str | None = None,
-        **kwargs: Any,
+        **kwargs: Any,  # noqa: ANN401,
     ) -> str:
         """Export solid model to VRML format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
@@ -940,7 +950,7 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         return _with_low_level_export_notice(pcb_export_vrml(output_file=output_path))
 
     @headless_compatible
-    def pcb_export_ps(output_file: str = "", variant_name: str | None = None, **kwargs: Any) -> str:
+    def pcb_export_ps(output_file: str = "", variant_name: str | None = None, **kwargs: Any) -> str:  # noqa: ANN401
         """Export PCB rendering to PostScript format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _export_3d_model(
@@ -1166,7 +1176,8 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         if code != 0:
             return f"3D render failed: {stderr or 'unknown error'}"
         if out_file.exists():
-            return f"Rendered board image exported to {out_file} ({_human_size(out_file.stat().st_size)})"
+            file_size = _human_size(out_file.stat().st_size)
+            return f"Rendered board image exported to {out_file} ({file_size})"
         return f"Rendered board image exported to {out_file}"
 
     @headless_compatible

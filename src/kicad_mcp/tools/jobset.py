@@ -201,7 +201,7 @@ def register(mcp: FastMCP) -> None:
             return f"Jobset file not found: {jobset_file}"
 
         try:
-            with open(jobset_path, "r", encoding="utf-8") as f:
+            with open(jobset_path, encoding="utf-8") as f:
                 content = _json.load(f)
         except Exception as exc:
             return f"Validation failed: Invalid JSON format: {exc}"
