@@ -52,6 +52,7 @@ def register(mcp: FastMCP) -> None:
 
         try:
             from ..path_safety import resolve_under
+
             if cfg.project_dir is not None:
                 in_path = resolve_under(cfg.project_dir, in_file)
             else:
@@ -59,7 +60,19 @@ def register(mcp: FastMCP) -> None:
         except Exception as exc:
             return f"Unsafe input path: {exc}"
 
-        out_path = output_file.strip() or str(in_path)
+        out_raw = output_file.strip() if output_file else ""
+        if out_raw:
+            try:
+                from ..path_safety import resolve_under
+
+                if cfg.project_dir is not None:
+                    out_path = str(resolve_under(cfg.project_dir, out_raw))
+                else:
+                    out_path = str(Path(out_raw).expanduser().resolve())
+            except Exception as exc:
+                return f"Unsafe output path: {exc}"
+        else:
+            out_path = str(in_path)
 
         if dry_run:
             return (
@@ -112,6 +125,7 @@ def register(mcp: FastMCP) -> None:
 
         try:
             from ..path_safety import resolve_under
+
             if cfg.project_dir is not None:
                 in_path = resolve_under(cfg.project_dir, in_file)
             else:
@@ -119,7 +133,19 @@ def register(mcp: FastMCP) -> None:
         except Exception as exc:
             return f"Unsafe input path: {exc}"
 
-        out_path = output_file.strip() or str(in_path)
+        out_raw = output_file.strip() if output_file else ""
+        if out_raw:
+            try:
+                from ..path_safety import resolve_under
+
+                if cfg.project_dir is not None:
+                    out_path = str(resolve_under(cfg.project_dir, out_raw))
+                else:
+                    out_path = str(Path(out_raw).expanduser().resolve())
+            except Exception as exc:
+                return f"Unsafe output path: {exc}"
+        else:
+            out_path = str(in_path)
 
         if dry_run:
             return (

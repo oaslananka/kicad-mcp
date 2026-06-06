@@ -182,7 +182,7 @@ async def test_manufacturing_import_support_and_import_cli(
         assert variants[0][:3] == ["pcb", "import", "allegro"]
         return 0, "imported", ""
 
-    monkeypatch.setattr("kicad_mcp.tools.export._run_cli_variants", ok_variants)
+    monkeypatch.setattr("kicad_mcp.tools.export_support._run_cli_variants", ok_variants)
     imported = await call_tool_text(
         server,
         "mfg_import_allegro",
@@ -191,7 +191,7 @@ async def test_manufacturing_import_support_and_import_cli(
     assert "blocked: KiCad CLI does not support allegro import in 10.0.3" in imported
 
     monkeypatch.setattr(
-        "kicad_mcp.tools.export._run_cli_variants",
+        "kicad_mcp.tools.export_support._run_cli_variants",
         lambda _variants: (2, "", "unsupported"),
     )
     failed = await call_tool_text(server, "mfg_import_pads", {"pads_pcb_path": "legacy.brd"})
@@ -204,7 +204,7 @@ async def test_manufacturing_import_support_and_import_cli(
     specctra_ses.write_text("(ses)", encoding="utf-8")
 
     monkeypatch.setattr(
-        "kicad_mcp.tools.export._run_cli_variants",
+        "kicad_mcp.tools.export_support._run_cli_variants",
         lambda _variants: (0, "imported", ""),
     )
     specctra_result = await call_tool_text(

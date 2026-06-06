@@ -71,11 +71,12 @@ def _resolve_output_file(subdir: str, raw_name: str, *, default_name: str) -> Pa
 
 def _human_size(size_bytes: int) -> str:
     """Format a byte count as a human-readable string."""
+    size = float(size_bytes)
     for unit in ("B", "KB", "MB", "GB"):
-        if size_bytes < 1024:
-            return f"{size_bytes:.1f} {unit}"
-        size_bytes //= 1024
-    return f"{size_bytes:.1f} TB"
+        if size < 1024.0:
+            return f"{size:.1f} {unit}"
+        size /= 1024.0
+    return f"{size:.1f} TB"
 
 
 def _format_file_list(files: list[Path], heading: str) -> str:
@@ -426,16 +427,23 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         code, _, stderr = _run_cli_variants(
             [
                 [
-                    "pcb", "export", "3d-pdf",
+                    "pcb",
+                    "export",
+                    "3d-pdf",
                     *variant_args,
-                    "--output", str(out_file),
+                    "--output",
+                    str(out_file),
                     str(pcb_file),
                 ],
                 [
-                    "pcb", "export", "3d-pdf",
+                    "pcb",
+                    "export",
+                    "3d-pdf",
                     *variant_args,
-                    "--input", str(pcb_file),
-                    "--output", str(out_file),
+                    "--input",
+                    str(pcb_file),
+                    "--output",
+                    str(out_file),
                 ],
             ]
         )
@@ -497,7 +505,11 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         """Export schematic to SVG format."""
         sch_file = _get_sch_file()
         try:
-            out_dir = _ensure_output_dir("svg") if not output_dir else _resolve_output_file("svg", output_dir, default_name="")
+            out_dir = (
+                _ensure_output_dir("svg")
+                if not output_dir
+                else _resolve_output_file("svg", output_dir, default_name="")
+            )
         except ValueError as exc:
             return f"Invalid output path: {exc}"
 
@@ -543,7 +555,11 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         """Export schematic to DXF format."""
         sch_file = _get_sch_file()
         try:
-            out_dir = _ensure_output_dir("dxf") if not output_dir else _resolve_output_file("dxf", output_dir, default_name="")
+            out_dir = (
+                _ensure_output_dir("dxf")
+                if not output_dir
+                else _resolve_output_file("dxf", output_dir, default_name="")
+            )
         except ValueError as exc:
             return f"Invalid output path: {exc}"
 
@@ -588,7 +604,11 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         """Export schematic to PostScript format."""
         sch_file = _get_sch_file()
         try:
-            out_dir = _ensure_output_dir("ps") if not output_dir else _resolve_output_file("ps", output_dir, default_name="")
+            out_dir = (
+                _ensure_output_dir("ps")
+                if not output_dir
+                else _resolve_output_file("ps", output_dir, default_name="")
+            )
         except ValueError as exc:
             return f"Invalid output path: {exc}"
 
@@ -751,12 +771,19 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         return f"{label} model exported to {out_file}"
 
     @headless_compatible
-    def pcb_export_brep(output_file: str = "", variant_name: str | None = None, **kwargs: Any) -> str:
+    def pcb_export_brep(
+        output_file: str = "", variant_name: str | None = None, **kwargs: Any
+    ) -> str:
         """Export solid model to BREP format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _export_3d_model(
-            "brep", output_file, supported=caps.supports_brep,
-            default_name="board.brep", label="BREP", variant_name=variant_name, **kwargs
+            "brep",
+            output_file,
+            supported=caps.supports_brep,
+            default_name="board.brep",
+            label="BREP",
+            variant_name=variant_name,
+            **kwargs,
         )
 
     @headless_compatible
@@ -765,12 +792,19 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         return _with_low_level_export_notice(pcb_export_brep(output_file=output_path))
 
     @headless_compatible
-    def pcb_export_glb(output_file: str = "", variant_name: str | None = None, **kwargs: Any) -> str:
+    def pcb_export_glb(
+        output_file: str = "", variant_name: str | None = None, **kwargs: Any
+    ) -> str:
         """Export solid model to GLB format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _export_3d_model(
-            "glb", output_file, supported=caps.supports_glb,
-            default_name="board.glb", label="GLB", variant_name=variant_name, **kwargs
+            "glb",
+            output_file,
+            supported=caps.supports_glb,
+            default_name="board.glb",
+            label="GLB",
+            variant_name=variant_name,
+            **kwargs,
         )
 
     @headless_compatible
@@ -783,8 +817,12 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         """Export board to GenCAD format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _export_3d_model(
-            "gencad", output_file, supported=caps.supports_gencad,
-            default_name="board.gencad", label="GenCAD", **kwargs
+            "gencad",
+            output_file,
+            supported=caps.supports_gencad,
+            default_name="board.gencad",
+            label="GenCAD",
+            **kwargs,
         )
 
     @headless_compatible
@@ -797,8 +835,11 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         """Export netlist to IPC-D-356 format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _export_3d_model(
-            "ipcd356", output_file, supported=caps.supports_ipc_d356,
-            default_name="board.d356", label="IPC-D-356"
+            "ipcd356",
+            output_file,
+            supported=caps.supports_ipc_d356,
+            default_name="board.d356",
+            label="IPC-D-356",
         )
 
     @headless_compatible
@@ -807,12 +848,19 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         return _with_low_level_export_notice(pcb_export_ipcd356(output_file=output_path))
 
     @headless_compatible
-    def pcb_export_ply(output_file: str = "", variant_name: str | None = None, **kwargs: Any) -> str:
+    def pcb_export_ply(
+        output_file: str = "", variant_name: str | None = None, **kwargs: Any
+    ) -> str:
         """Export solid model to PLY format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _export_3d_model(
-            "ply", output_file, supported=caps.supports_ply,
-            default_name="board.ply", label="PLY", variant_name=variant_name, **kwargs
+            "ply",
+            output_file,
+            supported=caps.supports_ply,
+            default_name="board.ply",
+            label="PLY",
+            variant_name=variant_name,
+            **kwargs,
         )
 
     @headless_compatible
@@ -821,12 +869,19 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         return _with_low_level_export_notice(pcb_export_ply(output_file=output_path))
 
     @headless_compatible
-    def pcb_export_stl(output_file: str = "", variant_name: str | None = None, **kwargs: Any) -> str:
+    def pcb_export_stl(
+        output_file: str = "", variant_name: str | None = None, **kwargs: Any
+    ) -> str:
         """Export solid model to STL format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _export_3d_model(
-            "stl", output_file, supported=caps.supports_stl,
-            default_name="board.stl", label="STL", variant_name=variant_name, **kwargs
+            "stl",
+            output_file,
+            supported=caps.supports_stl,
+            default_name="board.stl",
+            label="STL",
+            variant_name=variant_name,
+            **kwargs,
         )
 
     @headless_compatible
@@ -835,12 +890,19 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         return _with_low_level_export_notice(pcb_export_stl(output_file=output_path))
 
     @headless_compatible
-    def pcb_export_u3d(output_file: str = "", variant_name: str | None = None, **kwargs: Any) -> str:
+    def pcb_export_u3d(
+        output_file: str = "", variant_name: str | None = None, **kwargs: Any
+    ) -> str:
         """Export solid model to U3D format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _export_3d_model(
-            "u3d", output_file, supported=caps.supports_u3d,
-            default_name="board.u3d", label="U3D", variant_name=variant_name, **kwargs
+            "u3d",
+            output_file,
+            supported=caps.supports_u3d,
+            default_name="board.u3d",
+            label="U3D",
+            variant_name=variant_name,
+            **kwargs,
         )
 
     @headless_compatible
@@ -855,15 +917,21 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         models_dir: str = "",
         models_relative: bool = False,
         variant_name: str | None = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> str:
         """Export solid model to VRML format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _export_3d_model(
-            "vrml", output_file, supported=caps.supports_vrml,
-            default_name="board.wrl", label="VRML", units=units,
-            models_dir=models_dir, models_relative=models_relative,
-            variant_name=variant_name, **kwargs
+            "vrml",
+            output_file,
+            supported=caps.supports_vrml,
+            default_name="board.wrl",
+            label="VRML",
+            units=units,
+            models_dir=models_dir,
+            models_relative=models_relative,
+            variant_name=variant_name,
+            **kwargs,
         )
 
     @headless_compatible
@@ -876,8 +944,13 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         """Export PCB rendering to PostScript format."""
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _export_3d_model(
-            "ps", output_file, supported=caps.supports_ps,
-            default_name="board.ps", label="PostScript", variant_name=variant_name, **kwargs
+            "ps",
+            output_file,
+            supported=caps.supports_ps,
+            default_name="board.ps",
+            label="PostScript",
+            variant_name=variant_name,
+            **kwargs,
         )
 
     @headless_compatible
@@ -891,8 +964,7 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _with_low_level_export_notice(
             _export_3d_model(
-                "step", "", supported=caps.supports_step,
-                default_name="board.step", label="STEP"
+                "step", "", supported=caps.supports_step, default_name="board.step", label="STEP"
             )
         )
 
@@ -902,8 +974,11 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _with_low_level_export_notice(
             _export_3d_model(
-                "step", output_path, supported=caps.supports_step,
-                default_name="board.step", label="STEP"
+                "step",
+                output_path,
+                supported=caps.supports_step,
+                default_name="board.step",
+                label="STEP",
             )
         )
 
@@ -913,8 +988,11 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _with_low_level_export_notice(
             _export_3d_model(
-                "stpz", output_path, supported=caps.supports_stepz,
-                default_name="board.stepz", label="STEPZ"
+                "stpz",
+                output_path,
+                supported=caps.supports_stepz,
+                default_name="board.stepz",
+                label="STEPZ",
             )
         )
 
@@ -924,8 +1002,11 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         caps = get_cli_capabilities(get_config().kicad_cli)
         return _with_low_level_export_notice(
             _export_3d_model(
-                "xao", output_path, supported=caps.supports_xao,
-                default_name="board.xao", label="XAO"
+                "xao",
+                output_path,
+                supported=caps.supports_xao,
+                default_name="board.xao",
+                label="XAO",
             )
         )
 
@@ -1057,10 +1138,10 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
             args.append("--no-floor")
         if not perspective:
             args.append("--orthographic")
-        if pan_x is not None:
-            args.extend(["--pan", f"{pan_x},{pan_y or 0}"])
-        elif pan_y is not None:
-            args.extend(["--pan", f"0,{pan_y}"])
+        if pan_x is not None or pan_y is not None:
+            px = pan_x if pan_x is not None else 0.0
+            py = pan_y if pan_y is not None else 0.0
+            args.extend(["--pan", f"{px},{py}"])
         if any(v is not None for v in (rotate_x, rotate_y, rotate_z)):
             rx = rotate_x or 0
             ry = rotate_y or 0
@@ -1144,14 +1225,25 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         """
         return _with_low_level_export_notice(
             _export_3d_render(
-                output_file=output_file, side=side, zoom=zoom,
-                width=width, height=height, quality=quality, preset=preset,
+                output_file=output_file,
+                side=side,
+                zoom=zoom,
+                width=width,
+                height=height,
+                quality=quality,
+                preset=preset,
                 use_board_stackup_colors=use_board_stackup_colors,
-                floor=floor, perspective=perspective,
-                pan_x=pan_x, pan_y=pan_y,
-                rotate_x=rotate_x, rotate_y=rotate_y, rotate_z=rotate_z,
-                light_top=light_top, light_bottom=light_bottom,
-                light_side=light_side, light_camera=light_camera,
+                floor=floor,
+                perspective=perspective,
+                pan_x=pan_x,
+                pan_y=pan_y,
+                rotate_x=rotate_x,
+                rotate_y=rotate_y,
+                rotate_z=rotate_z,
+                light_top=light_top,
+                light_bottom=light_bottom,
+                light_side=light_side,
+                light_camera=light_camera,
                 light_side_elevation=light_side_elevation,
             )
         )
@@ -1169,18 +1261,27 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         code, _, stderr = _run_cli_variants(
             [
                 [
-                    "pcb", "export", pos_cmd,
+                    "pcb",
+                    "export",
+                    pos_cmd,
                     *variant_args,
-                    "--format", format,
-                    "--output", str(out_dir),
+                    "--format",
+                    format,
+                    "--output",
+                    str(out_dir),
                     str(pcb_file),
                 ],
                 [
-                    "pcb", "export", pos_cmd,
+                    "pcb",
+                    "export",
+                    pos_cmd,
                     *variant_args,
-                    "--format", format,
-                    "--input", str(pcb_file),
-                    "--output", str(out_dir),
+                    "--format",
+                    format,
+                    "--input",
+                    str(pcb_file),
+                    "--output",
+                    str(out_dir),
                 ],
             ]
         )
@@ -1214,16 +1315,23 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         code, _, stderr = _run_cli_variants(
             [
                 [
-                    "pcb", "export", "ipc2581",
+                    "pcb",
+                    "export",
+                    "ipc2581",
                     *variant_args,
-                    "--output", str(out_file),
+                    "--output",
+                    str(out_file),
                     str(pcb_file),
                 ],
                 [
-                    "pcb", "export", "ipc2581",
+                    "pcb",
+                    "export",
+                    "ipc2581",
                     *variant_args,
-                    "--input", str(pcb_file),
-                    "--output", str(out_file),
+                    "--input",
+                    str(pcb_file),
+                    "--output",
+                    str(out_file),
                 ],
             ]
         )
@@ -1250,18 +1358,25 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         code, _, stderr = _run_cli_variants(
             [
                 [
-                    "pcb", "export", "odb",
+                    "pcb",
+                    "export",
+                    "odb",
                     *variant_args,
                     "--compression",
-                    "--output", str(out_file),
+                    "--output",
+                    str(out_file),
                     str(pcb_file),
                 ],
                 [
-                    "pcb", "export", "odb",
+                    "pcb",
+                    "export",
+                    "odb",
                     *variant_args,
                     "--compression",
-                    "--input", str(pcb_file),
-                    "--output", str(out_file),
+                    "--input",
+                    str(pcb_file),
+                    "--output",
+                    str(out_file),
                 ],
             ]
         )

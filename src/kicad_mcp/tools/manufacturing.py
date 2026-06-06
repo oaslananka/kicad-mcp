@@ -111,7 +111,7 @@ def _run_import_cli(import_kind: str, input_path: str, output_dir: str | None = 
         ["pcb", "import", import_kind, "--input", str(in_path), "--output", str(out_dir)],
     ]
 
-    from .export import _run_cli_variants
+    from .export_support import _run_cli_variants
 
     code, stdout, stderr = _run_cli_variants(variants)
     if code != 0:
@@ -711,10 +711,11 @@ def register(mcp: FastMCP) -> None:
         if format.strip().casefold() == "allegro":
             return "blocked: KiCad CLI does not support allegro import in 10.0.3"
 
-        from .export import _run_cli_variants
+        from .export_support import _run_cli_variants
 
         try:
             from ..path_safety import resolve_under
+
             if cfg.project_dir is not None:
                 in_path = resolve_under(cfg.project_dir, input_file)
             else:

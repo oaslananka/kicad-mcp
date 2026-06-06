@@ -42,8 +42,8 @@ def register(mcp: FastMCP) -> None:
 
         out_dir = _ensure_output_dir("footprints")
         board_stem = cfg.pcb_file.stem
-        out_path = output_path.strip() or f"{board_stem}.{format}"
-        out_file = out_dir / out_path
+        out_name = Path(output_path.strip() or f"{board_stem}.{format}").name
+        out_file = out_dir / out_name
 
         code, _, stderr = _run_cli_variants(
             [
@@ -102,6 +102,7 @@ def register(mcp: FastMCP) -> None:
 
         try:
             from ..path_safety import resolve_under
+
             if cfg.project_dir is not None:
                 in_path = resolve_under(cfg.project_dir, input_path)
             else:
@@ -174,6 +175,7 @@ def register(mcp: FastMCP) -> None:
 
         try:
             from ..path_safety import resolve_under
+
             if cfg.project_dir is not None:
                 in_path_obj = resolve_under(cfg.project_dir, in_file)
             else:
@@ -181,8 +183,18 @@ def register(mcp: FastMCP) -> None:
         except Exception as exc:
             return f"Unsafe input path: {exc}"
 
-        out_path = output_file
-        if not out_path:
+        out_path = output_file.strip() if output_file else ""
+        if out_path:
+            try:
+                if cfg.project_dir is not None:
+                    from ..path_safety import resolve_under
+
+                    out_path = str(resolve_under(cfg.project_dir, out_path))
+                else:
+                    out_path = str(Path(out_path).expanduser().resolve())
+            except Exception as exc:
+                return f"Unsafe output path: {exc}"
+        else:
             out_dir = _ensure_output_dir("upgraded")
             out_path = str(out_dir / in_path_obj.name)
 

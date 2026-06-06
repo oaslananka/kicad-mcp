@@ -36,14 +36,11 @@ def register(mcp: FastMCP) -> None:
         cfg = get_config()
         project_file = cfg.sch_file or cfg.pcb_file
         if project_file is None:
-            return (
-                "No project file configured. "
-                "Call kicad_set_project() first."
-            )
+            return "No project file configured. Call kicad_set_project() first."
 
         out_dir = _ensure_output_dir("symbols")
-        out_path = output_path.strip() or f"{project_file.stem}.{format}"
-        out_file = out_dir / out_path
+        out_name = Path(output_path.strip() or f"{project_file.stem}.{format}").name
+        out_file = out_dir / out_name
 
         code, _, stderr = _run_cli_variants(
             [
@@ -98,6 +95,7 @@ def register(mcp: FastMCP) -> None:
 
         try:
             from ..path_safety import resolve_under
+
             if cfg.project_dir is not None:
                 in_path = resolve_under(cfg.project_dir, input_file)
             else:
@@ -171,6 +169,7 @@ def register(mcp: FastMCP) -> None:
 
         try:
             from ..path_safety import resolve_under
+
             if cfg.project_dir is not None:
                 in_path = resolve_under(cfg.project_dir, in_file)
             else:
@@ -178,8 +177,18 @@ def register(mcp: FastMCP) -> None:
         except Exception as exc:
             return f"Unsafe input file path: {exc}"
 
-        out_path = output_file.strip()
-        if not out_path:
+        out_path = output_file.strip() if output_file else ""
+        if out_path:
+            try:
+                if cfg.project_dir is not None:
+                    from ..path_safety import resolve_under
+
+                    out_path = str(resolve_under(cfg.project_dir, out_path))
+                else:
+                    out_path = str(Path(out_path).expanduser().resolve())
+            except Exception as exc:
+                return f"Unsafe output path: {exc}"
+        else:
             out_dir = _ensure_output_dir("upgraded")
             out_path = str(out_dir / f"upgraded_{in_path.name}")
 

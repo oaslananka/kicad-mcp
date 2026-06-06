@@ -78,7 +78,7 @@ def register(mcp: FastMCP) -> None:
 
         out_dir = _ensure_output_dir("jobset")
         board_stem = cfg.pcb_file.stem
-        out_stem = output_name.strip() or board_stem
+        out_stem = Path(output_name.strip() or board_stem).name
         out_file = out_dir / f"{out_stem}.zip"
 
         code, _, stderr = _run_cli_variants(
@@ -140,6 +140,7 @@ def register(mcp: FastMCP) -> None:
 
         try:
             from ..path_safety import resolve_under
+
             if cfg.project_dir is not None:
                 jobset_path = resolve_under(cfg.project_dir, jobset_file)
             else:
@@ -188,6 +189,7 @@ def register(mcp: FastMCP) -> None:
 
         try:
             from ..path_safety import resolve_under
+
             if cfg.project_dir is not None:
                 jobset_path = resolve_under(cfg.project_dir, jobset_file)
             else:
