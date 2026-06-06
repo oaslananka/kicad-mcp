@@ -125,6 +125,7 @@ class KiCadMCPConfig(BaseSettings):
     )
     ipc_connection_timeout: float = Field(default=10.0, gt=0.1, le=120.0)
     ipc_retries: int = Field(default=2, ge=0, le=10)
+    ipc_cache_ttl: float = Field(default=5.0, gt=0.5, le=60.0)
     headless: bool = Field(default=False)
     cli_timeout: float = Field(default=120.0, gt=0.1, le=600.0)
     max_items_per_response: int = Field(default=200, ge=1, le=2000)

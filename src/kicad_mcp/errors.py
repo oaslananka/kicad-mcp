@@ -71,6 +71,14 @@ class KiCadBoardNotOpenError(KiCadMcpError):
     retryable = True
 
 
+class IpcDisconnectedError(KiCadNotRunningError):
+    """Raised when the KiCad IPC connection was lost and reconnection failed."""
+
+    code = "IPC_DISCONNECTED"
+    hint = "Open KiCad and enable the IPC API server in Preferences, or run doctor for diagnostics."
+    retryable = True
+
+
 class UnsafePathError(KiCadMcpError, ValueError):
     """Raised when a requested path escapes the configured workspace."""
 

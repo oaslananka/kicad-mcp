@@ -9,7 +9,12 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol, TypedDict
 
-from ..errors import KiCadBoardNotOpenError, KiCadConnectionTimeoutError, KiCadNotRunningError
+from ..errors import (
+    IpcDisconnectedError,
+    KiCadBoardNotOpenError,
+    KiCadConnectionTimeoutError,
+    KiCadNotRunningError,
+)
 
 
 class LoggerLike(Protocol):
@@ -41,6 +46,7 @@ class SessionConfig(Protocol):
     kicad_token: str | None
     ipc_connection_timeout: float
     ipc_retries: int
+    ipc_cache_ttl: float
 
 
 ConfigFactory = Callable[[], SessionConfig]
@@ -65,7 +71,7 @@ def _is_busy_error(message: str) -> bool:
 
 
 class KiCadSession:
-    """Thread-safe lazy KiCad IPC session."""
+    """Thread-safe lazy KiCad IPC session with TTL caching and auto-reconnect."""
 
     def __init__(
         self,
@@ -81,19 +87,29 @@ class KiCadSession:
         self._sleep = sleep
         self._lock = threading.RLock()
         self._client: object | None = None
+        self._last_connect_time: float = 0.0
+
+    def _get_ttl(self) -> float:
+        """Return the configured IPC cache TTL in seconds."""
+        return self._config_factory().ipc_cache_ttl
 
     def reset(self) -> None:
         """Close and clear the cached client."""
         with self._lock:
-            if self._client is not None:
-                close_fn = getattr(self._client, "close", None)
-                if callable(close_fn):
-                    try:
-                        close_fn()
-                    except Exception as exc:  # pragma: no cover - defensive cleanup
-                        if self._logger is not None:
-                            self._logger.debug("kicad_close_failed", error=str(exc))
+            self._close_client()
             self._client = None
+            self._last_connect_time = 0.0
+
+    def _close_client(self) -> None:
+        """Safely close the current client connection."""
+        if self._client is not None:
+            close_fn = getattr(self._client, "close", None)
+            if callable(close_fn):
+                try:
+                    close_fn()
+                except Exception as exc:  # pragma: no cover - defensive cleanup
+                    if self._logger is not None:
+                        self._logger.debug("kicad_close_failed", error=str(exc))
 
     def _constructor_params(self) -> set[str]:
         signature_target = getattr(self._client_factory, "__init__", self._client_factory)
@@ -119,50 +135,83 @@ class KiCadSession:
         return kwargs
 
     def client(self) -> object:
-        """Return a connected KiCad client, retrying transient startup failures."""
+        """Return a connected KiCad IPC client with TTL caching and auto-reconnect.
+
+        If the cached client is older than ``ipc_cache_ttl`` seconds, the session
+        is automatically torn down and reconnected.  On failure the connection is
+        retried with exponential backoff (0.5s, 1s, 2s) up to the configured
+        retry count.  After all retries are exhausted an ``IpcDisconnectedError``
+        (retryable, ``IPC_DISCONNECTED``) is raised.
+        """
         with self._lock:
+            # TTL check — expired cache → force reconnect
             if self._client is not None:
-                return self._client
-
-            cfg = self._config_factory()
-            attempts = max(1, cfg.ipc_retries + 1)
-            kwargs = self.build_kwargs()
-            last_error: BaseException | None = None
-            for attempt in range(1, attempts + 1):
-                if self._logger is not None:
-                    self._logger.debug(
-                        "kicad_connect",
-                        attempt=attempt,
-                        attempts=attempts,
-                        kwargs=list(kwargs.keys()),
-                    )
-                try:
-                    self._client = self._client_factory(**kwargs)
-                    return self._client
-                except Exception as exc:
-                    last_error = exc
+                elapsed = time.monotonic() - self._last_connect_time
+                if elapsed > self._get_ttl():
                     if self._logger is not None:
-                        self._logger.warning(
-                            "kicad_connect_failed",
-                            attempt=attempt,
-                            attempts=attempts,
-                            error=str(exc),
-                            socket_path=str(cfg.kicad_socket_path)
-                            if cfg.kicad_socket_path
-                            else None,
+                        self._logger.debug(
+                            "kicad_cache_expired",
+                            elapsed_seconds=round(elapsed, 2),
+                            ttl_seconds=self._get_ttl(),
                         )
-                    if attempt < attempts:
-                        self._sleep(min(0.2 * attempt, 1.0))
+                    self._close_client()
+                    self._client = None
 
-            message = str(last_error or "KiCad IPC connection failed")
-            if "timeout" in message.casefold() or "timed out" in message.casefold():
-                raise KiCadConnectionTimeoutError(
-                    "Could not connect to KiCad IPC API before the configured timeout."
-                ) from last_error
-            raise KiCadNotRunningError(
-                "Could not connect to KiCad IPC API. Make sure KiCad is running and "
-                "the IPC API server is enabled."
+            if self._client is None:
+                self._client = self._connect_with_retry()
+
+            return self._client
+
+    def _connect_with_retry(self) -> object:
+        """Attempt to connect with exponential backoff.
+
+        Attempt 1 is immediate.  Each subsequent retry waits with exponential
+        backoff: 0.5s, 1s, 2s (capped at 2s).  Total attempts = ipc_retries + 1.
+        Raises ``IpcDisconnectedError`` after all retries are exhausted.
+        """
+        cfg = self._config_factory()
+        kwargs = self.build_kwargs()
+        total_attempts = max(1, cfg.ipc_retries + 1)
+
+        # Exponential backoff sequence (used after attempt 1)
+        backoff_times = [min(0.5 * (2**i), 2.0) for i in range(cfg.ipc_retries)]
+
+        last_error: BaseException | None = None
+        for attempt in range(1, total_attempts + 1):
+            # Sleep *before* every attempt except the first
+            if attempt > 1 and backoff_times:
+                self._sleep(backoff_times[attempt - 2])
+            if self._logger is not None:
+                self._logger.debug(
+                    "kicad_connect",
+                    attempt=attempt,
+                    max_attempts=total_attempts,
+                    kwargs=list(kwargs.keys()),
+                )
+            try:
+                client = self._client_factory(**kwargs)
+                self._last_connect_time = time.monotonic()
+                return client
+            except Exception as exc:
+                last_error = exc
+                if self._logger is not None:
+                    self._logger.warning(
+                        "kicad_connect_failed",
+                        attempt=attempt,
+                        max_attempts=total_attempts,
+                        error=str(exc),
+                        socket_path=str(cfg.kicad_socket_path) if cfg.kicad_socket_path else None,
+                    )
+
+        message = str(last_error or "KiCad IPC connection failed")
+        if "timeout" in message.casefold() or "timed out" in message.casefold():
+            raise KiCadConnectionTimeoutError(
+                "Could not connect to KiCad IPC API before the configured timeout."
             ) from last_error
+        raise IpcDisconnectedError(
+            "KiCad IPC API server is not reachable after multiple retries. "
+            "Make sure KiCad is running and the IPC API server is enabled."
+        ) from last_error
 
     def board(self) -> object:
         """Return the active KiCad board."""
