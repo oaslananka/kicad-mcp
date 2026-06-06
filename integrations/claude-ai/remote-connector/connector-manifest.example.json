@@ -1,0 +1,58 @@
+{
+  "schemaVersion": "v1",
+  "name": "KiCad MCP",
+  "description": "KiCad PCB design analysis, review, and manufacturing readiness through MCP tools.",
+  "url": "https://mcp.kicad.example.com/mcp",
+  "auth": {
+    "type": "oauth2",
+    "authorizationUrl": "https://auth.kicad.example.com/authorize",
+    "tokenUrl": "https://auth.kicad.example.com/token",
+    "scopes": ["kicad:read"]
+  },
+  "tools": [
+    {
+      "name": "search_kicad_docs",
+      "description": "Search KiCad documentation and knowledge base.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string", "description": "Search query" }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "analyze_uploaded_project",
+      "description": "Analyze an uploaded KiCad project archive.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "file_id": { "type": "string", "description": "Uploaded file identifier" }
+        },
+        "required": ["file_id"]
+      }
+    },
+    {
+      "name": "explain_drc_report",
+      "description": "Explain DRC results from an uploaded report.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "report_file_id": { "type": "string", "description": "DRC report file ID" }
+        },
+        "required": ["report_file_id"]
+      }
+    },
+    {
+      "name": "generate_manufacturing_readiness_report",
+      "description": "Generate a manufacturing readiness report.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "project_id": { "type": "string", "description": "Project identifier" }
+        },
+        "required": []
+      }
+    }
+  ]
+}

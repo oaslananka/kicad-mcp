@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manufacturing Readiness</title>
+<style>
+  :root { --bg: #1a1a2e; --card: #16213e; --accent: #0f3460; --text: #e0e0e0; --ok: #4caf50; --warn: #ff9800; --error: #f44336; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+  h1 { font-size: 1.3rem; margin-bottom: 16px; color: #fff; }
+  .card { background: var(--card); border-radius: 8px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--accent); }
+  .card h2 { font-size: 1rem; margin-bottom: 12px; border-bottom: 1px solid var(--accent); padding-bottom: 4px; }
+  .checklist { list-style: none; }
+  .checklist li { padding: 8px 0; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist .icon { width: 24px; text-align: center; font-size: 1rem; }
+  .checklist .status-label { font-size: 0.75rem; font-weight: 600; padding: 2px 6px; border-radius: 3px; margin-left: auto; }
+  .pass { background: var(--ok); color: #000; }
+  .fail { background: var(--error); color: #fff; }
+  .pending { background: #444; color: #aaa; }
+  .progress-container { margin: 16px 0; }
+  .progress-bar { height: 8px; background: #333; border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--ok); border-radius: 4px; transition: width 0.5s; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-top: 4px; color: #aaa; }
+  .verdict { text-align: center; padding: 24px; }
+  .verdict h2 { font-size: 2rem; border: none; padding: 0; }
+  .verdict .sub { color: #aaa; margin-top: 8px; }
+</style>
+</head>
+<body>
+<h1>📦 Manufacturing Readiness</h1>
+
+<div class="card">
+  <div class="progress-container">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="progress-label"><span id="completedCount">0</span>/<span id="totalCount">10</span> checks</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>✅ Quality Gates</h2>
+  <ul class="checklist" id="qualityGateList">
+    <li><span class="icon">⏳</span> ERC <span class="status-label pending">Pending</span></li>
+    <li><span class="icon">⏳</span> DRC <span class="status-label pending">Pending</span></li>
+    <li><span class="icon">⏳</span> DFM Check <span class="status-label pending">Pending</span></li>
+    <li><span class="icon">⏳</span> Manufacturing Gate <span class="status-label pending">Pending</span></li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>📁 Export Artifacts</h2>
+  <ul class="checklist" id="exportList">
+    <li><span class="icon">⏳</span> Gerber Files <span class="status-label pending">Pending</span></li>
+    <li><span class="icon">⏳</span> NC Drill Files <span class="status-label pending">Pending</span></li>
+    <li><span class="icon">⏳</span> BOM (CSV) <span class="status-label pending">Pending</span></li>
+    <li><span class="icon">⏳</span> Pick & Place <span class="status-label pending">Pending</span></li>
+    <li><span class="icon">⏳</span> 3D STEP <span class="status-label pending">Pending</span></li>
+    <li><span class="icon">⏳</span> PDF Documentation <span class="status-label pending">Pending</span></li>
+  </ul>
+</div>
+
+<div class="card verdict" id="verdict">
+  <h2 id="verdictIcon">⏳</h2>
+  <div class="sub" id="verdictText">Run quality checks to get manufacturing readiness verdict</div>
+</div>
+
+<script>
+window.addEventListener('message', (event) => {
+  if (event.data?.type === 'mcp-tool-result') {
+    const text = event.data.result?.content?.[0]?.text;
+    if (text) updateReport(text);
+  }
+});
+
+function updateReport(data) {
+  try {
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+    const checks = {
+      'erc': parsed.erc_ok || parsed.ercPassed,
+      'drc': parsed.drc_ok || parsed.drcPassed,
+      'dfm': parsed.dfm_ok || parsed.dfmPassed,
+      'mfg': parsed.mfg_ok || parsed.mfgGatePassed,
+      'gerbers': parsed.gerbers_ok || parsed.gerberExported,
+      'drill': parsed.drill_ok || parsed.drillExported,
+      'bom': parsed.bom_ok || parsed.bomExported,
+      'pnplace': parsed.place_ok || parsed.placeExported,
+      'step': parsed.step_ok || parsed.stepExported,
+      'pdf': parsed.pdf_ok || parsed.pdfExported,
+    };
+
+    const all = Object.values(checks);
+    const completed = all.filter(v => v === true).length;
+    const total = all.length;
+
+    document.getElementById('progressFill').style.width = `${(completed / total) * 100}%`;
+    document.getElementById('completedCount').textContent = completed;
+    document.getElementById('totalCount').textContent = total;
+
+    const gates = ['erc', 'drc', 'dfm', 'mfg'];
+    const gateLabels = ['ERC', 'DRC', 'DFM Check', 'Manufacturing Gate'];
+    const gateList = document.getElementById('qualityGateList');
+    gateList.innerHTML = gates.map((key, i) => {
+      const v = checks[key];
+      return `<li><span class="icon">${v === undefined ? '⏳' : v ? '✅' : '❌'}</span> ${gateLabels[i]} <span class="status-label ${v === undefined ? 'pending' : v ? 'pass' : 'fail'}">${v === undefined ? 'Pending' : v ? 'Pass' : 'Fail'}</span></li>`;
+    }).join('');
+
+    const exports = ['gerbers', 'drill', 'bom', 'pnplace', 'step', 'pdf'];
+    const exportLabels = ['Gerber Files', 'NC Drill Files', 'BOM (CSV)', 'Pick & Place', '3D STEP', 'PDF Documentation'];
+    const exportList = document.getElementById('exportList');
+    exportList.innerHTML = exports.map((key, i) => {
+      const v = checks[key];
+      return `<li><span class="icon">${v === undefined ? '⏳' : v ? '✅' : '❌'}</span> ${exportLabels[i]} <span class="status-label ${v === undefined ? 'pending' : v ? 'pass' : 'fail'}">${v === undefined ? 'Pending' : v ? 'Done' : 'Missing'}</span></li>`;
+    }).join('');
+
+    const allPassed = completed === total;
+    document.getElementById('verdictIcon').textContent = allPassed ? '✅' : '❌';
+    document.getElementById('verdictText').textContent = allPassed
+      ? 'Board is manufacturing-ready! All checks passed.'
+      : `${total - completed} checks remaining before manufacturing release.`;
+  } catch (e) {
+    // ignore parse errors
+  }
+}
+
+// Trigger project quality gate
+window.parent.postMessage({
+  type: 'call-tool',
+  tool: 'project_quality_gate',
+  arguments: {}
+}, '*');
+</script>
+</body>
+</html>

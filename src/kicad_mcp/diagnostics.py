@@ -247,6 +247,63 @@ def diagnostic_report_json(report: DiagnosticReport, *, indent: int = 2) -> str:
     return json.dumps(payload, indent=indent)
 
 
+def _agent_config_checks() -> list[CheckResult]:
+    """Check agent configuration files for kicad-mcp presence."""
+    checks: list[CheckResult] = []
+    try:
+        from .setup import check_all_agent_configs
+
+        for result in check_all_agent_configs():
+            key = str(result.get("key", "?"))
+            configs = result.get("configs", {})
+            if not configs:
+                continue
+            for scope, entry in configs.items():  # type: ignore[attr-defined]
+                if not isinstance(entry, dict):
+                    continue
+                path = entry.get("path", "")
+                exists = entry.get("exists", False)
+                valid = entry.get("valid", False)
+                issues = entry.get("issues", [])
+
+                if exists:
+                    if valid:
+                        checks.append(
+                            CheckResult(
+                                name=f"agent_config_{key}_{scope}",
+                                status="ok",
+                                message=f"{key} ({scope}) config found at {path}",
+                            )
+                        )
+                    else:
+                        checks.append(
+                            CheckResult(
+                                name=f"agent_config_{key}_{scope}",
+                                status="warn",
+                                message=f"{key} ({scope}) config at {path} has issues",
+                                hint="; ".join(str(i) for i in issues[:3]),
+                            )
+                        )
+                else:
+                    checks.append(
+                        CheckResult(
+                            name=f"agent_config_{key}_{scope}",
+                            status="skipped",
+                            message=f"{key} ({scope}) config not found at {path}",
+                            hint=f"Run: kicad-mcp setup {key} --write",
+                        )
+                    )
+    except Exception as exc:
+        checks.append(
+            CheckResult(
+                name="agent_config_check",
+                status="warn",
+                message=f"Agent config check failed: {exc}",
+            )
+        )
+    return checks
+
+
 def build_diagnostic_report(*, probe_cli: bool, probe_ipc: bool) -> DiagnosticReport:
     """Build a diagnostics report without raising for non-fatal KiCad unavailability."""
     cfg = get_config()
@@ -314,6 +371,11 @@ def build_diagnostic_report(*, probe_cli: bool, probe_ipc: bool) -> DiagnosticRe
         )
 
     checks = [_redact_check(check) for check in checks]
+
+    # Agent config checks (only in doctor mode, not health)
+    if probe_cli:
+        checks.extend(_agent_config_checks())
+
     ok, status = _status(checks)
     config_payload = cfg.safe_diagnostics()
     return DiagnosticReport(

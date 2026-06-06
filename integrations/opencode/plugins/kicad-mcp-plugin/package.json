@@ -1,0 +1,13 @@
+{
+  "name": "@kicad-mcp/opencode-plugin",
+  "version": "0.1.0",
+  "description": "OpenCode plugin for KiCad MCP — config wizard, doctor, review and manufacturing checks",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "index.ts",
+  "keywords": ["opencode", "plugin", "kicad", "pcb", "mcp"],
+  "opencode": {
+    "name": "kicad-mcp",
+    "description": "KiCad MCP integration plugin"
+  }
+}

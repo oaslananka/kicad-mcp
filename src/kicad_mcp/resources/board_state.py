@@ -345,3 +345,105 @@ def register(mcp: FastMCP) -> None:
             return _format_placement_score(analysis)
         except Exception as exc:
             return f"Placement score: BLOCKED\n- Could not evaluate this resource: {exc}"
+
+    @mcp.resource("kicad://drc/latest")
+    def drc_latest_resource() -> str:
+        """Latest DRC (design rule check) results from the most recent kicad-cli run."""
+        try:
+            from ..tools.validation import _run_drc_report
+
+            path, report, error = _run_drc_report("drc_report.json")
+            if report is None:
+                msg = error or "Run run_drc(save_report=True) to generate a report."
+                return f"DRC: No recent report\n- {msg}"
+            violations_raw = report.get("violations")
+            violations = list(violations_raw) if isinstance(violations_raw, list) else []
+            unconnected_raw = report.get("unconnected_items")
+            unconnected = list(unconnected_raw) if isinstance(unconnected_raw, list) else []
+            courtyard_raw = report.get("items_not_passing_courtyard")
+            courtyard = list(courtyard_raw) if isinstance(courtyard_raw, list) else []
+            lines = [
+                "DRC latest results:",
+                f"- Violations: {len(violations)}",
+                f"- Unconnected items: {len(unconnected)}",
+                f"- Courtyard issues: {len(courtyard)}",
+                f"- Report file: {path}",
+            ]
+            if violations:
+                for v in violations[:20]:
+                    msg = str(v.get("message", v.get("msg", "")))
+                    if msg:
+                        lines.append(f"  - {msg}")
+                if len(violations) > 20:
+                    lines.append(f"  ... and {len(violations) - 20} more violations")
+            return "\n".join(lines)
+        except Exception as exc:
+            return f"DRC latest: BLOCKED\n- {exc}"
+
+    @mcp.resource("kicad://erc/latest")
+    def erc_latest_resource() -> str:
+        """Latest ERC (electrical rule check) results from the most recent kicad-cli run."""
+        try:
+            from ..tools.validation import _run_erc_report
+
+            path, report, error = _run_erc_report("erc_report.json")
+            if report is None:
+                msg = error or "Run run_erc(save_report=True) to generate a report."
+                return f"ERC: No recent report\n- {msg}"
+            violations_raw = report.get("violations")
+            violations = list(violations_raw) if isinstance(violations_raw, list) else []
+            lines = [
+                "ERC latest results:",
+                f"- Violations: {len(violations)}",
+                f"- Report file: {path}",
+            ]
+            if violations:
+                for v in violations[:20]:
+                    msg = str(v.get("message", v.get("msg", "")))
+                    if msg:
+                        lines.append(f"  - {msg}")
+                if len(violations) > 20:
+                    lines.append(f"  ... and {len(violations) - 20} more violations")
+            return "\n".join(lines)
+        except Exception as exc:
+            return f"ERC latest: BLOCKED\n- {exc}"
+
+    @mcp.resource("kicad://manufacturing/checklist")
+    def manufacturing_checklist_resource() -> str:
+        """Manufacturing release checklist for fab-ready handoff."""
+        try:
+            return "\n".join(
+                [
+                    "# Manufacturing Release Checklist",
+                    "",
+                    "## Pre-Release Gates (must all PASS)",
+                    "- [ ] project_quality_gate() == PASS",
+                    "- [ ] pcb_transfer_quality_gate() == PASS",
+                    "- [ ] run_drc() — zero violations",
+                    "- [ ] run_erc() — zero violations",
+                    "- [ ] check_design_for_manufacture(profile=target_fab) — PASS",
+                    "- [ ] validate_footprints_vs_schematic() — all matched",
+                    "",
+                    "## Gerber & Drill Export",
+                    "- [ ] export_gerber() — all copper, mask, silk, paste layers",
+                    "- [ ] export_drill() — NC drill + map files",
+                    "- [ ] export_pick_and_place() — CPL file",
+                    "- [ ] export_bom() — BOM file",
+                    "",
+                    "## 3D & Documentation",
+                    "- [ ] export_3d_step() — STEP model",
+                    "- [ ] export_pcb_pdf() — fabrication drawing",
+                    "",
+                    "## Final Release",
+                    "- [ ] export_manufacturing_package() — complete release zip",
+                    "- [ ] vcs_tag_release(tag, message) — git tag the release",
+                    "",
+                    "## Verification",
+                    "- [ ] mfg_check_import_support() — import compatibility verified",
+                    "- [ ] mfg_correct_cpl_rotations() — CPL rotations corrected",
+                    "- [ ] Read kicad://project/manifest — all files tracked",
+                    "- [ ] Read kicad://project/gate_history — no regressions",
+                ]
+            )
+        except Exception as exc:
+            return f"Manufacturing checklist: BLOCKED\n- {exc}"

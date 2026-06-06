@@ -1787,6 +1787,105 @@ def doctor(
     _diagnostic_command(build_doctor_report, as_json=json_output, bundle_path=bundle)
 
 
+@app.command()
+def setup(
+    agent: str = typer.Argument(
+        ...,
+        help=option_help(
+            "Target agent: claude-code, codex, gemini, opencode, "
+            "cursor, vscode, claude-desktop, antigravity, chatgpt, claude-ai. "
+            "Use 'interactive' for simple help or 'wizard' for interactive wizard."
+        ),
+    ),
+    project_dir: str | None = typer.Option(
+        None,
+        "--project-dir",
+        help=option_help("KiCad project directory (default: $PWD or KICAD_MCP_PROJECT_DIR)."),
+    ),
+    mode: str = typer.Option(
+        "readonly", "--mode", help=option_help("Operating mode: readonly, write, manufacturing.")
+    ),
+    write_config: bool = typer.Option(
+        False, "--write", help=option_help("Write config file directly (instead of printing).")
+    ),
+    scope: str = typer.Option(
+        "project",
+        "--scope",
+        help=option_help("Config scope: project, user (if supported by agent)."),
+    ),
+    transport: str = typer.Option(
+        "stdio",
+        "--transport",
+        help=option_help("MCP transport: stdio or http."),
+    ),
+    url: str = typer.Option(
+        "",
+        "--url",
+        help=option_help("Remote MCP URL (for HTTP transport or remote agents)."),
+    ),
+) -> None:
+    """Generate or install KiCad MCP configuration for a supported agent.
+
+    Use 'kicad-mcp setup wizard' for interactive setup.
+
+    \b
+    Examples:
+      kicad-mcp setup claude-code
+      kicad-mcp setup claude-code --write --scope project
+      kicad-mcp setup codex --write --mode manufacturing
+      kicad-mcp setup vscode --transport http --url http://127.0.0.1:8765/mcp
+      kicad-mcp setup-restore claude-code
+      kicad-mcp setup-backups claude-code
+    """
+    from .setup import setup_agent, setup_wizard
+
+    if agent == "interactive":
+        typer.echo(setup_wizard())
+        return
+    if agent == "wizard":
+        from .setup import run_wizard
+
+        typer.echo(run_wizard())
+        return
+    try:
+        result = setup_agent(
+            agent,
+            project_dir=project_dir,
+            mode=mode,
+            write=write_config,
+            scope=scope,
+            url=url,
+            transport=transport,
+        )
+        typer.echo(result)
+    except Exception as exc:
+        raise typer.Exit(code=1) from exc
+
+
+@app.command()
+def setup_restore(
+    agent: str = typer.Argument(..., help=option_help("Agent to restore config for.")),
+    scope: str = typer.Option("project", "--scope", help=option_help("Config scope to restore.")),
+) -> None:
+    """Restore the most recent backup of an agent configuration."""
+    from .setup import restore_config
+
+    result = restore_config(agent, scope)
+    typer.echo(result)
+
+
+@app.command()
+def setup_backups(
+    agent: str = typer.Argument(..., help=option_help("Agent to list backups for.")),
+    scope: str = typer.Option("project", "--scope", help=option_help("Config scope to list.")),
+) -> None:
+    """List available backups for an agent configuration."""
+    from .setup import list_config_backups
+
+    result = list_config_backups(agent, scope)
+    typer.echo(result)
+
+
 def _tool_payload(tool: mcp_types.Tool) -> dict[str, object]:
     dumped = tool.model_dump(mode="json", exclude_none=True)
     return {

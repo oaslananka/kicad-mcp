@@ -1,0 +1,24 @@
+---
+description: KiCad PCB design and review with kicad MCP server
+globs: "**/*.kicad_*"
+priority: 10
+---
+
+# KiCad MCP Usage
+
+When working on KiCad projects in this repository:
+
+1. Use the `kicad` MCP server for PCB and schematic operations.
+2. Start with read-only tools before making any changes.
+3. Run ERC/DRC after any edit.
+4. Never claim manufacturing readiness without export and validation evidence.
+5. For design changes: explain the proposed change, ask for confirmation, then proceed.
+6. After changes: run ERC + DRC + DFM checks and summarize what changed.
+
+## Tool Categories
+
+| Category | Examples | Approval |
+|----------|----------|----------|
+| Read-only | `kicad_get_project_info`, `pcb_get_board_summary`, `run_drc`, `run_erc` | Automatic |
+| Write | `pcb_add_*`, `sch_add_*`, `route_*`, `export_*` | User confirmation |
+| Destructive | `git_restore_checkpoint` | Explicit user approval |

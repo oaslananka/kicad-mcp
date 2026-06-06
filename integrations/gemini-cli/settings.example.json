@@ -1,0 +1,25 @@
+{
+  "mcpServers": {
+    "kicad": {
+      "command": "uvx",
+      "args": ["kicad-mcp-pro"],
+      "env": {
+        "KICAD_MCP_PROJECT_DIR": "$PWD",
+        "KICAD_MCP_PROFILE": "analysis",
+        "KICAD_MCP_OPERATING_MODE": "readonly"
+      },
+      "cwd": ".",
+      "timeout": 30000,
+      "trust": false,
+      "includeTools": [
+        "kicad_get_project_info",
+        "project_quality_gate",
+        "run_erc",
+        "run_drc",
+        "validate_design",
+        "pcb_get_board_summary",
+        "sch_get_symbols"
+      ]
+    }
+  }
+}

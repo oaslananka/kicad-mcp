@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Review</title>
+<style>
+  :root { --bg: #1a1a2e; --card: #16213e; --accent: #0f3460; --text: #e0e0e0; --error: #f44336; --warn: #ff9800; --ok: #4caf50; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+  .card { background: var(--card); border-radius: 8px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--accent); }
+  h2 { font-size: 1.1rem; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--accent); }
+  th { color: #888; font-weight: 500; text-transform: uppercase; font-size: 0.75rem; }
+  .severity-error { color: var(--error); } .severity-warn { color: var(--warn); } .severity-ok { color: var(--ok); }
+  .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; font-weight: 600; }
+  .badge-error { background: var(--error); } .badge-warn { background: var(--warn); color: #000; } .badge-ok { background: var(--ok); color: #000; }
+  .empty { text-align: center; color: #666; padding: 24px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>📊 Issue Summary</h2>
+  <div id="summaryBar" style="display:flex; gap:12px; margin-top:8px;">
+    <div><span class="badge badge-error" id="errorCount">0</span> errors</div>
+    <div><span class="badge badge-warn" id="warnCount">0</span> warnings</div>
+    <div><span class="badge badge-ok" id="okCount">0</span> passed</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>🔍 Issues</h2>
+  <table>
+    <thead><tr><th>Severity</th><th>Rule</th><th>Location</th><th>Description</th></tr></thead>
+    <tbody id="issueTable">
+      <tr><td colspan="4" class="empty">No data — run ERC/DRC first</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+window.addEventListener('message', (event) => {
+  if (event.data?.type === 'mcp-tool-result') {
+    const text = event.data.result?.content?.[0]?.text;
+    if (text) renderIssues(text);
+  }
+});
+
+function renderIssues(data) {
+  // Parse structured issue data from MCP response
+  let issues = [];
+  try { issues = JSON.parse(data); } catch { return; }
+
+  if (!Array.isArray(issues) || issues.length === 0) return;
+
+  const errors = issues.filter(i => (i.severity || '').toLowerCase() === 'error').length;
+  const warnings = issues.filter(i => (i.severity || '').toLowerCase() === 'warning').length;
+  const passed = issues.filter(i => (i.severity || '').toLowerCase() === 'ok' || i.status === 'pass').length;
+
+  document.getElementById('errorCount').textContent = errors;
+  document.getElementById('warnCount').textContent = warnings;
+  document.getElementById('okCount').textContent = passed || '—';
+
+  const tbody = document.getElementById('issueTable');
+  tbody.innerHTML = issues
+    .filter(i => i.severity !== 'ok')
+    .map(i => {
+      const sev = (i.severity || '').toLowerCase();
+      return `<tr>
+        <td><span class="badge badge-${sev === 'error' ? 'error' : 'warn'}">${sev}</span></td>
+        <td>${i.rule || i.name || '—'}</td>
+        <td style="font-family:monospace;font-size:0.8rem;">${i.location || i.path || '—'}</td>
+        <td>${i.message || i.description || '—'}</td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="4" class="empty">No issues found ✅</td></tr>';
+}
+
+// Request DRC report
+window.parent.postMessage({
+  type: 'call-tool',
+  tool: 'run_drc',
+  arguments: { format: 'json' }
+}, '*');
+</script>
+</body>
+</html>

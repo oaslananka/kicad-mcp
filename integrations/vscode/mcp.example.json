@@ -1,0 +1,25 @@
+{
+  "servers": {
+    "kicad": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["kicad-mcp-pro"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "KICAD_MCP_PROJECT_DIR": "${workspaceFolder}",
+        "KICAD_MCP_PROFILE": "analysis",
+        "KICAD_MCP_OPERATING_MODE": "readonly"
+      },
+      "sandboxEnabled": true
+    }
+  },
+  "sandbox": {
+    "filesystem": {
+      "allowWrite": ["${workspaceFolder}"],
+      "denyRead": ["${userHome}/.ssh", "${userHome}/.gnupg"]
+    },
+    "network": {
+      "allowedDomains": ["api.github.com", "pypi.org", "files.pythonhosted.org"]
+    }
+  }
+}

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KiCad Project Dashboard</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --card: #16213e;
+    --accent: #0f3460;
+    --text: #e0e0e0;
+    --success: #4caf50;
+    --warn: #ff9800;
+    --error: #f44336;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+  .container { max-width: 800px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 16px; color: #fff; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .card { background: var(--card); border-radius: 8px; padding: 16px; border: 1px solid var(--accent); }
+  .card h3 { font-size: 0.85rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .card .value { font-size: 1.8rem; font-weight: 600; color: #fff; }
+  .card .sub { font-size: 0.85rem; color: #aaa; margin-top: 4px; }
+  .status-ok { color: var(--success); }
+  .status-warn { color: var(--warn); }
+  .status-error { color: var(--error); }
+  .section { margin-bottom: 16px; }
+  .section h2 { font-size: 1.1rem; margin-bottom: 8px; border-bottom: 1px solid var(--accent); padding-bottom: 4px; }
+  .checklist { list-style: none; }
+  .checklist li { padding: 6px 0; display: flex; align-items: center; gap: 8px; }
+  .checklist .icon { width: 20px; text-align: center; }
+  .header-row { display: flex; justify-content: space-between; align-items: center; }
+  .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+  .badge-ok { background: var(--success); color: #000; }
+  .badge-warn { background: var(--warn); color: #000; }
+  .badge-error { background: var(--error); color: #fff; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header-row">
+    <h1>🔧 KiCad Project Dashboard</h1>
+    <span id="healthBadge" class="badge badge-ok">Checking...</span>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Board</h3>
+      <div class="value" id="boardName">—</div>
+      <div class="sub" id="boardLayers">—</div>
+    </div>
+    <div class="card">
+      <h3>Components</h3>
+      <div class="value" id="componentCount">—</div>
+      <div class="sub">placed on board</div>
+    </div>
+    <div class="card">
+      <h3>Nets</h3>
+      <div class="value" id="netCount">—</div>
+      <div class="sub" id="trackCount">—</div>
+    </div>
+    <div class="card">
+      <h3>Quality</h3>
+      <div class="value" id="qualityScore">—</div>
+      <div class="sub" id="qualityStatus">—</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📋 ERC / DRC Status</h2>
+    <ul class="checklist" id="issueList">
+      <li><span class="icon">⏳</span> Loading...</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>📦 Manufacturing Readiness</h2>
+    <ul class="checklist" id="manufacturingList">
+      <li><span class="icon">⏳</span> Loading...</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+// MCP Apps Bridge: listen for tool results
+window.addEventListener('message', (event) => {
+  if (event.data?.type === 'mcp-tool-result') {
+    const data = event.data.result?.content?.[0]?.text;
+    if (data) updateDashboard(data);
+  }
+});
+
+function updateDashboard(data) {
+  try {
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+    document.getElementById('boardName').textContent = parsed.board || parsed.project || 'KiCad Board';
+    document.getElementById('boardLayers').textContent = parsed.layers ? `${parsed.layers} layers` : '—';
+    document.getElementById('componentCount').textContent = parsed.components ?? parsed.component_count ?? '—';
+    document.getElementById('netCount').textContent = parsed.nets ?? parsed.net_count ?? '—';
+    document.getElementById('trackCount').textContent = parsed.tracks ? `${parsed.tracks} tracks` : '—';
+
+    const ercErrors = parseInt(parsed.erc_errors ?? parsed.ercErrors ?? 0);
+    const drcErrors = parseInt(parsed.drc_errors ?? parsed.drcErrors ?? 0);
+    const totalErrors = ercErrors + drcErrors;
+    const qualityEl = document.getElementById('qualityScore');
+    const badgeEl = document.getElementById('healthBadge');
+
+    if (totalErrors === 0) {
+      qualityEl.textContent = '✅';
+      qualityEl.className = 'value status-ok';
+      document.getElementById('qualityStatus').textContent = 'No issues';
+      badgeEl.textContent = 'PASS';
+      badgeEl.className = 'badge badge-ok';
+    } else {
+      qualityEl.textContent = `${totalErrors}`;
+      qualityEl.className = 'value status-error';
+      document.getElementById('qualityStatus').textContent = `${ercErrors} ERC, ${drcErrors} DRC errors`;
+      badgeEl.textContent = `${totalErrors} ISSUES`;
+      badgeEl.className = 'badge badge-error';
+    }
+
+    const issues = [];
+    if (ercErrors > 0) issues.push({ icon: '⚡', text: `${ercErrors} ERC error(s) — check schematic connectivity` });
+    if (drcErrors > 0) issues.push({ icon: '📐', text: `${drcErrors} DRC error(s) — check layout rules` });
+    if (parsed.unrouted) issues.push({ icon: '🔗', text: `${parsed.unrouted} unrouted net(s)` });
+
+    const issueList = document.getElementById('issueList');
+    issueList.innerHTML = issues.length > 0
+      ? issues.map(i => `<li><span class="icon">${i.icon}</span> ${i.text}</li>`).join('')
+      : '<li><span class="icon">✅</span> No issues found</li>';
+
+    const mfgItems = [
+      { icon: parsed.gerbers ? '✅' : '⬜', text: 'Gerber files' },
+      { icon: parsed.bom ? '✅' : '⬜', text: 'BOM' },
+      { icon: parsed.place ? '✅' : '⬜', text: 'Pick & Place' },
+      { icon: parsed.step ? '✅' : '⬜', text: '3D STEP' },
+    ];
+    document.getElementById('manufacturingList').innerHTML =
+      mfgItems.map(i => `<li><span class="icon">${i.icon}</span> ${i.text}</li>`).join('');
+  } catch (e) {
+    // Fallback: show raw text
+    document.getElementById('boardName').textContent = data.substring(0, 80);
+  }
+}
+
+// Request project info
+window.parent.postMessage({
+  type: 'call-tool',
+  tool: 'kicad_get_project_info',
+  arguments: {}
+}, '*');
+</script>
+</body>
+</html>

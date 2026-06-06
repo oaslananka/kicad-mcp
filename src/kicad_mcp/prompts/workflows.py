@@ -284,3 +284,196 @@ Run a repeatable project regression sweep.
 5. Report any new FAIL/BLOCKED gate before release work continues.
 """.strip()
         return [TextContent(type="text", text=text)]
+
+    # ── Spec-requested named prompts ──────────────────────────────────────
+
+    @mcp.prompt()
+    def kicad_review_board() -> list[TextContent]:
+        """Perform a structured board review covering DRC, stackup, placement, and SI."""
+        text = """
+Run a structured PCB design review.
+
+1. Read `kicad://project/info` and `kicad://board/summary` for context.
+2. Run `run_drc()` and inspect `kicad://drc/latest` for violations.
+3. Read `kicad://board/placement_quality` for placement score.
+4. Read `kicad://board/layer_coverage` for copper distribution.
+5. Check `kicad://analysis/stackup` for layer stack assumptions.
+6. Run `pcb_score_placement()` for placement quality metric.
+7. Inspect `pcb_get_nets()` for net classification.
+8. Read `kicad://project/quality_gate` for overall gate status.
+9. Summarize findings: pass/fail per category, top issues, recommended fixes.
+10. If `kicad://project/fix_queue` has blockers, escalate highest-priority items.
+""".strip()
+        return [TextContent(type="text", text=text)]
+
+    @mcp.prompt()
+    def kicad_fix_erc() -> list[TextContent]:
+        """Systematic approach to resolve ERC violations in the schematic."""
+        text = """
+Fix Electrical Rule Check (ERC) violations systematically.
+
+1. Run `run_erc(save_report=True)` and read `kicad://erc/latest`.
+2. Group violations by severity and type.
+3. For each violation:
+   a. Identify the affected nets, symbols, or pins using `sch_trace_net()`.
+   b. Fix the root cause: wire, label, power flag, pin mismatch, or missing junction.
+   c. If a rule needs adjustment, use `erc_set_rule_severity()`.
+4. Re-run `run_erc()` after each fix.
+5. Repeat until ERC shows zero violations.
+6. If the fix queue suggests a specific order, follow it.
+""".strip()
+        return [TextContent(type="text", text=text)]
+
+    @mcp.prompt()
+    def kicad_fix_drc() -> list[TextContent]:
+        """Systematic approach to resolve DRC violations in the PCB layout."""
+        text = """
+Fix Design Rule Check (DRC) violations systematically.
+
+1. Run `run_drc(save_report=True)` and read `kicad://drc/latest`.
+2. Inspect `drc_list_rules()` and `drc_list_exclusions()` for current configuration.
+3. For each violation:
+   a. Identify the affected nets/footprints using `pcb_get_nets()`.
+   b. Fix: adjust track width/clearance, move footprints, add vias, re-route.
+   c. For false positives, add `drc_add_exclusion()`.
+4. Re-run `run_drc()` after each fix.
+5. If design rules need adjustment, use `pcb_set_design_rules()` or `drc_rule_create()`.
+6. Repeat until DRC shows zero violations.
+7. Run `pcb_refill_zones()` before final DRC.
+""".strip()
+        return [TextContent(type="text", text=text)]
+
+    @mcp.prompt()
+    def kicad_prepare_manufacturing() -> list[TextContent]:
+        """Complete manufacturing release preparation workflow."""
+        text = """
+Prepare the complete manufacturing release package.
+
+1. Read `kicad://manufacturing/checklist` for the full checklist.
+2. Verify all pre-release gates:
+   - `project_quality_gate()` == PASS
+   - `pcb_transfer_quality_gate()` == PASS
+   - `run_drc()` — zero violations
+   - `run_erc()` — zero violations
+   - `check_design_for_manufacture()` — PASS
+3. If any gate fails, fix before proceeding.
+4. Load manufacturer profile: `dfm_load_manufacturer_profile()`.
+5. Run DFM: `dfm_run_manufacturer_check()`.
+6. Export manufacturing outputs:
+   - `export_gerber()`, `export_drill()`
+   - `export_pick_and_place()`, `export_bom()`
+   - `export_3d_step()`, `export_pcb_pdf()`
+7. Generate release manifest: `mfg_generate_release_manifest()`.
+8. Correct CPL rotations: `mfg_correct_cpl_rotations()`.
+9. Tag the release: `vcs_tag_release(tag, message)`.
+10. Call `export_manufacturing_package()` for the final zip.
+""".strip()
+        return [TextContent(type="text", text=text)]
+
+    @mcp.prompt()
+    def kicad_high_speed_review() -> list[TextContent]:
+        """High-speed design review for SI, EMC, and signal integrity."""
+        text = """
+Perform a high-speed design review.
+
+1. Read `kicad://analysis/stackup` and `kicad://analysis/materials` for stackup context.
+2. Run `si_list_dielectric_materials()` and `si_generate_stackup()`.
+3. Identify critical nets from design intent `project_get_design_spec()`.
+4. For each critical net:
+   a. `si_calculate_trace_impedance()` — verify target impedance.
+   b. `si_check_differential_pair_skew()` — verify skew tolerance.
+   c. `si_check_via_stub()` — check via stub resonance.
+5. Run EMC checks:
+   - `emc_check_return_path_continuity()`
+   - `emc_check_decoupling_placement()`
+   - `emc_check_split_plane_crossing()`
+   - `emc_check_via_stitching()`
+6. Run power integrity: `check_power_integrity()`.
+7. Fix issues and re-run affected checks.
+8. Read `pcb_get_stackup()` to verify stackup matches requirements.
+""".strip()
+        return [TextContent(type="text", text=text)]
+
+    @mcp.prompt()
+    def kicad_generate_bom_strategy() -> list[TextContent]:
+        """BOM generation, pricing, and sourcing strategy."""
+        text = """
+Generate and optimize the Bill of Materials.
+
+1. Run `export_bom()` for the base BOM.
+2. For each critical component:
+   a. `lib_get_component_details()` — verify specs.
+   b. `lib_check_stock_availability()` — check stock.
+   c. `lib_get_bom_with_pricing()` — get pricing.
+   d. `lib_find_alternative_parts()` — find alternatives.
+3. Assign LCSC codes: `lib_assign_lcsc_to_symbol()`.
+4. Generate variant BOMs if needed: `variant_export_bom()`.
+5. Compare variants: `variant_diff_bom()`.
+6. Read `kicad://project/manifest` to track all BOM output files.
+7. Generate report with pricing, alternatives, and stock status.
+""".strip()
+        return [TextContent(type="text", text=text)]
+
+    @mcp.prompt()
+    def kicad_component_placement_review() -> list[TextContent]:
+        """Review and optimize component placement quality."""
+        text = """
+Review component placement quality.
+
+1. Read `kicad://board/placement_quality` for current score.
+2. Run `pcb_score_placement()` for detailed metrics.
+3. Run `pcb_placement_quality_gate()` for pass/fail gate.
+4. Identify issues:
+   - Read `pcb_get_footprints()` to inspect placed footprints.
+   - Use `pcb_get_net_statistics()` for net density.
+5. Optimize:
+   - `pcb_place_decoupling_caps()` — place decoupling near ICs.
+   - `pcb_align_footprints()` — align components.
+   - `pcb_group_by_function()` — group related parts.
+6. Re-score after each optimization.
+7. Run `pcb_check_creepage_clearance()` for safety clearance.
+8. Target score >= 80 before proceeding to routing.
+""".strip()
+        return [TextContent(type="text", text=text)]
+
+    @mcp.prompt()
+    def kicad_route_diff_pair() -> list[TextContent]:
+        """Route differential pair nets with impedance and skew control."""
+        text = """
+Route a differential pair with proper impedance and skew control.
+
+1. Identify the differential pair nets from `project_get_design_spec()`.
+2. Run `si_calculate_trace_width_for_impedance()` for target geometry.
+3. Create a tuning profile: `route_create_tuning_profile()`.
+4. Route the pair: `route_differential_pair()`.
+5. Check skew: `si_check_differential_pair_skew()`.
+6. Tune length: `route_tune_length()`.
+7. Apply tuning profile: `route_apply_tuning_profile()`.
+8. Fine-tune differential length: `tune_diff_pair_length()`.
+9. Run `run_drc()` to verify clearance.
+10. Read `pcb_get_impedance_for_trace()` to verify impedance.
+""".strip()
+        return [TextContent(type="text", text=text)]
+
+    @mcp.prompt()
+    def kicad_simulation_plan() -> list[TextContent]:
+        """Plan and run SPICE simulations for circuit verification."""
+        text = """
+Plan and run SPICE simulations.
+
+1. Export spice netlist: `export_spice_netlist()`.
+2. List available libraries: `sim_list_spice_libraries()`.
+3. If models are needed:
+   a. `sim_add_spice_library()` to add required models.
+   b. `sim_assign_spice_model()` to assign to components.
+4. Validate the setup: `sim_validate_spice_setup()`.
+5. Run simulations:
+   a. `sim_run_operating_point()` — DC bias analysis.
+   b. `sim_run_ac_analysis()` — frequency response.
+   c. `sim_run_transient()` — time domain response.
+   d. `sim_run_dc_sweep()` — DC sweep.
+6. Check stability: `sim_check_stability()`.
+7. Add directives as needed: `sim_add_spice_directive()`.
+8. Document results for each simulation type.
+""".strip()
+        return [TextContent(type="text", text=text)]
