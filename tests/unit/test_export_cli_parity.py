@@ -34,5 +34,6 @@ def test_export_pick_and_place_args(fmt: str) -> None:
     """export_pick_and_place should accept 'variant' param after FAZ 8.2."""
     from inspect import signature
     from kicad_mcp.tools.export import export_pick_and_place
+
     sig = signature(export_pick_and_place)
     assert "variant" in sig.parameters

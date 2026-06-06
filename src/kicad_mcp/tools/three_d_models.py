@@ -67,18 +67,22 @@ def _find_3d_model_refs(text: str) -> list[dict[str, str]]:
         rx = _sexpr_float(inner, "rotate", "xyz", 0)
         ry = _sexpr_float(inner, "rotate", "xyz", 1)
         rz = _sexpr_float(inner, "rotate", "xyz", 2)
-        refs.append({
-            "path": model_path,
-            "offset_xyz": [ox, oy, oz],
-            "scale_xyz": [sx if sx else 1.0, sy if sy else 1.0, sz if sz else 1.0],
-            "rotate_xyz": [rx, ry, rz],
-        })
+        refs.append(
+            {
+                "path": model_path,
+                "offset_xyz": [ox, oy, oz],
+                "scale_xyz": [sx if sx else 1.0, sy if sy else 1.0, sz if sz else 1.0],
+                "rotate_xyz": [rx, ry, rz],
+            }
+        )
     return refs
 
 
 def _sexpr_float(sexpr: str, *tags: str, index: int = 0) -> float:
     """Extract a numeric value from a nested S-expression."""
-    pattern = r"\(" + r"\s+".join(re.escape(t) for t in tags) + r"\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\)"
+    pattern = (
+        r"\(" + r"\s+".join(re.escape(t) for t in tags) + r"\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\)"
+    )
     m = re.search(pattern, sexpr)
     if m:
         try:
@@ -93,15 +97,27 @@ def _search_3d_model_files(query: str) -> list[dict[str, str]]:
     lib_dir = _footprint_3d_dir()
     results: list[dict[str, str]] = []
     query_lower = query.casefold()
-    for ext in ("*.step", "*.stp", "*.wrl", "*.vrml", "*.x3d", "*.x3dv", "*.3ds", "*.iges", "*.igs"):
+    for ext in (
+        "*.step",
+        "*.stp",
+        "*.wrl",
+        "*.vrml",
+        "*.x3d",
+        "*.x3dv",
+        "*.3ds",
+        "*.iges",
+        "*.igs",
+    ):
         for model_file in lib_dir.rglob(ext):
             rel = model_file.relative_to(lib_dir)
             if query_lower in str(rel).casefold():
-                results.append({
-                    "path": str(rel.as_posix()),
-                    "absolute_path": str(model_file),
-                    "size_bytes": str(model_file.stat().st_size),
-                })
+                results.append(
+                    {
+                        "path": str(rel.as_posix()),
+                        "absolute_path": str(model_file),
+                        "size_bytes": str(model_file.stat().st_size),
+                    }
+                )
     return sorted(results, key=lambda r: r["path"])[:100]
 
 
@@ -214,8 +230,7 @@ def register(mcp: FastMCP) -> None:
         after_count = len(_find_3d_model_refs(text))
         removed = before_count - after_count
         return (
-            f"Removed {removed} 3D model(s) from '{library}:{footprint}'. "
-            f"Remaining: {after_count}."
+            f"Removed {removed} 3D model(s) from '{library}:{footprint}'. Remaining: {after_count}."
         )
 
     @mcp.tool()
@@ -280,9 +295,5 @@ def register(mcp: FastMCP) -> None:
         """
         results = _search_3d_model_files(query)
         if not results:
-            return json.dumps(
-                {"query": query, "count": 0, "results": []}, indent=2
-            )
-        return json.dumps(
-            {"query": query, "count": len(results), "results": results}, indent=2
-        )
+            return json.dumps({"query": query, "count": 0, "results": []}, indent=2)
+        return json.dumps({"query": query, "count": len(results), "results": results}, indent=2)

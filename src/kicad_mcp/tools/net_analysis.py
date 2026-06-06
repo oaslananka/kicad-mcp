@@ -65,9 +65,7 @@ def _collect_nets_from_file() -> list[dict[str, Any]]:
     """Collect net data by parsing the PCB file as S-expression text."""
     from .board_file import _normalize_board_content
 
-    content = _normalize_board_content(
-        _get_pcb_file().read_text(encoding="utf-8", errors="ignore")
-    )
+    content = _normalize_board_content(_get_pcb_file().read_text(encoding="utf-8", errors="ignore"))
     nets: list[dict[str, Any]] = []
     seen_codes: set[int] = set()
     for match in __import__("re").finditer(r'\(net\s+(\d+)\s+"((?:\\.|[^"\\])*)"', content):
@@ -101,9 +99,7 @@ def register(mcp: FastMCP) -> None:
         """
         nets = _nets()
         if not nets:
-            return json.dumps(
-                {"nets": [], "count": 0, "summary": {}}, indent=2
-            )
+            return json.dumps({"nets": [], "count": 0, "summary": {}}, indent=2)
 
         lengths = [
             float(net.get("total_track_length_mm", 0))
@@ -140,10 +136,7 @@ def register(mcp: FastMCP) -> None:
         matches = [n for n in nets if n.get("name", "") == net_name]
         if not matches:
             available = ", ".join(sorted(set(n.get("name", "") for n in nets[:100])))
-            return (
-                f"Net '{net_name}' was not found in the PCB. "
-                f"Sample nets: {available}"
-            )
+            return f"Net '{net_name}' was not found in the PCB. Sample nets: {available}"
 
         net = matches[0]
         net_code = int(net.get("code", -1))
@@ -155,11 +148,13 @@ def register(mcp: FastMCP) -> None:
             for footprint in board.get_footprints():
                 for pad in footprint.get_pads():
                     if pad.net and pad.net.code == net_code:
-                        pads_on_net.append({
-                            "reference": footprint.reference_field.text.value,
-                            "pad": pad.number,
-                            "layer": str(pad.layer),
-                        })
+                        pads_on_net.append(
+                            {
+                                "reference": footprint.reference_field.text.value,
+                                "pad": pad.number,
+                                "layer": str(pad.layer),
+                            }
+                        )
         except Exception:
             # File fallback — parse footprint pad nets
             from .board_file import _normalize_board_content
@@ -168,7 +163,7 @@ def register(mcp: FastMCP) -> None:
                 _get_pcb_file().read_text(encoding="utf-8", errors="ignore")
             )
             for fp_match in __import__("re").finditer(
-                r'\(footprint\s+.*?\)',
+                r"\(footprint\s+.*?\)",
                 content,
                 __import__("re").DOTALL,
             ):
@@ -180,11 +175,13 @@ def register(mcp: FastMCP) -> None:
                     r'\(pad\s+"([^"]*)"\s+\w+\s+\(net\s+' + str(net_code) + r'\s+"[^"]*"\)',
                     block,
                 ):
-                    pads_on_net.append({
-                        "reference": ref_m.group(1),
-                        "pad": pad_m.group(1),
-                        "layer": "unknown",
-                    })
+                    pads_on_net.append(
+                        {
+                            "reference": ref_m.group(1),
+                            "pad": pad_m.group(1),
+                            "layer": "unknown",
+                        }
+                    )
 
         payload: dict[str, object] = {
             "net_name": net_name,

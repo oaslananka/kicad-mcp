@@ -2088,12 +2088,14 @@ def register(mcp: FastMCP) -> None:
             uuid = str(violation.get("uuid", ""))
             if not uuid or uuid in existing_uuids:
                 continue
-            exclusions.append({
-                "uuid": uuid,
-                "reason": reason,
-                "created": now,
-                "description": str(violation.get("description", "")),
-            })
+            exclusions.append(
+                {
+                    "uuid": uuid,
+                    "reason": reason,
+                    "created": now,
+                    "description": str(violation.get("description", "")),
+                }
+            )
             existing_uuids.add(uuid)
             added += 1
 
@@ -2133,9 +2135,7 @@ def register(mcp: FastMCP) -> None:
         _, report, error = _run_drc_report("drc_validate_exclusions.json")
         if report is None:
             return f"Could not run DRC: {error or 'unknown error'}"
-        active_uuids = {
-            str(v.get("uuid", "")) for v in _entries(report, "violations")
-        }
+        active_uuids = {str(v.get("uuid", "")) for v in _entries(report, "violations")}
 
         valid = []
         stale = []
@@ -2146,14 +2146,17 @@ def register(mcp: FastMCP) -> None:
             else:
                 stale.append(excl)
 
-        return json.dumps({
-            "total_exclusions": len(exclusions),
-            "valid_exclusions": len(valid),
-            "stale_exclusions": len(stale),
-            "active_violations": len(active_uuids),
-            "valid": valid[:20],
-            "stale": stale[:20],
-        }, indent=2)
+        return json.dumps(
+            {
+                "total_exclusions": len(exclusions),
+                "valid_exclusions": len(valid),
+                "stale_exclusions": len(stale),
+                "active_violations": len(active_uuids),
+                "valid": valid[:20],
+                "stale": stale[:20],
+            },
+            indent=2,
+        )
 
     # ── FAZ 5.2 — ERC Rule Severity tools ──────────────────────────────
 
@@ -2186,9 +2189,7 @@ def register(mcp: FastMCP) -> None:
     def _load_erc_severity() -> dict[str, str]:
         path = _erc_severity_path()
         if not path.exists():
-            payload: dict[str, str] = {
-                rule: "error" for rule in _ERC_RULE_NAMES
-            }
+            payload: dict[str, str] = {rule: "error" for rule in _ERC_RULE_NAMES}
             path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
             return payload
         return cast(dict[str, str], json.loads(path.read_text(encoding="utf-8")))
@@ -2231,8 +2232,7 @@ def register(mcp: FastMCP) -> None:
             raise ValueError("Severity must be one of: error, warning, ignore.")
         if rule_name not in _ERC_RULE_NAMES:
             raise ValueError(
-                f"Unknown ERC rule '{rule_name}'. "
-                f"Available rules: {', '.join(_ERC_RULE_NAMES)}"
+                f"Unknown ERC rule '{rule_name}'. Available rules: {', '.join(_ERC_RULE_NAMES)}"
             )
         state = _load_erc_severity()
         state[rule_name] = severity_lower
@@ -2253,8 +2253,7 @@ def register(mcp: FastMCP) -> None:
         if rule_name:
             if rule_name not in _ERC_RULE_NAMES:
                 raise ValueError(
-                    f"Unknown ERC rule '{rule_name}'. "
-                    f"Available rules: {', '.join(_ERC_RULE_NAMES)}"
+                    f"Unknown ERC rule '{rule_name}'. Available rules: {', '.join(_ERC_RULE_NAMES)}"
                 )
             state[rule_name] = "error"
             _save_erc_severity(state)

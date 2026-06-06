@@ -1314,7 +1314,9 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
             pick-and-place data (component population, value, footprint
             overrides). Uses the active variant when omitted.
         """
-        return _with_low_level_export_notice(_export_pick_and_place(format=format, variant_name=variant))
+        return _with_low_level_export_notice(
+            _export_pick_and_place(format=format, variant_name=variant)
+        )
 
     def _export_ipc2581(variant_name: str | None = None) -> str:
         pcb_file = _get_pcb_file()

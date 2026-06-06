@@ -368,8 +368,7 @@ def register(mcp: FastMCP) -> None:
         variants = cast(dict[str, dict[str, Any]], state.setdefault("variants", {}))
         if name not in variants:
             raise ValueError(
-                f"Variant '{name}' not found. "
-                f"Existing variants: {', '.join(_variant_names(state))}"
+                f"Variant '{name}' not found. Existing variants: {', '.join(_variant_names(state))}"
             )
         del variants[name]
         if state.get("active_variant") == name:
@@ -471,7 +470,12 @@ def register(mcp: FastMCP) -> None:
             Output filename for the package manifest (defaults to
             ``<variant>_manufacturing.json``).
         """
-        from .export_support import _ensure_output_dir, _get_pcb_file, _get_sch_file, _run_cli_variants
+        from .export_support import (
+            _ensure_output_dir,
+            _get_pcb_file,
+            _get_sch_file,
+            _run_cli_variants,
+        )
 
         state = _load_state()
         _ensure_variant(state, variant)
@@ -493,16 +497,23 @@ def register(mcp: FastMCP) -> None:
         code, _, stderr = _run_cli_variants(
             [
                 [
-                    "pcb", "export", "gerber",
+                    "pcb",
+                    "export",
+                    "gerber",
                     *variant_args,
-                    "--output", str(gerber_dir),
+                    "--output",
+                    str(gerber_dir),
                     str(pcb_file),
                 ],
                 [
-                    "pcb", "export", "gerber",
+                    "pcb",
+                    "export",
+                    "gerber",
                     *variant_args,
-                    "--input", str(pcb_file),
-                    "--output", str(gerber_dir),
+                    "--input",
+                    str(pcb_file),
+                    "--output",
+                    str(gerber_dir),
                 ],
             ]
         )
@@ -517,16 +528,23 @@ def register(mcp: FastMCP) -> None:
         code, _, stderr = _run_cli_variants(
             [
                 [
-                    "pcb", "export", "drill",
+                    "pcb",
+                    "export",
+                    "drill",
                     *variant_args,
-                    "--output", str(drill_dir),
+                    "--output",
+                    str(drill_dir),
                     str(pcb_file),
                 ],
                 [
-                    "pcb", "export", "drill",
+                    "pcb",
+                    "export",
+                    "drill",
                     *variant_args,
-                    "--input", str(pcb_file),
-                    "--output", str(drill_dir),
+                    "--input",
+                    str(pcb_file),
+                    "--output",
+                    str(drill_dir),
                 ],
             ]
         )

@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from kicad_mcp.tools.three_d_models import _find_footprint_file, _find_3d_model_refs, _search_3d_model_files
+from kicad_mcp.tools.three_d_models import (
+    _find_footprint_file,
+    _find_3d_model_refs,
+    _search_3d_model_files,
+)
 
 
 def test_find_footprint_file_not_found(tmp_path) -> None:  # type: ignore[no-untyped-def]

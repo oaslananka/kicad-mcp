@@ -20,9 +20,7 @@ from .metadata import headless_compatible
 def _project_file() -> Path:
     cfg = get_config()
     if cfg.project_file is None or not cfg.project_file.exists():
-        raise ValueError(
-            "No project file is configured. Call kicad_set_project() first."
-        )
+        raise ValueError("No project file is configured. Call kicad_set_project() first.")
     return cfg.project_file
 
 
@@ -67,9 +65,7 @@ def register(mcp: FastMCP) -> None:
             embedded = list(embedded.values())
         if not isinstance(embedded, list):
             embedded = []
-        return json.dumps(
-            {"embedded_files": embedded, "count": len(embedded)}, indent=2
-        )
+        return json.dumps({"embedded_files": embedded, "count": len(embedded)}, indent=2)
 
     @mcp.tool()
     @headless_compatible
@@ -104,12 +100,11 @@ def register(mcp: FastMCP) -> None:
 
         file_size = src.stat().st_size
         if file_size > 1_000_000:
-            raise ValueError(
-                f"File '{src}' is {file_size} bytes (max 1 MB for embedding)."
-            )
+            raise ValueError(f"File '{src}' is {file_size} bytes (max 1 MB for embedding).")
 
         content = src.read_bytes()
         import base64
+
         encoded = base64.b64encode(content).decode("ascii")
 
         name = (target_name or src.name).strip()
@@ -136,10 +131,7 @@ def register(mcp: FastMCP) -> None:
         embedded.append(entry)
         _save_project_payload(payload)
 
-        return (
-            f"File '{name}' embedded into project "
-            f"({file_size} bytes, base64-encoded)."
-        )
+        return f"File '{name}' embedded into project ({file_size} bytes, base64-encoded)."
 
     @mcp.tool()
     @headless_compatible
@@ -170,9 +162,7 @@ def register(mcp: FastMCP) -> None:
         if entry is None:
             names = [e.get("name", "") for e in embedded]
             hint = ", ".join(names[:20]) if names else "(no embedded files)"
-            raise ValueError(
-                f"Embedded file '{name}' not found. Available: {hint}"
-            )
+            raise ValueError(f"Embedded file '{name}' not found. Available: {hint}")
 
         encoded = entry.get("content", "")
         try:
@@ -215,9 +205,7 @@ def register(mcp: FastMCP) -> None:
         if removed == 0:
             names = [e.get("name", "") for e in embedded]
             hint = ", ".join(names[:20]) if names else "(no embedded files)"
-            raise ValueError(
-                f"Embedded file '{name}' not found. Available: {hint}"
-            )
+            raise ValueError(f"Embedded file '{name}' not found. Available: {hint}")
 
         payload["embedded_files"] = embedded
         _save_project_payload(payload)

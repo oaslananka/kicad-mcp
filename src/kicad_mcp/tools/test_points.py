@@ -88,7 +88,9 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @headless_compatible
-    def pcb_add_test_point(net_name: str, x_mm: float, y_mm: float, diameter_mm: float = 1.0) -> str:
+    def pcb_add_test_point(
+        net_name: str, x_mm: float, y_mm: float, diameter_mm: float = 1.0
+    ) -> str:
         """Register a test-point assignment for a net.
 
         Test points are stored as project-sidecar metadata and are applied
@@ -109,18 +111,18 @@ def register(mcp: FastMCP) -> None:
         net_names = {n["name"] for n in nets}
         if net_name not in net_names:
             hint = ", ".join(sorted(net_names)[:20])
-            raise ValueError(
-                f"Net '{net_name}' not found in board. Known nets: {hint}"
-            )
+            raise ValueError(f"Net '{net_name}' not found in board. Known nets: {hint}")
 
         state = _load_test_points()
         points = cast(list[dict[str, Any]], state.setdefault("test_points", []))
-        points.append({
-            "net_name": net_name,
-            "x_mm": x_mm,
-            "y_mm": y_mm,
-            "diameter_mm": diameter_mm,
-        })
+        points.append(
+            {
+                "net_name": net_name,
+                "x_mm": x_mm,
+                "y_mm": y_mm,
+                "diameter_mm": diameter_mm,
+            }
+        )
         path = _save_test_points(state)
         return (
             f"Test point added for net '{net_name}' at ({x_mm}, {y_mm}) mm "
@@ -133,9 +135,7 @@ def register(mcp: FastMCP) -> None:
         """List all registered test points for the active project."""
         state = _load_test_points()
         points = cast(list[dict[str, Any]], state.get("test_points", []))
-        return json.dumps(
-            {"test_points": points, "count": len(points)}, indent=2
-        )
+        return json.dumps({"test_points": points, "count": len(points)}, indent=2)
 
     @mcp.tool()
     @headless_compatible
@@ -176,33 +176,39 @@ def register(mcp: FastMCP) -> None:
                         if hasattr(pad, "net") and pad.net and pad.net.code == net_code:
                             pos = getattr(pad, "position", None)
                             if pos:
-                                candidates.append({
-                                    "type": "pad",
-                                    "reference": getattr(fp, "reference", "?"),
-                                    "pad_number": getattr(pad, "number", ""),
-                                    "x_mm": round(nm_to_mm(pos.x), 4),
-                                    "y_mm": round(nm_to_mm(pos.y), 4),
-                                })
+                                candidates.append(
+                                    {
+                                        "type": "pad",
+                                        "reference": getattr(fp, "reference", "?"),
+                                        "pad_number": getattr(pad, "number", ""),
+                                        "x_mm": round(nm_to_mm(pos.x), 4),
+                                        "y_mm": round(nm_to_mm(pos.y), 4),
+                                    }
+                                )
 
                 # Check vias on this net
                 try:
                     for via in board.get_vias_for_net(net_code):
                         pos = getattr(via, "position", None)
                         if pos:
-                            candidates.append({
-                                "type": "via",
-                                "x_mm": round(nm_to_mm(pos.x), 4),
-                                "y_mm": round(nm_to_mm(pos.y), 4),
-                                "diameter_mm": round(nm_to_mm(getattr(via, "drill", 0)), 4),
-                            })
+                            candidates.append(
+                                {
+                                    "type": "via",
+                                    "x_mm": round(nm_to_mm(pos.x), 4),
+                                    "y_mm": round(nm_to_mm(pos.y), 4),
+                                    "diameter_mm": round(nm_to_mm(getattr(via, "drill", 0)), 4),
+                                }
+                            )
                 except Exception:
                     pass
 
-                suggestions.append({
-                    "net_name": net_name,
-                    "candidates": candidates[:20],
-                    "candidate_count": len(candidates),
-                })
+                suggestions.append(
+                    {
+                        "net_name": net_name,
+                        "candidates": candidates[:20],
+                        "candidate_count": len(candidates),
+                    }
+                )
         except (KiCadConnectionError, AttributeError, OSError) as exc:
             return (
                 f"Could not optimize via live board ({exc}). "

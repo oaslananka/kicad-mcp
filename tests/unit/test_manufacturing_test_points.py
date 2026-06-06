@@ -18,7 +18,9 @@ from kicad_mcp.tools.test_points import (
 
 
 def test_test_points_empty(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    monkeypatch.setattr("kicad_mcp.tools.test_points._test_points_path", lambda: tmp_path / "tp.json")
+    monkeypatch.setattr(
+        "kicad_mcp.tools.test_points._test_points_path", lambda: tmp_path / "tp.json"
+    )
     state = _load_test_points()
     assert state["test_points"] == []
 
@@ -34,7 +36,9 @@ def test_save_and_load_test_point(tmp_path, monkeypatch) -> None:  # type: ignor
 
 
 def test_list_test_points_empty(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    monkeypatch.setattr("kicad_mcp.tools.test_points._test_points_path", lambda: tmp_path / "tp.json")
+    monkeypatch.setattr(
+        "kicad_mcp.tools.test_points._test_points_path", lambda: tmp_path / "tp.json"
+    )
     result = pcb_list_test_points()
     payload = json.loads(result)
     assert payload["count"] == 0

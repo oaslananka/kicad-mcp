@@ -24,7 +24,9 @@ def test_erc_rule_names_match_expected() -> None:
 
 
 def test_load_erc_severity_defaults(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    monkeypatch.setattr("kicad_mcp.tools.validation._erc_severity_path", lambda: tmp_path / "erc.json")
+    monkeypatch.setattr(
+        "kicad_mcp.tools.validation._erc_severity_path", lambda: tmp_path / "erc.json"
+    )
     sev = _load_erc_severity()
     assert all(v == "error" for v in sev.values())
     assert len(sev) == len(_ERC_RULE_NAMES)
