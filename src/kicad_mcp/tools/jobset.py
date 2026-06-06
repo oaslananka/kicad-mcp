@@ -47,8 +47,8 @@ def register(mcp: FastMCP) -> None:
                 return "No jobset templates found."
             lines = [f"# Available Jobset Templates ({len(templates)})", ""]
             for tpl in templates:
-                name = tpl.get("name", tpl.get("title", "?"))  # type: ignore[union-attr]
-                desc = tpl.get("description", tpl.get("desc", ""))  # type: ignore[union-attr]
+                name = tpl.get("name", tpl.get("title", "?"))
+                desc = tpl.get("description", tpl.get("desc", ""))
                 lines.append(f"- **{name}**")
                 if desc:
                     lines.append(f"  {desc}")

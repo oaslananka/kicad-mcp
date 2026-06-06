@@ -766,7 +766,7 @@ def register(mcp: FastMCP) -> None:
     @headless_compatible
     def mfg_import_pads(pads_pcb_path: str, output_dir: str = "") -> str:
         """Import a PADS PCB into a KiCad project directory."""
-        res = pcb_import_board(pads_pcb_path, output_file=output_dir, format="pads")
+        res: str = pcb_import_board(pads_pcb_path, output_file=output_dir, format="pads")
         if "Board import failed" in res:
             return res.replace("Board import failed", "pads import failed")
         return res.replace("Board imported successfully", "pads import completed")
@@ -775,7 +775,7 @@ def register(mcp: FastMCP) -> None:
     @headless_compatible
     def mfg_import_geda(geda_pcb_path: str, output_dir: str = "") -> str:
         """Import a gEDA PCB into a KiCad project directory."""
-        res = pcb_import_board(geda_pcb_path, output_file=output_dir, format="geda")
+        res: str = pcb_import_board(geda_pcb_path, output_file=output_dir, format="geda")
         if "Board import failed" in res:
             return res.replace("Board import failed", "geda import failed")
         return res.replace("Board imported successfully", "geda import completed")
@@ -784,7 +784,7 @@ def register(mcp: FastMCP) -> None:
     @headless_compatible
     def mfg_import_specctra(specctra_ses_path: str, output_dir: str = "") -> str:
         """Import a Specctra DSN/SES file into a KiCad project directory."""
-        res = pcb_import_board(specctra_ses_path, output_file=output_dir, format="specctra")
+        res: str = pcb_import_board(specctra_ses_path, output_file=output_dir, format="specctra")
         if "Board import failed" in res:
             return res.replace("Board import failed", "specctra import failed")
         return res.replace("Board imported successfully", "specctra import completed")
