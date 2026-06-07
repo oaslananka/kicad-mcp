@@ -10,6 +10,20 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.9.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-npm-v3.8.0...mcp-npm-v3.9.0) (2026-06-07)
+
+
+### Features
+
+* initial migration from kicad-studio-kit monorepo ([#1](https://github.com/oaslananka/kicad-mcp/issues/1)) ([be9b16f](https://github.com/oaslananka/kicad-mcp/commit/be9b16f33aaea94fbea525edd173a93a7e3e5012))
+
+
+### Bug Fixes
+
+* add errors='replace' to subprocess.run for Turkish Windows encoding ([#21](https://github.com/oaslananka/kicad-mcp/issues/21)) ([911d307](https://github.com/oaslananka/kicad-mcp/commit/911d307d9cacfd48a4c0c5a996d7147b74227911))
+* docker tag pattern, sync versions, add branch protection, cleanup ([#14](https://github.com/oaslananka/kicad-mcp/issues/14)) ([1ba09db](https://github.com/oaslananka/kicad-mcp/commit/1ba09dbeb1cccaacaca94e5d3559d79c4b117297))
+* resolve all 15 audit issues from TEMP audit ([48dec8c](https://github.com/oaslananka/kicad-mcp/commit/48dec8c61e2452f71eb53cf07459fca16307166b))
+
 ## [3.7.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-npm-v3.6.0...mcp-npm-v3.7.0) (2026-06-03)
 
 
