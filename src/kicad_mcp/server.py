@@ -80,7 +80,30 @@ from .tools.metadata import get_tool_metadata, infer_tool_annotations
 from .tools.router import EXPERIMENTAL_TOOL_NAMES, available_profiles, categories_for_profile
 from .utils import telemetry as otel
 from .utils.logging import setup_logging
+from .web.state import (
+    _METRICS_LOCK,
+    _TOOL_CALL_COUNTS,
+    _TOOL_LATENCIES_MS,
+    set_server_handle,
+)
 from .wellknown import get_wellknown_metadata
+
+# Optional web dashboard support
+try:
+    from .web import router as web_routes
+
+    HAS_WEB = True
+except ImportError:
+    HAS_WEB = False
+    web_routes = []
+
+# Optional system tray support
+try:
+    from .tray import tray_main
+
+    HAS_TRAY = True
+except ImportError:
+    HAS_TRAY = False
 
 logger = structlog.get_logger(__name__)
 app = typer.Typer(help=localize(SERVER_DESCRIPTION))
@@ -240,9 +263,6 @@ CLI_FAILURE_TOOL_NAMES: frozenset[str] = frozenset(
 )
 _TOOL_LIMITERS: dict[str, anyio.CapacityLimiter] = {}
 _TOOL_LIMITERS_LOCK = threading.Lock()
-_METRICS_LOCK = threading.Lock()
-_TOOL_CALL_COUNTS: dict[tuple[str, str], int] = {}
-_TOOL_LATENCIES_MS: dict[str, deque[float]] = {}
 IPC_CAPABILITY_CACHE_TTL_SEC = 1.0
 
 
@@ -1544,6 +1564,22 @@ def build_server(profile: str | None = None, *, defer_registration: bool = False
                 media_type="text/plain; version=0.0.4",
             )
 
+    # ------------------------------------------------------------------
+    # Web dashboard routes (API + SSE log stream)
+    # ------------------------------------------------------------------
+    if HAS_WEB:
+        for route in web_routes:
+            # Register each Starlette Route via the server's custom_route decorator.
+            # custom_route(path, methods, ...) returns a decorator; calling it with
+            # the endpoint function registers the route on the internal ASGI app.
+            server.custom_route(
+                route.path,
+                methods=list(route.methods or ["GET"]),
+                include_in_schema=False,
+            )(route.endpoint)
+        logger.info("web_dashboard_routes_registered", count=len(web_routes))
+    # ------------------------------------------------------------------
+
     def register() -> None:
         _register_profile_components(server, enabled, cfg)
 
@@ -1551,6 +1587,9 @@ def build_server(profile: str | None = None, *, defer_registration: bool = False
         server.set_lazy_registration(register)
     else:
         register()
+
+    # Expose server handle for web dashboard API endpoints (tools listing, etc.)
+    set_server_handle(_SyncServerHandle(server))
 
     return server
 
@@ -2133,6 +2172,12 @@ def setup_backups(
 
 @app.command()
 def init(
+    interactive: bool = typer.Option(
+        False,
+        "--interactive",
+        "-i",
+        help=option_help("Launch the interactive setup wizard (rich TUI)."),
+    ),
     project_dir: str | None = typer.Option(
         None, "--project-dir", help=option_help("KiCad project directory (default: auto-detect).")
     ),
@@ -2152,6 +2197,13 @@ def init(
     ),
 ) -> None:
     """One-shot setup: detect KiCad, configure an agent, and verify."""
+    # Interactive wizard mode
+    if interactive:
+        from .cli_init import run_wizard
+
+        run_wizard()
+        return
+
     from .setup import AGENTS, setup_agent
 
     # --- 1. KiCad detection ---
@@ -2348,6 +2400,72 @@ def log(
                 typer.echo(line.rstrip())
             elif not level:
                 typer.echo(line.rstrip())
+
+
+@app.command()
+def dashboard(
+    host: str = typer.Option(
+        "127.0.0.1", "--host", help=option_help("HTTP bind host (default: 127.0.0.1).")
+    ),
+    port: int = typer.Option(
+        3334, "--port", "-p", help=option_help("HTTP bind port (default: 3334).")
+    ),
+    open_browser: bool = typer.Option(
+        False, "--open", "-o", help=option_help("Open the dashboard in the default browser.")
+    ),
+) -> None:
+    """Start the server with the web dashboard enabled."""
+    if not HAS_WEB:
+        typer.echo(
+            "Web dashboard module is not available. Ensure the package is installed correctly.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    # Override settings for dashboard mode
+    os.environ["KICAD_MCP_TRANSPORT"] = "streamable-http"
+    os.environ["KICAD_MCP_HOST"] = host
+    os.environ["KICAD_MCP_PORT"] = str(port)
+
+    typer.echo(f"Starting KiCad MCP Pro dashboard on http://{host}:{port}/ui")
+    typer.echo(f"  API: http://{host}:{port}/api/status")
+    typer.echo(f"  Log stream: http://{host}:{port}/api/logs/stream")
+
+    if open_browser:
+        import webbrowser
+
+        webbrowser.open(f"http://{host}:{port}/ui")
+
+    # Reset config so the new env vars take effect
+    from .config import reset_config
+
+    reset_config()
+    _run_server_from_options()
+
+
+@app.command()
+def tray(
+    port: int = typer.Option(
+        3334,
+        "--port",
+        "-p",
+        help=option_help("Dashboard and server port (default: 3334)."),
+    ),
+) -> None:
+    """Launch the system tray application for KiCad MCP Pro."""
+    if not HAS_TRAY:
+        typer.echo(
+            "System tray is not available. Install it with: pip install kicad-mcp-pro[tray]",
+            err=True,
+        )
+        typer.echo("Requires: pystray and Pillow", err=True)
+        raise typer.Exit(1)
+
+    try:
+        tray_main(port=port)
+    except Exception as exc:
+        typer.echo(f"Tray application failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
 
 
 def _log_level_match(line: str, level: str) -> bool:

@@ -23,6 +23,31 @@ Telemetry and error reporting are disabled by default. Opt-in OpenTelemetry
 configuration and privacy rules are documented in
 [`docs/configuration.md`](docs/configuration.md#opentelemetry) in [`docs/telemetry.md`](docs/telemetry.md).
 
+## Quick Start
+
+### Desktop App
+
+Download the latest installer from the
+[GitHub releases page](https://github.com/oaslananka/kicad-mcp/releases/latest).
+The Tauri desktop app starts the Python dashboard server automatically and opens
+the GUI at `http://127.0.0.1:3334/ui`.
+
+### CLI
+
+```bash
+uvx kicad-mcp-pro init
+uvx kicad-mcp-pro tray
+uvx kicad-mcp-pro dashboard --open
+uvx kicad-mcp-pro --transport streamable-http --port 3334
+```
+
+### Web Dashboard
+
+```bash
+uvx kicad-mcp-pro dashboard --host 127.0.0.1 --port 3334 --open
+# http://127.0.0.1:3334/ui
+```
+
 ## Transports
 
 KiCad MCP Pro supports `stdio` and Streamable HTTP. Streamable HTTP is served at

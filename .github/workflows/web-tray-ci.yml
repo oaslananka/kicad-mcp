@@ -1,0 +1,77 @@
+name: Web & Tray
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/kicad_mcp/web/**"
+      - "src/kicad_mcp/tray.py"
+      - "tests/unit/test_web_routes.py"
+      - "tests/unit/test_tray.py"
+      - ".github/workflows/web-tray-ci.yml"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "src/kicad_mcp/web/**"
+      - "src/kicad_mcp/tray.py"
+      - "tests/unit/test_web_routes.py"
+      - "tests/unit/test_tray.py"
+      - ".github/workflows/web-tray-ci.yml"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: webtray-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-dashboard:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025-vs2026, macos-15]
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          enable-cache: true
+          version-file: uv.toml
+      - run: corepack enable
+      - name: Install web test dependencies
+        run: uv sync --group dev --frozen
+      - name: Run web module unit tests
+        run: uv run pytest tests/unit/test_web_routes.py -v
+
+  tray-app:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025-vs2026, macos-15]
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          enable-cache: true
+          version-file: uv.toml
+      - run: corepack enable
+      - name: Install tray test dependencies
+        run: uv sync --group dev --frozen
+      - name: Run tray module unit tests
+        run: uv run pytest tests/unit/test_tray.py -v

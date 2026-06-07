@@ -31,3 +31,15 @@ repos:
         pass_filenames: false
         args: [--no-header, "-q", "--tb=short", "-x"]
         stages: [pre-push]
+      - id: gui-web-tests
+        name: GUI web route tests
+        entry: uv run pytest tests/unit/test_web_routes.py tests/unit/test_web_routes_step3.py -q
+        language: system
+        files: ^(src/kicad_mcp/web/|tests/unit/test_web_routes.*\.py)
+        pass_filenames: false
+      - id: tauri-cargo-check
+        name: Tauri cargo check
+        entry: cargo check --manifest-path src-tauri/Cargo.toml --locked
+        language: system
+        files: ^src-tauri/
+        pass_filenames: false

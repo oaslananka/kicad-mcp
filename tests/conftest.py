@@ -24,6 +24,10 @@ def pytest_configure(config: pytest.Config) -> None:
     )
     config.addinivalue_line(
         "markers",
+        "e2e: end-to-end tests using Playwright (run with E2E=1)",
+    )
+    config.addinivalue_line(
+        "markers",
         "gui: real KiCad GUI smoke tests for scheduled/manual environments",
     )
     config.addinivalue_line(

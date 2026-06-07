@@ -61,6 +61,13 @@
       "release-type": "node",
       "component": "protocol-schemas",
       "changelog-path": "CHANGELOG.md"
+    },
+    "src-tauri": {
+      "package-name": "kicad-mcp-gui",
+      "tag-prefix": "kicad-mcp-gui-v",
+      "release-type": "rust",
+      "component": "kicad-mcp-gui",
+      "changelog-path": "CHANGELOG.md"
     }
   }
 }

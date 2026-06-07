@@ -50,3 +50,7 @@ TEMP/
 *.mcp.json.*.bak
 # User config file created by kicad-mcp setup wizard
 .mcp.json
+
+# Tauri / Rust build artifacts
+src-tauri/target/
+src-tauri/Cargo.lock
