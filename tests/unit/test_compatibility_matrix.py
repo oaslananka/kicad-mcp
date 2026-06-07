@@ -32,7 +32,7 @@ def test_kicad_9_upstream_eol_policy_is_deprecated() -> None:
     assert kicad_9["state"] == "deprecated"
     assert kicad_9["upstreamEol"] is True
     assert kicad_9["ci"] == "scheduled"
-    assert kicad_9["removal"] == "next-minor-release"
+    assert kicad_9["removal"] == "3.9.0"
     assert "no longer actively maintained" in kicad_9["notes"]
     assert COMPATIBILITY_MATRIX["kicad"]["deprecated"] == ["9.x", "8.x"]
 
