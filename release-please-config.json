@@ -7,7 +7,7 @@
     {
       "type": "linked-versions",
       "groupName": "kicad-mcp-pro",
-      "components": ["mcp-server", "mcp-npm"]
+      "components": ["mcp-server", "mcp-npm", "kicad-mcp-gui"]
     }
   ],
   "packages": {

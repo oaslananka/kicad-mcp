@@ -3,8 +3,7 @@ name: GUI Release
 on:
   push:
     tags:
-      - "v*"
-      - "mcp-server-v*"
+      - "kicad-mcp-gui-v*"
   workflow_dispatch:
 
 permissions:
@@ -77,3 +76,39 @@ jobs:
             src-tauri/target/**/bundle/**/*
           if-no-files-found: error
           retention-days: 14
+
+  create-release:
+    needs: tauri-build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download all Tauri bundles
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh run download ${{ github.run_id }} --dir artifacts
+
+      - name: Upload artifacts to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          REPO="${{ github.repository }}"
+
+          # Ensure the release exists (Release Please should have created it, but
+          # workflow_dispatch may not have a tag. Create it if missing.)
+          if ! gh release view "$TAG" --repo "$REPO" &>/dev/null; then
+            echo "Release $TAG does not exist yet, creating..."
+            gh release create "$TAG" --repo "$REPO" \
+              --title "$TAG" \
+              --generate-notes
+          fi
+
+          # Upload all Tauri installer bundles
+          find artifacts -type f | while read -r f; do
+            echo "Uploading: $f"
+            gh release upload "$TAG" "$f" --repo "$REPO" --clobber
+          done
+
+          echo "::notice::Artifacts uploaded to $REPO/releases/tag/$TAG"
