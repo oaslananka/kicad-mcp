@@ -10,6 +10,40 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.9.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.8.0...mcp-server-v3.9.0) (2026-06-07)
+
+
+### Features
+
+* add SPICE model assignment and library management tools ([ec14eb6](https://github.com/oaslananka/kicad-mcp/commit/ec14eb6c4dc01d0632b1f4b6b8ac3fd5cbe1c9f0))
+* **cli:** add init, status, log commands with improved errors ([e66a6ef](https://github.com/oaslananka/kicad-mcp/commit/e66a6ef20e461651dc2983915a8f5054b89c9e74))
+* complete all 20-phase plan — 22 new tools, 31 new files, full KiCad MCP feature parity ([34a1d92](https://github.com/oaslananka/kicad-mcp/commit/34a1d92001cae2ca7d8936a0b01a2a3386022276))
+* **dev:** add hot reload, inspector command, IPC mock fixtures, better error logging, pre-commit pytest ([ed583f0](https://github.com/oaslananka/kicad-mcp/commit/ed583f04c1b98d76000e630b07e1a3f79c87d505))
+
+
+### Bug Fixes
+
+* address issues [#56](https://github.com/oaslananka/kicad-mcp/issues/56), [#57](https://github.com/oaslananka/kicad-mcp/issues/57), [#61](https://github.com/oaslananka/kicad-mcp/issues/61) (pagination, DNP test, canary extension) ([1d4e7b3](https://github.com/oaslananka/kicad-mcp/commit/1d4e7b39fe059b8dc2b89d4a1f0acf22cdeedeeb))
+* **ci:** update sync_mcp_metadata.py source with correct descriptions and empty remotes ([9889890](https://github.com/oaslananka/kicad-mcp/commit/98898905e95a0a0a4c626d3d390348c5247ba94c))
+* guard watch and _run_with_watch params against leaked OptionInfo objects ([bef4a06](https://github.com/oaslananka/kicad-mcp/commit/bef4a064dd7a6ef58d3d2acbca9a9d82f529a53d))
+* KiCad IPC lifecycle — TTL cache, exponential backoff, IpcDisconnectedError ([cd930c7](https://github.com/oaslananka/kicad-mcp/commit/cd930c7997e1ea727330b4ac12fdea427e0b9b58)), closes [#42](https://github.com/oaslananka/kicad-mcp/issues/42)
+* move importlib.util import to top of tray.py to fix ruff E402 ([8f3c230](https://github.com/oaslananka/kicad-mcp/commit/8f3c23012c55c768cbbcc591caaafe625c1af230))
+* remove structuredContent from error CallToolResult to avoid IPC schema validation error ([12a4982](https://github.com/oaslananka/kicad-mcp/commit/12a4982a60aae9dfbc7f0ee25aeeab9d89e5fdfc))
+* resolve all 15 audit issues from TEMP audit ([48dec8c](https://github.com/oaslananka/kicad-mcp/commit/48dec8c61e2452f71eb53cf07459fca16307166b))
+* resolve mypy type errors in tray.py and routes.py ([70dd6bf](https://github.com/oaslananka/kicad-mcp/commit/70dd6bf1dc0ef411aa53da34a240004498465b2b))
+* ruff format for 4 files (net_analysis.py, test_project_embedded_files.py, test_validation_tools.py, test_variants_extended.py) ([4095167](https://github.com/oaslananka/kicad-mcp/commit/409516783d1f2648c66a1c85be8f3706c567252a))
+* **server.json:** correct default port from 8090 to 3334 ([cbaab66](https://github.com/oaslananka/kicad-mcp/commit/cbaab666c9f8aa11ec079b85127af522df9951ce))
+* sync MCP metadata generator with server.json to fix CI metadata check ([1cf031d](https://github.com/oaslananka/kicad-mcp/commit/1cf031dbd214f97fc2b860b1ad2897a62d71df9a))
+* **tests:** update kicad 9.x removal assertion to 3.9.0 after compatibility.yaml change ([2a048cf](https://github.com/oaslananka/kicad-mcp/commit/2a048cfc9ded6dcec15d8393eae0f1295553fdc9))
+* three CI test failures (cli missing binary, footprint 3d dir, Dockerfile UV_VERSION) ([c2512da](https://github.com/oaslananka/kicad-mcp/commit/c2512daded1d369e11aac7805ca44f1123a79f47))
+* **typecheck:** resolve 7 mypy strict errors in server.py ([dacca41](https://github.com/oaslananka/kicad-mcp/commit/dacca4133880ac4d2ab95cb81a1d2e248b504350))
+* **watch:** start server in subprocess, kill and respawn on changes ([26473f2](https://github.com/oaslananka/kicad-mcp/commit/26473f21fc2213590108d438c3afd3911437ddca))
+
+
+### Documentation
+
+* sync tools-reference after pcb_export_stats profile update ([683ad46](https://github.com/oaslananka/kicad-mcp/commit/683ad46bd1e3cf07fa56f92b63b5dcc3d92357bb))
+
 ## [3.8.0](https://github.com/oaslananka/kicad-mcp/releases/tag/mcp-server-v3.8.0) (2026-06-06)
 
 ### Added
