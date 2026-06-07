@@ -383,6 +383,7 @@ def mock_board(mock_kicad: MagicMock) -> MagicMock:
 # IPC state fixtures: simulate KiCad being connected or disconnected
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def ipc_connected(monkeypatch: pytest.MonkeyPatch) -> None:
     """Simulate a scenario where KiCad IPC is reachable.

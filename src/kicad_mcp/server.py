@@ -23,8 +23,10 @@ import anyio
 import click
 import structlog
 import typer
+
 try:
     import watchfiles
+
     HAS_WATCHFILES = True
 except ImportError:
     HAS_WATCHFILES = False
@@ -50,7 +52,6 @@ from .capabilities import get as get_capability_record
 from .compatibility import MCP_PROTOCOL_VERSION
 from .config import LOOPBACK_HOSTS, KiCadMCPConfig, get_config, reset_config
 from .connection import KiCadConnectionError, get_board
-from .errors import IpcDisconnectedError, KiCadConnectionTimeoutError, KiCadNotRunningError
 from .diagnostics import (
     DiagnosticReport,
     build_doctor_report,
@@ -59,6 +60,7 @@ from .diagnostics import (
     write_diagnostic_bundle,
 )
 from .discovery import ensure_studio_project_watcher, find_kicad_version
+from .errors import IpcDisconnectedError, KiCadConnectionTimeoutError, KiCadNotRunningError
 from .i18n import SERVER_DESCRIPTION, localize, option_help
 from .ipc.capabilities import KiCadIpcCapabilityState, get_ipc_capability_state
 from .operating_modes import (
@@ -289,7 +291,9 @@ def _tool_error_code(message: str, *, tool_name: str = "") -> str:
         return "MODE_FORBIDDEN"
     if "timed out" in lowered or "timeout" in lowered:
         return "CLI_TIMEOUT"
-    if "kicad-cli" in lowered and ("install" in lowered or "found" in lowered or "missing" in lowered):
+    if "kicad-cli" in lowered and (
+        "install" in lowered or "found" in lowered or "missing" in lowered
+    ):
         return "CLI_UNAVAILABLE"
     if "manufacturing export blocked" in lowered or "quality gate" in lowered:
         return "VALIDATION_FAILED"
@@ -370,20 +374,32 @@ def _tool_error_hint(message: str) -> str:
             "Or call kicad_set_project() from the client."
         )
     if "validation" in lowered or "invalid" in lowered:
-        return "Correct the tool arguments and retry. Check the input schema with kicad-mcp-pro tools list."
+        return (
+            "Correct the tool arguments and retry.\n"
+            "Check the input schema with 'kicad-mcp-pro tools list'."
+        )
     if "permission" in lowered or "denied" in lowered or "not allowed" in lowered:
         return (
             "The current operating mode does not permit this tool.\n"
-            "Use --mode=write, --mode=manufacturing, or --mode=experimental with appropriate access."
+            "Use --mode=write, --mode=manufacturing,\n"
+            "or --mode=experimental with appropriate access."
         )
     if "not found" in lowered or ("symbol" in lowered and "missing" in lowered):
         return "The requested resource was not found. Verify the name, identifier, or library path."
     if "symbol" in lowered and ("not found" in lowered or "missing" in lowered):
-        return "Symbol not found. Check the library name and symbol name, or run 'kicad-mcp-pro tools list'."
+        return (
+            "Symbol not found. Check the library name and symbol name,\n"
+            "or run 'kicad-mcp-pro tools list'."
+        )
     if "footprint" in lowered and ("not found" in lowered or "missing" in lowered):
-        return "Footprint not found. Check the library name and footprint name, or run 'kicad-mcp-pro tools list'."
+        return (
+            "Footprint not found. Check the library name and footprint name,\n"
+            "or run 'kicad-mcp-pro tools list'."
+        )
     if "net" in lowered and ("not found" in lowered or "missing" in lowered):
-        return "Net not found. Verify the net name exists in the schematic, or check kicad_get_nets()."
+        return (
+            "Net not found. Verify the net name exists in the schematic, or check kicad_get_nets()."
+        )
     return (
         "Inspect the structured error and retry after correcting the request or project state. "
         "Run 'kicad-mcp-pro doctor' for a full diagnostic."
@@ -1572,8 +1588,7 @@ _ONBOARDING_MESSAGES: dict[str, str] = {
         "Type '/ask' or '/' to browse tools.",
     ),
     "vscode": (
-        "VS Code with MCP extension detected.\n"
-        "Use Ctrl+Shift+P → 'MCP: Call Tool' or agent chat.",
+        "VS Code with MCP extension detected.\nUse Ctrl+Shift+P → 'MCP: Call Tool' or agent chat.",
     ),
     "codex": (
         "Codex CLI detected. You can ask:\n"
@@ -1581,10 +1596,7 @@ _ONBOARDING_MESSAGES: dict[str, str] = {
         "  • 'Add components to schematic'\n"
         "  • 'Route power traces'",
     ),
-    "gemini": (
-        "Gemini CLI detected.\n"
-        "See docs/agents/gemini-cli.md for usage.",
-    ),
+    "gemini": ("Gemini CLI detected.\nSee docs/agents/gemini-cli.md for usage.",),
 }
 
 
@@ -2128,8 +2140,8 @@ def init(
         None,
         "--agent",
         help=option_help(
-            "Target agent (default: auto-detect). Options: "
-            "claude-code, codex, gemini, opencode, cursor, vscode, claude-desktop, antigravity, chatgpt, claude-ai."
+            "Target agent (default: auto-detect). Options: claude-code, codex, gemini,"
+            " opencode, cursor, vscode, claude-desktop, antigravity, chatgpt, claude-ai."
         ),
     ),
     mode: str = typer.Option(
@@ -2198,8 +2210,8 @@ def init(
         typer.echo(f"\n  Health:  Check failed - {exc}")
 
     typer.echo("\n─── Done ───")
-    typer.echo(f"Run 'kicad-mcp-pro status' to see the current state.")
-    typer.echo(f"Run 'kicad-mcp-pro doctor' for full diagnostics.")
+    typer.echo("Run 'kicad-mcp-pro status' to see the current state.")
+    typer.echo("Run 'kicad-mcp-pro doctor' for full diagnostics.")
 
 
 @app.command()
@@ -2238,17 +2250,17 @@ def status(
         typer.echo(f"\n🔧  KiCad CLI:     {cfg.kicad_cli}")
         typer.echo(f"  Version:        {kicad_version}")
     else:
-        typer.echo(f"\n🔧  KiCad CLI:     Not found  ⚠️")
+        typer.echo("\n🔧  KiCad CLI:     Not found  ⚠️")
         typer.echo(f"  Path tried:     {cfg.kicad_cli}")
 
     # ── IPC ──
     ipc_state = get_ipc_capability_state()
     if ipc_state.connected:
-        typer.echo(f"  IPC Status:     Connected  ✅")
+        typer.echo("  IPC Status:     Connected  ✅")
     else:
         reason = ipc_state.last_error or "disconnected"
         typer.echo(f"  IPC Status:     {reason}  ⚠️")
-        typer.echo(f"  Hint:           Start KiCad with IPC enabled (Preferences → IPC)")
+        typer.echo("  Hint:           Start KiCad with IPC enabled (Preferences → IPC)")
 
     # ── Project ──
     if cfg.project_dir:
@@ -2256,11 +2268,13 @@ def status(
         typer.echo(f"  PCB:      {cfg.pcb_file or '(not set)'}")
         typer.echo(f"  SCH:      {cfg.sch_file or '(not set)'}")
     else:
-        typer.echo(f"\n📁  Project:  Not set")
+        typer.echo("\n📁  Project:  Not set")
 
     # ── Tools ──
     tool_count = len(categories_for_profile(cfg.profile or "default"))
-    typer.echo(f"\n🛠️   Tools:     {tool_count} available across {len(available_profiles())} profiles")
+    typer.echo(
+        f"\n🛠️   Tools:     {tool_count} available across {len(available_profiles())} profiles"
+    )
 
     # ── Checks ──
     typer.echo(f"\n{'─── Health Checks ───'}")
@@ -2589,16 +2603,13 @@ def inspect_command(
         "--mode",
         help=option_help("Operating mode: readonly, write, manufacturing, experimental"),
     ),
-    experimental: bool | None = typer.Option(
-        None, help=option_help("Enable experimental tools")
-    ),
+    experimental: bool | None = typer.Option(None, help=option_help("Enable experimental tools")),
 ) -> None:
     """Launch the MCP Inspector GUI for interactive tool debugging."""
-    import subprocess
-    import webbrowser
-
     # Start server on a random port for the inspector
     import socket
+    import subprocess
+    import webbrowser
 
     with contextlib.closing(socket.socket(socket.AF_INET, socket.AF_INET)) as s:
         s.bind(("", 0))
