@@ -2,70 +2,156 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.oaslananka/kicad-mcp-pro",
   "title": "KiCad MCP Pro",
-  "description": "A Model Context Protocol server for KiCad EDA workflows.",
-  "version": "3.8.0",
-  "repository": {
-    "url": "https://github.com/oaslananka/kicad-mcp",
-    "source": "github"
-  },
+  "description": "Production-grade MCP server for KiCad EDA—PCB design, DRC, simulation, BOM, DFM, and manufacturing.",
   "websiteUrl": "https://oaslananka.github.io/kicad-mcp",
+  "license": "MIT",
   "icons": [
     {
       "src": "https://oaslananka.github.io/kicad-mcp/assets/icon-512.png",
       "mimeType": "image/png",
-      "sizes": [
-        "512x512"
-      ]
+      "sizes": ["512x512"]
     },
     {
       "src": "https://oaslananka.github.io/kicad-mcp/assets/icon.svg",
       "mimeType": "image/svg+xml",
-      "sizes": [
-        "any"
-      ]
+      "sizes": ["any"]
     }
   ],
+  "repository": {
+    "url": "https://github.com/oaslananka/kicad-mcp",
+    "source": "github",
+    "id": "R_kgDOOIB7Lg"
+  },
+  "version": "3.8.0",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "kicad-mcp-pro",
       "version": "3.8.0",
-      "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
-      }
+      },
+      "runtimeHint": "uvx",
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "value": "kicad-mcp-pro"
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "named",
+          "name": "--transport",
+          "description": "Transport protocol (stdio or sse)",
+          "isRequired": false,
+          "default": "stdio"
+        },
+        {
+          "type": "named",
+          "name": "--host",
+          "description": "Host to bind the SSE server to",
+          "isRequired": false,
+          "default": "127.0.0.1"
+        },
+        {
+          "type": "named",
+          "name": "--port",
+          "description": "Port to bind the SSE server to",
+          "isRequired": false,
+          "default": "8090"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "KICAD_MCP_LOG_LEVEL",
+          "description": "Logging level (DEBUG, INFO, WARNING, ERROR)",
+          "isRequired": false,
+          "default": "INFO"
+        }
+      ]
     },
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "kicad-mcp-pro",
       "version": "3.8.0",
-      "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
-      }
+      },
+      "runtimeHint": "npx",
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "value": "-y"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "KICAD_MCP_PRO_PYPI_VERSION",
+          "description": "Override the Python package version pinned by the npm wrapper",
+          "isRequired": false
+        }
+      ]
     },
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/oaslananka/kicad-mcp-pro:3.8.0",
       "registry": "container",
       "image": "ghcr.io/oaslananka/kicad-mcp-pro",
-      "runtimeHint": "docker",
+      "identifier": "ghcr.io/oaslananka/kicad-mcp-pro:3.8.0",
       "transport": {
         "type": "stdio"
-      }
+      },
+      "runtimeHint": "docker",
+      "runtimeArguments": [
+        {
+          "type": "positional",
+          "value": "run"
+        },
+        {
+          "type": "positional",
+          "value": "--rm"
+        },
+        {
+          "type": "positional",
+          "value": "-i"
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "positional",
+          "valueHint": "image",
+          "description": "Docker image to run",
+          "default": "ghcr.io/oaslananka/kicad-mcp-pro:3.8.0",
+          "isRequired": true
+        }
+      ]
     }
   ],
-  "capabilities": {
-    "tools": true,
-    "resources": true,
-    "prompts": true
-  },
-  "license": "MIT",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.kicad-mcp.pro/{tenant_id}/mcp",
+      "variables": {
+        "tenant_id": {
+          "description": "Your tenant / workspace identifier",
+          "isRequired": true,
+          "placeholder": "acme-corp-workspace"
+        }
+      },
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer token for authentication",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
+    }
+  ],
   "_meta": {
     "io.github.oaslananka/kicad-mcp-pro": {
-      "longDescription": "KiCad MCP Pro connects MCP clients to production KiCad EDA workflows. It exposes project setup, schematic analysis, PCB inspection, DRC/ERC validation, BOM/netlist generation, routing review, simulation, DFM, and manufacturing export tools. KiCad CLI must be installed for file-backed validation and export operations; live editing capabilities depend on the KiCad IPC runtime available in KiCad 9 and newer.",
+      "longDescription": "KiCad MCP Pro is a production-grade MCP server for KiCad EDA. It provides 225+ tools for PCB design, schematic capture, DRC/ERC validation, BOM generation, simulation, DFM analysis, and manufacturing export. Integrates with Claude Code, ChatGPT, VS Code Copilot, Cursor, and other MCP hosts. Uses KiCad CLI for file-backed operations when KiCad is available on PATH.",
       "categories": [
         "developer-tools",
         "electronic-design-automation",
@@ -78,52 +164,45 @@
         "drc",
         "erc",
         "bom",
-        "netlist",
         "gerber",
-        "manufacturing",
+        "mcp",
         "eda",
-        "mcp"
+        "electronics"
       ],
       "screenshots": [
         {
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/01-claude-desktop-quality-gate.png",
-          "caption": "Claude Desktop quality gate workflow"
+          "caption": "DRC report with categorized violations",
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/drc-report.png"
         },
         {
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/02-cursor-schematic-build.png",
-          "caption": "Cursor schematic automation workflow"
+          "caption": "ERC report with severity breakdown",
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/erc-report.png"
         },
         {
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/03-vscode-pcb-inspection.png",
-          "caption": "VS Code PCB inspection workflow"
+          "caption": "Manufacturing readiness checklist",
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/manufacturing-checklist.png"
         },
         {
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/04-tools-reference.png",
-          "caption": "Generated MCP tools reference"
+          "caption": "BOM generation with pricing data",
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/bom-generation.png"
         },
         {
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/05-export-manufacturing.png",
-          "caption": "Manufacturing export automation"
+          "caption": "Stackup editor and impedance planning",
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/stackup-editor.png"
         }
       ],
-      "toolCatalog": {
-        "summary": "EDA automation tools for KiCad project setup, schematic analysis, PCB inspection, DRC/ERC validation, BOM/netlist generation, routing review, simulation, DFM, and manufacturing export.",
-        "reference": "https://github.com/oaslananka/kicad-mcp/blob/main/docs/tools-reference.generated.md"
-      },
       "prerequisites": [
         "KiCad CLI 8.x, 9.x, or 10.x available on PATH for file-backed DRC, ERC, and export tools."
       ],
-      "supportedMcpProtocolVersions": [
-        "2025-11-25"
-      ],
+      "supportedMcpProtocolVersions": ["2025-11-25"],
+      "license": "MIT",
+      "canonicalRepository": "https://github.com/oaslananka/kicad-mcp",
+      "changelog": "https://github.com/oaslananka/kicad-mcp/blob/main/CHANGELOG.md",
+      "releaseNotes": "https://github.com/oaslananka/kicad-mcp/blob/main/CHANGELOG.md",
       "maintainer": {
         "name": "Osman Aslan",
         "url": "https://github.com/oaslananka"
       },
-      "canonicalRepository": "https://github.com/oaslananka/kicad-mcp",
-      "license": "MIT",
-      "changelog": "https://github.com/oaslananka/kicad-mcp/blob/main/CHANGELOG.md",
-      "releaseNotes": "https://github.com/oaslananka/kicad-mcp/blob/main/CHANGELOG.md",
       "serverInfo": {
         "schemaVersion": "1.1.0",
         "mcpProtocolVersion": "2025-11-25",
@@ -139,6 +218,10 @@
           "chatgptConnectorCompatible",
           "cliExports"
         ]
+      },
+      "toolCatalog": {
+        "summary": "EDA automation tools for KiCad project setup, schematic analysis, PCB inspection, DRC/ERC validation, BOM/netlist generation, routing review, simulation, DFM, and manufacturing export.",
+        "reference": "https://github.com/oaslananka/kicad-mcp/blob/main/docs/tools-reference.generated.md"
       }
     }
   }

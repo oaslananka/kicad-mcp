@@ -126,8 +126,8 @@ function updateReport(data) {
 // Trigger project quality gate
 window.parent.postMessage({
   type: 'call-tool',
-  tool: 'project_quality_gate',
-  arguments: {}
+  tool: 'kicad_run_drc',
+  arguments: { format: 'json' }
 }, '*');
 </script>
 </body>

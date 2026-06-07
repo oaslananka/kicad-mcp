@@ -1863,6 +1863,29 @@ def setup(
 
 
 @app.command()
+def bridge(
+    action: str = typer.Argument("start", help="Bridge action: start, stop, status."),
+    port: int = typer.Option(9090, "--port", "-p", help="Port for the WebSocket bridge."),
+    code: str = typer.Option(
+        "", "--code", "-c", help="Pairing code (auto-generated if not provided)."
+    ),
+    daemon: bool = typer.Option(False, "--daemon", "-d", help="Run as a background daemon."),
+) -> None:
+    """Start, stop, or check status of the local bridge daemon."""
+    from .bridge import bridge_start, bridge_status, bridge_stop
+
+    if action == "start":
+        bridge_start(port=port, code=code, daemon=daemon)
+    elif action == "status":
+        bridge_status()
+    elif action == "stop":
+        bridge_stop()
+    else:
+        typer.echo(f"Unknown bridge action: {action}. Use: start, stop, status.")
+        raise typer.Exit(code=1)
+
+
+@app.command()
 def setup_restore(
     agent: str = typer.Argument(..., help=option_help("Agent to restore config for.")),
     scope: str = typer.Option("project", "--scope", help=option_help("Config scope to restore.")),

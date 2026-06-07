@@ -896,6 +896,13 @@ def _try_claude_code_cli_install(config_str: str, project_dir: str, mode: str) -
         return f"Failed to run claude CLI: {e}\n\nConfig snippet below:\n{config_str}"
 
 
+def _check_kicad_mcp_available() -> bool:
+    """Check whether the kicad-mcp-pro executable is available on PATH."""
+    import shutil
+
+    return shutil.which("kicad-mcp-pro") is not None
+
+
 def setup_wizard() -> str:
     """Fallback wizard for CLI-free environments."""
     lines = [

@@ -79,7 +79,7 @@ function renderIssues(data) {
 // Request DRC report
 window.parent.postMessage({
   type: 'call-tool',
-  tool: 'run_drc',
+  tool: 'kicad_run_drc',
   arguments: { format: 'json' }
 }, '*');
 </script>
