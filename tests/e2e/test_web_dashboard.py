@@ -126,14 +126,14 @@ MOCK_CONFIG: dict[str, Any] = {
 
 MOCK_CONFIG_EXPORT: dict[str, str] = {
     "config": (
-        '{\n'
+        "{\n"
         '  "mcpServers": {\n'
         '    "kicad-mcp": {\n'
         '      "command": "uv",\n'
         '      "args": ["run", "kicad-mcp", "run"]\n'
-        '    }\n'
-        '  }\n'
-        '}'
+        "    }\n"
+        "  }\n"
+        "}"
     ),
     "format": "json",
 }

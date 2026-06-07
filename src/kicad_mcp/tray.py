@@ -40,12 +40,9 @@ try:
 except ImportError:
     _HAS_PIL = False
 
-try:
-    import pystray as _tray_module
+import importlib.util as _importlib_util
 
-    _HAS_TRAY = _HAS_PIL  # pystray needs PIL too
-except ImportError:
-    _HAS_TRAY = False
+_HAS_TRAY = _HAS_PIL and _importlib_util.find_spec("pystray") is not None
 
 
 # ---------------------------------------------------------------------------
@@ -123,9 +120,13 @@ class KiCadTrayApp:
                 message="pystray is not installed. Install with: pip install kicad-mcp-pro[tray]",
             )
             print("Error: pystray is not installed.", file=sys.stderr)
-            print("Install it with: pip install kicad-mcp-pro[tray] or pip install pystray Pillow",
-                  file=sys.stderr)
+            print(
+                "Install it with: pip install kicad-mcp-pro[tray] or pip install pystray Pillow",
+                file=sys.stderr,
+            )
             sys.exit(1)
+
+        import pystray as _tray_module
 
         self._running = True
         icon = _tray_module.Icon(
@@ -222,6 +223,7 @@ class KiCadTrayApp:
     def _action_open_dashboard(self) -> None:
         """Open the web dashboard in the default browser."""
         import webbrowser
+
         logger.info("tray_opening_dashboard", url=self._dashboard_url)
         try:
             # Start server if not running
@@ -247,7 +249,9 @@ class KiCadTrayApp:
             if cfg.pcb_file and cfg.pcb_file.exists():
                 result = subprocess.run(
                     [str(cfg.kicad_cli), "pcb", "drc", str(cfg.pcb_file)],
-                    capture_output=True, text=True, timeout=120,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
                 )
                 summary = result.stdout[:200] if result.stdout else "DRC completed"
                 self._show_notification(summary)
@@ -268,10 +272,17 @@ class KiCadTrayApp:
                 output_dir = cfg.ensure_output_dir("gerber")
                 subprocess.run(
                     [
-                        str(cfg.kicad_cli), "pcb", "export", "gerber",
-                        "-o", str(output_dir), str(cfg.pcb_file),
+                        str(cfg.kicad_cli),
+                        "pcb",
+                        "export",
+                        "gerber",
+                        "-o",
+                        str(output_dir),
+                        str(cfg.pcb_file),
                     ],
-                    capture_output=True, text=True, timeout=120,
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
                 )
                 self._show_notification(f"Gerber exported to {output_dir}")
                 logger.info("tray_gerber_exported", output=str(output_dir))
@@ -285,6 +296,7 @@ class KiCadTrayApp:
         """Show a brief status notification."""
         try:
             from .diagnostics import build_health_report
+
             report = build_health_report()
             status_text = f"Status: {report.status}\n"
             for c in report.checks[:5]:
@@ -339,8 +351,10 @@ def tray_main(port: int = 3334) -> None:
     """Launch the system tray application."""
     if not _HAS_TRAY:
         print("Error: pystray is not installed.", file=sys.stderr)
-        print("Install it with: pip install kicad-mcp-pro[tray] or pip install pystray Pillow",
-              file=sys.stderr)
+        print(
+            "Install it with: pip install kicad-mcp-pro[tray] or pip install pystray Pillow",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     app = KiCadTrayApp(port=port)

@@ -212,9 +212,7 @@ class TestKiCadTrayApp:
             with patch.object(tray_app, "_action_start_server") as mock_start:
                 tray_app._action_open_dashboard()
                 mock_start.assert_called_once()
-                mock_webbrowser.assert_called_once_with(
-                    "http://127.0.0.1:3334/ui"
-                )
+                mock_webbrowser.assert_called_once_with("http://127.0.0.1:3334/ui")
 
     def test_open_dashboard_skips_if_running(self, tray_app) -> None:
         """Test _action_open_dashboard does not start server if already running."""

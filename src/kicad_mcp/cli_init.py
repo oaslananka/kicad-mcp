@@ -167,8 +167,7 @@ def run_wizard(
 
     console.print(
         Panel.fit(
-            "[bold cyan]kicad-mcp-pro Kurulum Sihirbazi[/bold cyan]\n"
-            "Cikmak icin Ctrl+C",
+            "[bold cyan]kicad-mcp-pro Kurulum Sihirbazi[/bold cyan]\nCikmak icin Ctrl+C",
             border_style="cyan",
         )
     )
@@ -209,9 +208,7 @@ def run_wizard(
             if written:
                 console.print(f"  [green]Yazildi:[/green] {written}")
             else:
-                console.print(
-                    "  [yellow]Config dosyasi bulunamadi, manuel kopyalayin.[/yellow]"
-                )
+                console.print("  [yellow]Config dosyasi bulunamadi, manuel kopyalayin.[/yellow]")
 
     # Write ~/.kicad-mcp/config.json
     kicad_config_path = _write_kicad_mcp_config(kicad_path, transport, port, output)

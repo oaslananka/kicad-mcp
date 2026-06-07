@@ -336,12 +336,14 @@ async def api_tools(request: Request) -> JSONResponse:
                 dumped = tool.model_dump(mode="json", exclude_none=True)
             else:
                 dumped = {"name": str(tool)}
-            payload.append({
-                "name": dumped.get("name"),
-                "description": dumped.get("description", ""),
-                "inputSchema": dumped.get("inputSchema", {}),
-                "annotations": dumped.get("annotations", {}),
-            })
+            payload.append(
+                {
+                    "name": dumped.get("name"),
+                    "description": dumped.get("description", ""),
+                    "inputSchema": dumped.get("inputSchema", {}),
+                    "annotations": dumped.get("annotations", {}),
+                }
+            )
         return JSONResponse({"count": len(payload), "tools": payload})
     except Exception as exc:
         logger.warning("api_tools_error", error=str(exc))
@@ -396,8 +398,7 @@ async def api_config_export(request: Request) -> JSONResponse:
         return JSONResponse(
             {
                 "error": (
-                    f"Unsupported client: {raw_client}. "
-                    f"Supported: {', '.join(sorted(supported))}"
+                    f"Unsupported client: {raw_client}. Supported: {', '.join(sorted(supported))}"
                 )
             },
             status_code=400,
@@ -410,9 +411,7 @@ async def api_config_export(request: Request) -> JSONResponse:
             "client": client,
             "config_path": config_path,
             "snippet": snippet,
-            "instructions": (
-                f"Add this snippet to {config_path or client + ' configuration'}."
-            ),
+            "instructions": (f"Add this snippet to {config_path or client + ' configuration'}."),
             "config": config,
             "format": fmt,
         }
@@ -480,11 +479,13 @@ async def api_metrics(request: Request) -> JSONResponse:
     """Return server metrics as JSON (call counts, latencies, uptime)."""
     snapshot = get_metrics_snapshot()
     uptime = time.time() - get_start_time()
-    return JSONResponse({
-        **snapshot,
-        "uptime_seconds": round(uptime, 2),
-        "uptime_human": _format_uptime(uptime),
-    })
+    return JSONResponse(
+        {
+            **snapshot,
+            "uptime_seconds": round(uptime, 2),
+            "uptime_human": _format_uptime(uptime),
+        }
+    )
 
 
 async def api_server_action(request: Request) -> JSONResponse:
