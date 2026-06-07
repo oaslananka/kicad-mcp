@@ -12,6 +12,7 @@ Usage:
 
 from __future__ import annotations
 
+import importlib.util as _importlib_util
 import os
 import signal
 import subprocess
@@ -39,8 +40,6 @@ try:
     _HAS_PIL = True
 except ImportError:
     _HAS_PIL = False
-
-import importlib.util as _importlib_util
 
 _HAS_TRAY = _HAS_PIL and _importlib_util.find_spec("pystray") is not None
 
