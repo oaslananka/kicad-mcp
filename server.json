@@ -61,9 +61,9 @@
         {
           "type": "named",
           "name": "--port",
-          "description": "Port to bind the SSE server to",
+          "description": "Port to bind the HTTP server to",
           "isRequired": false,
-          "default": "8090"
+          "default": "3334"
         }
       ],
       "environmentVariables": [

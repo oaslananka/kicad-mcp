@@ -134,9 +134,9 @@ def _pypi_package(metadata: dict[str, Any]) -> dict[str, Any]:
             {
                 "type": "named",
                 "name": "--port",
-                "description": "Port to bind the SSE server to",
+                "description": "Port to bind the HTTP server to",
                 "isRequired": False,
-                "default": "8090",
+                "default": "3334",
             },
         ],
         "environmentVariables": [
