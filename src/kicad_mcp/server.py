@@ -22,6 +22,11 @@ import anyio
 import click
 import structlog
 import typer
+try:
+    import watchfiles
+    HAS_WATCHFILES = True
+except ImportError:
+    HAS_WATCHFILES = False
 from mcp import types as mcp_types
 from mcp.server.auth.provider import AccessToken
 from mcp.server.auth.settings import AuthSettings
@@ -44,6 +49,7 @@ from .capabilities import get as get_capability_record
 from .compatibility import MCP_PROTOCOL_VERSION
 from .config import LOOPBACK_HOSTS, KiCadMCPConfig, get_config, reset_config
 from .connection import KiCadConnectionError, get_board
+from .errors import IpcDisconnectedError, KiCadConnectionTimeoutError, KiCadNotRunningError
 from .diagnostics import (
     DiagnosticReport,
     build_doctor_report,
@@ -294,6 +300,19 @@ def _tool_error_code(message: str, *, tool_name: str = "") -> str:
         return "CONFIGURATION_ERROR"
     if tool_name in CLI_FAILURE_TOOL_NAMES:
         return "CLI_COMMAND_FAILED"
+    # IPC/disconnection errors
+    if "connection" in lowered and ("refused" in lowered or "reset" in lowered):
+        return "IPC_CONNECTION_LOST"
+    if "not running" in lowered or "kicad not" in lowered:
+        return "KICAD_NOT_RUNNING"
+    if "no board" in lowered or "no pcb" in lowered or "board not open" in lowered:
+        return "BOARD_NOT_OPEN"
+    if "validation" in lowered or "invalid" in lowered:
+        return "TOOL_VALIDATION_ERROR"
+    if "permission" in lowered or "denied" in lowered or "not allowed" in lowered:
+        return "PERMISSION_DENIED"
+    if "not found" in lowered:
+        return "NOT_FOUND"
     return "TOOL_EXECUTION_FAILED"
 
 
@@ -312,6 +331,18 @@ def _tool_error_hint(message: str) -> str:
         return "Read kicad://project/fix_queue, resolve blocking gate issues, then rerun the tool."
     if "unknown tool" in lowered:
         return "Check kicad_list_tool_categories() and kicad_get_tools_in_category()."
+    if "connection" in lowered and ("refused" in lowered or "reset" in lowered):
+        return "Start KiCad and enable the IPC API server in Preferences -> IPC."
+    if "not running" in lowered or "kicad not" in lowered:
+        return "Ensure KiCad is running with the IPC API enabled (Preferences -> IPC)."
+    if "no board" in lowered or "board not open" in lowered:
+        return "Open a PCB file in KiCad or call kicad_set_project() to set the project."
+    if "validation" in lowered or "invalid" in lowered:
+        return "Correct the tool arguments and retry. Check the tool's inputSchema."
+    if "permission" in lowered or "denied" in lowered or "not allowed" in lowered:
+        return "The current operating mode does not permit this tool. Use --mode with appropriate access."
+    if "not found" in lowered:
+        return "The requested resource was not found. Verify the name or identifier."
     return "Inspect the structured error and retry after correcting the request or project state."
 
 
@@ -768,6 +799,7 @@ class KiCadFastMCP(FastMCP):
         limiter = _tool_limiter(name)
         result: object
         _log_tool_call_started(name, arguments)
+        _error_detail: dict[str, object] = {"tool": name}
         with otel.tool_span(name) as span:
             try:
                 await self._ensure_registered_async()
@@ -778,6 +810,7 @@ class KiCadFastMCP(FastMCP):
                         tool_name=name,
                     )
                     status, error_code = _status_from_result(result)
+                    logger.warning("tool_denied_by_mode", tool=name, mode=mode.value)
                     return result
                 if limiter is None:
                     result = await super().call_tool(name, arguments)
@@ -787,11 +820,25 @@ class KiCadFastMCP(FastMCP):
                 failure_message = _tool_failure_message(name, result)
                 if failure_message is not None:
                     result = _structured_tool_error_from_message(failure_message, tool_name=name)
+                    logger.warning(
+                        "tool_result_failure",
+                        tool=name,
+                        failure=failure_message[:200],
+                        error_code=_tool_error_code(failure_message, tool_name=name),
+                    )
                 status, error_code = _status_from_result(result)
                 return result
             except ToolError as exc:
+                exc_message = str(exc)
                 result = _structured_tool_error(exc, tool_name=name)
                 status, error_code = _status_from_result(result)
+                _error_detail["error_code"] = error_code or type(exc).__name__
+                _error_detail["message"] = exc_message[:300]
+                logger.error(
+                    "tool_tool_error",
+                    **_error_detail,
+                    _exc_info=True,
+                )
                 otel.record_error_event(
                     "mcp.tool_error",
                     exc,
@@ -802,9 +849,36 @@ class KiCadFastMCP(FastMCP):
                     },
                 )
                 return result
+            except (KiCadNotRunningError, IpcDisconnectedError, KiCadConnectionTimeoutError) as exc:
+                status = "error"
+                error_code = exc.code
+                _error_detail["error_code"] = exc.code
+                _error_detail["message"] = str(exc)[:300]
+                _error_detail["hint"] = exc.hint
+                logger.error(
+                    "tool_ipc_error",
+                    **_error_detail,
+                )
+                otel.record_error_event(
+                    "mcp.tool_error",
+                    exc,
+                    {
+                        "tool": name,
+                        "error_code": exc.code,
+                        **self._telemetry_context_attributes(),
+                    },
+                )
+                return _structured_tool_error(exc, tool_name=name)
             except Exception as exc:
                 status = "error"
                 error_code = type(exc).__name__
+                _error_detail["error_code"] = error_code
+                _error_detail["message"] = str(exc)[:300]
+                logger.error(
+                    "tool_unexpected_error",
+                    **_error_detail,
+                    _exc_info=True,
+                )
                 otel.record_error_event(
                     "mcp.tool_error",
                     exc,
@@ -1595,6 +1669,9 @@ def main_callback(
     telemetry: bool | None = typer.Option(
         None, "--telemetry/--no-telemetry", help=option_help("Enable OpenTelemetry export")
     ),
+    watch: bool = typer.Option(
+        False, "--watch", help=option_help("Watch source files and hot-reload on changes")
+    ),
 ) -> None:
     """Start the KiCad MCP Pro server when no subcommand is supplied."""
     _apply_cli_env(
@@ -1612,6 +1689,21 @@ def main_callback(
     )
     current_context = click.get_current_context(silent=True)
     if current_context is not None and current_context.invoked_subcommand is not None:
+        return
+    if watch:
+        _run_with_watch(
+            transport=transport,
+            host=host,
+            port=port,
+            project_dir=project_dir,
+            log_level=log_level,
+            log_format=log_format,
+            log_file=log_file,
+            profile=profile,
+            operating_mode=operating_mode,
+            experimental=experimental,
+            telemetry=telemetry,
+        )
         return
     _run_server_from_options()
 
@@ -1641,8 +1733,26 @@ def serve(
     telemetry: bool | None = typer.Option(
         None, "--telemetry/--no-telemetry", help=option_help("Enable OpenTelemetry export")
     ),
+    watch: bool = typer.Option(
+        False, "--watch", help=option_help("Watch source files and hot-reload on changes")
+    ),
 ) -> None:
     """Start the MCP server explicitly."""
+    if watch:
+        _run_with_watch(
+            transport=transport,
+            host=host,
+            port=port,
+            project_dir=project_dir,
+            log_level=log_level,
+            log_format=log_format,
+            log_file=log_file,
+            profile=profile,
+            operating_mode=operating_mode,
+            experimental=experimental,
+            telemetry=telemetry,
+        )
+        return
     _run_server_from_options(
         transport=transport,
         host=host,
@@ -2029,6 +2139,146 @@ def version_command(
         "python": {"version": sys.version.split()[0]},
     }
     typer.echo(json.dumps(payload, indent=2) if json_output else __version__)
+
+
+def _run_with_watch(
+    *,
+    transport: str | None = None,
+    host: str | None = None,
+    port: int | None = None,
+    project_dir: str | None = None,
+    log_level: str | None = None,
+    log_format: str | None = None,
+    log_file: str | None = None,
+    profile: str | None = None,
+    operating_mode: str | None = None,
+    experimental: bool | None = None,
+    telemetry: bool | None = None,
+) -> None:
+    """Start the server with a file watcher for hot reload on source changes."""
+    if not HAS_WATCHFILES:
+        typer.echo(
+            "Error: --watch requires the 'watchfiles' package. Install it with:\n"
+            "  pip install kicad-mcp-pro[dev]\n"
+            "  pip install watchfiles",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    pkg_dir = Path(__file__).resolve().parent
+    log = logger.bind(package_dir=str(pkg_dir))
+    log.info("hot_reload_started", path=str(pkg_dir))
+
+    # Build the command args (equivalent to the CLI invocation that started us)
+    cmd = [sys.executable, "-m", "kicad_mcp.server"]
+    if transport:
+        cmd.extend(["--transport", transport])
+    if host:
+        cmd.extend(["--host", host])
+    if port:
+        cmd.extend(["--port", str(port)])
+    if project_dir:
+        cmd.extend(["--project-dir", project_dir])
+    if log_level:
+        cmd.extend(["--log-level", log_level])
+    if log_format:
+        cmd.extend(["--log-format", log_format])
+    if log_file:
+        cmd.extend(["--log-file", log_file])
+    if profile:
+        cmd.extend(["--profile", profile])
+    if operating_mode:
+        cmd.extend(["--mode", operating_mode])
+    if experimental:
+        cmd.append("--experimental")
+    if telemetry:
+        cmd.extend(["--telemetry"])
+    if telemetry is False:
+        cmd.extend(["--no-telemetry"])
+
+    changes = watchfiles.watch(str(pkg_dir))
+    for change_set in changes:
+        for change_type, changed_path in change_set:
+            if changed_path.endswith(".py"):
+                log.info(
+                    "hot_reload_restarting",
+                    changed=changed_path,
+                    change_type=change_type,
+                )
+                # In-place restart: replaces the current process
+                os.execv(sys.executable, cmd)  # noqa: S606
+                return  # never reached
+
+
+@app.command()
+def inspect(
+    transport: str | None = typer.Option(
+        None, help=option_help("Transport: stdio, http, sse, streamable-http")
+    ),
+    host: str | None = typer.Option(None, help=option_help("HTTP bind host")),
+    port: int | None = typer.Option(None, help=option_help("HTTP bind port")),
+    project_dir: str | None = typer.Option(
+        None, help=option_help("Active KiCad project directory")
+    ),
+    log_level: str | None = typer.Option(None, help=option_help("Log level")),
+    profile: str | None = typer.Option(
+        None, help=f"Server profile: {', '.join(available_profiles())}"
+    ),
+    operating_mode: str | None = typer.Option(
+        None,
+        "--mode",
+        help=option_help("Operating mode: readonly, write, manufacturing, experimental"),
+    ),
+    experimental: bool | None = typer.Option(
+        None, help=option_help("Enable experimental tools")
+    ),
+) -> None:
+    """Launch the MCP Inspector GUI for interactive tool debugging."""
+    import subprocess
+    import webbrowser
+
+    # Start server on a random port for the inspector
+    import socket
+
+    with contextlib.closing(socket.socket(socket.AF_INET, socket.AF_INET)) as s:
+        s.bind(("", 0))
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server_port = s.getsockname()[1]
+
+    typer.echo(f"Starting kicad-mcp-pro on port {server_port} for MCP Inspector...", err=True)
+
+    # Start server process in the background
+    env = os.environ.copy()
+    env["KICAD_MCP_TRANSPORT"] = "streamable-http"
+    env["KICAD_MCP_HOST"] = "127.0.0.1"
+    env["KICAD_MCP_PORT"] = str(server_port)
+    if log_level:
+        env["KICAD_MCP_LOG_LEVEL"] = log_level
+    if project_dir:
+        env["KICAD_MCP_PROJECT_DIR"] = project_dir
+    if profile:
+        env["KICAD_MCP_PROFILE"] = profile
+    if operating_mode:
+        env["KICAD_MCP_OPERATING_MODE"] = operating_mode
+    if experimental:
+        env["KICAD_MCP_ENABLE_EXPERIMENTAL_TOOLS"] = "1"
+
+    server_proc = subprocess.Popen(
+        [sys.executable, "-m", "kicad_mcp.server"],
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+    )
+
+    inspector_url = f"https://mcp.inspect.ai/?server=http://127.0.0.1:{server_port}/mcp"
+    typer.echo(f"Opening MCP Inspector at: {inspector_url}", err=True)
+    webbrowser.open(inspector_url)
+
+    try:
+        server_proc.wait()
+    except KeyboardInterrupt:
+        server_proc.terminate()
+        server_proc.wait()
 
 
 def main() -> None:

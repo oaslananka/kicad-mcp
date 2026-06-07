@@ -377,3 +377,97 @@ def mock_board(mock_kicad: MagicMock) -> MagicMock:
     board.get_as_string.return_value = "(kicad_pcb)"
     mock_kicad.get_board.return_value = board
     return board
+
+
+# ---------------------------------------------------------------------------
+# IPC state fixtures: simulate KiCad being connected or disconnected
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def ipc_connected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Simulate a scenario where KiCad IPC is reachable.
+
+    Patches ``get_ipc_capability_state`` to return a connected state,
+    powers the mock_kicad fixture, and sets ``KICAD_API_SOCKET`` so the
+    connection layer attempts to use it.
+    """
+    from kicad_mcp.ipc.capabilities import KiCadIpcCapabilityState
+
+    monkeypatch.setenv("KICAD_API_SOCKET", "tcp://127.0.0.1:12345")
+    monkeypatch.setenv("KICAD_API_TOKEN", "test-token-1234")
+
+    state = KiCadIpcCapabilityState()
+    state.connected = True
+    state.version = "10.0"
+    state.open_documents = []
+    state.last_error = None
+
+    with patch(
+        "kicad_mcp.ipc.capabilities.get_ipc_capability_state",
+        return_value=state,
+    ):
+        yield
+
+
+@pytest.fixture
+def ipc_disconnected(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Simulate a scenario where KiCad IPC is **not** reachable.
+
+    Patches ``get_ipc_capability_state`` to return a disconnected state
+    without a socket being configured, which is the default for CI/test.
+    """
+    from kicad_mcp.ipc.capabilities import KiCadIpcCapabilityState
+
+    monkeypatch.delenv("KICAD_API_SOCKET", raising=False)
+
+    state = KiCadIpcCapabilityState()
+    state.connected = False
+    state.version = None
+    state.open_documents = []
+    state.last_error = "Connection refused"
+
+    with patch(
+        "kicad_mcp.ipc.capabilities.get_ipc_capability_state",
+        return_value=state,
+    ):
+        yield
+
+
+@pytest.fixture
+def ipc_with_open_board(
+    mock_kicad: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> MagicMock:
+    """Simulate KiCad IPC being connected with an open board file.
+
+    Returns the mock board so tests can configure its return values.
+    """
+    from kicad_mcp.ipc.capabilities import KiCadIpcCapabilityState
+
+    monkeypatch.setenv("KICAD_API_SOCKET", "tcp://127.0.0.1:12345")
+
+    state = KiCadIpcCapabilityState()
+    state.connected = True
+    state.version = "10.0"
+    state.open_documents = ["/project/demo.kicad_pcb"]
+    state.last_error = None
+
+    board = MagicMock()
+    board.get_tracks.return_value = []
+    board.get_vias.return_value = []
+    board.get_footprints.return_value = []
+    board.get_nets.return_value = []
+    board.get_zones.return_value = []
+    board.get_shapes.return_value = []
+    board.get_pads.return_value = []
+    board.get_enabled_layers.return_value = ["F.Cu", "B.Cu"]
+    board.get_selection.return_value = []
+    board.get_stackup.return_value.layers = []
+    board.get_as_string.return_value = "(kicad_pcb)"
+    mock_kicad.get_board.return_value = board
+
+    with patch(
+        "kicad_mcp.ipc.capabilities.get_ipc_capability_state",
+        return_value=state,
+    ):
+        yield board
