@@ -78,3 +78,26 @@ async def test_variant_get_component_status_missing(sample_project: Path) -> Non
         server, "variant_get_component_status", {"variant": "default", "reference": "ZZ99"}
     )
     assert "not found" in result.lower()
+
+
+@pytest.mark.anyio
+async def test_variant_dnp_status(sample_project: Path) -> None:
+    """Verify DNP (Do Not Populate) flag is reflected in component status."""
+    state = _load_state()
+    # Set up a variant with a DNP override for an existing component
+    # The sample_project fixture has components; we set R1 as DNP
+    if "variants" not in state:
+        state["variants"] = {"default": {"overrides": {}}}
+    state["variants"]["dnp_test"] = {
+        "overrides": {
+            "R1": {"fitted": False, "dnp": True, "exclude_from_bom": False},
+        }
+    }
+    _save_state(state)
+
+    server = create_server()
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+    result = await call_tool_text(
+        server, "variant_get_component_status", {"variant": "dnp_test", "reference": "R1"}
+    )
+    assert "false" in result.lower() or "dnp" in result.lower()

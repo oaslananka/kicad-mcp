@@ -45,3 +45,8 @@ storage_state.json
 
 
 TEMP/
+
+# Backup artifacts from setup wizard
+*.mcp.json.*.bak
+# User config file created by kicad-mcp setup wizard
+.mcp.json

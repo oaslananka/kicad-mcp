@@ -558,6 +558,140 @@ def _command_plan(
             ),
         ]
     )
+
+    # ---- M2-M4 tool coverage ----
+    steps.extend(
+        [
+            CanaryStep(
+                name="schematic-dxf",
+                fixture="clean-led-kicad10",
+                args=(
+                    "sch",
+                    "export",
+                    "dxf",
+                    "--output",
+                    str(graphics / "schematic.dxf"),
+                    str(clean_schematic),
+                ),
+                outputs=(graphics / "schematic.dxf",),
+                skip_reason=kicad10_export_skip,
+            ),
+            CanaryStep(
+                name="schematic-svg",
+                fixture="clean-led-kicad10",
+                args=(
+                    "sch",
+                    "export",
+                    "svg",
+                    "--output",
+                    str(graphics / "schematic.svg"),
+                    str(clean_schematic),
+                ),
+                outputs=(graphics / "schematic.svg",),
+                skip_reason=kicad10_export_skip,
+            ),
+            CanaryStep(
+                name="schematic-python-bom",
+                fixture="clean-led-kicad10",
+                args=(
+                    "sch",
+                    "export",
+                    "python-bom",
+                    "--output",
+                    str(reports / "python_bom.py"),
+                    str(clean_schematic),
+                ),
+                outputs=(reports / "python_bom.py",),
+                skip_reason=kicad10_export_skip,
+            ),
+            CanaryStep(
+                name="pcb-render",
+                fixture="clean-led-kicad10",
+                args=(
+                    "pcb",
+                    "render",
+                    "--output",
+                    str(graphics / "render.png"),
+                    "--side",
+                    "top",
+                    str(clean_board),
+                ),
+                outputs=(graphics / "render.png",),
+                skip_reason=kicad10_export_skip,
+            ),
+            CanaryStep(
+                name="pcb-export-stepz",
+                fixture="clean-led-kicad10",
+                args=(
+                    "pcb",
+                    "export",
+                    "step",
+                    "--output",
+                    str(graphics / "board.stepz"),
+                    "--compress",
+                    str(clean_board),
+                ),
+                outputs=(graphics / "board.stepz",),
+                skip_reason=manufacturing_skip,
+            ),
+            CanaryStep(
+                name="spice-netlist",
+                fixture="clean-led-kicad10",
+                args=(
+                    "sch",
+                    "export",
+                    "spice",
+                    "--output",
+                    str(reports / "simulation.cir"),
+                    str(clean_schematic),
+                ),
+                outputs=(reports / "simulation.cir",),
+                skip_reason=kicad10_export_skip,
+            ),
+            CanaryStep(
+                name="pcb-export-brep",
+                fixture="clean-led-kicad10",
+                args=(
+                    "pcb",
+                    "export",
+                    "brep",
+                    "--output",
+                    str(graphics / "board.brep"),
+                    str(clean_board),
+                ),
+                outputs=(graphics / "board.brep",),
+                skip_reason=kicad10_export_skip,
+            ),
+            CanaryStep(
+                name="pcb-export-glb",
+                fixture="clean-led-kicad10",
+                args=(
+                    "pcb",
+                    "export",
+                    "glb",
+                    "--output",
+                    str(graphics / "board.glb"),
+                    str(clean_board),
+                ),
+                outputs=(graphics / "board.glb",),
+                skip_reason=kicad10_export_skip,
+            ),
+            CanaryStep(
+                name="pcb-export-stl",
+                fixture="clean-led-kicad10",
+                args=(
+                    "pcb",
+                    "export",
+                    "stl",
+                    "--output",
+                    str(graphics / "board.stl"),
+                    str(clean_board),
+                ),
+                outputs=(graphics / "board.stl",),
+                skip_reason=kicad10_export_skip,
+            ),
+        ]
+    )
     return steps
 
 

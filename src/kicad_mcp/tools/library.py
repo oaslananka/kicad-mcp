@@ -257,8 +257,30 @@ def register(mcp: FastMCP) -> None:
     @mcp.tool()
     @headless_compatible
     @ttl_cache(ttl_seconds=60)
-    def lib_search_symbols(query: str, library_filter: str = "") -> str:
-        """Search symbol libraries by name, description, or keywords."""
+    def lib_search_symbols(
+        query: str,
+        library_filter: str = "",
+        page: int = 1,
+        page_size: int = 50,
+    ) -> str:
+        """Search symbol libraries by name, description, or keywords.
+
+        Parameters
+        ----------
+        query : str
+            Search term (case-insensitive substring match).
+        library_filter : str
+            Optional library name to narrow the search.
+        page : int
+            Page number (1-based). Default 1.
+        page_size : int
+            Results per page. Default 50, max 500.
+        """
+        if page < 1:
+            return "page must be >= 1."
+        if page_size < 1:
+            return "page_size must be >= 1."
+        page_size = min(page_size, 500)
         index = _get_symbol_index()
         query_lower = query.lower()
         results = []
@@ -268,12 +290,34 @@ def register(mcp: FastMCP) -> None:
             haystack = f"{item['name']} {item['description']} {item['keywords']}".lower()
             if query_lower in haystack:
                 results.append(item)
-        if not results:
+        total = len(results)
+        if total == 0:
             return f"No symbols matched '{query}'."
-        lines = [f"Symbol matches for '{query}' ({len(results)} total):"]
-        for item in results[: get_config().max_items_per_response]:
-            suffix = f" - {item['description']}" if item["description"] else ""
-            lines.append(f"- {item['library']}:{item['name']}{suffix}")
+        total_pages = max(1, (total + page_size - 1) // page_size)
+        if page > total_pages:
+            return f"Page {page} exceeds total pages ({total_pages})."
+        start = (page - 1) * page_size
+        end = start + page_size
+        page_results = results[start:end]
+        truncated = end < total
+        lines = [
+            f"Symbol matches for '{query}' "
+            f"(page {page}/{total_pages}, {len(page_results)} shown, {total} total):"
+        ]
+        for item in page_results:
+            alias = item.get("alias", "")
+            desc = item.get("description", "")
+            kw = item.get("keywords", "")
+            parts = [f"- {item['library']}:{item['name']}"]
+            if alias:
+                parts.append(f" (alias: {alias})")
+            if desc:
+                parts.append(f" - {desc}")
+            if kw:
+                parts.append(f" [keywords: {kw}]")
+            lines.append("".join(parts))
+        if truncated:
+            lines.append(f"... and {total - end} more matches (use page={page + 1})")
         return "\n".join(lines)
 
     @mcp.tool()
@@ -312,8 +356,30 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @headless_compatible
-    def lib_search_footprints(query: str, library_filter: str = "") -> str:
-        """Search footprint libraries by footprint name."""
+    def lib_search_footprints(
+        query: str,
+        library_filter: str = "",
+        page: int = 1,
+        page_size: int = 50,
+    ) -> str:
+        """Search footprint libraries by footprint name.
+
+        Parameters
+        ----------
+        query : str
+            Search term (case-insensitive substring match).
+        library_filter : str
+            Optional library name to narrow the search.
+        page : int
+            Page number (1-based). Default 1.
+        page_size : int
+            Results per page. Default 50, max 500.
+        """
+        if page < 1:
+            return "page must be >= 1."
+        if page_size < 1:
+            return "page_size must be >= 1."
+        page_size = min(page_size, 500)
         root = _footprint_library_dir()
         results: list[str] = []
         for library in root.glob("*.pretty"):
@@ -322,10 +388,23 @@ def register(mcp: FastMCP) -> None:
             for footprint in library.glob("*.kicad_mod"):
                 if query.lower() in footprint.stem.lower():
                     results.append(f"{library.stem}:{footprint.stem}")
-        if not results:
+        total = len(results)
+        if total == 0:
             return f"No footprints matched '{query}'."
-        lines = [f"Footprint matches for '{query}' ({len(results)} total):"]
-        lines.extend(f"- {item}" for item in results[: get_config().max_items_per_response])
+        total_pages = max(1, (total + page_size - 1) // page_size)
+        if page > total_pages:
+            return f"Page {page} exceeds total pages ({total_pages})."
+        start = (page - 1) * page_size
+        end = start + page_size
+        page_results = results[start:end]
+        truncated = end < total
+        lines = [
+            f"Footprint matches for '{query}' "
+            f"(page {page}/{total_pages}, {len(page_results)} shown, {total} total):"
+        ]
+        lines.extend(f"- {item}" for item in page_results)
+        if truncated:
+            lines.append(f"... and {total - end} more matches (use page={page + 1})")
         return "\n".join(lines)
 
     @mcp.tool()
