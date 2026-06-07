@@ -1585,18 +1585,18 @@ _ONBOARDING_MESSAGES: dict[str, str] = {
     ),
     "cursor": (
         "Cursor detected. Chat tab commands shown in Quick Pick.\n"
-        "Type '/ask' or '/' to browse tools.",
+        "Type '/ask' or '/' to browse tools."
     ),
     "vscode": (
-        "VS Code with MCP extension detected.\nUse Ctrl+Shift+P → 'MCP: Call Tool' or agent chat.",
+        "VS Code with MCP extension detected.\nUse Ctrl+Shift+P → 'MCP: Call Tool' or agent chat."
     ),
     "codex": (
         "Codex CLI detected. You can ask:\n"
         "  • 'Create a new PCB project'\n"
         "  • 'Add components to schematic'\n"
-        "  • 'Route power traces'",
+        "  • 'Route power traces'"
     ),
-    "gemini": ("Gemini CLI detected.\nSee docs/agents/gemini-cli.md for usage.",),
+    "gemini": "Gemini CLI detected.\nSee docs/agents/gemini-cli.md for usage.",
 }
 
 
@@ -2158,7 +2158,10 @@ def init(
     typer.echo("🔍 KiCad MCP Pro Init")
     typer.echo("─── PACKAGE ───")
     typer.echo(f"  Version: {__version__}")
-    kicad_path = find_kicad_version()
+    from .discovery import discover_kicad_cli
+
+    cli_path = discover_kicad_cli()
+    kicad_path = find_kicad_version(cli_path)
     if kicad_path:
         typer.echo(f"  KiCad:   {kicad_path}  ✅")
     else:
@@ -2255,10 +2258,10 @@ def status(
 
     # ── IPC ──
     ipc_state = get_ipc_capability_state()
-    if ipc_state.connected:
+    if ipc_state.reachable:
         typer.echo("  IPC Status:     Connected  ✅")
     else:
-        reason = ipc_state.last_error or "disconnected"
+        reason = ipc_state.diagnostics[0] if ipc_state.diagnostics else "disconnected"
         typer.echo(f"  IPC Status:     {reason}  ⚠️")
         typer.echo("  Hint:           Start KiCad with IPC enabled (Preferences → IPC)")
 
