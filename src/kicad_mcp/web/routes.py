@@ -112,8 +112,8 @@ def setup_log_stream() -> None:
     def _sse_processor(
         logger: structlog.typing.FilteringBoundLogger,
         method_name: str,
-        event_dict: dict[str, object],
-    ) -> dict[str, object]:
+        event_dict: structlog.typing.EventDict,
+    ) -> structlog.typing.EventDict:
         level = event_dict.get("level", method_name.upper())
         event = event_dict.get("event", "")
         push_log(
@@ -289,8 +289,8 @@ async def api_info(request: Request) -> JSONResponse:
         {
             "name": "KiCad MCP Pro",
             "version": __version__,
-            "python": os.sys.version,
-            "platform": os.sys.platform,
+            "python": sys.version,
+            "platform": sys.platform,
             "pid": os.getpid(),
             "config": cfg.safe_diagnostics(),
         }

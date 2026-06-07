@@ -125,7 +125,7 @@ class KiCadTrayApp:
             )
             sys.exit(1)
 
-        import pystray as _tray_module
+        import pystray as _tray_module  # type: ignore[import-untyped]
 
         self._running = True
         icon = _tray_module.Icon(
