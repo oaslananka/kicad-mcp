@@ -17,6 +17,7 @@ SERVER_JSON = ROOT / "server.json"
 NPM_WRAPPER_PACKAGE = ROOT / "packages" / "mcp-npm" / "package.json"
 MCP_SERVER_NAME = "io.github.oaslananka/kicad-mcp-pro"
 REPOSITORY = "https://github.com/oaslananka/kicad-mcp"
+REPOSITORY_ID = "R_kgDOOIB7Lg"
 WEBSITE = "https://oaslananka.github.io/kicad-mcp"
 GHCR_IMAGE = "ghcr.io/oaslananka/kicad-mcp-pro"
 REGISTRY_META_KEY = "io.github.oaslananka/kicad-mcp-pro"
@@ -39,6 +40,20 @@ SERVER_INFO_CAPABILITIES = [
     "chatgptConnectorCompatible",
     "cliExports",
 ]
+# Override description; the pyproject.toml description is PyPI-focused while
+# the MCP registry entry uses a more detailed production-grade description.
+SERVER_DESCRIPTION = (
+    "Production-grade MCP server for KiCad EDA\u2014PCB design, DRC, "
+    "simulation, BOM, DFM, and manufacturing."
+)
+LONG_DESCRIPTION = (
+    "KiCad MCP Pro is a production-grade MCP server for KiCad EDA. "
+    "It provides 225+ tools for PCB design, schematic capture, DRC/ERC "
+    "validation, BOM generation, simulation, DFM analysis, and manufacturing "
+    "export. Integrates with Claude Code, ChatGPT, VS Code Copilot, Cursor, "
+    "and other MCP hosts. Uses KiCad CLI for file-backed operations when "
+    "KiCad is available on PATH."
+)
 REGISTRY_TAGS = [
     "kicad",
     "pcb",
@@ -46,18 +61,17 @@ REGISTRY_TAGS = [
     "drc",
     "erc",
     "bom",
-    "netlist",
     "gerber",
-    "manufacturing",
-    "eda",
     "mcp",
+    "eda",
+    "electronics",
 ]
 SCREENSHOTS = [
-    ("01-claude-desktop-quality-gate.png", "Claude Desktop quality gate workflow"),
-    ("02-cursor-schematic-build.png", "Cursor schematic automation workflow"),
-    ("03-vscode-pcb-inspection.png", "VS Code PCB inspection workflow"),
-    ("04-tools-reference.png", "Generated MCP tools reference"),
-    ("05-export-manufacturing.png", "Manufacturing export automation"),
+    ("drc-report.png", "DRC report with categorized violations"),
+    ("erc-report.png", "ERC report with severity breakdown"),
+    ("manufacturing-checklist.png", "Manufacturing readiness checklist"),
+    ("bom-generation.png", "BOM generation with pricing data"),
+    ("stackup-editor.png", "Stackup editor and impedance planning"),
 ]
 
 
@@ -91,18 +105,129 @@ def _dump_json(data: dict[str, Any]) -> str:
     return json.dumps(data, indent=2) + "\n"
 
 
+def _pypi_package(metadata: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "registryType": "pypi",
+        "registryBaseUrl": "https://pypi.org",
+        "identifier": metadata["package_name"],
+        "version": metadata["version"],
+        "transport": {"type": "stdio"},
+        "runtimeHint": "uvx",
+        "runtimeArguments": [
+            {"type": "positional", "value": "kicad-mcp-pro"},
+        ],
+        "packageArguments": [
+            {
+                "type": "named",
+                "name": "--transport",
+                "description": "Transport protocol (stdio or sse)",
+                "isRequired": False,
+                "default": "stdio",
+            },
+            {
+                "type": "named",
+                "name": "--host",
+                "description": "Host to bind the SSE server to",
+                "isRequired": False,
+                "default": "127.0.0.1",
+            },
+            {
+                "type": "named",
+                "name": "--port",
+                "description": "Port to bind the SSE server to",
+                "isRequired": False,
+                "default": "8090",
+            },
+        ],
+        "environmentVariables": [
+            {
+                "name": "KICAD_MCP_LOG_LEVEL",
+                "description": "Logging level (DEBUG, INFO, WARNING, ERROR)",
+                "isRequired": False,
+                "default": "INFO",
+            },
+        ],
+    }
+
+
+def _npm_package(metadata: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "registryType": "npm",
+        "registryBaseUrl": "https://registry.npmjs.org",
+        "identifier": "kicad-mcp-pro",
+        "version": metadata["version"],
+        "runtimeHint": "npx",
+        "transport": {"type": "stdio"},
+        "runtimeArguments": [
+            {"type": "positional", "value": "-y"},
+        ],
+        "environmentVariables": [
+            {
+                "name": "KICAD_MCP_PRO_PYPI_VERSION",
+                "description": "Override the Python package version pinned by the npm wrapper",
+                "isRequired": False,
+            },
+        ],
+    }
+
+
+def _oci_package(metadata: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "registryType": "oci",
+        "identifier": f"{GHCR_IMAGE}:{metadata['version']}",
+        "registry": "container",
+        "image": GHCR_IMAGE,
+        "runtimeHint": "docker",
+        "transport": {"type": "stdio"},
+        "runtimeArguments": [
+            {"type": "positional", "value": "run"},
+            {"type": "positional", "value": "--rm"},
+            {"type": "positional", "value": "-i"},
+        ],
+        "packageArguments": [
+            {
+                "type": "positional",
+                "valueHint": "image",
+                "description": "Docker image to run",
+                "default": f"{GHCR_IMAGE}:{metadata['version']}",
+                "isRequired": True,
+            },
+        ],
+    }
+
+
+def _remotes_metadata() -> list[dict[str, Any]]:
+    return [
+        {
+            "type": "streamable-http",
+            "url": "https://mcp.kicad-mcp.pro/{tenant_id}/mcp",
+            "variables": {
+                "tenant_id": {
+                    "description": "Your tenant / workspace identifier",
+                    "isRequired": True,
+                    "placeholder": "acme-corp-workspace",
+                },
+            },
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "description": "Bearer token for authentication",
+                    "isRequired": True,
+                    "isSecret": True,
+                },
+            ],
+        },
+    ]
+
+
 def _registry_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
     return {
         "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
         "name": MCP_SERVER_NAME,
         "title": "KiCad MCP Pro",
-        "description": metadata["description"],
-        "version": metadata["version"],
-        "repository": {
-            "url": REPOSITORY,
-            "source": "github",
-        },
+        "description": SERVER_DESCRIPTION,
         "websiteUrl": WEBSITE,
+        "license": metadata["license"],
         "icons": [
             {
                 "src": f"{WEBSITE}/assets/icon-512.png",
@@ -115,48 +240,21 @@ def _registry_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
                 "sizes": ["any"],
             },
         ],
-        "packages": [
-            {
-                "registryType": "pypi",
-                "registryBaseUrl": "https://pypi.org",
-                "identifier": metadata["package_name"],
-                "version": metadata["version"],
-                "runtimeHint": "uvx",
-                "transport": {"type": "stdio"},
-            },
-            {
-                "registryType": "npm",
-                "registryBaseUrl": "https://registry.npmjs.org",
-                "identifier": "kicad-mcp-pro",
-                "version": metadata["version"],
-                "runtimeHint": "npx",
-                "transport": {"type": "stdio"},
-            },
-            {
-                "registryType": "oci",
-                "identifier": f"{GHCR_IMAGE}:{metadata['version']}",
-                "registry": "container",
-                "image": GHCR_IMAGE,
-                "runtimeHint": "docker",
-                "transport": {"type": "stdio"},
-            },
-        ],
-        "capabilities": {
-            "tools": True,
-            "resources": True,
-            "prompts": True,
+        "repository": {
+            "url": REPOSITORY,
+            "source": "github",
+            "id": REPOSITORY_ID,
         },
-        "license": metadata["license"],
+        "version": metadata["version"],
+        "packages": [
+            _pypi_package(metadata),
+            _npm_package(metadata),
+            _oci_package(metadata),
+        ],
+        "remotes": _remotes_metadata(),
         "_meta": {
             REGISTRY_META_KEY: {
-                "longDescription": (
-                    "KiCad MCP Pro connects MCP clients to production KiCad EDA workflows. "
-                    "It exposes project setup, schematic analysis, PCB inspection, DRC/ERC "
-                    "validation, BOM/netlist generation, routing review, simulation, DFM, "
-                    "and manufacturing export tools. KiCad CLI must be installed for "
-                    "file-backed validation and export operations; live editing capabilities "
-                    "depend on the KiCad IPC runtime available in KiCad 9 and newer."
-                ),
+                "longDescription": LONG_DESCRIPTION,
                 "categories": [
                     "developer-tools",
                     "electronic-design-automation",

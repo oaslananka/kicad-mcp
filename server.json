@@ -2,19 +2,23 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.oaslananka/kicad-mcp-pro",
   "title": "KiCad MCP Pro",
-  "description": "Production-grade MCP server for KiCad EDA—PCB design, DRC, simulation, BOM, DFM, and manufacturing.",
+  "description": "Production-grade MCP server for KiCad EDA\u2014PCB design, DRC, simulation, BOM, DFM, and manufacturing.",
   "websiteUrl": "https://oaslananka.github.io/kicad-mcp",
   "license": "MIT",
   "icons": [
     {
       "src": "https://oaslananka.github.io/kicad-mcp/assets/icon-512.png",
       "mimeType": "image/png",
-      "sizes": ["512x512"]
+      "sizes": [
+        "512x512"
+      ]
     },
     {
       "src": "https://oaslananka.github.io/kicad-mcp/assets/icon.svg",
       "mimeType": "image/svg+xml",
-      "sizes": ["any"]
+      "sizes": [
+        "any"
+      ]
     }
   ],
   "repository": {
@@ -76,10 +80,10 @@
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "kicad-mcp-pro",
       "version": "3.8.0",
+      "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
       },
-      "runtimeHint": "npx",
       "runtimeArguments": [
         {
           "type": "positional",
@@ -96,13 +100,13 @@
     },
     {
       "registryType": "oci",
+      "identifier": "ghcr.io/oaslananka/kicad-mcp-pro:3.8.0",
       "registry": "container",
       "image": "ghcr.io/oaslananka/kicad-mcp-pro",
-      "identifier": "ghcr.io/oaslananka/kicad-mcp-pro:3.8.0",
+      "runtimeHint": "docker",
       "transport": {
         "type": "stdio"
       },
-      "runtimeHint": "docker",
       "runtimeArguments": [
         {
           "type": "positional",
@@ -171,38 +175,44 @@
       ],
       "screenshots": [
         {
-          "caption": "DRC report with categorized violations",
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/drc-report.png"
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/drc-report.png",
+          "caption": "DRC report with categorized violations"
         },
         {
-          "caption": "ERC report with severity breakdown",
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/erc-report.png"
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/erc-report.png",
+          "caption": "ERC report with severity breakdown"
         },
         {
-          "caption": "Manufacturing readiness checklist",
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/manufacturing-checklist.png"
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/manufacturing-checklist.png",
+          "caption": "Manufacturing readiness checklist"
         },
         {
-          "caption": "BOM generation with pricing data",
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/bom-generation.png"
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/bom-generation.png",
+          "caption": "BOM generation with pricing data"
         },
         {
-          "caption": "Stackup editor and impedance planning",
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/stackup-editor.png"
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/stackup-editor.png",
+          "caption": "Stackup editor and impedance planning"
         }
       ],
+      "toolCatalog": {
+        "summary": "EDA automation tools for KiCad project setup, schematic analysis, PCB inspection, DRC/ERC validation, BOM/netlist generation, routing review, simulation, DFM, and manufacturing export.",
+        "reference": "https://github.com/oaslananka/kicad-mcp/blob/main/docs/tools-reference.generated.md"
+      },
       "prerequisites": [
         "KiCad CLI 8.x, 9.x, or 10.x available on PATH for file-backed DRC, ERC, and export tools."
       ],
-      "supportedMcpProtocolVersions": ["2025-11-25"],
-      "license": "MIT",
-      "canonicalRepository": "https://github.com/oaslananka/kicad-mcp",
-      "changelog": "https://github.com/oaslananka/kicad-mcp/blob/main/CHANGELOG.md",
-      "releaseNotes": "https://github.com/oaslananka/kicad-mcp/blob/main/CHANGELOG.md",
+      "supportedMcpProtocolVersions": [
+        "2025-11-25"
+      ],
       "maintainer": {
         "name": "Osman Aslan",
         "url": "https://github.com/oaslananka"
       },
+      "canonicalRepository": "https://github.com/oaslananka/kicad-mcp",
+      "license": "MIT",
+      "changelog": "https://github.com/oaslananka/kicad-mcp/blob/main/CHANGELOG.md",
+      "releaseNotes": "https://github.com/oaslananka/kicad-mcp/blob/main/CHANGELOG.md",
       "serverInfo": {
         "schemaVersion": "1.1.0",
         "mcpProtocolVersion": "2025-11-25",
@@ -218,10 +228,6 @@
           "chatgptConnectorCompatible",
           "cliExports"
         ]
-      },
-      "toolCatalog": {
-        "summary": "EDA automation tools for KiCad project setup, schematic analysis, PCB inspection, DRC/ERC validation, BOM/netlist generation, routing review, simulation, DFM, and manufacturing export.",
-        "reference": "https://github.com/oaslananka/kicad-mcp/blob/main/docs/tools-reference.generated.md"
       }
     }
   }
