@@ -120,14 +120,14 @@ def _pypi_package(metadata: dict[str, Any]) -> dict[str, Any]:
             {
                 "type": "named",
                 "name": "--transport",
-                "description": "Transport protocol (stdio or sse)",
+                "description": "Transport protocol (stdio or streamable-http). Legacy SSE disabled by default.",
                 "isRequired": False,
                 "default": "stdio",
             },
             {
                 "type": "named",
                 "name": "--host",
-                "description": "Host to bind the SSE server to",
+                "description": "Host to bind the HTTP server to",
                 "isRequired": False,
                 "default": "127.0.0.1",
             },
@@ -197,27 +197,9 @@ def _oci_package(metadata: dict[str, Any]) -> dict[str, Any]:
 
 
 def _remotes_metadata() -> list[dict[str, Any]]:
-    return [
-        {
-            "type": "streamable-http",
-            "url": "https://mcp.kicad-mcp.pro/{tenant_id}/mcp",
-            "variables": {
-                "tenant_id": {
-                    "description": "Your tenant / workspace identifier",
-                    "isRequired": True,
-                    "placeholder": "acme-corp-workspace",
-                },
-            },
-            "headers": [
-                {
-                    "name": "Authorization",
-                    "description": "Bearer token for authentication",
-                    "isRequired": True,
-                    "isSecret": True,
-                },
-            ],
-        },
-    ]
+    # Remote endpoint (mcp.kicad-mcp.pro) is not yet deployed; return empty list
+    # until the production service is available.
+    return []
 
 
 def _registry_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
