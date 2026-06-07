@@ -1846,7 +1846,7 @@ def main_callback(
     current_context = click.get_current_context(silent=True)
     if current_context is not None and current_context.invoked_subcommand is not None:
         return
-    if watch:
+    if watch and not isinstance(watch, OptionInfo):
         _run_with_watch(
             transport=transport,
             host=host,
@@ -2636,30 +2636,32 @@ def _run_with_watch(
 
     # Build the command args (equivalent to the CLI invocation that started us,
     # without --watch so the child runs a normal server).
+    # Guard each param against OptionInfo objects (leaked when main_callback is
+    # called directly from Python with defaults).
     cmd = [sys.executable, "-m", "kicad_mcp.server"]
-    if transport:
+    if transport and not isinstance(transport, OptionInfo):
         cmd.extend(["--transport", transport])
-    if host:
+    if host and not isinstance(host, OptionInfo):
         cmd.extend(["--host", host])
-    if port:
+    if port and not isinstance(port, OptionInfo):
         cmd.extend(["--port", str(port)])
-    if project_dir:
+    if project_dir and not isinstance(project_dir, OptionInfo):
         cmd.extend(["--project-dir", project_dir])
-    if log_level:
+    if log_level and not isinstance(log_level, OptionInfo):
         cmd.extend(["--log-level", log_level])
-    if log_format:
+    if log_format and not isinstance(log_format, OptionInfo):
         cmd.extend(["--log-format", log_format])
-    if log_file:
+    if log_file and not isinstance(log_file, OptionInfo):
         cmd.extend(["--log-file", log_file])
-    if profile:
+    if profile and not isinstance(profile, OptionInfo):
         cmd.extend(["--profile", profile])
-    if operating_mode:
+    if operating_mode and not isinstance(operating_mode, OptionInfo):
         cmd.extend(["--mode", operating_mode])
-    if experimental:
+    if experimental and not isinstance(experimental, OptionInfo):
         cmd.append("--experimental")
-    if telemetry:
+    if isinstance(telemetry, bool) and telemetry:
         cmd.extend(["--telemetry"])
-    if telemetry is False:
+    if isinstance(telemetry, bool) and telemetry is False:
         cmd.extend(["--no-telemetry"])
 
     proc: subprocess.Popen[bytes] | None = None
