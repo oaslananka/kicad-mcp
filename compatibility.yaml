@@ -21,7 +21,7 @@ kicad:
       state: "deprecated"
       upstreamEol: true
       ci: "scheduled"
-      removal: "next-minor-release"
+      removal: "3.9.0"
       notes: "Upstream KiCad 9.x is no longer actively maintained; core workflows remain best-effort while scheduled canaries gather removal evidence."
     - range: "8.x"
       state: "deprecated"

@@ -10,6 +10,48 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.8.0](https://github.com/oaslananka/kicad-mcp/releases/tag/mcp-server-v3.8.0) (2026-06-06)
+
+### Added
+
+- **Phase 2 CLI-parity tools** — 20+ new footprint, symbol, jobset, upgrade, and
+  manufacturing board import wrappers completing KiCad 10.0.3 CLI parity.
+- **3D render formats**: BREP, GLB, GenCAD, IPC-D356, PLY, STL, U3D, VRML, PS
+  with camera panning controls and variant support.
+- **Schematic export expansion**: DXF, SVG, PS, python_bom, sch_upgrade.
+- **Footprint tools**: `fp_export_svg`, `fp_upgrade`.
+- **Symbol tools**: `sym_export_svg`, `sym_upgrade`.
+- **Jobset tools**: `jobset_run`, `jobset_list_templates`, `jobset_list_outputs`.
+- **Manufacturing board import**: PADS, gEDA, Specctra, Allegro (blocked) formats.
+- **KiCad 10.0.3 contract canaries**: shared fixtures, Windows primary smoke
+  coverage, scheduled 9.x/10.x lanes.
+- **Doctor diagnostics**: `kicad-mcp-pro doctor`, JSON diagnostics, and redacted
+  support bundles for setup troubleshooting.
+
+### Fixed
+
+- **Security**: Path traversal hardening across footprint, symbol, jobset, and
+  upgrade tools — output paths validated with `resolve_under` and `Path().name`.
+- **Fragile import in manufacturing.py**: `_run_cli_variants` imported from
+  `.export_support` instead of `.export`.
+- **Integer division bug**: `_human_size` uses float division preserving
+  fractional byte sizes across KB/MB/GB conversions.
+- **Pan logic**: Simplified falsy check for `pan_x`/`pan_y` in 3D render tool.
+- **CI pipeline**: Format, lint, and typecheck errors resolved across all
+  platforms (macOS, Windows, Linux).
+
+### Deprecated
+
+- Marked KiCad 9.x as a deprecated best-effort compatibility line in MCP
+  discovery metadata while retaining scheduled non-blocking canary coverage.
+
+## [3.7.6](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.7.5...mcp-server-v3.7.6) (2026-06-05)
+
+### Bug Fixes
+
+- **ci:** harden scorecard workflow ([#27](https://github.com/oaslananka/kicad-mcp/issues/27)) ([f5a163d](https://github.com/oaslananka/kicad-mcp/commit/f5a163dfc297839c6752a83669af4d0ee55af18b))
+- **security:** add gitleaks pre-commit hook ([#28](https://github.com/oaslananka/kicad-mcp/issues/28)) ([5dad852](https://github.com/oaslananka/kicad-mcp/commit/5dad85216ef50fc6feb8e4feac2fc39e84f0f29e))
+
 ## [3.7.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.6.0...mcp-server-v3.7.0) (2026-06-03)
 
 ### Features
@@ -88,48 +130,6 @@ published.
 - **repo:** add platform client setup examples ([#166](https://github.com/oaslananka/kicad-mcp/issues/166)) ([20440e0](https://github.com/oaslananka/kicad-mcp/commit/20440e0d2d452e06225703109158390731a87346))
 - **repo:** align ownership policy checks ([fa52a74](https://github.com/oaslananka/kicad-mcp/commit/fa52a746c9bc19a5ab307f3327acab6a054a5a31)), closes [#64](https://github.com/oaslananka/kicad-mcp/issues/64)
 - **repo:** clarify MCP client config destinations ([6049ca3](https://github.com/oaslananka/kicad-mcp/commit/6049ca3077db5b8e6490205a55b4581b367a0009))
-
-## [3.7.6](https://github.com/oaslananka/kicad-mcp/compare/v3.7.5...v3.7.6) (2026-06-05)
-
-### Bug Fixes
-
-- **ci:** harden scorecard workflow ([#27](https://github.com/oaslananka/kicad-mcp/issues/27)) ([f5a163d](https://github.com/oaslananka/kicad-mcp/commit/f5a163dfc297839c6752a83669af4d0ee55af18b))
-- **security:** add gitleaks pre-commit hook ([#28](https://github.com/oaslananka/kicad-mcp/issues/28)) ([5dad852](https://github.com/oaslananka/kicad-mcp/commit/5dad85216ef50fc6feb8e4feac2fc39e84f0f29e))
-
-## [3.8.0](https://github.com/oaslananka/kicad-mcp/releases/tag/mcp-server-v3.8.0) (2026-06-06)
-
-### Added
-
-- **Phase 2 CLI-parity tools** — 20+ new footprint, symbol, jobset, upgrade, and
-  manufacturing board import wrappers completing KiCad 10.0.3 CLI parity.
-- **3D render formats**: BREP, GLB, GenCAD, IPC-D356, PLY, STL, U3D, VRML, PS
-  with camera panning controls and variant support.
-- **Schematic export expansion**: DXF, SVG, PS, python_bom, sch_upgrade.
-- **Footprint tools**: `fp_export_svg`, `fp_upgrade`.
-- **Symbol tools**: `sym_export_svg`, `sym_upgrade`.
-- **Jobset tools**: `jobset_run`, `jobset_list_templates`, `jobset_list_outputs`.
-- **Manufacturing board import**: PADS, gEDA, Specctra, Allegro (blocked) formats.
-- **KiCad 10.0.3 contract canaries**: shared fixtures, Windows primary smoke
-  coverage, scheduled 9.x/10.x lanes.
-- **Doctor diagnostics**: `kicad-mcp-pro doctor`, JSON diagnostics, and redacted
-  support bundles for setup troubleshooting.
-
-### Fixed
-
-- **Security**: Path traversal hardening across footprint, symbol, jobset, and
-  upgrade tools — output paths validated with `resolve_under` and `Path().name`.
-- **Fragile import in manufacturing.py**: `_run_cli_variants` imported from
-  `.export_support` instead of `.export`.
-- **Integer division bug**: `_human_size` uses float division preserving
-  fractional byte sizes across KB/MB/GB conversions.
-- **Pan logic**: Simplified falsy check for `pan_x`/`pan_y` in 3D render tool.
-- **CI pipeline**: Format, lint, and typecheck errors resolved across all
-  platforms (macOS, Windows, Linux).
-
-### Deprecated
-
-- Marked KiCad 9.x as a deprecated best-effort compatibility line in MCP
-  discovery metadata while retaining scheduled non-blocking canary coverage.
 
 ## [1.0.0] - 2026-05-20
 

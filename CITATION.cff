@@ -8,8 +8,8 @@ authors:
 repository-code: "https://github.com/oaslananka/kicad-mcp"
 url: "https://oaslananka.github.io/kicad-mcp"
 license: MIT
-version: "3.5.2"
-date-released: "2026-05-20"
+version: "3.8.0"
+date-released: "2026-06-06"
 keywords:
   - KiCad
   - EDA

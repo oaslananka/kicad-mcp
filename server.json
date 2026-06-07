@@ -47,14 +47,14 @@
         {
           "type": "named",
           "name": "--transport",
-          "description": "Transport protocol (stdio or sse)",
+          "description": "Transport protocol (stdio or streamable-http). Legacy SSE disabled by default.",
           "isRequired": false,
           "default": "stdio"
         },
         {
           "type": "named",
           "name": "--host",
-          "description": "Host to bind the SSE server to",
+          "description": "Host to bind the HTTP server to",
           "isRequired": false,
           "default": "127.0.0.1"
         },
@@ -128,27 +128,6 @@
           "description": "Docker image to run",
           "default": "ghcr.io/oaslananka/kicad-mcp-pro:3.8.0",
           "isRequired": true
-        }
-      ]
-    }
-  ],
-  "remotes": [
-    {
-      "type": "streamable-http",
-      "url": "https://mcp.kicad-mcp.pro/{tenant_id}/mcp",
-      "variables": {
-        "tenant_id": {
-          "description": "Your tenant / workspace identifier",
-          "isRequired": true,
-          "placeholder": "acme-corp-workspace"
-        }
-      },
-      "headers": [
-        {
-          "name": "Authorization",
-          "description": "Bearer token for authentication",
-          "isRequired": true,
-          "isSecret": true
         }
       ]
     }
