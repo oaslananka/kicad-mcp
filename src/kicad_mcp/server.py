@@ -321,18 +321,13 @@ def _structured_tool_error_from_message(
     tool_name: str = "",
 ) -> mcp_types.CallToolResult:
     code = _tool_error_code(message, tool_name=tool_name)
-    payload = {
-        "error_code": code,
-        "message": message,
-        "hint": _tool_error_hint(message),
-    }
+    hint = _tool_error_hint(message)
     return mcp_types.CallToolResult(
         isError=True,
-        structuredContent=payload,
         content=[
             mcp_types.TextContent(
                 type="text",
-                text=(f"{payload['error_code']}: {payload['message']}\nHint: {payload['hint']}"),
+                text=f"{code}: {message}\nHint: {hint}",
             )
         ],
     )
