@@ -134,14 +134,13 @@ async def test_readonly_mode_rejects_write_tool_execution(monkeypatch) -> None:
 
     assert called is False
     assert result.isError is True
-    assert result.structuredContent == {
-        "error_code": "MODE_FORBIDDEN",
-        "message": ("Tool 'pcb_add_track' requires write operating mode; active mode is readonly."),
-        "hint": (
-            "Start kicad-mcp-pro with --mode write, --mode manufacturing, "
-            "or --mode experimental as appropriate."
-        ),
-    }
+    assert result.structuredContent is None
+    assert len(result.content) == 1
+    text = result.content[0].text
+    assert "MODE_FORBIDDEN" in text
+    assert "pcb_add_track" in text
+    assert "write operating mode" in text
+    assert "--mode write" in text
 
 
 def test_experimental_cli_flag_is_explicit_mode_opt_in(monkeypatch) -> None:

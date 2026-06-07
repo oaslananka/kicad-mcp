@@ -288,7 +288,7 @@ def _tool_error_code(message: str, *, tool_name: str = "") -> str:
         return "MODE_FORBIDDEN"
     if "timed out" in lowered or "timeout" in lowered:
         return "CLI_TIMEOUT"
-    if "kicad-cli" in lowered:
+    if "kicad-cli" in lowered and ("install" in lowered or "found" in lowered or "missing" in lowered):
         return "CLI_UNAVAILABLE"
     if "manufacturing export blocked" in lowered or "quality gate" in lowered:
         return "VALIDATION_FAILED"
@@ -300,7 +300,6 @@ def _tool_error_code(message: str, *, tool_name: str = "") -> str:
         return "CONFIGURATION_ERROR"
     if tool_name in CLI_FAILURE_TOOL_NAMES:
         return "CLI_COMMAND_FAILED"
-    # IPC/disconnection errors
     if "connection" in lowered and ("refused" in lowered or "reset" in lowered):
         return "IPC_CONNECTION_LOST"
     if "not running" in lowered or "kicad not" in lowered:
@@ -313,6 +312,12 @@ def _tool_error_code(message: str, *, tool_name: str = "") -> str:
         return "PERMISSION_DENIED"
     if "not found" in lowered:
         return "NOT_FOUND"
+    if "symbol" in lowered and ("not found" in lowered or "missing" in lowered):
+        return "SYMBOL_NOT_FOUND"
+    if "footprint" in lowered and ("not found" in lowered or "missing" in lowered):
+        return "FOOTPRINT_NOT_FOUND"
+    if "net" in lowered and ("not found" in lowered or "missing" in lowered):
+        return "NET_NOT_FOUND"
     return "TOOL_EXECUTION_FAILED"
 
 
@@ -321,29 +326,67 @@ def _tool_error_hint(message: str) -> str:
     if "operating mode" in lowered and "requires" in lowered:
         return (
             "Start kicad-mcp-pro with --mode write, --mode manufacturing, "
-            "or --mode experimental as appropriate."
+            "or --mode experimental as appropriate. "
+            "Example: kicad-mcp-pro --mode write"
         )
     if "no pcb file" in lowered or "no schematic file" in lowered:
-        return "Call kicad_set_project() or set the relevant KICAD_MCP_*_FILE variable."
+        return (
+            "Call kicad_set_project() or set the relevant KICAD_MCP_*_FILE variable. "
+            "Example: kicad-mcp setup claude-code --write"
+        )
     if "kicad-cli" in lowered:
-        return "Install KiCad or set KICAD_MCP_KICAD_CLI to the kicad-cli executable."
+        return (
+            "Install KiCad (≥ 8.0) from https://www.kicad.org/download/ or "
+            "set KICAD_MCP_KICAD_CLI to the kicad-cli executable path."
+        )
     if "quality gate" in lowered or "hard-blocked" in lowered:
-        return "Read kicad://project/fix_queue, resolve blocking gate issues, then rerun the tool."
+        return (
+            "Run kicad-mcp-pro doctor to see gate results, then fix "
+            "blocking issues and rerun the tool."
+        )
     if "unknown tool" in lowered:
-        return "Check kicad_list_tool_categories() and kicad_get_tools_in_category()."
+        return (
+            "Run kicad-mcp-pro tools list to see available tools, or "
+            "check kicad_list_tool_categories() and kicad_get_tools_in_category()."
+        )
     if "connection" in lowered and ("refused" in lowered or "reset" in lowered):
-        return "Start KiCad and enable the IPC API server in Preferences -> IPC."
+        return (
+            "Start KiCad and enable the IPC API server:\n"
+            "  1. Open KiCad\n"
+            "  2. Preferences → IPC\n"
+            "  3. Enable 'Start IPC server on port 12345'\n"
+            "  4. Restart KiCad"
+        )
     if "not running" in lowered or "kicad not" in lowered:
-        return "Ensure KiCad is running with the IPC API enabled (Preferences -> IPC)."
+        return (
+            "Ensure KiCad is running with the IPC API enabled.\n"
+            "Run 'kicad-mcp-pro status' to check KiCad availability."
+        )
     if "no board" in lowered or "board not open" in lowered:
-        return "Open a PCB file in KiCad or call kicad_set_project() to set the project."
+        return (
+            "Open a PCB file in KiCad or set the project first:\n"
+            "  kicad-mcp-pro --project-dir /path/to/project\n"
+            "Or call kicad_set_project() from the client."
+        )
     if "validation" in lowered or "invalid" in lowered:
-        return "Correct the tool arguments and retry. Check the tool's inputSchema."
+        return "Correct the tool arguments and retry. Check the input schema with kicad-mcp-pro tools list."
     if "permission" in lowered or "denied" in lowered or "not allowed" in lowered:
-        return "The current operating mode does not permit this tool. Use --mode with appropriate access."
-    if "not found" in lowered:
-        return "The requested resource was not found. Verify the name or identifier."
-    return "Inspect the structured error and retry after correcting the request or project state."
+        return (
+            "The current operating mode does not permit this tool.\n"
+            "Use --mode=write, --mode=manufacturing, or --mode=experimental with appropriate access."
+        )
+    if "not found" in lowered or ("symbol" in lowered and "missing" in lowered):
+        return "The requested resource was not found. Verify the name, identifier, or library path."
+    if "symbol" in lowered and ("not found" in lowered or "missing" in lowered):
+        return "Symbol not found. Check the library name and symbol name, or run 'kicad-mcp-pro tools list'."
+    if "footprint" in lowered and ("not found" in lowered or "missing" in lowered):
+        return "Footprint not found. Check the library name and footprint name, or run 'kicad-mcp-pro tools list'."
+    if "net" in lowered and ("not found" in lowered or "missing" in lowered):
+        return "Net not found. Verify the net name exists in the schematic, or check kicad_get_nets()."
+    return (
+        "Inspect the structured error and retry after correcting the request or project state. "
+        "Run 'kicad-mcp-pro doctor' for a full diagnostic."
+    )
 
 
 def _structured_tool_error_from_message(
@@ -1508,6 +1551,66 @@ def _ipc_status_summary() -> str:
     return "connected (PCB editor available)"
 
 
+_ONBOARDING_MESSAGES: dict[str, str] = {
+    "opencode": (
+        "OpenCode AI detected. Try these prompts:\n"
+        "  • 'show me the board' → pcb_get_board_summary()\n"
+        "  • 'run DRC' → run_drc()\n"
+        "  • 'export gerbers' → export_gerber()\n"
+        "  • 'add a mounting hole' → pcb_add_mounting_holes()"
+    ),
+    "claude-code": (
+        "Claude Code detected. Try these prompts:\n"
+        "  • 'Read the schematic' → sch_get_symbols + sch_get_wires\n"
+        "  • 'Check the PCB' → pcb_get_board_summary + run_drc\n"
+        "  • 'Export for manufacturing' → export_gerber + export_drill\n"
+        "  • 'What can you do?' → kicad_get_tools_in_category"
+    ),
+    "cursor": (
+        "Cursor detected. Chat tab commands shown in Quick Pick.\n"
+        "Type '/ask' or '/' to browse tools.",
+    ),
+    "vscode": (
+        "VS Code with MCP extension detected.\n"
+        "Use Ctrl+Shift+P → 'MCP: Call Tool' or agent chat.",
+    ),
+    "codex": (
+        "Codex CLI detected. You can ask:\n"
+        "  • 'Create a new PCB project'\n"
+        "  • 'Add components to schematic'\n"
+        "  • 'Route power traces'",
+    ),
+    "gemini": (
+        "Gemini CLI detected.\n"
+        "See docs/agents/gemini-cli.md for usage.",
+    ),
+}
+
+
+def _detect_client() -> str | None:
+    """Detect which AI client / agent is connecting based on environment."""
+    if "OPENCODE" in os.environ:
+        return "opencode"
+    if "CLAUDE_CODE" in os.environ:
+        return "claude-code"
+    if "CURSOR" in os.environ:
+        return "cursor"
+    if "VSCODE_MCP" in os.environ:
+        return "vscode"
+    if "CODEX" in os.environ:
+        return "codex"
+    if "GEMINI_CLI" in os.environ:
+        return "gemini"
+    return None
+
+
+def _print_startup_onboarding() -> None:
+    """Log an agent-specific onboarding message if the client env is detected."""
+    client = _detect_client()
+    if client and client in _ONBOARDING_MESSAGES:
+        logger.info("onboarding_hint", client=client, message=_ONBOARDING_MESSAGES[client])
+
+
 def _print_startup_diagnostics(cfg: KiCadMCPConfig, *, probe_runtime: bool = True) -> None:
     """Emit a concise startup summary without writing directly to stdio transport."""
     if cfg.transport == "stdio" and cfg.auth_token:
@@ -1527,6 +1630,7 @@ def _print_startup_diagnostics(cfg: KiCadMCPConfig, *, probe_runtime: bool = Tru
         gate_mode="release-export-only",
         ipc_status=ipc_status,
     )
+    _print_startup_onboarding()
 
 
 def _apply_cli_env(
@@ -2014,6 +2118,226 @@ def setup_backups(
     typer.echo(result)
 
 
+@app.command()
+def init(
+    project_dir: str | None = typer.Option(
+        None, "--project-dir", help=option_help("KiCad project directory (default: auto-detect).")
+    ),
+    agent: str | None = typer.Option(
+        None,
+        "--agent",
+        help=option_help(
+            "Target agent (default: auto-detect). Options: "
+            "claude-code, codex, gemini, opencode, cursor, vscode, claude-desktop, antigravity, chatgpt, claude-ai."
+        ),
+    ),
+    mode: str = typer.Option(
+        "write", "--mode", help=option_help("Operating mode: readonly, write, manufacturing.")
+    ),
+    write_config: bool = typer.Option(
+        True, "--write/--print", help=option_help("Write config file directly (default: write).")
+    ),
+) -> None:
+    """One-shot setup: detect KiCad, configure an agent, and verify."""
+    from .setup import AGENTS, setup_agent
+
+    # --- 1. KiCad detection ---
+    typer.echo("🔍 KiCad MCP Pro Init")
+    typer.echo("─── PACKAGE ───")
+    typer.echo(f"  Version: {__version__}")
+    kicad_path = find_kicad_version()
+    if kicad_path:
+        typer.echo(f"  KiCad:   {kicad_path}  ✅")
+    else:
+        typer.echo("  KiCad:   Not detected  ⚠️")
+        typer.echo("  Hint:    Install KiCad 8.0+ from https://www.kicad.org/download/")
+
+    # --- 2. Project detection ---
+    resolved_project = project_dir or os.environ.get("KICAD_MCP_PROJECT_DIR", "")
+    if resolved_project:
+        pcb_files = list(Path(resolved_project).glob("*.kicad_pcb"))
+        sch_files = list(Path(resolved_project).glob("*.kicad_sch"))
+        typer.echo(f"  Project: {resolved_project}")
+        typer.echo(f"  PCB:     {len(pcb_files)} found  {'✅' if pcb_files else '⚠️'}")
+        typer.echo(f"  SCH:     {len(sch_files)} found  {'✅' if sch_files else '⚠️'}")
+    else:
+        typer.echo("  Project: Not set (optional)")
+
+    # --- 3. Agent selection ---
+    resolved_agent = agent or _detect_client() or "claude-code"
+    if resolved_agent not in AGENTS:
+        typer.echo(f"\n❌ Unsupported agent: {resolved_agent}")
+        typer.echo(f"   Supported: {', '.join(sorted(AGENTS))}")
+        raise typer.Exit(1)
+    typer.echo(f"\n  Agent:   {resolved_agent}")
+
+    # --- 4. Run setup ---
+    try:
+        result = setup_agent(
+            resolved_agent,
+            project_dir=resolved_project or None,
+            mode=mode,
+            write=write_config,
+        )
+        typer.echo(f"\n  Config:  {'Written' if write_config else 'Generated'}")
+        typer.echo(f"  Result:  {result[:200]}")
+    except Exception as exc:
+        typer.echo(f"\n  Config:  Failed - {exc}  ❌")
+        raise typer.Exit(1) from exc
+
+    # --- 5. Verify ---
+    try:
+        report = build_health_report()
+        status_icon = "✅" if report.ok else "⚠️"
+        typer.echo(f"\n  Health:  {report.status} {status_icon}")
+        for check in report.checks:
+            icon = "✅" if check.status == "ok" else "⚠️" if check.status == "warn" else "❌"
+            typer.echo(f"    {icon} {check.name}: {check.message}")
+    except Exception as exc:
+        typer.echo(f"\n  Health:  Check failed - {exc}")
+
+    typer.echo("\n─── Done ───")
+    typer.echo(f"Run 'kicad-mcp-pro status' to see the current state.")
+    typer.echo(f"Run 'kicad-mcp-pro doctor' for full diagnostics.")
+
+
+@app.command()
+def status(
+    json_output: bool = typer.Option(
+        False, "--json", help=option_help("Emit machine-readable JSON.")
+    ),
+) -> None:
+    """Display a human-readable status dashboard."""
+
+    try:
+        report = build_health_report()
+    except Exception as exc:
+        typer.echo(f"Error building status: {exc}")
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        typer.echo(diagnostic_report_json(report, indent=2))
+        return
+
+    # ── Top section ──
+    typer.echo("╔══════════════════════════════════════════╗")
+    typer.echo("║       KiCad MCP Pro — Status            ║")
+    typer.echo("╚══════════════════════════════════════════╝")
+
+    # ── Server ──
+    typer.echo(f"\n📦  Package:   kicad-mcp-pro v{__version__}")
+    cfg = get_config()
+    typer.echo(f"  Profile:   {cfg.profile or '(default)'}")
+    typer.echo(f"  Mode:      {active_operating_mode(cfg).value}")
+    typer.echo(f"  Transport: {cfg.transport}")
+
+    # ── KiCad ──
+    kicad_version = find_kicad_version(cfg.kicad_cli)
+    if kicad_version:
+        typer.echo(f"\n🔧  KiCad CLI:     {cfg.kicad_cli}")
+        typer.echo(f"  Version:        {kicad_version}")
+    else:
+        typer.echo(f"\n🔧  KiCad CLI:     Not found  ⚠️")
+        typer.echo(f"  Path tried:     {cfg.kicad_cli}")
+
+    # ── IPC ──
+    ipc_state = get_ipc_capability_state()
+    if ipc_state.connected:
+        typer.echo(f"  IPC Status:     Connected  ✅")
+    else:
+        reason = ipc_state.last_error or "disconnected"
+        typer.echo(f"  IPC Status:     {reason}  ⚠️")
+        typer.echo(f"  Hint:           Start KiCad with IPC enabled (Preferences → IPC)")
+
+    # ── Project ──
+    if cfg.project_dir:
+        typer.echo(f"\n📁  Project:  {cfg.project_dir}")
+        typer.echo(f"  PCB:      {cfg.pcb_file or '(not set)'}")
+        typer.echo(f"  SCH:      {cfg.sch_file or '(not set)'}")
+    else:
+        typer.echo(f"\n📁  Project:  Not set")
+
+    # ── Tools ──
+    tool_count = len(categories_for_profile(cfg.profile or "default"))
+    typer.echo(f"\n🛠️   Tools:     {tool_count} available across {len(available_profiles())} profiles")
+
+    # ── Checks ──
+    typer.echo(f"\n{'─── Health Checks ───'}")
+    for check in report.checks:
+        icon = "✅" if check.status == "ok" else "⚠️" if check.status == "warn" else "❌"
+        typer.echo(f"  {icon}  {check.name}: {check.message}")
+        if check.hint:
+            typer.echo(f"      Hint: {check.hint}")
+
+    overall_icon = "✅" if report.ok else "⚠️" if report.status == "degraded" else "❌"
+    typer.echo(f"\n  Overall: {report.status} {overall_icon}")
+
+
+@app.command()
+def log(
+    lines: int = typer.Option(50, "--lines", "-n", help=option_help("Number of lines to show.")),
+    follow: bool = typer.Option(
+        False, "--follow", "-f", help=option_help("Follow log output (tail -f).")
+    ),
+    level: str = typer.Option(
+        "",
+        "--level",
+        "-l",
+        help=option_help("Filter by level: info, warning, error (default: all)."),
+    ),
+) -> None:
+    """Tail the server log file if configured."""
+    cfg = get_config()
+    log_file = cfg.log_file
+
+    if not log_file:
+        typer.echo(
+            "No log file configured. Set KICAD_MCP_LOG_FILE or use --log-file "
+            "when starting the server.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    log_path = Path(log_file)
+    if not log_path.is_file():
+        typer.echo(f"Log file not found: {log_file}", err=True)
+        raise typer.Exit(1)
+
+    if follow:
+        # Tail -f mode: watch for new lines
+        try:
+            with open(log_path, encoding="utf-8") as f:
+                # Seek to end
+                f.seek(0, 2)
+                while True:
+                    line = f.readline()
+                    if not line:
+                        time.sleep(0.1)
+                        continue
+                    if level and _log_level_match(line, level):
+                        typer.echo(line.rstrip())
+                    elif not level:
+                        typer.echo(line.rstrip())
+        except KeyboardInterrupt:
+            pass
+    else:
+        # Tail last N lines
+        with open(log_path, encoding="utf-8") as f:
+            all_lines = f.readlines()
+        tail = all_lines[-lines:] if lines < len(all_lines) else all_lines
+        for line in tail:
+            if level and _log_level_match(line, level):
+                typer.echo(line.rstrip())
+            elif not level:
+                typer.echo(line.rstrip())
+
+
+def _log_level_match(line: str, level: str) -> bool:
+    """Check if a log line matches the requested level."""
+    lowered = level.casefold()
+    return lowered in line.casefold()
+
+
 def _tool_payload(tool: mcp_types.Tool) -> dict[str, object]:
     dumped = tool.model_dump(mode="json", exclude_none=True)
     return {
@@ -2210,8 +2534,8 @@ def _run_with_watch(
                 return  # never reached
 
 
-@app.command()
-def inspect(
+@app.command(name="inspect")
+def inspect_command(
     transport: str | None = typer.Option(
         None, help=option_help("Transport: stdio, http, sse, streamable-http")
     ),

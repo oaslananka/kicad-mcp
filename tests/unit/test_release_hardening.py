@@ -408,10 +408,12 @@ async def test_tool_exception_returns_structured_error() -> None:
 
     assert isinstance(result, CallToolResult)
     assert result.isError is True
-    assert result.structuredContent is not None
-    assert result.structuredContent["error_code"] == "CONFIGURATION_ERROR"
-    assert "message" in result.structuredContent
-    assert "hint" in result.structuredContent
+    assert result.structuredContent is None
+    assert len(result.content) == 1
+    text = result.content[0].text
+    assert "CONFIGURATION_ERROR" in text
+    assert "No PCB file" in text
+    assert "Hint:" in text
 
 
 @pytest.mark.anyio
@@ -442,9 +444,11 @@ async def test_cli_nonzero_result_returns_structured_error(
 
     assert isinstance(result, CallToolResult)
     assert result.isError is True
-    assert result.structuredContent is not None
-    assert result.structuredContent["error_code"] == "CLI_COMMAND_FAILED"
-    assert "Gerber export failed" in result.structuredContent["message"]
+    assert result.structuredContent is None
+    assert len(result.content) == 1
+    text = result.content[0].text
+    assert "CLI_COMMAND_FAILED" in text
+    assert "Gerber export failed" in text
 
 
 @pytest.mark.anyio
@@ -513,8 +517,10 @@ async def test_manufacturing_gate_block_returns_structured_validation_error(
 
     assert isinstance(result, CallToolResult)
     assert result.isError is True
-    assert result.structuredContent is not None
-    assert result.structuredContent["error_code"] == "VALIDATION_FAILED"
+    assert result.structuredContent is None
+    assert len(result.content) == 1
+    text = result.content[0].text
+    assert "VALIDATION_FAILED" in text
 
 
 def test_run_cli_retries_transient_timeout(fake_cli: Path, monkeypatch) -> None:
@@ -939,7 +945,11 @@ def test_structured_error_code_unavailable() -> None:
 
     result = _structured_tool_error_from_message("kicad-cli is missing")
     assert result.isError is True
-    assert result.structuredContent["error_code"] == "CLI_UNAVAILABLE"
+    assert result.structuredContent is None
+    assert len(result.content) == 1
+    text = result.content[0].text
+    assert "CLI_UNAVAILABLE" in text
+    assert "kicad-cli" in text.casefold()
 
 
 def test_health_doctor_schema_and_secret_masking(
