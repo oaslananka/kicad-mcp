@@ -10,6 +10,7 @@ import io
 import json
 import os
 import secrets
+import subprocess
 import sys
 import threading
 import time
@@ -2479,7 +2480,12 @@ def _run_with_watch(
     experimental: bool | None = None,
     telemetry: bool | None = None,
 ) -> None:
-    """Start the server with a file watcher for hot reload on source changes."""
+    """Start the server in a subprocess and hot-reload on .py source changes.
+
+    Uses ``watchfiles`` to monitor the ``kicad_mcp`` package directory.
+    When a ``.py`` file is modified, the subprocess is terminated and a new
+    one is spawned with the same CLI flags (minus ``--watch``).
+    """
     if not HAS_WATCHFILES:
         typer.echo(
             "Error: --watch requires the 'watchfiles' package. Install it with:\n"
@@ -2493,7 +2499,8 @@ def _run_with_watch(
     log = logger.bind(package_dir=str(pkg_dir))
     log.info("hot_reload_started", path=str(pkg_dir))
 
-    # Build the command args (equivalent to the CLI invocation that started us)
+    # Build the command args (equivalent to the CLI invocation that started us,
+    # without --watch so the child runs a normal server).
     cmd = [sys.executable, "-m", "kicad_mcp.server"]
     if transport:
         cmd.extend(["--transport", transport])
@@ -2520,18 +2527,47 @@ def _run_with_watch(
     if telemetry is False:
         cmd.extend(["--no-telemetry"])
 
-    changes = watchfiles.watch(str(pkg_dir))
-    for change_set in changes:
-        for change_type, changed_path in change_set:
-            if changed_path.endswith(".py"):
+    proc: subprocess.Popen[bytes] | None = None
+    try:
+        # Start the initial subprocess
+        log.info("hot_reload_spawning", cmd=cmd)
+        proc = subprocess.Popen(
+            cmd,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        )
+
+        # Watch for file changes and restart on .py modification
+        changes = watchfiles.watch(str(pkg_dir))
+        for change_set in changes:
+            restart = False
+            for _change_type, changed_path in change_set:
+                if changed_path.endswith(".py"):
+                    restart = True
+                    break
+            if restart:
                 log.info(
                     "hot_reload_restarting",
                     changed=changed_path,
-                    change_type=change_type,
+                    change_type=_change_type,
                 )
-                # In-place restart: replaces the current process
-                os.execv(sys.executable, cmd)  # noqa: S606
-                return  # never reached
+                if proc is not None and proc.poll() is None:
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.wait()
+                log.info("hot_reload_spawning", cmd=cmd)
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=sys.stdout,
+                    stderr=sys.stderr,
+                )
+    finally:
+        if proc is not None and proc.poll() is None:
+            proc.terminate()
+            proc.wait(timeout=3)
 
 
 @app.command(name="inspect")
