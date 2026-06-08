@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "url": "http://127.0.0.1:3334/ui",
+        "url": "index.html",
         "title": "KiCad MCP Pro",
         "width": 1200,
         "height": 800,

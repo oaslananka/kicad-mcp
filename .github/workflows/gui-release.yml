@@ -69,7 +69,13 @@ jobs:
         with:
           name: ${{ matrix.artifact-name }}
           path: |
-            src-tauri/target/**/bundle/**/*
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/rpm/*.rpm
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/wix/*.msi
+            src-tauri/target/release/bundle/macos/*.app
           if-no-files-found: error
           retention-days: 14
 
@@ -103,10 +109,40 @@ jobs:
               --generate-notes
           fi
 
-          # Upload all Tauri installer bundles
-          find artifacts -type f | while read -r f; do
-            echo "Uploading: $f"
-            gh release upload "$TAG" "$f" --repo "$REPO" --clobber
+          # Upload only installer bundles, organized by OS
+          installers=$(find artifacts -type f \( \
+            -name '*.deb' -o \
+            -name '*.rpm' -o \
+            -name '*.AppImage' -o \
+            -name '*.dmg' -o \
+            -name '*-setup.exe' -o \
+            -name '*.msi' -o \
+            -name '*.app' \
+          \) )
+
+          if [ -z "$installers" ]; then
+            echo "::warning::No installer files found in artifacts"
+            # Fall back to uploading all bundle files so the release isn't empty
+            installers=$(find artifacts -type f)
+          fi
+
+          echo "$installers" | while read -r f; do
+            # Determine OS label from the artifact name or file content
+            case "$f" in
+              *linux-tauri*|*linux*) os="linux" ;;
+              *windows-tauri*|*windows*) os="windows" ;;
+              *macos-tauri*|*macos*|*darwin*) os="macos" ;;
+              *) os="other" ;;
+            esac
+
+            # Prepend OS prefix to organize in GitHub's release UI
+            dir=$(dirname "$f")
+            base=$(basename "$f")
+            prefixed="${dir}/${os}_${base}"
+
+            mv "$f" "$prefixed"
+            echo "Uploading ($os): $prefixed"
+            gh release upload "$TAG" "$prefixed" --repo "$REPO" --clobber
           done
 
           echo "::notice::Artifacts uploaded to $REPO/releases/tag/$TAG"

@@ -8,11 +8,21 @@ use std::time::Duration;
 use tauri::{Manager, State};
 use tauri::tray::TrayIconBuilder;
 
-pub struct ServerProcess(pub Mutex<Option<Child>>);
+#[derive(Clone, serde::Serialize)]
+pub struct ServerStatus {
+    pub running: bool,
+    pub message: String,
+    pub pid: Option<u32>,
+}
+
+pub struct ServerProcess {
+    pub child: Mutex<Option<Child>>,
+    pub error: Mutex<Option<String>>,
+}
 
 impl Drop for ServerProcess {
     fn drop(&mut self) {
-        if let Ok(mut guard) = self.0.lock() {
+        if let Ok(mut guard) = self.child.lock() {
             if let Some(mut child) = guard.take() {
                 let _ = child.kill();
                 let _ = child.wait();
@@ -53,9 +63,24 @@ fn which_uvx() -> Option<PathBuf> {
     #[cfg(windows)]
     {
         if let Some(home) = std::env::var_os("USERPROFILE") {
-            let candidate = PathBuf::from(home).join(".cargo").join("bin").join("uvx.exe");
+            // uv installed via cargo: ~/.cargo/bin/uvx.exe
+            let candidate = PathBuf::from(&home).join(".cargo").join("bin").join("uvx.exe");
             if candidate.exists() {
                 return Some(candidate);
+            }
+            // uv installed via official installer (irm https://astral.sh/uv/install.ps1): ~/.local/bin/uvx.exe
+            let candidate = PathBuf::from(&home).join(".local").join("bin").join("uvx.exe");
+            if candidate.exists() {
+                return Some(candidate);
+            }
+        }
+        // Also check common uv install locations on Windows
+        for base in ["LOCALAPPDATA", "APPDATA"] {
+            if let Some(var) = std::env::var_os(base) {
+                let candidate = PathBuf::from(var).join("uv").join("uvx.exe");
+                if candidate.exists() {
+                    return Some(candidate);
+                }
             }
         }
     }
@@ -63,11 +88,16 @@ fn which_uvx() -> Option<PathBuf> {
 }
 
 fn start_server_inner(process: &ServerProcess, port: u16) -> Result<String, String> {
+    // Clear previous error
+    if let Ok(mut err_guard) = process.error.lock() {
+        *err_guard = None;
+    }
+
     if check_health(port) {
         return Ok("already_running".to_string());
     }
 
-    let mut guard = process.0.lock().map_err(|error| error.to_string())?;
+    let mut guard = process.child.lock().map_err(|error| error.to_string())?;
     if guard.as_mut().is_some_and(|child| child.try_wait().ok().flatten().is_none()) {
         return Ok("already_running".to_string());
     }
@@ -76,8 +106,30 @@ fn start_server_inner(process: &ServerProcess, port: u16) -> Result<String, Stri
     }
 
     let uvx = which_uvx()
-        .ok_or("uvx was not found. Install uv first: https://docs.astral.sh/uv/")?;
+        .ok_or_else(|| {
+            let hint = if cfg!(target_os = "windows") {
+                "Install uv from PowerShell: (irm https://astral.sh/uv/install.ps1) | iex"
+            } else {
+                "Install uv: curl -fsSL https://astral.sh/uv/install.sh | sh"
+            };
+            format!("uvx was not found. {hint}")
+        })?;
+    // Use the user's home directory as working dir so uvx can resolve packages
+    let cwd = std::env::var_os("USERPROFILE")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+    // Log to a file for debugging (especially useful when spawned from Tauri GUI)
+    let log_dir = std::env::var_os("TEMP")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| std::env::temp_dir());
+    let log_path = log_dir.join("kicad-mcp-pro-server.log");
+    let log_file = std::fs::File::create(&log_path)
+        .map_err(|e| format!("Failed to create server log {log_path:?}: {e}"))?;
+
     let child = Command::new(&uvx)
+        .current_dir(&cwd)
         .args([
             "kicad-mcp-pro",
             "dashboard",
@@ -86,30 +138,47 @@ fn start_server_inner(process: &ServerProcess, port: u16) -> Result<String, Stri
             "--port",
             &port.to_string(),
         ])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(log_file)
         .spawn()
-        .map_err(|error| format!("Failed to start kicad-mcp-pro with {:?}: {error}", uvx))?;
+        .map_err(|error| format!("Failed to start kicad-mcp-pro with {uvx:?}: {error}"))?;
 
     *guard = Some(child);
     drop(guard);
 
-    for _ in 0..60 {
+    // Wait up to 60s for server to become healthy (500ms intervals)
+    for i in 0..120 {
         if check_health(port) {
             return Ok("started".to_string());
+        }
+        // Check if the child process has exited (server crashed)
+        if let Ok(mut guard) = process.child.lock() {
+            if let Some(ref mut child) = *guard {
+                if let Some(status) = child.try_wait().ok().flatten() {
+                    let _ = child.wait();
+                    drop(guard);
+                    return Err(format!(
+                        "Python server process exited unexpectedly (code: {}) before binding to port {}.\n\
+                         Run manually to debug: uvx kicad-mcp-pro dashboard --host 127.0.0.1 --port {port}",
+                        status.code().map(|c| c.to_string()).unwrap_or_else(|| "signal".to_string()),
+                        port,
+                    ));
+                }
+            }
         }
         thread::sleep(Duration::from_millis(500));
     }
 
     let _ = stop_server_inner(process);
     Err(format!(
-        "Python server at http://{}/api/health did not respond within 30 seconds",
+        "Python server at http://{}/api/health did not respond within 30 seconds.\n\
+         This may mean kicad-mcp-pro is not installed. Run: uvx kicad-mcp-pro dashboard --host 127.0.0.1 --port {port}",
         server_addr(port)
     ))
 }
 
 fn stop_server_inner(process: &ServerProcess) -> Result<(), String> {
-    let mut guard = process.0.lock().map_err(|error| error.to_string())?;
+    let mut guard = process.child.lock().map_err(|error| error.to_string())?;
     if let Some(mut child) = guard.take() {
         let _ = child.kill();
         let _ = child.wait();
@@ -129,7 +198,23 @@ fn stop_server(state: State<'_, ServerProcess>) -> Result<(), String> {
 
 #[tauri::command]
 fn server_pid(state: State<'_, ServerProcess>) -> Option<u32> {
-    state.inner().0.lock().ok()?.as_ref().map(|child| child.id())
+    state.inner().child.lock().ok()?.as_ref().map(|child| child.id())
+}
+
+#[tauri::command]
+fn server_status(state: State<'_, ServerProcess>) -> ServerStatus {
+    let pid = state.inner().child.lock().ok()
+        .and_then(|guard| guard.as_ref().map(|child| child.id()));
+    let running = pid.is_some();
+    let error_msg = state.inner().error.lock().ok()
+        .and_then(|guard| guard.clone());
+    ServerStatus {
+        running,
+        message: error_msg.unwrap_or_else(|| {
+            if running { "Server is running.".to_string() } else { "Server is not running.".to_string() }
+        }),
+        pid,
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -137,8 +222,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .manage(ServerProcess(Mutex::new(None)))
-        .invoke_handler(tauri::generate_handler![start_server, stop_server, server_pid])
+        .manage(ServerProcess {
+            child: Mutex::new(None),
+            error: Mutex::new(None),
+        })
+        .invoke_handler(tauri::generate_handler![start_server, stop_server, server_pid, server_status])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let _ = window.hide();
@@ -147,7 +235,7 @@ pub fn run() {
         })
         .setup(|app| {
             let mut tray = TrayIconBuilder::new()
-                .tooltip("KiCad MCP Pro - Running")
+                .tooltip("KiCad MCP Pro - Starting...")
                 .show_menu_on_left_click(false);
             if let Some(icon) = app.default_window_icon() {
                 tray = tray.icon(icon.clone());
@@ -155,9 +243,18 @@ pub fn run() {
             let _ = tray.build(app)?;
 
             let state = app.state::<ServerProcess>();
-            let _ = start_server_inner(state.inner(), 3334);
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.set_focus();
+            match start_server_inner(state.inner(), 3334) {
+                Ok(status) => {
+                    eprintln!("[kicad-mcp-pro] Server started: {status}");
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.set_focus();
+                    }
+                    let _ = state.error.lock().map(|mut e| *e = None);
+                }
+                Err(error) => {
+                    eprintln!("[kicad-mcp-pro] ERROR: {error}");
+                    let _ = state.error.lock().map(|mut e| *e = Some(error.clone()));
+                }
             }
             Ok(())
         })

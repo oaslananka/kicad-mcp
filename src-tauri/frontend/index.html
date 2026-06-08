@@ -4,9 +4,195 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>KiCad MCP Pro</title>
-    <meta http-equiv="refresh" content="0; url=http://127.0.0.1:3334/ui">
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
+        background: #1a1a2e;
+        color: #e0e0e0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 24px;
+      }
+      .container {
+        max-width: 520px;
+        width: 100%;
+        text-align: center;
+      }
+      .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid #2d2d5e;
+        border-top-color: #4fc3f7;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 0 auto 24px;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+      h1 {
+        font-size: 22px;
+        margin-bottom: 8px;
+        color: #ffffff;
+      }
+      .status {
+        font-size: 14px;
+        color: #a0a0b8;
+        margin-bottom: 32px;
+      }
+      .status.error { color: #ef5350; }
+      .status.success { color: #66bb6a; }
+      .details {
+        background: #16213e;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: left;
+        font-size: 13px;
+        line-height: 1.6;
+        display: none;
+      }
+      .details.visible { display: block; }
+      .details h2 {
+        font-size: 15px;
+        color: #ff7043;
+        margin-bottom: 12px;
+      }
+      .details code {
+        display: block;
+        background: #0f3460;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+        font-size: 12px;
+        margin: 6px 0;
+        word-break: break-all;
+      }
+      .details ul { padding-left: 18px; margin: 8px 0; }
+      .details li { margin-bottom: 6px; }
+      .btn {
+        display: inline-block;
+        background: #4fc3f7;
+        color: #1a1a2e;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 24px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 16px;
+        text-decoration: none;
+      }
+      .btn:hover { background: #29b6f6; }
+      .btn.secondary {
+        background: transparent;
+        color: #4fc3f7;
+        border: 1px solid #4fc3f7;
+      }
+      .step { margin-bottom: 4px; }
+      .step.ok { color: #66bb6a; }
+      .step.fail { color: #ef5350; }
+      .step.pending { color: #a0a0b8; }
+      .step::before { margin-right: 6px; }
+      .step.ok::before { content: '✓ '; }
+      .step.fail::before { content: '✗ '; }
+      .step.pending::before { content: '○ '; }
+    </style>
   </head>
   <body>
-    <p>Opening KiCad MCP Pro dashboard...</p>
+    <div class="container">
+      <div class="spinner" id="spinner"></div>
+      <h1>KiCad MCP Pro</h1>
+      <p class="status" id="status">Starting server…</p>
+
+      <div class="details" id="details">
+        <h2>⚠️ Server did not start</h2>
+        <p>The Python backend did not respond within the expected time.</p>
+        <div id="steps">
+          <div class="step pending" data-step="uvx">Check uvx is installed</div>
+          <div class="step pending" data-step="pkg">Check kicad-mcp-pro package</div>
+          <div class="step pending" data-step="server">Check server health</div>
+        </div>
+        <p style="margin-top:16px;font-size:13px;">
+          Try running this command manually in a terminal to see the error:
+        </p>
+        <code>uvx kicad-mcp-pro dashboard --host 127.0.0.1 --port 3334</code>
+        <a class="btn secondary" href="http://127.0.0.1:3334/ui" target="_blank">Try opening dashboard</a>
+        <button class="btn" onclick="location.reload()">Retry</button>
+      </div>
+    </div>
+
+    <script>
+      const DASHBOARD_URL = 'http://127.0.0.1:3334/ui';
+      const HEALTH_URL = 'http://127.0.0.1:3334/api/health';
+      const STATUS_URL = 'http://127.0.0.1:3334/api/status';
+
+      const MAX_RETRIES = 30;
+      const RETRY_INTERVAL_MS = 1000;
+      let retries = 0;
+      let healthOk = false;
+      let attempts = [];
+
+      const statusEl = document.getElementById('status');
+      const spinnerEl = document.getElementById('spinner');
+      const detailsEl = document.getElementById('details');
+
+      function setStep(name, state) {
+        const el = document.querySelector(`[data-step="${name}"]`);
+        if (el) {
+          el.className = 'step ' + state;
+        }
+      }
+
+      function showError() {
+        spinnerEl.style.display = 'none';
+        statusEl.textContent = 'Server failed to start';
+        statusEl.className = 'status error';
+        detailsEl.classList.add('visible');
+      }
+
+      async function checkServer() {
+        retries++;
+
+        // Step 1: basic connectivity check
+        try {
+          const resp = await fetch(HEALTH_URL, { method: 'GET', mode: 'no-cors', signal: AbortSignal.timeout(2000) });
+          if (resp.status === 200 || resp.status === 0) {
+            healthOk = true;
+          }
+        } catch (_) {
+          // try HEAD
+          try {
+            const headResp = await fetch(HEALTH_URL, { method: 'HEAD', mode: 'no-cors', signal: AbortSignal.timeout(2000) });
+            if (headResp.status === 200 || headResp.status === 0) {
+              healthOk = true;
+            }
+          } catch (_2) {
+            attempts.push({ retry: retries, error: String(_2).slice(0, 100) });
+          }
+        }
+
+        if (healthOk) {
+          statusEl.textContent = 'Server is ready, redirecting…';
+          statusEl.className = 'status success';
+          setStep('server', 'ok');
+          setStep('uvx', 'ok');
+          setStep('pkg', 'ok');
+          setTimeout(() => { window.location.href = DASHBOARD_URL; }, 500);
+          return;
+        }
+
+        if (retries >= MAX_RETRIES) {
+          showError();
+          return;
+        }
+
+        statusEl.textContent = `Starting server… (${retries}/${MAX_RETRIES})`;
+        setTimeout(checkServer, RETRY_INTERVAL_MS);
+      }
+
+      // Start checking
+      checkServer();
+    </script>
   </body>
 </html>

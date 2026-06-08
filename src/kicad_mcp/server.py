@@ -1793,6 +1793,15 @@ def _run_server_from_options(
         server.run(transport="stdio")
         return
 
+    # For non-stdio transports stdout is not needed for the protocol. If the
+    # parent process (e.g. Tauri) closed its pipe end, sys.stdout operations
+    # like .fileno() or .isatty() raise ValueError. Replace it with stderr so
+    # uvicorn/typer don't crash during logging config or start-up echo.
+    try:
+        sys.stdout.fileno()
+    except (ValueError, OSError, AttributeError):
+        sys.stdout = sys.stderr
+
     if selected_transport == "sse":
         server.run(transport="sse", mount_path=cfg.mount_path)
         return
@@ -2427,20 +2436,29 @@ def dashboard(
     os.environ["KICAD_MCP_HOST"] = host
     os.environ["KICAD_MCP_PORT"] = str(port)
 
-    typer.echo(f"Starting KiCad MCP Pro dashboard on http://{host}:{port}/ui")
-    typer.echo(f"  API: http://{host}:{port}/api/status")
-    typer.echo(f"  Log stream: http://{host}:{port}/api/logs/stream")
+    # Use safe echo that tolerates closed/non-available stdout (e.g. when
+    # spawned by Tauri with stdout=NUL on Windows).
+    def _safe_echo(msg: str) -> None:
+        try:
+            typer.echo(msg)
+        except (ValueError, OSError, AttributeError):
+            # stdout might be closed or not a valid file descriptor
+            pass
+
+    _safe_echo(f"Starting KiCad MCP Pro dashboard on http://{host}:{port}/ui")
+    _safe_echo(f"  API: http://{host}:{port}/api/status")
+    _safe_echo(f"  Log stream: http://{host}:{port}/api/logs/stream")
 
     if open_browser:
         import webbrowser
 
         webbrowser.open(f"http://{host}:{port}/ui")
 
-    # Reset config so the new env vars take effect
+    # Reset config and start with explicit transport, host, and port
     from .config import reset_config
 
     reset_config()
-    _run_server_from_options()
+    _run_server_from_options(transport="streamable-http", host=host, port=port)
 
 
 @app.command()

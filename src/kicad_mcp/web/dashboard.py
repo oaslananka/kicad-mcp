@@ -316,6 +316,7 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
         <button class="btn btn-sm" onclick="window.open('/api/health','_blank')">Health JSON</button>
         <button class="btn btn-sm" onclick="window.location.hash='#/logs'">All Logs</button>
       </div>
+      <div id="action-msg" style="margin-top:8px;font-size:13px;"></div>
     </div>
     <div class="card" style="margin-top:14px;"><h3>Recent Tool Calls</h3>
       <div class="recent-list" id="recent-calls">
@@ -489,6 +490,12 @@ function navigate(view) {
   if (hash === 'setup-wizard') initWizard();
 }
 
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => {
+    const view = el.dataset.view;
+    if (view) window.location.hash = view;
+  });
+});
 window.addEventListener('hashchange', () => navigate());
 window.addEventListener('DOMContentLoaded', () => navigate());
 logEl.addEventListener('scroll', () => {
@@ -971,19 +978,27 @@ function finishWizard() { window.location.hash = '#dashboard'; }
 function serverAction(action) {
   const dangerous = action === 'stop' || action === 'restart';
   if (dangerous && !confirm('Server action: ' + action + '. Continue?')) return;
+  showMsg('action-msg', 'Sending ' + action + ' request...', 'info');
   fetch('/api/server/' + action, { method: 'POST' }).then(r => r.json()).then(d => {
     const msg = d.message || d.status || (action + ' requested');
-    showMsg('settings-msg', msg, d.error ? 'error' : 'info');
+    showMsg('action-msg', msg, d.error ? 'error' : 'info');
     setTimeout(refreshStatus, 1500);
-  }).catch(() => {});
+  }).catch(err => {
+    console.error('serverAction error:', err);
+    showMsg('action-msg', 'Action failed: ' + err.message, 'error');
+  });
 }
 
 function confirmRestart() {
   if (confirm('Are you sure you want to restart the server?')) {
+    showMsg('action-msg', 'Restart initiated...', 'info');
     fetch('/api/server/restart', { method: 'POST' }).then(r => r.json()).then(d => {
-      showMsg('settings-msg', d.message || d.status || 'Restart initiated...', 'info');
+      showMsg('action-msg', d.message || d.status || 'Restart initiated...', 'info');
       setTimeout(refreshStatus, 3000);
-    }).catch(() => {});
+    }).catch(err => {
+      console.error('confirmRestart error:', err);
+      showMsg('action-msg', 'Restart failed: ' + err.message, 'error');
+    });
   }
 }
 
