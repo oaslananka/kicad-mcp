@@ -114,7 +114,7 @@ class TestWebModule:
         assert "refreshStatus" in DASHBOARD_HTML
         assert "connectSSE" in DASHBOARD_HTML
         assert "setLogFilter" in DASHBOARD_HTML
-        assert "3.8.0" in DASHBOARD_HTML
+        assert "3.9.0" in DASHBOARD_HTML
 
 
 # ---------------------------------------------------------------------------
@@ -250,7 +250,7 @@ class TestAPIEndpoints:
         response = await api_status(request)
         data = json.loads(response.body)
 
-        assert data["server"]["version"] == "3.8.0"
+        assert data["server"]["version"] == "3.9.0"
         assert data["health"]["ok"] is True
         assert data["health"]["status"] == "ok"
         assert "kicad" in data
@@ -269,7 +269,7 @@ class TestAPIEndpoints:
 
         assert data["ok"] is True
         assert data["status"] == "ok"
-        assert data["version"] == "3.8.0"
+        assert data["version"] == "3.9.0"
         assert "uptime" in data
 
     @pytest.mark.anyio
@@ -282,7 +282,7 @@ class TestAPIEndpoints:
         data = json.loads(response.body)
 
         assert data["name"] == "KiCad MCP Pro"
-        assert data["version"] == "3.8.0"
+        assert data["version"] == "3.9.0"
         assert "python" in data
         assert "platform" in data
         assert "config" in data
@@ -345,7 +345,7 @@ class TestDashboardHTML:
         from kicad_mcp.web.dashboard import DASHBOARD_HTML
 
         assert "{{version}}" not in DASHBOARD_HTML
-        assert "3.8.0" in DASHBOARD_HTML
+        assert "3.9.0" in DASHBOARD_HTML
 
 
 # ---------------------------------------------------------------------------
@@ -378,7 +378,7 @@ class TestRouteRegistration:
         response = client.get("/api/status")
         assert response.status_code == 200
         data = response.json()
-        assert data["server"]["version"] == "3.8.0"
+        assert data["server"]["version"] == "3.9.0"
 
     def test_health_via_test_client(self) -> None:
         """Test that /api/health responds via TestClient."""
