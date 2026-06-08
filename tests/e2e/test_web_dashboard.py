@@ -75,7 +75,7 @@ MOCK_METRICS: dict[str, Any] = {
 MOCK_HEALTH: dict[str, Any] = {
     "ok": True,
     "status": "healthy",
-    "version": "3.8.0",
+    "version": "3.9.0",
     "uptime": 3600,
 }
 
@@ -301,7 +301,7 @@ class TestDashboardSPA:
         """The SPA loads and shows the dashboard view by default."""
         page.goto(dashboard_url)
         page.wait_for_selector("#navVersion")
-        assert page.text_content("#navVersion") == "v3.8.0"
+        assert page.text_content("#navVersion") == "v3.9.0"
         assert page.is_visible("#view-dashboard")
         classes = page.get_attribute("#view-dashboard", "class") or ""
         assert "active" in classes
