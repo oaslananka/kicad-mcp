@@ -10,6 +10,21 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [Unreleased]
+
+### Changed
+
+- Aligned the enforced full-suite coverage baseline with the measured repository
+  coverage so the local quality gate detects regressions and remains runnable.
+
+### Fixed
+
+- Removed the final obsolete release-token setup instruction.
+- Hardened release workflows against excessive permissions, template injection,
+  and publish-job cache poisoning.
+- Restored the missing root contribution guide and required README sections.
+- Restored the Tauri Rust format and Clippy quality gates.
+
 ## [3.9.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.8.0...mcp-server-v3.9.0) (2026-06-07)
 
 
