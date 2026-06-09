@@ -41,7 +41,7 @@ jobs:
         run: uv sync --group dev --frozen
 
       - name: Build documentation
-        run: uv run mkdocs build --strict
+        run: uv run python -m mkdocs build --strict
 
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
