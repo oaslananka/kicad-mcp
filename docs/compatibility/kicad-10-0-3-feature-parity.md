@@ -1,7 +1,7 @@
 # KiCad 10.0.3 Feature Parity
 
 This page is the human-readable view of
-[`compatibility.yaml`](../../compatibility.yaml) `kicad10FeatureParity`. It
+[`compatibility.yaml`](https://github.com/oaslananka/kicad-mcp/blob/main/compatibility.yaml) `kicad10FeatureParity`. It
 tracks KiCad 10.0.3 parity separately from the current KiCad 11 readiness plan
 so release gates stay focused on the stable KiCad line.
 

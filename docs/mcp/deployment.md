@@ -16,4 +16,4 @@ Use the deployment mode that matches the trust boundary of the KiCad project.
 - Mount project directories read-only for inspection workflows.
 - Keep generated manufacturing/output paths separated from source projects.
 
-Supply-chain and release-integrity controls are documented in [security](../security.md).
+Supply-chain and release-integrity controls are documented in [release integrity](../security/release-integrity.md).

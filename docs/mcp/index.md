@@ -12,7 +12,7 @@ release-quality checks to MCP clients.
 | Connect through Streamable HTTP or stdio                 | [Transport](transport.md)                                      |
 | Deploy with Docker, systemd, tunnels, or reverse proxies | [Deployment](deployment.md)                                    |
 | Validate server-info and capabilities                    | [API reference](api-reference.md)                              |
-| Connect to the VS Code extension                         | [KiCad Studio integration](../integration/kicad-studio-mcp.md) |
+| Connect to the VS Code extension                         | [KiCad Studio integration](../integration/kicad-studio.md) |
 
 ## Source Files
 

@@ -101,8 +101,8 @@ corepack pnpm run check:compatibility
 - Update `compatibility.yaml` only after the KiCad 11 RC or stable canary passes.
 - Keep KiCad 10.0.x primary support unchanged until the support matrix and
   product changelogs intentionally move the primary line.
-- Update [`../support-matrix.md`](../support-matrix.md) and
-  [`../testing-strategy.md`](../testing-strategy.md) with the new line state.
+- Update [`../status/runtime-matrix.md`](../status/runtime-matrix.md) and
+  [`../development/contributing.md`](../development/contributing.md) with the new line state.
 - Attach the canary artifact summary to the tracking issue or PR.
 - Keep production code on IPC, `kicad-cli`, or file-backed adapters.
 
