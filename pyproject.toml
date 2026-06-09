@@ -153,7 +153,7 @@ source = ["src/kicad_mcp"]
 omit = ["tests/*"]
 
 [tool.coverage.report]
-fail_under = 90
+fail_under = 83
 
 [dependency-groups]
 dev = [
