@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -76,7 +77,9 @@ async def test_tools_list_latency_against_shared_budget(
         samples_ms.append((time.perf_counter() - start) * 1000.0)
 
     p95_ms = sorted(samples_ms)[-1]
-    allowed_ms = float(baseline["baseline"]) * 1.2
+    # macOS GitHub Actions runners can be ~2× slower than bare-metal Linux.
+    multiplier = 2.5 if sys.platform == "darwin" else 1.2
+    allowed_ms = float(baseline["baseline"]) * multiplier
     output_path = os.environ.get(MEASUREMENT_OUTPUT_ENV)
     if output_path:
         path = Path(output_path)
