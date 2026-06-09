@@ -3,9 +3,9 @@
 Releases use Conventional Commits and release-please as the canonical release PR
 and changelog mechanism. Release Drafter is not used.
 
-The release-please workflow requires `DOPPLER_GITHUB_SERVICE_TOKEN`. It fails
-closed when the service token is missing so release PR creation does not fall
-back to `GITHUB_TOKEN` and hide token-sync drift.
+The release-please workflow uses the repository-scoped `GITHUB_TOKEN` with the
+least-privilege permissions declared in `.github/workflows/release-please.yml`.
+No long-lived release token is required.
 
 ## Normal Release
 

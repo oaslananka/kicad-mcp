@@ -86,3 +86,20 @@ schemas, common development ports, and optional Cloudflare tunnel tooling.
 ## Package Metadata
 
 The canonical metadata source of truth is `server.json`, which defines the MCP server contract. It is synchronized with `pyproject.toml` and verified in CI via `pnpm run metadata:check`.
+
+## Usage
+
+Use `kicad-mcp-pro --help` to inspect CLI commands and
+[`docs/client-configuration.md`](docs/client-configuration.md) to configure an
+MCP client. The generated tool catalog is available in
+[`docs/tools-reference.generated.md`](docs/tools-reference.generated.md).
+
+## Contributing
+
+Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request. All
+changes must pass the repository's format, lint, type-check, test, workflow,
+security, and package metadata gates.
+
+## License
+
+KiCad MCP Pro is available under the [MIT License](LICENSE).
