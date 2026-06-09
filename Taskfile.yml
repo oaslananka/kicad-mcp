@@ -140,11 +140,6 @@ tasks:
     cmds:
       - uv run kicad-mcp-pro tray --port 3334
 
-  doppler:check:
-    desc: Verify required Doppler secrets
-    cmds:
-      - bash scripts/verify_doppler_secrets.sh
-
   inspect:
     desc: Launch the MCP Inspector GUI for interactive tool debugging
     cmds:

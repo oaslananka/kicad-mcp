@@ -80,7 +80,6 @@ nav:
       - Repository and CI/CD Topology: deployment/repository-topology.md
       - Autonomy Model: autonomy.md
       - Repository Operations: repository-operations.md
-      - Doppler Setup: doppler-setup.md
       - Branch Protection: branch-protection.md
       - Docker: deployment/docker.md
       - HTTP Mode: deployment/http-mode.md

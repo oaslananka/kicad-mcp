@@ -23,8 +23,9 @@ Automation runs on `oaslananka/kicad-mcp`:
 
 ## Secrets
 
-Doppler project `all`, config `main` is the secret source of truth for
-workflows that need Doppler-backed values.
+Repository and GitHub Actions secrets are the source of truth for
+workflows that need sensitive values. All secrets are managed through
+GitHub's encrypted secrets and environments.
 
 ## Automation Boundaries
 

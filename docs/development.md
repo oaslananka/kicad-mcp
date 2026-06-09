@@ -63,4 +63,4 @@ act -W .github/workflows/ci.yml --container-architecture linux/amd64
 
 - `task: command not found`: install Task from the official installation page.
 - Hook setup fails: run `uvx pre-commit install --install-hooks`.
-- CI and local results differ: run `task doppler:check` and verify the same Doppler project/config are used.
+- CI and local results differ: check that environment variables are consistent between local and CI.
