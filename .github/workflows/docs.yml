@@ -38,7 +38,7 @@ jobs:
           version-file: uv.toml
 
       - name: Install dependencies
-        run: uv sync --group dev --frozen
+        run: uv sync --extra dev --frozen
 
       - name: Build documentation
         run: uv run python -m mkdocs build --strict
