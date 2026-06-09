@@ -15,7 +15,7 @@ RUN if [ -n "${KICAD_APPIMAGE_URL}" ]; then \
     fi; \
     mkdir -p /opt/kicad-appimage
 
-FROM python:3.13.12-alpine3.22@sha256:41351b07080ccfaa27bf38dde20de79ee6a0ac74a58c00c6d7a7d96ac4e69716 AS builder
+FROM python:3.14.5-alpine3.22@sha256:6b91e66ab2a880ce9ca5a1b91c70f45963ff71ff68268df056336e1a657d5efd AS builder
 ARG UV_VERSION=0.11.19
 ENV UV_NO_CACHE=1
 WORKDIR /build
@@ -28,7 +28,7 @@ RUN uv build --wheel --out-dir /dist \
     --format requirements.txt \
     --output-file /dist/requirements.txt
 
-FROM python:3.13.12-slim@sha256:f1927c75e81efd1e091dbd64b6c0ecaa5630b38635a3d1c04034ac636e1f94c8 AS builder-kicad10
+FROM python:3.14.5-slim@sha256:c845af9399020c7e562969a13689e929074a10fd057acd1b1fad06a2fb068e97 AS builder-kicad10
 ARG UV_VERSION=0.11.19
 ENV UV_NO_CACHE=1
 WORKDIR /app
@@ -37,7 +37,7 @@ COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY src/ src/
 RUN uv sync --frozen --extra http --extra simulation --extra freerouting
 
-FROM python:3.13.12-alpine3.22@sha256:41351b07080ccfaa27bf38dde20de79ee6a0ac74a58c00c6d7a7d96ac4e69716 AS runtime
+FROM python:3.14.5-alpine3.22@sha256:6b91e66ab2a880ce9ca5a1b91c70f45963ff71ff68268df056336e1a657d5efd AS runtime
 ARG KICAD_MCP_VERSION=0.0.0
 ARG VCS_REF=unknown
 ARG KICAD_CLI_APK_PACKAGE=
@@ -69,7 +69,7 @@ EXPOSE 3334
 ENTRYPOINT ["kicad-mcp-pro-entrypoint"]
 CMD ["--transport", "streamable-http"]
 
-FROM python:3.13.12-slim@sha256:f1927c75e81efd1e091dbd64b6c0ecaa5630b38635a3d1c04034ac636e1f94c8 AS runtime-kicad10
+FROM python:3.14.5-slim@sha256:c845af9399020c7e562969a13689e929074a10fd057acd1b1fad06a2fb068e97 AS runtime-kicad10
 ARG KICAD_MCP_VERSION=0.0.0
 ARG VCS_REF=unknown
 ENV DEBIAN_FRONTEND=noninteractive \
