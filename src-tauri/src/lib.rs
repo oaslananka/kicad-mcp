@@ -5,8 +5,8 @@ use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
-use tauri::{Manager, State};
 use tauri::tray::TrayIconBuilder;
+use tauri::{Manager, State};
 
 #[derive(Clone, serde::Serialize)]
 pub struct ServerStatus {
@@ -64,12 +64,18 @@ fn which_uvx() -> Option<PathBuf> {
     {
         if let Some(home) = std::env::var_os("USERPROFILE") {
             // uv installed via cargo: ~/.cargo/bin/uvx.exe
-            let candidate = PathBuf::from(&home).join(".cargo").join("bin").join("uvx.exe");
+            let candidate = PathBuf::from(&home)
+                .join(".cargo")
+                .join("bin")
+                .join("uvx.exe");
             if candidate.exists() {
                 return Some(candidate);
             }
             // uv installed via official installer (irm https://astral.sh/uv/install.ps1): ~/.local/bin/uvx.exe
-            let candidate = PathBuf::from(&home).join(".local").join("bin").join("uvx.exe");
+            let candidate = PathBuf::from(&home)
+                .join(".local")
+                .join("bin")
+                .join("uvx.exe");
             if candidate.exists() {
                 return Some(candidate);
             }
@@ -98,22 +104,24 @@ fn start_server_inner(process: &ServerProcess, port: u16) -> Result<String, Stri
     }
 
     let mut guard = process.child.lock().map_err(|error| error.to_string())?;
-    if guard.as_mut().is_some_and(|child| child.try_wait().ok().flatten().is_none()) {
+    if guard
+        .as_mut()
+        .is_some_and(|child| child.try_wait().ok().flatten().is_none())
+    {
         return Ok("already_running".to_string());
     }
     if guard.is_some() {
         *guard = None;
     }
 
-    let uvx = which_uvx()
-        .ok_or_else(|| {
-            let hint = if cfg!(target_os = "windows") {
-                "Install uv from PowerShell: (irm https://astral.sh/uv/install.ps1) | iex"
-            } else {
-                "Install uv: curl -fsSL https://astral.sh/uv/install.sh | sh"
-            };
-            format!("uvx was not found. {hint}")
-        })?;
+    let uvx = which_uvx().ok_or_else(|| {
+        let hint = if cfg!(target_os = "windows") {
+            "Install uv from PowerShell: (irm https://astral.sh/uv/install.ps1) | iex"
+        } else {
+            "Install uv: curl -fsSL https://astral.sh/uv/install.sh | sh"
+        };
+        format!("uvx was not found. {hint}")
+    })?;
     // Use the user's home directory as working dir so uvx can resolve packages
     let cwd = std::env::var_os("USERPROFILE")
         .map(PathBuf::from)
@@ -123,7 +131,7 @@ fn start_server_inner(process: &ServerProcess, port: u16) -> Result<String, Stri
     // Log to a file for debugging (especially useful when spawned from Tauri GUI)
     let log_dir = std::env::var_os("TEMP")
         .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::temp_dir());
+        .unwrap_or_else(std::env::temp_dir);
     let log_path = log_dir.join("kicad-mcp-pro-server.log");
     let log_file = std::fs::File::create(&log_path)
         .map_err(|e| format!("Failed to create server log {log_path:?}: {e}"))?;
@@ -147,7 +155,7 @@ fn start_server_inner(process: &ServerProcess, port: u16) -> Result<String, Stri
     drop(guard);
 
     // Wait up to 60s for server to become healthy (500ms intervals)
-    for i in 0..120 {
+    for _ in 0..120 {
         if check_health(port) {
             return Ok("started".to_string());
         }
@@ -198,20 +206,38 @@ fn stop_server(state: State<'_, ServerProcess>) -> Result<(), String> {
 
 #[tauri::command]
 fn server_pid(state: State<'_, ServerProcess>) -> Option<u32> {
-    state.inner().child.lock().ok()?.as_ref().map(|child| child.id())
+    state
+        .inner()
+        .child
+        .lock()
+        .ok()?
+        .as_ref()
+        .map(|child| child.id())
 }
 
 #[tauri::command]
 fn server_status(state: State<'_, ServerProcess>) -> ServerStatus {
-    let pid = state.inner().child.lock().ok()
+    let pid = state
+        .inner()
+        .child
+        .lock()
+        .ok()
         .and_then(|guard| guard.as_ref().map(|child| child.id()));
     let running = pid.is_some();
-    let error_msg = state.inner().error.lock().ok()
+    let error_msg = state
+        .inner()
+        .error
+        .lock()
+        .ok()
         .and_then(|guard| guard.clone());
     ServerStatus {
         running,
         message: error_msg.unwrap_or_else(|| {
-            if running { "Server is running.".to_string() } else { "Server is not running.".to_string() }
+            if running {
+                "Server is running.".to_string()
+            } else {
+                "Server is not running.".to_string()
+            }
         }),
         pid,
     }
@@ -226,7 +252,12 @@ pub fn run() {
             child: Mutex::new(None),
             error: Mutex::new(None),
         })
-        .invoke_handler(tauri::generate_handler![start_server, stop_server, server_pid, server_status])
+        .invoke_handler(tauri::generate_handler![
+            start_server,
+            stop_server,
+            server_pid,
+            server_status
+        ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let _ = window.hide();
