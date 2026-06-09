@@ -83,6 +83,8 @@ jobs:
       - name: Verify npm checksums before publish
         run: (cd ../../release-assets/mcp-npm && sha256sum --check SHA256SUMS.txt)
       - run: npm publish "${{ steps.npm-evidence.outputs.tarball }}" --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Verify npm published tarball digest
         shell: bash
         run: |

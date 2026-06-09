@@ -1,0 +1,103 @@
+# Dependabot — automated dependency updates
+# See: https://docs.github.com/code-security/dependabot
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Istanbul"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    labels:
+      - "dependencies"
+      - "automated"
+    open-pull-requests-limit: 10
+    groups:
+      github-actions:
+        patterns:
+          - "actions/*"
+          - "github/*"
+          - "astral-sh/*"
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Istanbul"
+    commit-message:
+      prefix: "chore(deps)"
+      prefix-development: "chore(deps-dev)"
+    labels:
+      - "dependencies"
+      - "automated"
+    open-pull-requests-limit: 10
+    groups:
+      commitlint:
+        patterns:
+          - "@commitlint/*"
+      dev-dependencies:
+        patterns:
+          - "husky"
+
+  - package-ecosystem: "npm"
+    directory: "/packages/mcp-npm"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Istanbul"
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "automated"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "npm"
+    directory: "/packages/protocol-schemas"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Istanbul"
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "automated"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Istanbul"
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "automated"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "cargo"
+    directory: "/src-tauri"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Europe/Istanbul"
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - "dependencies"
+      - "automated"
+    open-pull-requests-limit: 5
