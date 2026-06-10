@@ -10,6 +10,15 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.9.1](https://github.com/oaslananka/kicad-mcp/compare/mcp-npm-v3.9.0...mcp-npm-v3.9.1) (2026-06-10)
+
+
+### Fixed
+
+- Forward-port ruff crash fix for macOS ARM64 runners.
+- Forward-port README version marker fix for submission readiness checks.
+
+
 ## [3.9.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-npm-v3.8.0...mcp-npm-v3.9.0) (2026-06-07)
 
 

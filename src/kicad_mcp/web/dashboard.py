@@ -1027,4 +1027,4 @@ connectSSE();
 </html>"""
 
 # Replace version template on import
-DASHBOARD_HTML = DASHBOARD_HTML.replace("{{version}}", "3.9.0")
+DASHBOARD_HTML = DASHBOARD_HTML.replace("{{version}}", "3.9.1")

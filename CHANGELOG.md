@@ -10,20 +10,24 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
-## [Unreleased]
+## [3.9.1](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.9.0...mcp-server-v3.9.1) (2026-06-10)
 
-### Changed
-
-- Aligned the enforced full-suite coverage baseline with the measured repository
-  coverage so the local quality gate detects regressions and remains runnable.
 
 ### Fixed
 
+- Resolved CI test failure (`test_readme_listing_references_use_current_package_version`) caused by README version marker not matching the table format in `check_submission_readiness.py`.
+- Pinned `ruff!=0.15.10` in dev dependencies to avoid a dyld rebase crash on macOS ARM64 runners.
+- Fixed TypeScript syntax error in `apps-sdk/src/server.ts` where optional chaining was incorrectly applied after a type assertion.
 - Removed the final obsolete release-token setup instruction.
 - Hardened release workflows against excessive permissions, template injection,
   and publish-job cache poisoning.
 - Restored the missing root contribution guide and required README sections.
 - Restored the Tauri Rust format and Clippy quality gates.
+
+### Changed
+
+- Aligned the enforced full-suite coverage baseline with the measured repository
+  coverage so the local quality gate detects regressions and remains runnable.
 
 ## [3.9.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.8.0...mcp-server-v3.9.0) (2026-06-07)
 

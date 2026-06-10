@@ -115,13 +115,19 @@ async function extractProject(dir: string): Promise<string> {
   return join(dir, kicadProj.name);
 }
 
+function getBoardThickness(pcb: Record<string, unknown>): number | null {
+  const setup = pcb.setup as Record<string, unknown> | undefined;
+  const thickness = setup?.board_thickness;
+  return typeof thickness === "number" ? thickness : null;
+}
+
 function analyzePcbFile(pcbPath: string): KiCadBoard {
   try {
     const raw = readFileSync(pcbPath, "utf-8");
     const pcb = JSON.parse(raw) as Record<string, unknown>;
     return {
       layers: parseKiCadPcbLayers(pcb),
-      boardThickness: (pcb.setup as Record<string, unknown>?.board_thickness as number) ?? null,
+      boardThickness: getBoardThickness(pcb),
       copperLayers: parseKiCadPcbLayers(pcb),
       componentCount: countBoardComponents(pcb),
       trackCount: countBoardTracks(pcb),
