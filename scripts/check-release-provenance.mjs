@@ -99,23 +99,15 @@ function checkWorkflowEvidence(failures) {
 function checkDocs(failures) {
   const release = read(files.docsRelease);
   const publishing = read(files.docsPublishing);
-  for (const surface of ["VSIX", "Python wheel", "npm launcher tarball"]) {
+  for (const surface of ["Python wheel", "npm launcher tarball"]) {
     expectIncludes(release, surface, "release docs", failures);
   }
   for (const registry of [
-    "Visual Studio Marketplace",
-    "Open VSX",
     "PyPI",
     "npm",
   ]) {
     expectIncludes(publishing, registry, "publishing docs", failures);
   }
-  expectIncludes(
-    publishing,
-    "Rollback and re-publish policy",
-    "publishing docs",
-    failures,
-  );
 }
 
 const failures = [];

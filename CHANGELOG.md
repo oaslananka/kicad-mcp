@@ -10,6 +10,14 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [Unreleased]
+
+### Added
+
+### Fixed
+
+### Changed
+
 ## [3.9.1](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.9.0...mcp-server-v3.9.1) (2026-06-10)
 
 

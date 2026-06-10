@@ -179,7 +179,7 @@ fn start_server_inner(process: &ServerProcess, port: u16) -> Result<String, Stri
 
     let _ = stop_server_inner(process);
     Err(format!(
-        "Python server at http://{}/api/health did not respond within 30 seconds.\n\
+        "Python server at http://{}/api/health did not respond within 60 seconds.\n\
          This may mean kicad-mcp-pro is not installed. Run: uvx kicad-mcp-pro dashboard --host 127.0.0.1 --port {port}",
         server_addr(port)
     ))
