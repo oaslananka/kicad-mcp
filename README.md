@@ -23,9 +23,9 @@
 KiCad MCP Pro is a Model Context Protocol server for KiCad EDA workflows. It exposes tools, resources, and prompts for schematic, PCB, validation, DFM, and manufacturing export automation.
 
 Telemetry and error reporting are disabled by default. Opt-in OpenTelemetry
-configuration and privacy rules are documented in
-[`docs/configuration.md`](docs/configuration.md#opentelemetry) and
-[`docs/telemetry.md`](docs/telemetry.md).
+configuration is documented in
+[`docs/configuration.md`](docs/configuration.md#opentelemetry), and privacy rules
+are documented in [`docs/privacy.md`](docs/privacy.md).
 
 ## Project identity
 
