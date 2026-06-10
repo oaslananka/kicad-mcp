@@ -5,12 +5,17 @@ on:
     tags:
       - "kicad-mcp-gui-v*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. kicad-mcp-gui-v3.9.0"
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: gui-release-${{ github.ref }}
+  group: gui-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -29,6 +34,7 @@ jobs:
             artifact-name: macos-tauri
             args: ""
     runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
@@ -71,7 +77,7 @@ jobs:
             src-tauri/target/release/bundle/dmg/*.dmg
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/wix/*.msi
-            src-tauri/target/release/bundle/macos/*.app
+            src-tauri/target/release/bundle/nsis/*.exe
           if-no-files-found: error
           retention-days: 14
 
@@ -80,6 +86,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
 
@@ -89,42 +96,52 @@ jobs:
         run: |
           gh run download ${{ github.run_id }} --repo ${{ github.repository }} --dir artifacts
 
-      - name: Upload artifacts to GitHub Release
+      - name: Upload installers to GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: |
+          set -euo pipefail
+
           TAG="$RELEASE_TAG"
           REPO="${{ github.repository }}"
 
-          # Ensure the release exists (Release Please should have created it, but
-          # workflow_dispatch may not have a tag. Create it if missing.)
-          if ! gh release view "$TAG" --repo "$REPO" &>/dev/null; then
+          case "$TAG" in
+            kicad-mcp-gui-v*) ;;
+            *)
+              echo "::error::Release tag must start with kicad-mcp-gui-v, got: $TAG"
+              exit 1
+              ;;
+          esac
+
+          if ! gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
             echo "Release $TAG does not exist yet, creating..."
             gh release create "$TAG" --repo "$REPO" \
               --title "$TAG" \
+              --target "$GITHUB_SHA" \
               --generate-notes
           fi
 
-          # Upload only installer bundles, organized by OS
-          installers=$(find artifacts -type f \( \
-            -name '*.deb' -o \
-            -name '*.rpm' -o \
-            -name '*.AppImage' -o \
-            -name '*.dmg' -o \
-            -name '*-setup.exe' -o \
-            -name '*.msi' -o \
-            -name '*.app' \
-          \) )
+          mkdir -p release-assets
 
-          if [ -z "$installers" ]; then
-            echo "::warning::No installer files found in artifacts"
-            # Fall back to uploading all bundle files so the release isn't empty
-            installers=$(find artifacts -type f)
+          mapfile -d '' installers < <(
+            find artifacts -type f \( \
+              -name '*.deb' -o \
+              -name '*.rpm' -o \
+              -name '*.AppImage' -o \
+              -name '*.dmg' -o \
+              -name '*.msi' -o \
+              -name '*.exe' \
+            \) -print0
+          )
+
+          if [ "${#installers[@]}" -eq 0 ]; then
+            echo "::error::No installer files found. Refusing to upload internal bundle files."
+            find artifacts -maxdepth 5 -type f | sort
+            exit 1
           fi
 
-          echo "$installers" | while read -r f; do
-            # Determine OS label from the artifact name or file content
+          for f in "${installers[@]}"; do
             case "$f" in
               *linux-tauri*|*linux*) os="linux" ;;
               *windows-tauri*|*windows*) os="windows" ;;
@@ -132,14 +149,13 @@ jobs:
               *) os="other" ;;
             esac
 
-            # Prepend OS prefix to organize in GitHub's release UI
-            dir=$(dirname "$f")
-            base=$(basename "$f")
-            prefixed="${dir}/${os}_${base}"
-
-            mv "$f" "$prefixed"
-            echo "Uploading ($os): $prefixed"
-            gh release upload "$TAG" "$prefixed" --repo "$REPO" --clobber
+            base="$(basename "$f" | tr ' ' '-')"
+            target="release-assets/${os}_${base}"
+            cp "$f" "$target"
+            echo "Prepared ($os): $target"
           done
 
-          echo "::notice::Artifacts uploaded to $REPO/releases/tag/$TAG"
+          ls -lh release-assets
+          gh release upload "$TAG" release-assets/* --repo "$REPO" --clobber
+
+          echo "::notice::Installers uploaded to $REPO/releases/tag/$TAG"
