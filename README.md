@@ -1,34 +1,48 @@
 # KiCad MCP Pro
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/oaslananka/kicad-mcp)
+<!-- Badges: releases and package distribution -->
+[![GUI Release](https://img.shields.io/github/v/release/oaslananka/kicad-mcp?filter=kicad-mcp-gui-v*&label=gui%20release)](https://github.com/oaslananka/kicad-mcp/releases)
 [![PyPI - Version](https://img.shields.io/pypi/v/kicad-mcp-pro)](https://pypi.org/project/kicad-mcp-pro/)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/kicad-mcp-pro)](https://pypi.org/project/kicad-mcp-pro/)
 [![npm - Version](https://img.shields.io/npm/v/kicad-mcp-pro)](https://www.npmjs.com/package/kicad-mcp-pro)
-[![CI](https://github.com/oaslananka/kicad-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/oaslananka/kicad-mcp/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+<!-- Badges: quality, CI, and security -->
+[![CI](https://github.com/oaslananka/kicad-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/ci.yml)
+[![GUI CI](https://github.com/oaslananka/kicad-mcp/actions/workflows/gui-ci.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/gui-ci.yml)
+[![Docs](https://github.com/oaslananka/kicad-mcp/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/docs.yml)
+[![CodeQL](https://github.com/oaslananka/kicad-mcp/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/oaslananka/kicad-mcp/badge)](https://securityscorecards.dev/viewer/?uri=github.com/oaslananka/kicad-mcp)
 
+<!-- Badges: documentation and knowledge base -->
+[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://oaslananka.github.io/kicad-mcp/)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/oaslananka/kicad-mcp)
+
 <!-- mcp-name: io.github.oaslananka/kicad-mcp-pro -->
-
-Canonical repository: https://github.com/oaslananka/kicad-mcp
-
-- PyPI: `kicad-mcp-pro`
-- npm wrapper: `kicad-mcp-pro`
-- MCP Registry name: `io.github.oaslananka/kicad-mcp-pro`
-- Version: `3.9.0`
 
 KiCad MCP Pro is a Model Context Protocol server for KiCad EDA workflows. It exposes tools, resources, and prompts for schematic, PCB, validation, DFM, and manufacturing export automation.
 
 Telemetry and error reporting are disabled by default. Opt-in OpenTelemetry
 configuration and privacy rules are documented in
-[`docs/configuration.md`](docs/configuration.md#opentelemetry) in [`docs/telemetry.md`](docs/telemetry.md).
+[`docs/configuration.md`](docs/configuration.md#opentelemetry) and
+[`docs/telemetry.md`](docs/telemetry.md).
+
+## Project identity
+
+| Field | Value |
+| --- | --- |
+| Canonical repository | [`oaslananka/kicad-mcp`](https://github.com/oaslananka/kicad-mcp) |
+| PyPI package | [`kicad-mcp-pro`](https://pypi.org/project/kicad-mcp-pro/) |
+| npm wrapper | [`kicad-mcp-pro`](https://www.npmjs.com/package/kicad-mcp-pro) |
+| MCP Registry name | `io.github.oaslananka/kicad-mcp-pro` |
+| Version | `3.9.0` |
 
 ## Quick Start
 
 ### Desktop App
 
 Download the latest installer from the
-[GitHub releases page](https://github.com/oaslananka/kicad-mcp/releases/latest).
+[GitHub releases page](https://github.com/oaslananka/kicad-mcp/releases).
 The Tauri desktop app starts the Python dashboard server automatically and opens
 the GUI at `http://127.0.0.1:3334/ui`.
 
@@ -47,6 +61,21 @@ uvx kicad-mcp-pro --transport streamable-http --port 3334
 uvx kicad-mcp-pro dashboard --host 127.0.0.1 --port 3334 --open
 # http://127.0.0.1:3334/ui
 ```
+
+## Documentation
+
+The documentation is organized from setup to operation:
+
+1. [Installation](docs/installation.md)
+2. [Client configuration](docs/client-configuration.md)
+3. [Runtime configuration](docs/configuration.md)
+4. [Tool reference](docs/tools-reference.md)
+5. [Workflows](docs/workflows/first-pcb.md)
+6. [Release process](docs/release-process.md)
+7. [Security and privacy](docs/security/threat-model.md)
+
+The published documentation site is available at
+[https://oaslananka.github.io/kicad-mcp/](https://oaslananka.github.io/kicad-mcp/).
 
 ## Transports
 
@@ -83,7 +112,7 @@ For source checkouts, `corepack pnpm run dev:doctor` validates Node, pnpm,
 Python, uv, MCP server CLI startup/version reporting, fixture corpus, protocol
 schemas, common development ports, and optional Cloudflare tunnel tooling.
 
-## Package Metadata
+## Package metadata
 
 The canonical metadata source of truth is `server.json`, which defines the MCP server contract. It is synchronized with `pyproject.toml` and verified in CI via `pnpm run metadata:check`.
 
