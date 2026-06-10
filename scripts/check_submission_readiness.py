@@ -288,7 +288,7 @@ def _readme_check() -> CheckResult:
         "PyPI package": "kicad-mcp-pro",
         "npm wrapper": "kicad-mcp-pro",
         "MCP Registry name": "io.github.oaslananka/kicad-mcp-pro",
-        "version": f"- Version: `{version}`",
+        "version": f"| Version | `{version}` |",
     }
     missing = [label for label, marker in required.items() if marker not in text]
     if missing:
