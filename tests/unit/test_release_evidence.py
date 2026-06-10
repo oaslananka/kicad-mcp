@@ -117,3 +117,27 @@ def test_verify_pypi_rejects_digest_mismatch(tmp_path: Path, monkeypatch) -> Non
         assert "Published PyPI digest verification failed" in str(exc)
     else:  # pragma: no cover
         raise AssertionError("verify_pypi should reject mismatched checksums")
+
+
+def test_verify_pypi_default_retries_cover_registry_propagation(
+    tmp_path: Path, monkeypatch
+) -> None:
+    module = _load_script()
+    checksums = tmp_path / "SHA256SUMS.txt"
+    checksums.write_text(f"{'a' * 64}  artifact.whl\n", encoding="utf-8")
+    payload = b'{"urls":[{"filename":"artifact.whl","digests":{"sha256":"' + b"a" * 64 + b'"}}]}'
+    attempts = 0
+
+    def delayed_metadata(*_args: object, **_kwargs: object) -> _PypiResponse:
+        nonlocal attempts
+        attempts += 1
+        if attempts <= 6:
+            raise module.urllib.error.HTTPError("https://pypi.example", 404, "missing", {}, None)
+        return _PypiResponse(payload)
+
+    monkeypatch.setattr(module.urllib.request, "urlopen", delayed_metadata)
+    monkeypatch.setattr(module.time, "sleep", lambda _delay: None)
+
+    module.verify_pypi("pypi", "kicad-mcp-pro", "1.0.0", checksums)
+
+    assert attempts == 7

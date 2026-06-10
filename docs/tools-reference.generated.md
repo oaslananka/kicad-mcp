@@ -101,8 +101,8 @@ Total public tools: 311.
 | `lib_remove_3d_model` | agent_full, builder, full, schematic, schematic_only, simulation | no | no | no | yes | no | Remove 3D model reference(s) from a footprint. |
 | `lib_search_3d_models` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | no | Search for available 3D model files in the footprint library directory. |
 | `lib_search_components` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | no | Search live component sources for purchasable parts. This KiCad MCP Pro tool supports production EDA automation workf... |
-| `lib_search_footprints` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | no | Search footprint libraries by footprint name. This KiCad MCP Pro tool supports production EDA automation workflows fo... |
-| `lib_search_symbols` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | no | Search symbol libraries by name, description, or keywords. This KiCad MCP Pro tool supports production EDA automation... |
+| `lib_search_footprints` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | no | Search footprint libraries by footprint name. |
+| `lib_search_symbols` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | no | Search symbol libraries by name, description, or keywords. |
 | `lib_set_3d_model_path` | agent_full, builder, full, schematic, schematic_only, simulation | no | yes | no | yes | no | Set or replace the 3D model path on a footprint. |
 | `manufacturing_quality_gate` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | yes | no | no | yes | no | Evaluate manufacturing readiness against the active or requested DFM profile. |
 | `mfg_check_import_support` | agent_full, full, manufacturing | yes | no | yes | yes | no | Report whether the detected KiCad CLI advertises a given board-import format. |

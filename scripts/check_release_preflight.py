@@ -79,6 +79,30 @@ def _check_versions() -> list[str]:
     return errors
 
 
+def _check_protocol_schema_version() -> list[str]:
+    manifest = _read_repo_json(".release-please-manifest.json")
+    package = _read_repo_json("packages/protocol-schemas/package.json")
+    manifest_version = str(manifest.get("packages/protocol-schemas", ""))
+    package_version = str(package.get("version", ""))
+    errors: list[str] = []
+    if not VERSION_RE.match(manifest_version):
+        errors.append(
+            ".release-please-manifest.json packages/protocol-schemas has invalid semantic "
+            f"version: {manifest_version!r}"
+        )
+    if not VERSION_RE.match(package_version):
+        errors.append(
+            "packages/protocol-schemas/package.json has invalid semantic version: "
+            f"{package_version!r}"
+        )
+    if manifest_version != package_version:
+        errors.append(
+            "protocol schema release metadata version drift detected: "
+            f"manifest={manifest_version}, package={package_version}"
+        )
+    return errors
+
+
 def _changelog_section(changelog: str, version: str) -> str:
     matches = list(CHANGELOG_VERSION_RE.finditer(changelog))
     for index, match in enumerate(matches):
@@ -129,6 +153,7 @@ def main() -> int:
     version = _project_version()
     errors = [
         *_check_versions(),
+        *_check_protocol_schema_version(),
         *_check_changelog(version),
         *validate_compatibility_matrix(),
     ]
