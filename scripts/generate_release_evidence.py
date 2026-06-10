@@ -18,7 +18,7 @@ PYPI_ENDPOINTS = {
     "pypi": "https://pypi.org/pypi/{name}/{version}/json",
     "testpypi": "https://test.pypi.org/pypi/{name}/{version}/json",
 }
-DEFAULT_PYPI_RETRIES = 6
+DEFAULT_PYPI_RETRIES = 18
 DEFAULT_PYPI_RETRY_DELAY = 10.0
 
 

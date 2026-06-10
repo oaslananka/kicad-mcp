@@ -58,7 +58,7 @@
     },
     "packages/protocol-schemas": {
       "package-name": "@oaslananka/kicad-protocol-schemas",
-      "tag-prefix": "proto-v",
+      "tag-prefix": "protocol-schemas-v",
       "release-type": "node",
       "component": "protocol-schemas",
       "changelog-path": "CHANGELOG.md"

@@ -7,6 +7,7 @@ Current product versions are represented in:
 - `src/kicad_mcp/__init__.py`
 - `src/kicad_mcp/server.json`
 - `packages/mcp-npm/package.json`
+- `packages/protocol-schemas/package.json`
 
 `.release-please-manifest.json` tracks product package paths only. The private repository root is not released.
 
@@ -28,6 +29,8 @@ The publish workflows keep release evidence product-scoped:
 - `publish-mcp-container.yml` validates the Docker image on pull requests and
   publishes signed multi-arch GHCR images with BuildKit SBOM/provenance for
   `mcp-server-v*` GitHub Releases.
+- `publish-protocol-schemas.yml` publishes `@oaslananka/kicad-protocol-schemas`
+  for `protocol-schemas-v*` GitHub Releases.
 
 Release dry-runs also validate `compatibility.yaml` through the MCP server release preflight. Update [docs/status/runtime-matrix.md](status/runtime-matrix.md) and release notes whenever KiCad, VS Code, MCP, Node, pnpm, Python, or tool-schema support changes.
 

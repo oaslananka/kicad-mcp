@@ -62,9 +62,14 @@ def test_tools_list_reuses_runtime_capability_probe(
 @pytest.mark.benchmark
 @pytest.mark.anyio
 async def test_tools_list_latency_against_shared_budget(
+    monkeypatch: pytest.MonkeyPatch,
     sample_project: Path,
 ) -> None:
     _ = sample_project
+    monkeypatch.setattr(
+        "kicad_mcp.server.get_ipc_capability_state",
+        _unavailable_ipc_state,
+    )
     baseline = json.loads(PERFORMANCE_CATALOG_PATH.read_text(encoding="utf-8"))["metrics"][
         TOOLS_LIST_METRIC
     ]

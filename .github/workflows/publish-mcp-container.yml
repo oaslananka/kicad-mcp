@@ -50,6 +50,33 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve image version
+        id: version
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = "release" ]; then
+            case "$RELEASE_TAG" in
+              mcp-server-v*) version="${RELEASE_TAG#mcp-server-v}" ;;
+              *)
+                echo "Unexpected MCP server release tag: $RELEASE_TAG" >&2
+                exit 1
+                ;;
+            esac
+          else
+            version="$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")"
+          fi
+          case "$version" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *)
+              echo "Invalid image version: $version" >&2
+              exit 1
+              ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a
         with:
           image: tonistiigi/binfmt:qemu-v10.0.4@sha256:8f58e6214f4cc9dc83ce8f5acad1ece508eb6b20e696a8c1e9f274481982c541
@@ -63,8 +90,8 @@ jobs:
         with:
           images: ${{ env.GHCR_IMAGE }}
           tags: |
-            type=match,pattern=mcp-server-v(.*),group=1
-            type=raw,value=latest,enable=${{ github.event_name == 'release' && startsWith(github.event.release.tag_name, 'mcp-server-v') }}
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable=${{ (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'mcp-server-v')) || (github.event_name == 'workflow_dispatch' && inputs.publish == true) }}
 
       - uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
         if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.publish != true)
@@ -74,6 +101,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           outputs: type=cacheonly
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            KICAD_MCP_VERSION=${{ steps.version.outputs.version }}
+            VCS_REF=${{ github.sha }}
 
       - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee
         if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.publish == true)
@@ -92,6 +122,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            KICAD_MCP_VERSION=${{ steps.version.outputs.version }}
+            VCS_REF=${{ github.sha }}
           sbom: true
           provenance: mode=max
 

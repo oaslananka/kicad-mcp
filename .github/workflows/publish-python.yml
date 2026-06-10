@@ -111,7 +111,19 @@ jobs:
         run: |
           uv run --frozen python scripts/generate_release_evidence.py verify-local --checksums release-evidence/SHA256SUMS.txt --artifacts dist
           (cd dist && sha256sum --check ../release-evidence/SHA256SUMS.txt)
+      - name: Check if version already published
+        id: check-published
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(uv run --frozen python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")"
+          if curl -fsS "https://test.pypi.org/pypi/kicad-mcp-pro/${version}/json" >/dev/null; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
+        if: steps.check-published.outputs.already_published != 'true'
         with:
           packages-dir: dist
           repository-url: https://test.pypi.org/legacy/
@@ -157,7 +169,19 @@ jobs:
         run: |
           uv run --frozen python scripts/generate_release_evidence.py verify-local --checksums release-evidence/SHA256SUMS.txt --artifacts dist
           (cd dist && sha256sum --check ../release-evidence/SHA256SUMS.txt)
+      - name: Check if version already published
+        id: check-published
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(uv run --frozen python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")"
+          if curl -fsS "https://pypi.org/pypi/kicad-mcp-pro/${version}/json" >/dev/null; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
+        if: steps.check-published.outputs.already_published != 'true'
         with:
           packages-dir: dist
           attestations: true

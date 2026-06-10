@@ -143,8 +143,10 @@ executes:
 uvx kicad-mcp-pro
 ```
 
-No npm publish workflow is enabled yet. npm trusted publishing is available, but
-the package must be configured in npm before a guarded workflow is added.
+`.github/workflows/publish-npm.yml` publishes the wrapper for `mcp-npm-v*`
+GitHub Releases and verifies the published tarball digest. Re-running the
+workflow for an existing version skips the immutable npm publish operation and
+still verifies the existing artifact.
 
 ## Required Configuration
 
