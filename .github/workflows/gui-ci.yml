@@ -38,6 +38,7 @@ concurrency:
 
 jobs:
   backend-tests:
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
@@ -55,6 +56,7 @@ jobs:
         run: uv run ruff check src/kicad_mcp/web src/kicad_mcp/tray.py src/kicad_mcp/cli_init.py
 
   playwright:
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
@@ -72,6 +74,7 @@ jobs:
         run: E2E=1 uv run pytest tests/e2e/test_web_dashboard.py -v
 
   tauri-check:
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

@@ -22,6 +22,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     name: Build site
     runs-on: ubuntu-24.04
     permissions:
@@ -49,8 +50,8 @@ jobs:
           path: site
 
   deploy:
+    if: (github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops') && github.event_name != 'pull_request'
     name: Deploy to GitHub Pages
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     needs: build
     permissions:

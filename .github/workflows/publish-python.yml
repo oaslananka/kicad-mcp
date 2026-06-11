@@ -16,9 +16,10 @@ permissions:
 jobs:
   build:
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'release' &&
-       startsWith(github.event.release.tag_name, 'mcp-server-v'))
+      (github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops') &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'release' &&
+        startsWith(github.event.release.tag_name, 'mcp-server-v')))
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -82,7 +83,7 @@ jobs:
             --clobber
 
   publish-testpypi:
-    if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+    if: (github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops') && github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
     needs: build
     runs-on: ubuntu-24.04
     environment:
@@ -139,8 +140,9 @@ jobs:
 
   publish-pypi:
     if: >-
-      (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'mcp-server-v')) ||
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi')
+      (github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops') &&
+      ((github.event_name == 'release' && startsWith(github.event.release.tag_name, 'mcp-server-v')) ||
+       (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi'))
     needs: build
     runs-on: ubuntu-24.04
     environment:

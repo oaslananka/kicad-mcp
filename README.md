@@ -123,6 +123,25 @@ Use `kicad-mcp-pro --help` to inspect CLI commands and
 MCP client. The generated tool catalog is available in
 [`docs/tools-reference.generated.md`](docs/tools-reference.generated.md).
 
+## Development
+
+The project uses a `Taskfile.yml` for common development commands. After
+cloning the repository:
+
+```bash
+task install     # Install all dependencies (pnpm + uv)
+task verify      # Run the local quality gate: lint → format → typecheck → test → build
+task test        # Run unit tests only
+task lint        # Run lint and metadata checks
+task format      # Auto-format the codebase
+task typecheck   # Run strict static type checking
+task build       # Build release artifacts
+task ci          # Run the local equivalent of the full CI pipeline
+task hooks       # Install local git hooks
+```
+
+All changes must pass `task verify` before opening a pull request.
+
 ## Contributing
 
 Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a pull request. All
