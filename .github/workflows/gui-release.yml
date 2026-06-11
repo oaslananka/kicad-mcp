@@ -20,6 +20,7 @@ concurrency:
 
 jobs:
   tauri-build:
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     strategy:
       fail-fast: false
       matrix:
@@ -82,6 +83,7 @@ jobs:
           retention-days: 14
 
   create-release:
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     needs: tauri-build
     runs-on: ubuntu-24.04
     permissions:

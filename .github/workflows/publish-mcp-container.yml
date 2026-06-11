@@ -35,10 +35,11 @@ env:
 jobs:
   build:
     if: >-
-      github.event_name == 'pull_request' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'release' &&
-       startsWith(github.event.release.tag_name, 'mcp-server-v'))
+      (github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops') &&
+      (github.event_name == 'pull_request' ||
+       github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'release' &&
+        startsWith(github.event.release.tag_name, 'mcp-server-v')))
     runs-on: ubuntu-24.04
     permissions:
       contents: read

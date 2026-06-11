@@ -96,6 +96,14 @@ tasks:
     cmds:
       - corepack pnpm run package:check
 
+  verify:
+    desc: Local quality gate — lint, format, typecheck, test, build
+    cmds:
+      - task: lint
+      - task: typecheck
+      - task: test:fast
+      - task: build
+
   pre-push:
     desc: Run the pre-push parity gate
     cmds:

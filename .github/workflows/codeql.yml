@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   analyze:
+    if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     name: analyze (${{ matrix.language }})
     runs-on: ubuntu-24.04
     permissions:
