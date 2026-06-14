@@ -301,7 +301,7 @@ class TestDashboardSPA:
         """The SPA loads and shows the dashboard view by default."""
         page.goto(dashboard_url)
         page.wait_for_selector("#navVersion")
-        assert page.text_content("#navVersion") == "v3.9.1"
+        assert page.text_content("#navVersion") == "v3.9.2"
         assert page.is_visible("#view-dashboard")
         classes = page.get_attribute("#view-dashboard", "class") or ""
         assert "active" in classes
