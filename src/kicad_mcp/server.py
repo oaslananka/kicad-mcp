@@ -659,6 +659,7 @@ class KiCadFastMCP(FastMCP):
     _telemetry_kicad_version: str | None = None
     _ipc_capability_state: KiCadIpcCapabilityState | None = None
     _ipc_capability_checked_at: float = 0.0
+    _task_manager: TaskManager | None = None
 
     def set_lazy_registration(self, register: Callable[[], None]) -> None:
         """Defer heavy tool/resource registration until after stdio initialize can bind."""

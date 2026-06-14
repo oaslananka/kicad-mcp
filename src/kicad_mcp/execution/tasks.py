@@ -152,7 +152,7 @@ class TaskManager:
         if record._result is not None:
             # Try common serialization paths
             if hasattr(record._result, "text"):
-                return record._result.text
+                return str(record._result.text)
             if isinstance(record._result, str):
                 return record._result
             return str(record._result)
