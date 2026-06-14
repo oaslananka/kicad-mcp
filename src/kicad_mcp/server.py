@@ -15,6 +15,7 @@ import sys
 import threading
 import time
 from collections import deque
+from datetime import UTC, datetime
 from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Any, TextIO, cast
@@ -36,7 +37,18 @@ from mcp.server.auth.settings import AuthSettings
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.lowlevel.helper_types import ReadResourceContents
-from mcp.types import Icon, ToolAnnotations
+from mcp.types import (
+    CancelTaskRequest,
+    CancelTaskResult,
+    GetTaskPayloadRequest,
+    GetTaskPayloadResult,
+    GetTaskRequest,
+    GetTaskResult,
+    Icon,
+    ListTasksRequest,
+    ListTasksResult,
+    ToolAnnotations,
+)
 from pydantic import AnyUrl
 from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -48,6 +60,7 @@ from typer.models import OptionInfo
 
 from . import __version__
 from .capabilities import AccessTier, RuntimeRequirement, all_protocol_metadata
+from .execution.tasks import TaskManager
 from .capabilities import get as get_capability_record
 from .compatibility import MCP_PROTOCOL_VERSION
 from .config import LOOPBACK_HOSTS, KiCadMCPConfig, get_config, reset_config
@@ -1515,6 +1528,62 @@ def build_server(profile: str | None = None, *, defer_registration: bool = False
     server.allowed_tool_names = {
         tool_name for category in enabled for tool_name in router.TOOL_CATEGORIES[category]["tools"]
     }
+
+    # ------------------------------------------------------------------
+    # Experimental MCP Tasks extension (2026-07-28 RC)
+    # ------------------------------------------------------------------
+    if cfg.enable_tasks:
+        task_mgr = TaskManager()
+        server._task_manager = task_mgr
+        lowlevel = server._mcp_server
+        lowlevel.experimental.enable_tasks()
+
+        @lowlevel.experimental.list_tasks()
+        async def _handle_list_tasks(request: ListTasksRequest) -> ListTasksResult:
+            tasks = await task_mgr.list_tasks()
+            return ListTasksResult(tasks=tasks)
+
+        @lowlevel.experimental.get_task()
+        async def _handle_get_task(request: GetTaskRequest) -> GetTaskResult:
+            result = await task_mgr.get(request.params.taskId)
+            if result is None:
+                return GetTaskResult(
+                    taskId=request.params.taskId,
+                    status="working",
+                    statusMessage="Task not found.",
+                    createdAt=datetime.now(UTC),
+                    lastUpdatedAt=datetime.now(UTC),
+                    ttl=3600,
+                    pollInterval=2,
+                )
+            return result
+
+        @lowlevel.experimental.get_task_result()
+        async def _handle_get_task_result(
+            request: GetTaskPayloadRequest,
+        ) -> GetTaskPayloadResult:
+            text = await task_mgr.get_result_text(request.params.taskId)
+            if text is not None:
+                return GetTaskPayloadResult(meta={"text": text})
+            return GetTaskPayloadResult(meta={"text": "No result available."})
+
+        @lowlevel.experimental.cancel_task()
+        async def _handle_cancel_task(request: CancelTaskRequest) -> CancelTaskResult:
+            result = await task_mgr.cancel(request.params.taskId)
+            if result is None:
+                return CancelTaskResult(
+                    taskId=request.params.taskId,
+                    status="working",
+                    statusMessage="Task not found.",
+                    createdAt=datetime.now(UTC),
+                    lastUpdatedAt=datetime.now(UTC),
+                    ttl=3600,
+                    pollInterval=2,
+                )
+            return result
+
+        logger.info("mcp_tasks_extension_enabled")
+    # ------------------------------------------------------------------
 
     @server.custom_route("/.well-known/mcp-server", methods=["GET"], include_in_schema=False)
     async def _well_known_mcp(_request: Request) -> JSONResponse:
