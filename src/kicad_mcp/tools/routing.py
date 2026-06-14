@@ -484,7 +484,8 @@ def register(mcp: FastMCP) -> None:
                         "FreeRouting ran but the SES session file is missing or empty — "
                         "this is a known KiCad 10 / Specctra round-trip failure.\n"
                         "Workaround: open the PCB in KiCad GUI and import the DSN manually "
-                        f"via File > Import > Specctra Session ({_relative_project_path(dsn_file)}).\n"
+                        f"via File > Import > Specctra Session "
+                        f"({_relative_project_path(dsn_file)}).\n"
                         f"SES path checked: {ses_path_obj}"
                     ),
                 )
@@ -498,9 +499,9 @@ def register(mcp: FastMCP) -> None:
                     f"FreeRouting autoroute failed while staging the SES file: {exc}",
                 )
 
-            ignore_text = ", ".join(
-                [*(net_classes_to_ignore or []), *(exclude_nets or [])]
-            ) or "none"
+            ignore_text = (
+                ", ".join([*(net_classes_to_ignore or []), *(exclude_nets or [])]) or "none"
+            )
             await _report_progress(ctx, 100, 100, "FreeRouting autoroute complete.")
             return ToolResult.success(
                 "route_autoroute_freerouting",

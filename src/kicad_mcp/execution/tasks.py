@@ -107,7 +107,7 @@ class _TaskRecord:
         if message is not None:
             self.status_message = message
 
-    def finish(self, result: Any = None, error: str | None = None) -> None:
+    def finish(self, result: Any = None, error: str | None = None) -> None:  # noqa: ANN401
         """Mark the task as completed or failed."""
         if error is not None:
             self.mark("failed", message=error)

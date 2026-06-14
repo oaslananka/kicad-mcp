@@ -15,8 +15,8 @@ import sys
 import threading
 import time
 from collections import deque
-from datetime import UTC, datetime
 from collections.abc import Callable, Iterable, Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, TextIO, cast
 
@@ -60,7 +60,6 @@ from typer.models import OptionInfo
 
 from . import __version__
 from .capabilities import AccessTier, RuntimeRequirement, all_protocol_metadata
-from .execution.tasks import TaskManager
 from .capabilities import get as get_capability_record
 from .compatibility import MCP_PROTOCOL_VERSION
 from .config import LOOPBACK_HOSTS, KiCadMCPConfig, get_config, reset_config
@@ -74,6 +73,7 @@ from .diagnostics import (
 )
 from .discovery import ensure_studio_project_watcher, find_kicad_version
 from .errors import IpcDisconnectedError, KiCadConnectionTimeoutError, KiCadNotRunningError
+from .execution.tasks import TaskManager
 from .i18n import SERVER_DESCRIPTION, localize, option_help
 from .ipc.capabilities import KiCadIpcCapabilityState, get_ipc_capability_state
 from .operating_modes import (
