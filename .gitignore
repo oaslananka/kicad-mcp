@@ -53,4 +53,4 @@ TEMP/
 
 # Tauri / Rust build artifacts
 src-tauri/target/
-# src-tauri/Cargo.lock is intentionally committed for deterministic builds
+src-tauri/Cargo.lock

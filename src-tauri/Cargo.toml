@@ -14,16 +14,14 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }
+tauri = { version = "2", default-features = false, features = ["macos-private-api", "tray-icon", "wry", "common-controls-v6", "dynamic-acl", "x11", "dbus"] }
 tauri-plugin-shell = "2"
 tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 which = "8"
 
-# alloc-no-stdlib v2.x defines a custom Allocator trait that conflicts with
-# std::alloc::Allocator (stabilized in Rust 1.85+). v3.0.0 aligns with the std
-# trait. However, brotli v8.0.3 still requires alloc-no-stdlib ^2.0, so we
-# patch it via git source to force v3.0.0 throughout the dependency tree.
-[patch.crates-io]
-alloc-no-stdlib = { git = "https://github.com/dropbox/rust-alloc-no-stdlib", rev = "c877812" }
+# Compression via brotli requires alloc-no-stdlib v2.x, which defines a custom
+# Allocator trait conflicting with std::alloc::Allocator (Rust 1.85+). We
+# disable tauri's "compression" feature (see tauri dep above) to exclude
+# brotli entirely, eliminating the conflict.
