@@ -35,7 +35,7 @@ are documented in [`docs/privacy.md`](docs/privacy.md).
 | PyPI package | [`kicad-mcp-pro`](https://pypi.org/project/kicad-mcp-pro/) |
 | npm wrapper | [`kicad-mcp-pro`](https://www.npmjs.com/package/kicad-mcp-pro) |
 | MCP Registry name | `io.github.oaslananka/kicad-mcp-pro` |
-| Version | `3.9.1` |
+| Version | `3.9.2` |
 
 ## Quick Start
 
@@ -83,7 +83,7 @@ KiCad MCP Pro supports `stdio` and Streamable HTTP. Streamable HTTP is served at
 `/mcp` by default and can be moved with `KICAD_MCP_MOUNT_PATH`.
 
 ```bash
-uvx kicad-mcp-pro@3.9.1 --transport streamable-http --host 127.0.0.1 --port 3334
+uvx kicad-mcp-pro@3.9.2 --transport streamable-http --host 127.0.0.1 --port 3334
 ```
 
 Streamable HTTP clients must send:
@@ -104,8 +104,8 @@ The deprecated HTTP+SSE fallback routes are disabled by default. Set
 
 ```bash
 corepack pnpm run dev:doctor -- --ci
-uvx kicad-mcp-pro@3.9.1 --help
-npx kicad-mcp-pro@3.9.1 --help
+uvx kicad-mcp-pro@3.9.2 --help
+npx kicad-mcp-pro@3.9.2 --help
 ```
 
 For source checkouts, `corepack pnpm run dev:doctor` validates Node, pnpm,

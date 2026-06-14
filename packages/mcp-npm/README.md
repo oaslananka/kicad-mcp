@@ -10,5 +10,5 @@ Thin npm launcher for the `kicad-mcp-pro` Python package.
 The wrapper resolves the Python package version from `KICAD_MCP_PRO_PYPI_VERSION` or from this package version.
 
 ```bash
-npx kicad-mcp-pro@3.9.1 --help
+npx kicad-mcp-pro@3.9.2 --help
 ```

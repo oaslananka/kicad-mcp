@@ -75,7 +75,7 @@ MOCK_METRICS: dict[str, Any] = {
 MOCK_HEALTH: dict[str, Any] = {
     "ok": True,
     "status": "healthy",
-    "version": "3.9.1",
+    "version": "3.9.2",
     "uptime": 3600,
 }
 
