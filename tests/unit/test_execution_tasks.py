@@ -9,7 +9,6 @@ import pytest
 
 from kicad_mcp.execution.tasks import TaskManager, TaskStatusType
 
-
 # =========================================================================
 # _TaskRecord lifecycle
 # =========================================================================
