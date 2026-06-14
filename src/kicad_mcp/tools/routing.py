@@ -417,107 +417,138 @@ def register(mcp: FastMCP) -> None:
         drc_report_path: str = "output/routing/freerouting.drc.json",
         ctx: Context[Any, Any, Any] | None = None,
     ) -> ToolResult:
-        """Run FreeRouting after placement; do not skip this post-placement routing step."""
-        cfg = get_config()
-        runner = FreeRoutingRunner()
-        pcb_file = _get_pcb_file()
-        dsn_target = cfg.resolve_within_project(Path(dsn_path))
-        ses_target = cfg.resolve_within_project(Path(ses_path))
-        drc_target = cfg.resolve_within_project(Path(drc_report_path)) if drc_report_path else None
+        """Run FreeRouting after placement; do not skip this post-placement routing step.
 
-        try:
-            await _report_progress(ctx, 10, 100, "Exporting DSN for FreeRouting...")
-            dsn_file = runner.export_dsn(pcb_file, dsn_target)
-            await _report_progress(ctx, 40, 100, "Running FreeRouting...")
-            result = runner.run_freerouting(
-                dsn_file,
-                ses_target,
-                max_passes=max_passes,
-                thread_count=thread_count,
-                use_docker=use_docker,
-                freerouting_jar_path=Path(freerouting_jar_path).expanduser()
-                if freerouting_jar_path
-                else None,
-                net_classes_to_ignore=net_classes_to_ignore,
-                exclude_nets=exclude_nets,
-                drc_report_path=drc_target,
-            )
-        except (FileNotFoundError, RuntimeError, ValueError) as exc:
-            return ToolResult.failure(
-                "route_autoroute_freerouting", f"FreeRouting autoroute failed: {exc}"
+        When the experimental MCP Tasks extension is enabled
+        (``KICAD_MCP_ENABLE_TASKS=1``), the routing runs in the background and a
+        task reference is returned immediately. The caller can poll ``tasks/get``
+        for completion and ``tasks/cancel`` to abort routing.
+        """
+
+        async def _run() -> ToolResult:
+            """Inner coroutine that does the actual work."""
+            cfg = get_config()
+            runner = FreeRoutingRunner()
+            pcb_file = _get_pcb_file()
+            dsn_target = cfg.resolve_within_project(Path(dsn_path))
+            ses_target = cfg.resolve_within_project(Path(ses_path))
+            drc_target = (
+                cfg.resolve_within_project(Path(drc_report_path)) if drc_report_path else None
             )
 
-        if result.returncode != 0:
-            return ToolResult.failure(
+            try:
+                await _report_progress(ctx, 10, 100, "Exporting DSN for FreeRouting...")
+                dsn_file = runner.export_dsn(pcb_file, dsn_target)
+                await _report_progress(ctx, 40, 100, "Running FreeRouting...")
+                result = runner.run_freerouting(
+                    dsn_file,
+                    ses_target,
+                    max_passes=max_passes,
+                    thread_count=thread_count,
+                    use_docker=use_docker,
+                    freerouting_jar_path=Path(freerouting_jar_path).expanduser()
+                    if freerouting_jar_path
+                    else None,
+                    net_classes_to_ignore=net_classes_to_ignore,
+                    exclude_nets=exclude_nets,
+                    drc_report_path=drc_target,
+                )
+            except (FileNotFoundError, RuntimeError, ValueError) as exc:
+                return ToolResult.failure(
+                    "route_autoroute_freerouting", f"FreeRouting autoroute failed: {exc}"
+                )
+
+            if result.returncode != 0:
+                return ToolResult.failure(
+                    "route_autoroute_freerouting",
+                    (
+                        "FreeRouting autoroute failed.\n"
+                        f"Mode: {result.mode}\n"
+                        f"Command: {' '.join(result.command)}\n"
+                        f"stderr: {result.stderr or 'unknown error'}"
+                    ),
+                )
+
+            ses_output = result.output_ses
+            ses_path_obj = Path(ses_output) if ses_output else None
+            if ses_path_obj is None:
+                return ToolResult.failure(
+                    "route_autoroute_freerouting",
+                    "FreeRouting autoroute failed: no SES output path was reported.",
+                )
+            ses_ok = ses_path_obj.exists() and ses_path_obj.stat().st_size > 0
+            if not ses_ok:
+                return ToolResult.failure(
+                    "route_autoroute_freerouting",
+                    (
+                        "FreeRouting ran but the SES session file is missing or empty — "
+                        "this is a known KiCad 10 / Specctra round-trip failure.\n"
+                        "Workaround: open the PCB in KiCad GUI and import the DSN manually "
+                        f"via File > Import > Specctra Session ({_relative_project_path(dsn_file)}).\n"
+                        f"SES path checked: {ses_path_obj}"
+                    ),
+                )
+
+            try:
+                await _report_progress(ctx, 85, 100, "Staging SES session for KiCad import...")
+                staged = runner.import_ses(pcb_file, ses_path_obj)
+            except (FileNotFoundError, RuntimeError, ValueError) as exc:
+                return ToolResult.failure(
+                    "route_autoroute_freerouting",
+                    f"FreeRouting autoroute failed while staging the SES file: {exc}",
+                )
+
+            ignore_text = ", ".join(
+                [*(net_classes_to_ignore or []), *(exclude_nets or [])]
+            ) or "none"
+            await _report_progress(ctx, 100, 100, "FreeRouting autoroute complete.")
+            return ToolResult.success(
                 "route_autoroute_freerouting",
-                (
-                    "FreeRouting autoroute failed.\n"
-                    f"Mode: {result.mode}\n"
-                    f"Command: {' '.join(result.command)}\n"
-                    f"stderr: {result.stderr or 'unknown error'}"
+                changed=True,
+                artifacts=[
+                    ArtifactRef(path=str(dsn_file), kind="dsn"),
+                    ArtifactRef(path=str(staged), kind="ses"),
+                ],
+                state_delta=StateDelta(
+                    summary=(
+                        "FreeRouting completed successfully.\n"
+                        f"Mode: {result.mode}\n"
+                        f"DSN: {_relative_project_path(dsn_file)}\n"
+                        f"SES: {_relative_project_path(staged)}\n"
+                        f"Routed: {result.routed_pct:.2f}% ({result.total_nets} net(s), "
+                        f"{len(result.unrouted_nets)} unrouted)\n"
+                        f"Pass count: {result.pass_count}\n"
+                        f"Wall time: {result.wall_seconds:.3f}s\n"
+                        f"Ignored net classes: {ignore_text}\n"
+                        f"Thread count: {thread_count}\n"
+                        f"SES path: {_relative_project_path(result.ses_path)}\n"
+                        f"stdout tail: {result.stdout_tail or '(empty)'}"
+                    ),
+                    changed_files=[str(dsn_file), str(staged)],
                 ),
             )
 
-        # Validate the SES output actually exists and is not empty before
-        # staging it for KiCad import. A zero-byte session file is a reliable
-        # failure signal; non-empty files should be surfaced to the user even
-        # when the session is minimal.
-        ses_output = result.output_ses
-        ses_path_obj = Path(ses_output) if ses_output else None
-        if ses_path_obj is None:
-            return ToolResult.failure(
-                "route_autoroute_freerouting",
-                "FreeRouting autoroute failed: no SES output path was reported.",
+        # Check if the experimental MCP Tasks extension is active
+        task_mgr = getattr(ctx.fastmcp, "_task_manager", None) if ctx is not None else None
+        if task_mgr is not None:
+            task = await task_mgr.run_and_wait(
+                description="FreeRouting autoroute",
+                coro_factory=_run,
+                ttl_s=7200,
             )
-        ses_ok = ses_path_obj.exists() and ses_path_obj.stat().st_size > 0
-        if not ses_ok:
-            return ToolResult.failure(
+            return ToolResult.success(
                 "route_autoroute_freerouting",
-                (
-                    "FreeRouting ran but the SES session file is missing or empty — "
-                    "this is a known KiCad 10 / Specctra round-trip failure.\n"
-                    "Workaround: open the PCB in KiCad GUI and import the DSN manually "
-                    f"via File > Import > Specctra Session ({_relative_project_path(dsn_file)}).\n"
-                    f"SES path checked: {ses_path_obj}"
+                changed=False,
+                state_delta=StateDelta(
+                    summary=(
+                        "FreeRouting autoroute started as a background task.\n"
+                        f"Task ID: {task.taskId}\n"
+                        "Use tasks/get to poll for completion and tasks/cancel to abort."
+                    ),
                 ),
             )
 
-        try:
-            await _report_progress(ctx, 85, 100, "Staging SES session for KiCad import...")
-            staged = runner.import_ses(pcb_file, ses_path_obj)
-        except (FileNotFoundError, RuntimeError, ValueError) as exc:
-            return ToolResult.failure(
-                "route_autoroute_freerouting",
-                f"FreeRouting autoroute failed while staging the SES file: {exc}",
-            )
-
-        ignore_text = ", ".join([*(net_classes_to_ignore or []), *(exclude_nets or [])]) or "none"
-        await _report_progress(ctx, 100, 100, "FreeRouting autoroute complete.")
-        return ToolResult.success(
-            "route_autoroute_freerouting",
-            changed=True,
-            artifacts=[
-                ArtifactRef(path=str(dsn_file), kind="dsn"),
-                ArtifactRef(path=str(staged), kind="ses"),
-            ],
-            state_delta=StateDelta(
-                summary=(
-                    "FreeRouting completed successfully.\n"
-                    f"Mode: {result.mode}\n"
-                    f"DSN: {_relative_project_path(dsn_file)}\n"
-                    f"SES: {_relative_project_path(staged)}\n"
-                    f"Routed: {result.routed_pct:.2f}% ({result.total_nets} net(s), "
-                    f"{len(result.unrouted_nets)} unrouted)\n"
-                    f"Pass count: {result.pass_count}\n"
-                    f"Wall time: {result.wall_seconds:.3f}s\n"
-                    f"Ignored net classes: {ignore_text}\n"
-                    f"Thread count: {thread_count}\n"
-                    f"SES path: {_relative_project_path(result.ses_path)}\n"
-                    f"stdout tail: {result.stdout_tail or '(empty)'}"
-                ),
-                changed_files=[str(dsn_file), str(staged)],
-            ),
-        )
+        return await _run()
 
     @mcp.tool()
     @headless_compatible
