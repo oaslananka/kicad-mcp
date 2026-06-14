@@ -21,9 +21,9 @@ from pathlib import Path
 from typing import Any, TextIO, cast
 
 import anyio
-import click
 import structlog
 import typer
+from typer._click.globals import get_current_context as _get_click_context
 
 try:
     import watchfiles
@@ -171,7 +171,11 @@ class _ThreadAwareStdout:
 
     def flush(self) -> None:
         """Flush the calling thread's active stream."""
-        self._target().flush()
+        try:
+            self._target().flush()
+        except ValueError:
+            # Stream may be closed (e.g., during CliRunner teardown).
+            pass
 
     def isatty(self) -> bool:
         """Return whether the calling thread's active stream is a TTY."""
@@ -1922,7 +1926,7 @@ def main_callback(
         experimental=experimental,
         telemetry=telemetry,
     )
-    current_context = click.get_current_context(silent=True)
+    current_context = _get_click_context(silent=True)
     if current_context is not None and current_context.invoked_subcommand is not None:
         return
     if watch and not isinstance(watch, OptionInfo):
