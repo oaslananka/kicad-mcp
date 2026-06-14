@@ -20,3 +20,10 @@ tauri-plugin-updater = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 which = "8"
+
+# alloc-no-stdlib v2.x defines a custom Allocator trait that conflicts with
+# std::alloc::Allocator (stabilized in Rust 1.85+). v3.0.0 aligns with the std
+# trait. However, brotli v8.0.3 still requires alloc-no-stdlib ^2.0, so we
+# patch it via git source to force v3.0.0 throughout the dependency tree.
+[patch.crates-io]
+alloc-no-stdlib = { git = "https://github.com/dropbox/rust-alloc-no-stdlib", rev = "c877812" }
