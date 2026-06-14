@@ -119,6 +119,10 @@ class KiCadMCPConfig(BaseSettings):
     log_backup_count: int = Field(default=3, ge=1, le=20)
 
     enable_experimental_tools: bool = Field(default=False)
+    enable_tasks: bool = Field(
+        default=False,
+        description="Opt-in to the experimental MCP Tasks extension (2026-07-28 RC).",
+    )
     filter_runtime_tools: bool = Field(
         default=True,
         description="Filter out tools requiring live KiCad IPC if the connection is down.",

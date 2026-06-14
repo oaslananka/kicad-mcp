@@ -129,10 +129,10 @@
       "source": "apps/vscode-extension/test/performance/extensionPerformance.test.ts"
     },
     "mcp.tools_list.response_ms": {
-      "baseline": 100,
+      "baseline": 120,
       "unit": "ms",
       "ciRequired": true,
-      "summary": "MCP tools/list response latency.",
+      "summary": "MCP tools/list response latency (updated for Tasks extension handlers).",
       "source": "packages/mcp-server/tests/unit/test_benchmark_latency.py"
     },
     "mcp.pcb_board_summary.medium_ms": {
