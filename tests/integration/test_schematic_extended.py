@@ -239,9 +239,7 @@ async def test_schematic_list_sheets_empty(sample_project, mock_kicad) -> None:
 async def test_schematic_get_sheet_info_missing(sample_project, mock_kicad) -> None:
     """sch_get_sheet_info should report when sheet is not found."""
     server = build_server("schematic")
-    result = await call_tool_text(
-        server, "sch_get_sheet_info", {"sheet_name": "NONEXISTENT"}
-    )
+    result = await call_tool_text(server, "sch_get_sheet_info", {"sheet_name": "NONEXISTENT"})
     assert "not found" in result.lower() or "no sheet" in result.lower()
 
 
@@ -654,8 +652,8 @@ async def test_schematic_build_circuit_with_nets(sample_project, mock_kicad) -> 
     )
     assert "Circuit" in result or "built" in result.lower()
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
-    assert "(label \"VIN\"" in schematic
-    assert "(label \"MID\"" in schematic
+    assert '(label "VIN"' in schematic
+    assert '(label "MID"' in schematic
 
 
 @pytest.mark.anyio
@@ -1019,3 +1017,72 @@ async def test_schematic_build_circuit_auto_layout_no_coords(sample_project, moc
     assert "R2" in schematic
     assert "OUT" in schematic
     assert "GND" in schematic
+
+
+@pytest.mark.anyio
+async def test_schematic_add_pin_labels(sample_project, mock_kicad) -> None:
+    """sch_add_pin_labels should connect symbol pins to nets via stubs and labels."""
+    server = build_server("schematic")
+    await call_tool_text(
+        server,
+        "sch_build_circuit",
+        {
+            "symbols": [
+                {
+                    "library": "Device",
+                    "symbol_name": "R",
+                    "x_mm": 10.0,
+                    "y_mm": 10.0,
+                    "reference": "R1",
+                    "value": "10k",
+                    "footprint": "Resistor_SMD:R_0805",
+                },
+            ],
+        },
+    )
+    result = await call_tool_text(
+        server,
+        "sch_add_pin_labels",
+        {
+            "connections": [
+                {"reference": "R1", "pin": "1", "net": "NET_IN"},
+            ],
+        },
+    )
+    assert "->" in result
+    assert "NET_IN" in result
+
+
+@pytest.mark.anyio
+async def test_schematic_delete_label(sample_project, mock_kicad) -> None:
+    """sch_delete_label should remove a matching label from the schematic."""
+    server = build_server("schematic")
+    await call_tool_text(
+        server,
+        "sch_add_label",
+        {"name": "TO_DELETE", "x_mm": 50.0, "y_mm": 50.0, "rotation": 0},
+    )
+    result = await call_tool_text(
+        server,
+        "sch_delete_label",
+        {"name": "TO_DELETE", "x_mm": 50.0, "y_mm": 50.0},
+    )
+    assert "Deleted" in result
+    assert "TO_DELETE" in result
+
+
+@pytest.mark.anyio
+async def test_schematic_move_label(sample_project, mock_kicad) -> None:
+    """sch_move_label should move a label to a new coordinate."""
+    server = build_server("schematic")
+    await call_tool_text(
+        server,
+        "sch_add_label",
+        {"name": "TO_MOVE", "x_mm": 20.0, "y_mm": 20.0, "rotation": 0},
+    )
+    result = await call_tool_text(
+        server,
+        "sch_move_label",
+        {"name": "TO_MOVE", "x_mm": 20.0, "y_mm": 20.0, "new_x_mm": 80.0, "new_y_mm": 40.0},
+    )
+    assert "Moved" in result or "moved" in result or "TO_MOVE" in result
