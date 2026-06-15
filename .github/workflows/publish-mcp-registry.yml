@@ -39,7 +39,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
         with:
-          enable-cache: true
+          enable-cache: false
           version-file: uv.toml
       - run: uv sync --all-extras --frozen
       - run: uv run --all-extras python scripts/validate_mcp_manifest.py server.json
@@ -61,7 +61,7 @@ jobs:
           persist-credentials: false
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
         with:
-          enable-cache: true
+          enable-cache: false
           version-file: uv.toml
       - run: uv sync --all-extras --frozen
       - name: Install mcp-publisher
