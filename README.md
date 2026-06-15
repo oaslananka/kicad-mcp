@@ -125,6 +125,12 @@ MCP client. The generated tool catalog is available in
 
 ## Development
 
+New contributors should start with [`ARCHITECTURE.md`](ARCHITECTURE.md), which maps
+the five layers (transport → MCP protocol → orchestration → KiCad adapter seam →
+pure domain) and shows exactly how to add a new tool. The runtime model and
+quality-gate stack are documented in
+[`docs/development/architecture.md`](docs/development/architecture.md).
+
 The project uses a `Taskfile.yml` for common development commands. After
 cloning the repository:
 
