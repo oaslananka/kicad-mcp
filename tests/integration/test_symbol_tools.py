@@ -73,9 +73,7 @@ async def test_sym_export_svg_fails_for_missing_file(sample_project: Path) -> No
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
-    result = await call_tool_text(
-        server, "sym_export_svg", {"input_file": "nonexistent.kicad_sym"}
-    )
+    result = await call_tool_text(server, "sym_export_svg", {"input_file": "nonexistent.kicad_sym"})
     assert "Input symbol library file not found" in result
 
 
@@ -95,9 +93,7 @@ async def test_sym_export_svg_runs_cli(sample_project: Path, monkeypatch) -> Non
     # Copy symbol file into project so resolve_under accepts it
     sym_file = sample_project / "Device.kicad_sym"
     sym_file.write_text(
-        sample_project.parent.joinpath("symbols", "Device.kicad_sym").read_text(
-            encoding="utf-8"
-        ),
+        sample_project.parent.joinpath("symbols", "Device.kicad_sym").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
     result = await call_tool_text(
@@ -141,14 +137,10 @@ async def test_sym_export_svg_reports_failure(sample_project: Path, monkeypatch)
 
     sym_file = sample_project / "Device.kicad_sym"
     sym_file.write_text(
-        sample_project.parent.joinpath("symbols", "Device.kicad_sym").read_text(
-            encoding="utf-8"
-        ),
+        sample_project.parent.joinpath("symbols", "Device.kicad_sym").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
-    result = await call_tool_text(
-        server, "sym_export_svg", {"input_file": str(sym_file)}
-    )
+    result = await call_tool_text(server, "sym_export_svg", {"input_file": str(sym_file)})
     assert "Symbol SVG export failed" in result
 
 
@@ -171,9 +163,7 @@ async def test_sym_upgrade_dry_run_with_force(sample_project: Path) -> None:
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
-    result = await call_tool_text(
-        server, "sym_upgrade", {"dry_run": True, "force": True}
-    )
+    result = await call_tool_text(server, "sym_upgrade", {"dry_run": True, "force": True})
     assert "force=True" in result
 
 
@@ -251,9 +241,7 @@ async def test_sym_export_svg_unsafe_input_path(sample_project: Path, monkeypatc
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
-    result = await call_tool_text(
-        server, "sym_export_svg", {"input_file": "../unsafe.kicad_sym"}
-    )
+    result = await call_tool_text(server, "sym_export_svg", {"input_file": "../unsafe.kicad_sym"})
     assert "Unsafe input file path" in result
 
     monkeypatch.setattr(path_safety, "resolve_under", original_resolve)
@@ -282,9 +270,7 @@ async def test_sym_export_svg_unsafe_output_dir(sample_project: Path, monkeypatc
 
     sym_file = sample_project / "Device.kicad_sym"
     sym_file.write_text(
-        sample_project.parent.joinpath("symbols", "Device.kicad_sym").read_text(
-            encoding="utf-8"
-        ),
+        sample_project.parent.joinpath("symbols", "Device.kicad_sym").read_text(encoding="utf-8"),
         encoding="utf-8",
     )
     result = await call_tool_text(

@@ -4100,9 +4100,7 @@ def register(mcp: FastMCP) -> None:
             cursor = 0
             last = 0
             while cursor < len(current):
-                if current[cursor:].startswith(
-                    ("(label", "(global_label", "(hierarchical_label")
-                ):
+                if current[cursor:].startswith(("(label", "(global_label", "(hierarchical_label")):
                     block, length = _extract_block(current, cursor)
                     parsed = _parse_label_block(block) if block else None
                     if (
@@ -4168,11 +4166,7 @@ def register(mcp: FastMCP) -> None:
                         and abs(parsed["x"] - x_mm) <= tol
                         and abs(parsed["y"] - y_mm) <= tol
                     ):
-                        rot = (
-                            parsed["rotation"]
-                            if new_rotation is None
-                            else int(new_rotation)
-                        )
+                        rot = parsed["rotation"] if new_rotation is None else int(new_rotation)
                         updated_block = re.sub(
                             r"\(at\s+[-\d.]+\s+[-\d.]+\s+[-\d.]+\)",
                             f"(at {_fmt_mm(target_x)} {_fmt_mm(target_y)} {rot})",

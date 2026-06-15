@@ -153,9 +153,7 @@ async def test_si_check_via_stub_all_via_types(sample_project, mock_board) -> No
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
-    result = await call_tool_text(
-        server, "si_check_via_stub", {"frequency_ghz": 5.0, "er": 4.0}
-    )
+    result = await call_tool_text(server, "si_check_via_stub", {"frequency_ghz": 5.0, "er": 4.0})
     assert "Via stub analysis" in result
     assert "GND" in result
     assert "VCC" in result
@@ -369,9 +367,7 @@ async def test_si_bind_interfaces_to_net_classes_applied(sample_project, monkeyp
         written.append((net_class, clearance_mm, track_width_mm, diff_gap_mm))
         return str(sample_project / "demo.kicad_dru")
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.signal_integrity._write_nc_rule", fake_write_rule
-    )
+    monkeypatch.setattr("kicad_mcp.tools.signal_integrity._write_nc_rule", fake_write_rule)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
@@ -379,9 +375,7 @@ async def test_si_bind_interfaces_to_net_classes_applied(sample_project, monkeyp
         server,
         "si_bind_interfaces_to_net_classes",
         {
-            "interfaces": [
-                {"kind": "usb3", "differential": True, "impedance_target_ohm": 90.0}
-            ],
+            "interfaces": [{"kind": "usb3", "differential": True, "impedance_target_ohm": 90.0}],
             "dry_run": False,
         },
     )
@@ -508,9 +502,7 @@ async def test_si_check_via_stub_critical_resonance(sample_project, mock_board) 
         {"critical_frequencies_mhz": [1500.0]},
     )
 
-    result = await call_tool_text(
-        server, "si_check_via_stub", {"frequency_ghz": 1.5, "er": 4.0}
-    )
+    result = await call_tool_text(server, "si_check_via_stub", {"frequency_ghz": 1.5, "er": 4.0})
     assert "Via stub analysis" in result
     assert "CLK" in result
 
@@ -552,9 +544,7 @@ async def test_si_synthesize_stackup_for_interfaces_rf(sample_project) -> None:
         server,
         "si_synthesize_stackup_for_interfaces",
         {
-            "interfaces": [
-                {"kind": "sgmii", "differential": True, "impedance_target_ohm": 100.0}
-            ],
+            "interfaces": [{"kind": "sgmii", "differential": True, "impedance_target_ohm": 100.0}],
             "cost_tier": "rf",
             "board_thickness_mm": 1.0,
         },
@@ -573,9 +563,7 @@ async def test_si_synthesize_stackup_for_interfaces_ultralow(sample_project) -> 
         server,
         "si_synthesize_stackup_for_interfaces",
         {
-            "interfaces": [
-                {"kind": "ddr5", "differential": False, "impedance_target_ohm": 50.0}
-            ],
+            "interfaces": [{"kind": "ddr5", "differential": False, "impedance_target_ohm": 50.0}],
             "cost_tier": "ultralow",
             "board_thickness_mm": 1.6,
         },

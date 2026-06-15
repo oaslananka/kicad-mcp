@@ -27,9 +27,7 @@ async def test_sch_upgrade_dry_run_with_force(sample_project: Path) -> None:
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
-    result = await call_tool_text(
-        server, "sch_upgrade", {"dry_run": True, "force": True}
-    )
+    result = await call_tool_text(server, "sch_upgrade", {"dry_run": True, "force": True})
     assert "force=True" in result
 
 
@@ -112,9 +110,7 @@ async def test_pcb_upgrade_dry_run_with_force(sample_project: Path) -> None:
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
-    result = await call_tool_text(
-        server, "pcb_upgrade", {"dry_run": True, "force": True}
-    )
+    result = await call_tool_text(server, "pcb_upgrade", {"dry_run": True, "force": True})
     assert "force=True" in result
 
 
@@ -194,9 +190,7 @@ async def test_sch_upgrade_unsafe_input_path(sample_project: Path, monkeypatch) 
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
-    result = await call_tool_text(
-        server, "sch_upgrade", {"input_file": "../unsafe.kicad_sch"}
-    )
+    result = await call_tool_text(server, "sch_upgrade", {"input_file": "../unsafe.kicad_sch"})
     assert "Unsafe input path" in result
 
     monkeypatch.setattr(path_safety, "resolve_under", original_resolve)

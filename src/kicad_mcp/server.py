@@ -1339,6 +1339,7 @@ class _DashboardAuthMiddleware(BaseHTTPMiddleware):
         call_next: RequestResponseEndpoint,
     ) -> Response:
         from urllib.parse import urlparse
+
         cfg = get_config()
         path = request.url.path
 

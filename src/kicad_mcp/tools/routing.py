@@ -438,6 +438,7 @@ def register(mcp: FastMCP) -> None:
 
             try:
                 import anyio
+
                 await _report_progress(ctx, 10, 100, "Exporting DSN for FreeRouting...")
                 dsn_file = await anyio.to_thread.run_sync(
                     lambda: runner.export_dsn(pcb_file, dsn_target)
