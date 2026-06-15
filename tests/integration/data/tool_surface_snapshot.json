@@ -1076,6 +1076,20 @@
     "requires_kicad_running": false
   },
   {
+    "destructive": true,
+    "experimental": false,
+    "headless": true,
+    "name": "fp_export_svg",
+    "open_world": true,
+    "profiles": [
+      "agent_full",
+      "full",
+      "manufacturing"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
     "destructive": false,
     "experimental": false,
     "headless": true,
@@ -1203,6 +1217,34 @@
     "experimental": false,
     "headless": true,
     "name": "jobset_list_templates",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "full",
+      "manufacturing"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "name": "jobset_run",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "full",
+      "manufacturing"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "name": "jobset_validate",
     "open_world": false,
     "profiles": [
       "agent_full",
@@ -2267,6 +2309,24 @@
   {
     "destructive": false,
     "experimental": false,
+    "headless": false,
+    "name": "pcb_begin_commit",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "full",
+      "high_speed",
+      "pcb",
+      "pcb_only",
+      "power"
+    ],
+    "read_only": false,
+    "requires_kicad_running": true
+  },
+  {
+    "destructive": false,
+    "experimental": false,
     "headless": true,
     "name": "pcb_bga_fanout",
     "open_world": false,
@@ -2410,6 +2470,24 @@
     "experimental": false,
     "headless": false,
     "name": "pcb_delete_object",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "full",
+      "high_speed",
+      "pcb",
+      "pcb_only",
+      "power"
+    ],
+    "read_only": false,
+    "requires_kicad_running": true
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": false,
+    "name": "pcb_drop_commit",
     "open_world": false,
     "profiles": [
       "agent_full",
@@ -2580,6 +2658,29 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "name": "pcb_get_groups",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "analysis",
+      "builder",
+      "critic",
+      "full",
+      "high_speed",
+      "manufacturing",
+      "minimal",
+      "pcb",
+      "pcb_only",
+      "power",
+      "release_manager"
+    ],
+    "read_only": true,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
     "name": "pcb_get_impedance_for_trace",
     "open_world": false,
     "profiles": [
@@ -2650,6 +2751,29 @@
     "experimental": false,
     "headless": true,
     "name": "pcb_get_nets",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "analysis",
+      "builder",
+      "critic",
+      "full",
+      "high_speed",
+      "manufacturing",
+      "minimal",
+      "pcb",
+      "pcb_only",
+      "power",
+      "release_manager"
+    ],
+    "read_only": true,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "name": "pcb_get_origin",
     "open_world": false,
     "profiles": [
       "agent_full",
@@ -2889,6 +3013,19 @@
     "requires_kicad_running": false
   },
   {
+    "destructive": true,
+    "experimental": false,
+    "headless": true,
+    "name": "pcb_import_board",
+    "open_world": true,
+    "profiles": [
+      "agent_full",
+      "full"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
     "destructive": false,
     "experimental": false,
     "headless": true,
@@ -3076,6 +3213,24 @@
   {
     "destructive": false,
     "experimental": false,
+    "headless": false,
+    "name": "pcb_push_commit",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "full",
+      "high_speed",
+      "pcb",
+      "pcb_only",
+      "power"
+    ],
+    "read_only": false,
+    "requires_kicad_running": true
+  },
+  {
+    "destructive": false,
+    "experimental": false,
     "headless": true,
     "name": "pcb_quality_gate",
     "open_world": false,
@@ -3112,6 +3267,24 @@
     ],
     "read_only": false,
     "requires_kicad_running": false
+  },
+  {
+    "destructive": true,
+    "experimental": false,
+    "headless": false,
+    "name": "pcb_revert",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "full",
+      "high_speed",
+      "pcb",
+      "pcb_only",
+      "power"
+    ],
+    "read_only": false,
+    "requires_kicad_running": true
   },
   {
     "destructive": true,
@@ -3264,6 +3437,24 @@
   {
     "destructive": true,
     "experimental": false,
+    "headless": false,
+    "name": "pcb_set_origin",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "full",
+      "high_speed",
+      "pcb",
+      "pcb_only",
+      "power"
+    ],
+    "read_only": false,
+    "requires_kicad_running": true
+  },
+  {
+    "destructive": true,
+    "experimental": false,
     "headless": true,
     "name": "pcb_set_stackup",
     "open_world": false,
@@ -3278,6 +3469,24 @@
     ],
     "read_only": false,
     "requires_kicad_running": false
+  },
+  {
+    "destructive": true,
+    "experimental": false,
+    "headless": false,
+    "name": "pcb_set_title_block_info",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "full",
+      "high_speed",
+      "pcb",
+      "pcb_only",
+      "power"
+    ],
+    "read_only": false,
+    "requires_kicad_running": true
   },
   {
     "destructive": false,
@@ -5249,6 +5458,20 @@
     "experimental": false,
     "headless": true,
     "name": "sym_export",
+    "open_world": true,
+    "profiles": [
+      "agent_full",
+      "full",
+      "manufacturing"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": true,
+    "experimental": false,
+    "headless": true,
+    "name": "sym_export_svg",
     "open_world": true,
     "profiles": [
       "agent_full",

@@ -11,10 +11,9 @@ Registration completeness is checked against the raw tool manager (the
 *unfiltered* registered set), so these assertions are independent of the active
 profile and operating-mode filtering applied by ``KiCadFastMCP.list_tools``.
 
-There is also a documented ``xfail`` for orphaned tools — registered tools that
-appear in no category and are therefore hidden from discovery in every profile.
-Surface curation in Phase 1 must declare or deliberately remove them; when it
-does, flip that test to ``strict=True``.
+It also enforces that there are no orphaned tools — registered tools that appear in
+no category and would therefore be hidden from discovery in every profile (resolved
+by the P1-T2 surface curation).
 """
 
 from __future__ import annotations
@@ -101,21 +100,11 @@ def test_experimental_tools_are_declared_in_a_category() -> None:
     assert not missing, f"Experimental tools not declared in any category: {missing}"
 
 
-# --- known inconsistency: orphaned registered tools (no category) -----------
+# --- no orphaned registered tools (every registered tool is discoverable) ----
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "Registered tools that appear in no router category are filtered out of "
-        "allowed_tool_names for every profile and hidden from discovery (e.g. "
-        "pcb_begin_commit/push_commit/drop_commit/revert, pcb_get_groups, "
-        "pcb_get_origin/set_origin, pcb_set_title_block_info, pcb_import_board, "
-        "jobset_run/validate, fp_export_svg, sym_export_svg). Phase 1 surface "
-        "curation must declare them in a category or remove them deliberately, "
-        "then this test should become strict."
-    ),
-)
 def test_no_orphaned_registered_tools(registered_tool_names: set[str]) -> None:
+    """Every registered tool must be declared in a category (else it is hidden from
+    discovery in every profile). Resolved in P1-T2 surface curation."""
     orphans = sorted(registered_tool_names - set(_declared_tool_names()))
     assert not orphans, f"Registered tools missing from every category: {orphans}"

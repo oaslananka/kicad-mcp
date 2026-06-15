@@ -4,21 +4,21 @@ Machine-generated from `docs/compatibility/capability-parity-matrix.yaml`. Refre
 
 KiCad baseline: `10.0.x` · Updated: 2026-06-16
 
-**Overall: 52 / 74 programmatically-reachable capabilities driven = 70.3%** (20 partial, 2 gap; 4 GUI-only with no KiCad API, excluded from the denominator).
+**Overall: 57 / 74 programmatically-reachable capabilities driven = 77.0%** (15 partial, 2 gap; 4 GUI-only with no KiCad API, excluded from the denominator).
 
 ## Coverage by domain
 
 | Domain | Coverage | Covered | Partial | Gap | GUI-only (no API) |
 |---|---:|---:|---:|---:|---:|
 | `schematic_edit` | 84.6% | 11 | 2 | 0 | 1 |
-| `pcb_edit` | 75.0% | 12 | 4 | 0 | 1 |
+| `pcb_edit` | 93.8% | 15 | 1 | 0 | 1 |
 | `routing` | 66.7% | 4 | 2 | 0 | 1 |
 | `library` | 57.1% | 4 | 3 | 0 | 0 |
 | `analysis` | 27.3% | 3 | 7 | 1 | 0 |
 | `export` | 100.0% | 9 | 0 | 0 | 0 |
-| `project` | 80.0% | 4 | 1 | 0 | 0 |
-| `cosmetics` | 71.4% | 5 | 1 | 1 | 1 |
-| **Overall** | **70.3%** | 52 | 20 | 2 | 4 |
+| `project` | 100.0% | 5 | 0 | 0 | 0 |
+| `cosmetics` | 85.7% | 6 | 0 | 1 | 1 |
+| **Overall** | **77.0%** | 57 | 15 | 2 | 4 |
 
 ## Closeable surface (gap, then partial)
 
@@ -33,15 +33,10 @@ KiCad baseline: `10.0.x` · Updated: 2026-06-16
 | `analysis` | Length-matching validation | `partial` | `file` | `si_validate_length_matching` | Threshold-only; hard FAIL gating is P1-T3. |
 | `analysis` | Single-ended / differential trace impedance | `partial` | `file` | `si_calculate_trace_impedance` | First-order closed-form (IPC-2141/Wheeler) estimate ~5-10% (work order K4); field-solver accuracy is Phase 3 (P3-T1). |
 | `analysis` | Thermal via / copper-pour sizing | `partial` | `file` | `thermal_calculate_via_count` | thermal_check_copper_pour; proximity heuristic, real thermal network/FEA is Phase 3 (P3-T4). |
-| `cosmetics` | Set drawing-sheet title-block fields | `partial` | `ipc` | `pcb_set_title_block_info` | Registered but orphaned (hidden from every profile); surfaced in P1-T2. |
 | `library` | Generate an IPC-7351 footprint | `partial` | `file` | `lib_generate_footprint_ipc7351` | Footprint family coverage is limited (work order K10: SOT-23 implemented, SOT-223/SOT-89 not yet); datasheet/IPC validation hard-gate is Phase 4 (P4-T3). |
 | `library` | Recommend / bind a part to a symbol | `partial` | `file` | `lib_recommend_part` | lib_bind_part_to_symbol; depends on the same sourcing backends as above. |
 | `library` | Source live component data (price/stock/lifecycle) | `partial` | `file` | `lib_search_components` | Distributor clients (Nexar/DigiKey) are stubs requiring authenticated deployment (work order K10); real APIs land in Phase 4 (P4-T3). |
 | `pcb_edit` | Auto-place footprints from schematic | `partial` | `ipc` | `pcb_auto_place_by_schematic` | Force-directed placement (pcb_auto_place_force_directed) is non-deterministic under a wall-clock cap (work order K7); deterministic placement is Phase 4 (P4-T2). |
-| `pcb_edit` | Begin / push / revert an IPC commit transaction | `partial` | `ipc` | `pcb_push_commit` | pcb_begin_commit/push_commit/drop_commit/revert registered but orphaned; P1-T2. |
-| `pcb_edit` | Read / set board groups | `partial` | `ipc` | `pcb_get_groups` | Tool is registered but orphaned (declared in no router category, hidden from every profile); surfaced in Phase 1 (P1-T2). |
-| `pcb_edit` | Read / set drawing origin | `partial` | `ipc` | `pcb_set_origin` | pcb_get_origin/pcb_set_origin registered but orphaned (hidden from every profile); P1-T2. |
-| `project` | Job sets (export automation) | `partial` | `cli` | `jobset_export` | jobset_run / jobset_validate are registered but orphaned (hidden from every profile); surfaced in P1-T2. |
 | `routing` | Export Specctra DSN / import routed SES | `partial` | `cli` | `route_export_dsn` | route_import_ses stages but does not yet import headlessly (K1); honest manual-step surfacing is P1-T7. |
 | `routing` | Full autoroute (FreeRouting orchestration) | `partial` | `cli` | `route_autoroute_freerouting` | End-to-end headless route is not yet wired; DSN export / SES import may require a manual KiCad step (work order K1). Full solution is Phase 4 (P4-T1). |
 | `schematic_edit` | Modify a symbol property by reference | `partial` | `ipc` | `sch_modify_property` | Text-level property write uses regex fallback (work order K5); round-trip-safe AST is Phase 2 (P2-T1). |
@@ -89,9 +84,9 @@ Footprint place/move, track/via/zone/stackup/rules/groups/teardrops/fanout on .k
 | Auto-place footprints from schematic | `ipc` | `pcb_auto_place_by_schematic` | `partial` | 10.0.x | Force-directed placement (pcb_auto_place_force_directed) is non-deterministic under a wall-clock cap (work order K7); deterministic placement is Phase 4 (P4-T2). |
 | Run DRC and inspect violations | `cli` | `run_drc` | `covered` | 10.0.x | drc_add_exclusion / drc_validate_exclusions manage waivers. |
 | Manage design blocks / reusable groups | `file` | `pcb_block_create_from_selection` | `covered` | 10.0.x | pcb_block_list, pcb_block_place. |
-| Read / set board groups | `ipc` | `pcb_get_groups` | `partial` | 10.0.x | Tool is registered but orphaned (declared in no router category, hidden from every profile); surfaced in Phase 1 (P1-T2). |
-| Read / set drawing origin | `ipc` | `pcb_set_origin` | `partial` | 10.0.x | pcb_get_origin/pcb_set_origin registered but orphaned (hidden from every profile); P1-T2. |
-| Begin / push / revert an IPC commit transaction | `ipc` | `pcb_push_commit` | `partial` | 10.0.x | pcb_begin_commit/push_commit/drop_commit/revert registered but orphaned; P1-T2. |
+| Read / set board groups | `ipc` | `pcb_get_groups` | `covered` | 10.0.x | pcb_get_groups for inspection; pcb_group_by_function and pcb_block_* for grouping. |
+| Read / set drawing origin | `ipc` | `pcb_set_origin` | `covered` | 10.0.x | pcb_get_origin / pcb_set_origin. |
+| Begin / push / revert an IPC commit transaction | `ipc` | `pcb_push_commit` | `covered` | 10.0.x | pcb_begin_commit / push_commit / drop_commit / revert. |
 | Interactive push-and-shove routing | `gui-only` | — | `gui-only-no-api` | 10.0.x | KiCad's interactive router (push/shove, walkaround) has no IPC/CLI surface. |
 
 ### `routing`
@@ -164,7 +159,7 @@ Variants, embedded files, jobsets, VCS, and design intent.
 |---|---|---|---|---|---|
 | Assembly variants (create / activate / diff / export) | `file` | `variant_create` | `covered` | 10.0.x | variant_set_active, variant_diff_bom, variant_export_bom, variant_clone. |
 | Embedded project files | `file` | `project_embed_file` | `covered` | 10.0.x | project_list_embedded_files, project_extract_embedded_file, project_remove_embedded_file. |
-| Job sets (export automation) | `cli` | `jobset_export` | `partial` | 10.0.x | jobset_run / jobset_validate are registered but orphaned (hidden from every profile); surfaced in P1-T2. |
+| Job sets (export automation) | `cli` | `jobset_export` | `covered` | 10.0.x | jobset_list_templates, jobset_run, jobset_validate. |
 | Version-control checkpoints | `file` | `vcs_commit_checkpoint` | `covered` | 10.0.x | vcs_init_git, vcs_list_checkpoints, vcs_restore_checkpoint, vcs_diff_with_checkpoint, vcs_tag_release. |
 | Capture / infer design intent and spec | `file` | `project_set_design_intent` | `covered` | 10.0.x | project_get_design_spec, project_infer_design_spec, project_validate_design_spec. |
 
@@ -179,6 +174,6 @@ Silk, board art, drawing sheet / title block, fab notes, fiducials, mounting hol
 | Add fiducials | `ipc` | `pcb_add_fiducial_marks` | `covered` | 10.0.x |  |
 | Add mounting holes | `ipc` | `pcb_add_mounting_holes` | `covered` | 10.0.x |  |
 | Add inner-layer graphics to a footprint | `file` | `add_footprint_inner_layer_graphic` | `covered` | 10.0.x |  |
-| Set drawing-sheet title-block fields | `ipc` | `pcb_set_title_block_info` | `partial` | 10.0.x | Registered but orphaned (hidden from every profile); surfaced in P1-T2. |
+| Set drawing-sheet title-block fields | `ipc` | `pcb_set_title_block_info` | `covered` | 10.0.x | pcb_set_title_block_info. |
 | Import a logo/bitmap as board art (bitmap2component) | `cli` | — | `gap` | 10.0.x | KiCad's bitmap-to-silkscreen conversion has no MCP driver yet. |
 | Custom drawing-sheet (.kicad_wks) template design | `gui-only` | — | `gui-only-no-api` | 10.0.x | The page-layout editor is interactive; no headless drawing-sheet authoring surface. |

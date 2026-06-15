@@ -256,25 +256,25 @@ _RAW = r"""
           "capability": "Read / set board groups",
           "kicad_channel": "ipc",
           "mcp_tool": "pcb_get_groups",
-          "status": "partial",
+          "status": "covered",
           "kicad_version_introduced": "10.0.x",
-          "notes": "Tool is registered but orphaned (declared in no router category, hidden from every profile); surfaced in Phase 1 (P1-T2)."
+          "notes": "pcb_get_groups for inspection; pcb_group_by_function and pcb_block_* for grouping."
         },
         {
           "capability": "Read / set drawing origin",
           "kicad_channel": "ipc",
           "mcp_tool": "pcb_set_origin",
-          "status": "partial",
+          "status": "covered",
           "kicad_version_introduced": "10.0.x",
-          "notes": "pcb_get_origin/pcb_set_origin registered but orphaned (hidden from every profile); P1-T2."
+          "notes": "pcb_get_origin / pcb_set_origin."
         },
         {
           "capability": "Begin / push / revert an IPC commit transaction",
           "kicad_channel": "ipc",
           "mcp_tool": "pcb_push_commit",
-          "status": "partial",
+          "status": "covered",
           "kicad_version_introduced": "10.0.x",
-          "notes": "pcb_begin_commit/push_commit/drop_commit/revert registered but orphaned; P1-T2."
+          "notes": "pcb_begin_commit / push_commit / drop_commit / revert."
         },
         {
           "capability": "Interactive push-and-shove routing",
@@ -601,9 +601,9 @@ _RAW = r"""
           "capability": "Job sets (export automation)",
           "kicad_channel": "cli",
           "mcp_tool": "jobset_export",
-          "status": "partial",
+          "status": "covered",
           "kicad_version_introduced": "10.0.x",
-          "notes": "jobset_run / jobset_validate are registered but orphaned (hidden from every profile); surfaced in P1-T2."
+          "notes": "jobset_list_templates, jobset_run, jobset_validate."
         },
         {
           "capability": "Version-control checkpoints",
@@ -670,9 +670,9 @@ _RAW = r"""
           "capability": "Set drawing-sheet title-block fields",
           "kicad_channel": "ipc",
           "mcp_tool": "pcb_set_title_block_info",
-          "status": "partial",
+          "status": "covered",
           "kicad_version_introduced": "10.0.x",
-          "notes": "Registered but orphaned (hidden from every profile); surfaced in P1-T2."
+          "notes": "pcb_set_title_block_info."
         },
         {
           "capability": "Import a logo/bitmap as board art (bitmap2component)",

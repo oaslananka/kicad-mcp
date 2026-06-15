@@ -76,7 +76,7 @@ The documentation is organized from setup to operation:
 8. [KiCad capability parity](docs/compatibility/capability-parity.generated.md) — how much of KiCad's programmatic surface this server drives
 
 The `kicad_capability_parity()` tool reports, per workflow domain, what fraction of
-KiCad's programmatically reachable surface this server can drive (currently **70%**),
+KiCad's programmatically reachable surface this server can drive (currently **77%**),
 keeping genuine `gap`s distinct from `gui-only-no-api` items that KiCad exposes no
 headless API for.
 
