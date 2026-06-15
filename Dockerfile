@@ -22,9 +22,8 @@ WORKDIR /build
 RUN python -m pip install --no-cache-dir --disable-pip-version-check --root-user-action=ignore "uv==${UV_VERSION}"
 COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY src/ src/
-RUN uv build --wheel --out-dir /dist \
+  RUN uv build --wheel --out-dir /dist \
   && uv export --frozen --no-dev --no-emit-project \
-    --no-hashes \
     --format requirements.txt \
     --output-file /dist/requirements.txt
 
@@ -66,6 +65,8 @@ RUN python -m pip install --no-cache-dir --disable-pip-version-check --root-user
   && chmod 0755 /usr/local/bin/kicad-mcp-pro-entrypoint
 USER kicadmcp
 EXPOSE 3334
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD python -c "import urllib.request; exit(0 if urllib.request.urlopen('http://127.0.0.1:3334/').status == 200 else 1)" 2>/dev/null || exit 1
 ENTRYPOINT ["kicad-mcp-pro-entrypoint"]
 CMD ["--transport", "streamable-http"]
 
