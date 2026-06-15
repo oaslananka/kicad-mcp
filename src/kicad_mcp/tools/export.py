@@ -20,6 +20,7 @@ from ..models.export import (
     ExportNetlistInput,
     ExportPdfInput,
 )
+from .aliases import notify_deprecated, register_alias
 from .export_support import (
     _ensure_output_dir,
     _get_pcb_file,
@@ -975,13 +976,13 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
 
     @headless_compatible
     def export_3d_step() -> str:
-        """Export a STEP model for the active board."""
-        caps = get_cli_capabilities(get_config().kicad_cli)
-        return _with_low_level_export_notice(
-            _export_3d_model(
-                "step", "", supported=caps.supports_step, default_name="board.step", label="STEP"
-            )
-        )
+        """Deprecated alias of ``export_step``; exports a STEP model for the active board.
+
+        Retained for backward compatibility. Prefer ``export_step``, which accepts an
+        optional output path. This alias logs a one-time deprecation warning.
+        """
+        notify_deprecated("export_3d_step")
+        return export_step()
 
     @headless_compatible
     def export_step(output_path: str = "") -> str:
@@ -1544,7 +1545,7 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         mcp.tool()(export_sch_svg)
         mcp.tool()(export_sch_dxf)
         mcp.tool()(export_sch_python_bom)
-        mcp.tool()(export_3d_step)
+        register_alias(mcp, export_3d_step, "export_step")
         mcp.tool()(export_step)
         mcp.tool()(export_stepz)
         mcp.tool()(export_xao)
