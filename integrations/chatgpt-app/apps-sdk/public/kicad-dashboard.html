@@ -84,6 +84,15 @@
 </div>
 
 <script>
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // MCP Apps Bridge: listen for tool results
 window.addEventListener('message', (event) => {
   if (event.data?.type === 'mcp-tool-result') {
@@ -96,10 +105,10 @@ function updateDashboard(data) {
   try {
     const parsed = typeof data === 'string' ? JSON.parse(data) : data;
     document.getElementById('boardName').textContent = parsed.board || parsed.project || 'KiCad Board';
-    document.getElementById('boardLayers').textContent = parsed.layers ? `${parsed.layers} layers` : '—';
-    document.getElementById('componentCount').textContent = parsed.components ?? parsed.component_count ?? '—';
-    document.getElementById('netCount').textContent = parsed.nets ?? parsed.net_count ?? '—';
-    document.getElementById('trackCount').textContent = parsed.tracks ? `${parsed.tracks} tracks` : '—';
+    document.getElementById('boardLayers').textContent = parsed.layers ? `${parsed.layers} layers` : '\u2014';
+    document.getElementById('componentCount').textContent = parsed.components ?? parsed.component_count ?? '\u2014';
+    document.getElementById('netCount').textContent = parsed.nets ?? parsed.net_count ?? '\u2014';
+    document.getElementById('trackCount').textContent = parsed.tracks ? `${parsed.tracks} tracks` : '\u2014';
 
     const ercErrors = parseInt(parsed.erc_errors ?? parsed.ercErrors ?? 0);
     const drcErrors = parseInt(parsed.drc_errors ?? parsed.drcErrors ?? 0);
@@ -108,7 +117,7 @@ function updateDashboard(data) {
     const badgeEl = document.getElementById('healthBadge');
 
     if (totalErrors === 0) {
-      qualityEl.textContent = '✅';
+      qualityEl.textContent = '\u2705';
       qualityEl.className = 'value status-ok';
       document.getElementById('qualityStatus').textContent = 'No issues';
       badgeEl.textContent = 'PASS';
@@ -121,26 +130,35 @@ function updateDashboard(data) {
       badgeEl.className = 'badge badge-error';
     }
 
-    const issues = [];
-    if (ercErrors > 0) issues.push({ icon: '⚡', text: `${ercErrors} ERC error(s) — check schematic connectivity` });
-    if (drcErrors > 0) issues.push({ icon: '📐', text: `${drcErrors} DRC error(s) — check layout rules` });
-    if (parsed.unrouted) issues.push({ icon: '🔗', text: `${parsed.unrouted} unrouted net(s)` });
-
     const issueList = document.getElementById('issueList');
-    issueList.innerHTML = issues.length > 0
-      ? issues.map(i => `<li><span class="icon">${i.icon}</span> ${i.text}</li>`).join('')
-      : '<li><span class="icon">✅</span> No issues found</li>';
+    issueList.innerHTML = '';
+    if (ercErrors > 0 || drcErrors > 0 || parsed.unrouted) {
+      const appendItem = (icon, text) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="icon">${icon}</span> ${esc(text)}`;
+        issueList.appendChild(li);
+      };
+      if (ercErrors > 0) appendItem('\u26A1', `${ercErrors} ERC error(s) \u2014 check schematic connectivity`);
+      if (drcErrors > 0) appendItem('\uD83D\uDCD0', `${drcErrors} DRC error(s) \u2014 check layout rules`);
+      if (parsed.unrouted) appendItem('\uD83D\uDD17', `${parsed.unrouted} unrouted net(s)`);
+    } else {
+      issueList.innerHTML = '<li><span class="icon">\u2705</span> No issues found</li>';
+    }
 
+    const mfgList = document.getElementById('manufacturingList');
+    mfgList.innerHTML = '';
     const mfgItems = [
-      { icon: parsed.gerbers ? '✅' : '⬜', text: 'Gerber files' },
-      { icon: parsed.bom ? '✅' : '⬜', text: 'BOM' },
-      { icon: parsed.place ? '✅' : '⬜', text: 'Pick & Place' },
-      { icon: parsed.step ? '✅' : '⬜', text: '3D STEP' },
+      { icon: parsed.gerbers ? '\u2705' : '\u2B1C', text: 'Gerber files' },
+      { icon: parsed.bom ? '\u2705' : '\u2B1C', text: 'BOM' },
+      { icon: parsed.place ? '\u2705' : '\u2B1C', text: 'Pick & Place' },
+      { icon: parsed.step ? '\u2705' : '\u2B1C', text: '3D STEP' },
     ];
-    document.getElementById('manufacturingList').innerHTML =
-      mfgItems.map(i => `<li><span class="icon">${i.icon}</span> ${i.text}</li>`).join('');
+    for (const item of mfgItems) {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="icon">${item.icon}</span> ${esc(item.text)}`;
+      mfgList.appendChild(li);
+    }
   } catch (e) {
-    // Fallback: show raw text
     document.getElementById('boardName').textContent = data.substring(0, 80);
   }
 }

@@ -47,8 +47,16 @@ window.addEventListener('message', (event) => {
   }
 });
 
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderIssues(data) {
-  // Parse structured issue data from MCP response
   let issues = [];
   try { issues = JSON.parse(data); } catch { return; }
 
@@ -63,17 +71,23 @@ function renderIssues(data) {
   document.getElementById('okCount').textContent = passed || '—';
 
   const tbody = document.getElementById('issueTable');
-  tbody.innerHTML = issues
-    .filter(i => i.severity !== 'ok')
-    .map(i => {
-      const sev = (i.severity || '').toLowerCase();
-      return `<tr>
-        <td><span class="badge badge-${sev === 'error' ? 'error' : 'warn'}">${sev}</span></td>
-        <td>${i.rule || i.name || '—'}</td>
-        <td style="font-family:monospace;font-size:0.8rem;">${i.location || i.path || '—'}</td>
-        <td>${i.message || i.description || '—'}</td>
-      </tr>`;
-    }).join('') || '<tr><td colspan="4" class="empty">No issues found ✅</td></tr>';
+  tbody.innerHTML = '';
+  const filtered = issues.filter(i => i.severity !== 'ok');
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">No issues found ✅</td></tr>';
+    return;
+  }
+  for (const issue of filtered) {
+    const sev = (issue.severity || '').toLowerCase();
+    const isError = sev === 'error';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="badge badge-${isError ? 'error' : 'warn'}">${esc(sev)}</span></td>
+      <td>${esc(issue.rule || issue.name || '\u2014')}</td>
+      <td style="font-family:monospace;font-size:0.8rem;">${esc(issue.location || issue.path || '\u2014')}</td>
+      <td>${esc(issue.message || issue.description || '\u2014')}</td>`;
+    tbody.appendChild(tr);
+  }
 }
 
 // Request DRC report
