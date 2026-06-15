@@ -36,9 +36,48 @@ from ..utils.impedance import (
     via_stub_risk_level,
 )
 from ..utils.units import _coord_nm, nm_to_mm
+from ..verdicts import three_level_verdict, warn_max_from
+from .design_intent_state import resolve_design_intent
 
 _DEFAULT_OUTER_DIELECTRIC_MM = 0.18
 _DEFAULT_BOARD_THICKNESS_MM = 1.6
+
+# Conservative default differential-pair skew budget (ps) used only when neither an
+# explicit budget nor a design-intent interface budget is available. Formerly an
+# inline hardcoded ``10.0`` in the gate (work order K2).
+_DEFAULT_DIFF_SKEW_BUDGET_PS = 10.0
+
+
+def _resolve_skew_budget_ps(net_p: str, net_n: str) -> tuple[float, str]:
+    """Return ``(budget_ps, source_note)`` for a differential pair.
+
+    Prefers a design-intent interface ``diff_skew_max_ps`` whose ``net_prefix`` matches
+    one of the nets; falls back to the tightest declared interface budget, then to a
+    conservative default with an explicit "intent missing" note so a missing spec is
+    never silently treated as a pass.
+    """
+    resolution = resolve_design_intent()
+    interfaces = getattr(resolution.resolved, "interfaces", []) or []
+    matched: list[float] = []
+    declared: list[float] = []
+    for iface in interfaces:
+        budget = getattr(iface, "diff_skew_max_ps", None)
+        if not budget or budget <= 0:
+            continue
+        declared.append(budget)
+        prefix = (getattr(iface, "net_prefix", "") or "").strip()
+        if prefix and (net_p.startswith(prefix) or net_n.startswith(prefix)):
+            matched.append(budget)
+    if matched:
+        value = min(matched)
+        return value, f"design-intent interface budget {value:.1f} ps"
+    if declared:
+        value = min(declared)
+        return value, f"tightest design-intent budget {value:.1f} ps (no net-prefix match)"
+    return _DEFAULT_DIFF_SKEW_BUDGET_PS, (
+        f"conservative default {_DEFAULT_DIFF_SKEW_BUDGET_PS:.1f} ps — no design intent; "
+        "set diff_skew_max_ps via project_set_design_intent"
+    )
 
 
 def _write_nc_rule(
@@ -499,8 +538,14 @@ def register(mcp: FastMCP) -> None:
         net_n: str,
         er: float = 4.2,
         trace_type: str = "microstrip",
+        skew_budget_ps: float = 0.0,
     ) -> str:
-        """Estimate differential-pair length skew and delay mismatch from board tracks."""
+        """Estimate differential-pair length skew and delay mismatch from board tracks.
+
+        Returns a PASS/WARN/FAIL verdict. The skew budget comes from ``skew_budget_ps``
+        if > 0, otherwise from the matching design-intent interface, otherwise a
+        conservative default. PASS within budget, WARN up to 2x budget, FAIL beyond.
+        """
         payload = DifferentialPairSkewInput(net_p=net_p, net_n=net_n, er=er, trace_type=trace_type)
         lengths = _track_lengths_by_net()
         if payload.net_p not in lengths or payload.net_n not in lengths:
@@ -523,7 +568,13 @@ def register(mcp: FastMCP) -> None:
         length_n = lengths[payload.net_n]
         skew_mm = abs(length_p - length_n)
         skew_ps = skew_mm * delay_ps_per_mm
-        verdict = "PASS" if skew_ps <= 10.0 else "WARN"
+
+        if skew_budget_ps > 0:
+            budget_ps, budget_source = skew_budget_ps, f"explicit budget {skew_budget_ps:.1f} ps"
+        else:
+            budget_ps, budget_source = _resolve_skew_budget_ps(payload.net_p, payload.net_n)
+        fail_ps = warn_max_from(budget_ps)
+        verdict = three_level_verdict(skew_ps, pass_max=budget_ps, warn_max=fail_ps)
 
         return "\n".join(
             [
@@ -534,7 +585,9 @@ def register(mcp: FastMCP) -> None:
                 f"- Estimated delay mismatch: {skew_ps:.3f} ps",
                 f"- Effective permittivity used: {effective_er:.3f}",
                 f"- Assumed outer dielectric height: {height_mm:.3f} mm",
-                "- Heuristic target: keep skew under ~10 ps for fast serial links.",
+                f"- Skew budget: {budget_ps:.1f} ps (source: {budget_source})",
+                f"- Thresholds: PASS <= {budget_ps:.1f} ps, WARN <= {fail_ps:.1f} ps, "
+                f"FAIL > {fail_ps:.1f} ps.",
             ]
         )
 
@@ -544,7 +597,12 @@ def register(mcp: FastMCP) -> None:
         payload = LengthMatchingInput(net_groups=net_groups, tolerance_mm=tolerance_mm)
         lengths = _track_lengths_by_net()
 
-        lines = [f"Length-matching validation (tolerance {payload.tolerance_mm:.3f} mm):"]
+        fail_mm = warn_max_from(payload.tolerance_mm)
+        lines = [
+            f"Length-matching validation (tolerance {payload.tolerance_mm:.3f} mm; "
+            f"PASS <= {payload.tolerance_mm:.3f} mm, WARN <= {fail_mm:.3f} mm, "
+            f"FAIL > {fail_mm:.3f} mm):"
+        ]
         for index, group in enumerate(payload.net_groups, start=1):
             unique_group = [net for net in group if net]
             if not unique_group:
@@ -559,7 +617,9 @@ def register(mcp: FastMCP) -> None:
             shortest_net, shortest_mm = min(samples, key=lambda item: item[1])
             longest_net, longest_mm = max(samples, key=lambda item: item[1])
             spread_mm = longest_mm - shortest_mm
-            verdict = "PASS" if spread_mm <= payload.tolerance_mm else "WARN"
+            verdict = three_level_verdict(
+                spread_mm, pass_max=payload.tolerance_mm, warn_max=fail_mm
+            )
             lines.append(
                 f"- Group {index} ({verdict}): shortest {shortest_net}={shortest_mm:.3f} mm, "
                 f"longest {longest_net}={longest_mm:.3f} mm, spread={spread_mm:.3f} mm"
@@ -729,10 +789,12 @@ def register(mcp: FastMCP) -> None:
             return "\n".join(lines)
 
         best_ref, best_distance_mm, best_value = caps[0]
-        verdict = "PASS" if best_distance_mm <= recommended_mm else "WARN"
+        fail_mm = warn_max_from(recommended_mm)
+        verdict = three_level_verdict(best_distance_mm, pass_max=recommended_mm, warn_max=fail_mm)
         lines.append(
             f"- Nearest decoupler: {best_ref} ({best_value or 'value unknown'}) "
-            f"at {best_distance_mm:.3f} mm ({verdict})"
+            f"at {best_distance_mm:.3f} mm ({verdict}; PASS <= {recommended_mm:.3f} mm, "
+            f"WARN <= {fail_mm:.3f} mm, FAIL > {fail_mm:.3f} mm)"
         )
         lines.append("Nearest capacitors:")
         for reference, distance_mm, value in caps[: min(len(caps), 5)]:

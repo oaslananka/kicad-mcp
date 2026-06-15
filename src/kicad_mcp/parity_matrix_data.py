@@ -425,7 +425,7 @@ _RAW = r"""
           "mcp_tool": "si_check_differential_pair_skew",
           "status": "partial",
           "kicad_version_introduced": "10.0.x",
-          "notes": "Currently cannot return FAIL (work order K2); real PASS/WARN/FAIL is P1-T3, localized phase-skew is Phase 3 (P3-T3)."
+          "notes": "Real PASS/WARN/FAIL verdict with intent-derived skew budget (P1-T3); localized intra-pair phase-skew / mode-conversion is Phase 3 (P3-T3)."
         },
         {
           "capability": "Length-matching validation",
@@ -433,7 +433,7 @@ _RAW = r"""
           "mcp_tool": "si_validate_length_matching",
           "status": "partial",
           "kicad_version_introduced": "10.0.x",
-          "notes": "Threshold-only; hard FAIL gating is P1-T3."
+          "notes": "Three-level PASS/WARN/FAIL verdict against a tolerance budget (P1-T3); track-length based heuristic."
         },
         {
           "capability": "Synthesize a stackup for target interfaces",

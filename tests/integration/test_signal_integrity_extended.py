@@ -104,7 +104,9 @@ async def test_si_validate_length_matching_fail(sample_project, mock_board) -> N
         "si_validate_length_matching",
         {"net_groups": [["NET1", "NET2"]], "tolerance_mm": 1.0},
     )
-    assert "Group 1 (WARN)" in result
+    # spread 5 mm vs tolerance 1 mm exceeds the FAIL threshold (2x tolerance = 2 mm).
+    # Previously the gate could only WARN (K2); it now correctly returns FAIL (P1-T3).
+    assert "Group 1 (FAIL)" in result
     assert "spread=5.000 mm" in result
 
 

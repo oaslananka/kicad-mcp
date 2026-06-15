@@ -28,9 +28,9 @@ KiCad baseline: `10.0.x` · Updated: 2026-06-16
 | `cosmetics` | Import a logo/bitmap as board art (bitmap2component) | `gap` | `cli` | — | KiCad's bitmap-to-silkscreen conversion has no MCP driver yet. |
 | `analysis` | DC IR-drop / voltage-drop analysis | `partial` | `file` | `pdn_calculate_voltage_drop` | First-order estimate; distributed IR-drop / current-density solver is Phase 3 (P3-T2). |
 | `analysis` | Decoupling recommendation / power-plane generation | `partial` | `file` | `pdn_recommend_decoupling_caps` | pdn_generate_power_plane covered; frequency-domain PDN target-Z synthesis is Phase 3 (P3-T2). |
-| `analysis` | Differential-pair skew gate | `partial` | `file` | `si_check_differential_pair_skew` | Currently cannot return FAIL (work order K2); real PASS/WARN/FAIL is P1-T3, localized phase-skew is Phase 3 (P3-T3). |
+| `analysis` | Differential-pair skew gate | `partial` | `file` | `si_check_differential_pair_skew` | Real PASS/WARN/FAIL verdict with intent-derived skew budget (P1-T3); localized intra-pair phase-skew / mode-conversion is Phase 3 (P3-T3). |
 | `analysis` | EMC layout compliance checks | `partial` | `file` | `emc_run_full_compliance` | Presence/heuristic checks with fixed Er (work order K2/K10); EM-result-based, standard-named, fail-capable checks are Phase 3 (P3-T5). |
-| `analysis` | Length-matching validation | `partial` | `file` | `si_validate_length_matching` | Threshold-only; hard FAIL gating is P1-T3. |
+| `analysis` | Length-matching validation | `partial` | `file` | `si_validate_length_matching` | Three-level PASS/WARN/FAIL verdict against a tolerance budget (P1-T3); track-length based heuristic. |
 | `analysis` | Single-ended / differential trace impedance | `partial` | `file` | `si_calculate_trace_impedance` | First-order closed-form (IPC-2141/Wheeler) estimate ~5-10% (work order K4); field-solver accuracy is Phase 3 (P3-T1). |
 | `analysis` | Thermal via / copper-pour sizing | `partial` | `file` | `thermal_calculate_via_count` | thermal_check_copper_pour; proximity heuristic, real thermal network/FEA is Phase 3 (P3-T4). |
 | `library` | Generate an IPC-7351 footprint | `partial` | `file` | `lib_generate_footprint_ipc7351` | Footprint family coverage is limited (work order K10: SOT-23 implemented, SOT-223/SOT-89 not yet); datasheet/IPC validation hard-gate is Phase 4 (P4-T3). |
@@ -124,8 +124,8 @@ SI / PI / EMC / thermal / DFM / SPICE analysis.
 | Capability | Channel | MCP tool | Status | KiCad | Notes |
 |---|---|---|---|---|---|
 | Single-ended / differential trace impedance | `file` | `si_calculate_trace_impedance` | `partial` | 10.0.x | First-order closed-form (IPC-2141/Wheeler) estimate ~5-10% (work order K4); field-solver accuracy is Phase 3 (P3-T1). |
-| Differential-pair skew gate | `file` | `si_check_differential_pair_skew` | `partial` | 10.0.x | Currently cannot return FAIL (work order K2); real PASS/WARN/FAIL is P1-T3, localized phase-skew is Phase 3 (P3-T3). |
-| Length-matching validation | `file` | `si_validate_length_matching` | `partial` | 10.0.x | Threshold-only; hard FAIL gating is P1-T3. |
+| Differential-pair skew gate | `file` | `si_check_differential_pair_skew` | `partial` | 10.0.x | Real PASS/WARN/FAIL verdict with intent-derived skew budget (P1-T3); localized intra-pair phase-skew / mode-conversion is Phase 3 (P3-T3). |
+| Length-matching validation | `file` | `si_validate_length_matching` | `partial` | 10.0.x | Three-level PASS/WARN/FAIL verdict against a tolerance budget (P1-T3); track-length based heuristic. |
 | Synthesize a stackup for target interfaces | `file` | `si_synthesize_stackup_for_interfaces` | `covered` | 10.0.x | si_generate_stackup, si_bind_interfaces_to_net_classes, si_list_dielectric_materials. |
 | DC IR-drop / voltage-drop analysis | `file` | `pdn_calculate_voltage_drop` | `partial` | 10.0.x | First-order estimate; distributed IR-drop / current-density solver is Phase 3 (P3-T2). |
 | Decoupling recommendation / power-plane generation | `file` | `pdn_recommend_decoupling_caps` | `partial` | 10.0.x | pdn_generate_power_plane covered; frequency-domain PDN target-Z synthesis is Phase 3 (P3-T2). |
