@@ -136,8 +136,11 @@ installed.
   `server.json` is the canonical package contract and is kept in sync with
   `pyproject.toml` via `pnpm run metadata:check`.
 - **Capability parity** — what fraction of KiCad's *programmatic* surface this server
-  drives is tracked as a machine-readable matrix under `docs/compatibility/` and
-  surfaced by the `kicad_capability_parity()` tool.
+  drives is tracked as a machine-readable matrix
+  ([`docs/compatibility/capability-parity-matrix.yaml`](docs/compatibility/capability-parity-matrix.yaml),
+  human view: [`capability-parity.generated.md`](docs/compatibility/capability-parity.generated.md))
+  and surfaced by the `kicad_capability_parity()` tool. `gap` (we could drive it but
+  don't yet) is kept distinct from `gui-only-no-api` (KiCad has no headless surface).
 
 ## How to add a new tool
 

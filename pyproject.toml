@@ -121,6 +121,9 @@ ignore = ["S603"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["ANN001", "ANN202", "S101"]
 "src/kicad_mcp/web/dashboard.py" = ["E501"]
+# Generated file: long JSON lines live inside a raw string (regenerate via
+# scripts/build_parity_matrix.py); do not hand-edit.
+"src/kicad_mcp/parity_matrix_data.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.13"

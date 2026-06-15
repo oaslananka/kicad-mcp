@@ -1215,6 +1215,18 @@
   {
     "destructive": false,
     "experimental": false,
+    "headless": false,
+    "name": "kicad_capability_parity",
+    "open_world": false,
+    "profiles": [
+      "all"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
     "headless": true,
     "name": "kicad_create_new_project",
     "open_world": false,

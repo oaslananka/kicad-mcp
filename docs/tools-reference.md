@@ -131,7 +131,7 @@ Built-in prompt helpers for the critic/fixer loop:
 
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 314.
+Total public tools: 315.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---|
@@ -200,6 +200,7 @@ Total public tools: 314.
 | `get_unconnected_nets` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | yes | no | no | yes | no | Return only unconnected net issues from DRC. This KiCad MCP Pro tool supports production EDA automation workflows for... |
 | `jobset_export` | agent_full, full, manufacturing | no | no | yes | yes | no | Run a KiCad jobset to produce multiple export artifacts at once. |
 | `jobset_list_templates` | agent_full, full, manufacturing | no | no | no | yes | no | List available KiCad jobset templates. |
+| `kicad_capability_parity` | all | no | no | no | no | no | Report how much of KiCad's programmatic surface this server can drive. |
 | `kicad_create_new_project` | all | no | no | no | yes | no | Create a new minimal KiCad project structure and activate it. |
 | `kicad_get_project_info` | all | yes | no | no | yes | no | Show the currently configured KiCad project paths. This KiCad MCP Pro tool supports production EDA automation workflo... |
 | `kicad_get_server_info` | all | yes | no | no | yes | no | Return versioned server information and capability diagnostics for clients. This KiCad MCP Pro tool supports producti... |
@@ -517,6 +518,7 @@ Total public tools: 314.
 - `get_unconnected_nets`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=yes; destructive=no; openWorld=no; headless=yes; requiresKiCadRunning=no.
 - `jobset_export`: profiles=agent_full, full, manufacturing; readOnly=no; destructive=no; openWorld=yes; headless=yes; requiresKiCadRunning=no.
 - `jobset_list_templates`: profiles=agent_full, full, manufacturing; readOnly=no; destructive=no; openWorld=no; headless=yes; requiresKiCadRunning=no.
+- `kicad_capability_parity`: profiles=all; readOnly=no; destructive=no; openWorld=no; headless=no; requiresKiCadRunning=no.
 - `kicad_create_new_project`: profiles=all; readOnly=no; destructive=no; openWorld=no; headless=yes; requiresKiCadRunning=no.
 - `kicad_get_project_info`: profiles=all; readOnly=yes; destructive=no; openWorld=no; headless=yes; requiresKiCadRunning=no.
 - `kicad_get_server_info`: profiles=all; readOnly=yes; destructive=no; openWorld=no; headless=yes; requiresKiCadRunning=no.

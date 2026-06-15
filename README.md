@@ -73,6 +73,12 @@ The documentation is organized from setup to operation:
 5. [Workflows](docs/workflows/first-pcb.md)
 6. [Release process](docs/release-process.md)
 7. [Security and privacy](docs/security/threat-model.md)
+8. [KiCad capability parity](docs/compatibility/capability-parity.generated.md) — how much of KiCad's programmatic surface this server drives
+
+The `kicad_capability_parity()` tool reports, per workflow domain, what fraction of
+KiCad's programmatically reachable surface this server can drive (currently **70%**),
+keeping genuine `gap`s distinct from `gui-only-no-api` items that KiCad exposes no
+headless API for.
 
 The published documentation site is available at
 [https://oaslananka.github.io/kicad-mcp/](https://oaslananka.github.io/kicad-mcp/).

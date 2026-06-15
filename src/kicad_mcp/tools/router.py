@@ -67,6 +67,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "kicad_get_server_info",
             "kicad_list_tool_categories",
             "kicad_get_tools_in_category",
+            "kicad_capability_parity",
             "kicad_help",
             "studio_push_context",
             # v3.8.0 — embedded file management
