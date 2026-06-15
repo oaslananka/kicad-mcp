@@ -131,7 +131,7 @@ Built-in prompt helpers for the critic/fixer loop:
 
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 311.
+Total public tools: 314.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---|
@@ -360,6 +360,7 @@ Total public tools: 311.
 | `sch_add_label` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | yes | no | no | no | Add a schematic label, snapping its anchor to the 2.54 mm grid by default. |
 | `sch_add_missing_junctions` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | yes | no | yes | no | Insert missing schematic junctions at T-intersection wire endpoints. This KiCad MCP Pro tool supports production EDA... |
 | `sch_add_no_connect` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | yes | no | no | no | Add a no-connect marker, snapping it to the 2.54 mm grid by default. |
+| `sch_add_pin_labels` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | yes | no | no | no | Connect placed-symbol pins to nets with a short outward wire stub plus a |
 | `sch_add_power_symbol` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | yes | no | no | no | Add a power symbol, snapping its anchor to the 2.54 mm grid by default. |
 | `sch_add_symbol` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | yes | no | no | no | Add a schematic symbol at an absolute coordinate. |
 | `sch_add_wire` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | yes | no | no | no | Add a schematic wire, snapping endpoints to the 2.54 mm grid by default. |
@@ -371,6 +372,7 @@ Total public tools: 311.
 | `sch_build_circuit` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | no | no | no | no | Build (overwrite) the active schematic from structured symbol, wire, and label inputs. |
 | `sch_check_power_flags` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | no | no | no | no | Check whether common power nets appear to be flagged. This KiCad MCP Pro tool supports production EDA automation work... |
 | `sch_create_sheet` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | no | no | no | no | Create a child schematic sheet and add it to the active top-level schematic. |
+| `sch_delete_label` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | yes | no | no | no | Delete label(s) (local/global/hierarchical) matching ``name`` at the |
 | `sch_delete_symbol` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | yes | no | no | no | Remove a placed symbol and any directly attached wire segments. |
 | `sch_delete_wire` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | yes | no | no | no | Remove a specific wire segment using its UUID or unique UUID prefix. |
 | `sch_find_free_placement` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | no | no | yes | no | Find N collision-free placement coordinates for new symbols. |
@@ -388,6 +390,7 @@ Total public tools: 311.
 | `sch_list_swappable_pins` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | no | no | yes | no | List candidate pins and units that can participate in a swap workflow. |
 | `sch_list_templates` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | no | no | yes | no | List all available reference subcircuit templates. |
 | `sch_modify_property` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | yes | no | no | yes | Modify a schematic symbol property by reference. This KiCad MCP Pro tool supports production EDA automation workflows... |
+| `sch_move_label` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | yes | no | no | no | Move the label matching ``name`` at (x_mm, y_mm) to a new coordinate, |
 | `sch_move_symbol` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | yes | no | no | no | Move an existing symbol instance to a new absolute coordinate. |
 | `sch_reload` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | no | no | no | no | Ask KiCad to reload the active schematic. This KiCad MCP Pro tool supports production EDA automation workflows for MC... |
 | `sch_route_wire_between_pins` | agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation | no | yes | no | no | no | Route deterministic Manhattan wire segments between two placed symbol pins. |
@@ -674,6 +677,7 @@ Total public tools: 311.
 - `sch_add_label`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; headless=no; requiresKiCadRunning=no.
 - `sch_add_missing_junctions`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; headless=yes; requiresKiCadRunning=no.
 - `sch_add_no_connect`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; headless=no; requiresKiCadRunning=no.
+- `sch_add_pin_labels`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; headless=no; requiresKiCadRunning=no.
 - `sch_add_power_symbol`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; headless=no; requiresKiCadRunning=no.
 - `sch_add_symbol`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; headless=no; requiresKiCadRunning=no.
 - `sch_add_wire`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; headless=no; requiresKiCadRunning=no.
@@ -685,6 +689,7 @@ Total public tools: 311.
 - `sch_build_circuit`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; headless=no; requiresKiCadRunning=no.
 - `sch_check_power_flags`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; headless=no; requiresKiCadRunning=no.
 - `sch_create_sheet`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; headless=no; requiresKiCadRunning=no.
+- `sch_delete_label`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; headless=no; requiresKiCadRunning=no.
 - `sch_delete_symbol`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; headless=no; requiresKiCadRunning=no.
 - `sch_delete_wire`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; headless=no; requiresKiCadRunning=no.
 - `sch_find_free_placement`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; headless=yes; requiresKiCadRunning=no.
@@ -702,6 +707,7 @@ Total public tools: 311.
 - `sch_list_swappable_pins`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; headless=yes; requiresKiCadRunning=no.
 - `sch_list_templates`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; headless=yes; requiresKiCadRunning=no.
 - `sch_modify_property`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; headless=no; requiresKiCadRunning=yes.
+- `sch_move_label`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; headless=no; requiresKiCadRunning=no.
 - `sch_move_symbol`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; headless=no; requiresKiCadRunning=no.
 - `sch_reload`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; headless=no; requiresKiCadRunning=no.
 - `sch_route_wire_between_pins`: profiles=agent_full, builder, critic, full, high_speed, power, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; headless=no; requiresKiCadRunning=no.
