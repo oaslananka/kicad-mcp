@@ -13,8 +13,8 @@ COMPATIBILITY_MATRIX: Final[dict[str, object]] = {
     "schemaVersion": 1,
     "kicad": {
         "primary": PRIMARY_KICAD_VERSION,
-        "supported": ["10.0.x", "9.x", "8.x"],
-        "deprecated": ["9.x", "8.x"],
+        "supported": ["10.0.x", "8.x"],
+        "deprecated": ["8.x"],
     },
     "mcp": {
         "protocolVersion": MCP_PROTOCOL_VERSION,

@@ -4602,3 +4602,237 @@ def register(mcp: FastMCP) -> None:
             f"via={via_drill_mm}mm drill / {via_annular_mm}mm annular."
         )
         return json.dumps({"summary": summary, "vias": plan}, indent=2)
+
+    @mcp.tool()
+    @requires_kicad_running
+    def pcb_begin_commit() -> str:
+        """Begin a transaction group for atomic board modifications.
+
+        All subsequent mutations (add, remove, update operations) will be grouped
+        into a single undo step in KiCad. Call pcb_push_commit to apply or
+        pcb_drop_commit to discard.
+
+        Returns:
+            Confirmation message with commit status.
+        """
+        try:
+            board = get_board()
+            begin_commit = getattr(board, "begin_commit", None)
+            if not callable(begin_commit):
+                return (
+                    "Transaction grouping is not supported by the current KiCad IPC version. "
+                    "Mutations will be applied individually without atomic grouping."
+                )
+            begin_commit()
+            return (
+                "Transaction group started. Use pcb_push_commit to apply or "
+                "pcb_drop_commit to discard."
+            )
+        except (KiCadConnectionError, OSError) as exc:
+            return f"Failed to begin transaction: {exc}"
+
+    @mcp.tool()
+    @requires_kicad_running
+    def pcb_push_commit() -> str:
+        """Push (commit) the current transaction group to the board.
+
+        All mutations since pcb_begin_commit will be applied as a single undo step.
+
+        Returns:
+            Confirmation message with commit status.
+        """
+        try:
+            board = get_board()
+            push_commit = getattr(board, "push_commit", None)
+            if not callable(push_commit):
+                return "No active transaction group to commit."
+            push_commit()
+            return "Transaction group committed successfully."
+        except (KiCadConnectionError, OSError) as exc:
+            return f"Failed to commit transaction: {exc}"
+
+    @mcp.tool()
+    @requires_kicad_running
+    def pcb_drop_commit() -> str:
+        """Drop (discard) the current transaction group without applying changes.
+
+        All mutations since pcb_begin_commit will be discarded.
+
+        Returns:
+            Confirmation message with drop status.
+        """
+        try:
+            board = get_board()
+            drop_commit = getattr(board, "drop_commit", None)
+            if not callable(drop_commit):
+                return "No active transaction group to discard."
+            drop_commit()
+            return "Transaction group discarded successfully."
+        except (KiCadConnectionError, OSError) as exc:
+            return f"Failed to discard transaction: {exc}"
+
+    @mcp.tool()
+    @requires_kicad_running
+    def pcb_revert() -> str:
+        """Revert the board to the last saved state, discarding all unsaved changes.
+
+        WARNING: This is a destructive operation. All unsaved modifications will be lost.
+
+        Returns:
+            Confirmation message with revert status.
+        """
+        try:
+            board = get_board()
+            revert = getattr(board, "revert", None)
+            if not callable(revert):
+                return (
+                    "Revert is not supported by the current KiCad IPC version. "
+                    "Please save and reload the board manually."
+                )
+            revert()
+            return "Board reverted to last saved state. All unsaved changes have been discarded."
+        except (KiCadConnectionError, OSError) as exc:
+            return f"Failed to revert board: {exc}"
+
+    @mcp.tool()
+    @headless_compatible
+    def pcb_get_groups() -> str:
+        """List board groups (KiCad 10.0.0+).
+
+        Groups are logical collections of board items that can be moved and
+        manipulated together.
+
+        Returns:
+            JSON string with group information or message if not supported.
+        """
+        try:
+            board = get_board()
+            get_groups = getattr(board, "get_groups", None)
+            if not callable(get_groups):
+                return (
+                    "Group support requires KiCad 10.0.0 or later. "
+                    "The current KiCad version does not support board groups."
+                )
+            groups = list(get_groups())
+            if not groups:
+                return "No groups are present on the active board."
+            lines = [f"Groups ({len(groups)} total):", "- Source: live-gui"]
+            for index, group in enumerate(groups, start=1):
+                name = getattr(group, "name", None) or f"Group {index}"
+                item_count = len(getattr(group, "items", []))
+                lines.append(f"{index}. {name} ({item_count} items)")
+            return "\n".join(lines)
+        except (KiCadConnectionError, OSError) as exc:
+            return f"Failed to get groups: {exc}"
+
+    @mcp.tool()
+    @requires_kicad_running
+    def pcb_set_origin(x_mm: float, y_mm: float) -> str:
+        """Set the board origin (drill origin) in millimeters.
+
+        The origin is used as the reference point for drill files and some
+        export formats.
+
+        Args:
+            x_mm: X coordinate in millimeters.
+            y_mm: Y coordinate in millimeters.
+
+        Returns:
+            Confirmation message with new origin coordinates.
+        """
+        try:
+            board = get_board()
+            set_origin = getattr(board, "set_origin", None)
+            if not callable(set_origin):
+                return "Origin setting is not supported by the current KiCad IPC version."
+            origin = Vector2.from_xy(int(mm_to_nm(x_mm)), int(mm_to_nm(y_mm)))
+            set_origin(origin)
+            return f"Board origin set to ({x_mm:.3f}, {y_mm:.3f}) mm."
+        except (KiCadConnectionError, OSError) as exc:
+            return f"Failed to set origin: {exc}"
+
+    @mcp.tool()
+    @headless_compatible
+    def pcb_get_origin() -> str:
+        """Get the current board origin (drill origin) in millimeters.
+
+        Returns:
+            JSON string with origin coordinates or message if not supported.
+        """
+        try:
+            board = get_board()
+            get_origin = getattr(board, "get_origin", None)
+            if not callable(get_origin):
+                return "Origin retrieval is not supported by the current KiCad IPC version."
+            origin = get_origin()
+            x_mm = nm_to_mm(_coord_nm(origin, "x"))
+            y_mm = nm_to_mm(_coord_nm(origin, "y"))
+            return json.dumps(
+                {"origin_mm": {"x": x_mm, "y": y_mm}, "source": "live-gui"},
+                indent=2,
+            )
+        except (KiCadConnectionError, OSError) as exc:
+            return f"Failed to get origin: {exc}"
+
+    @mcp.tool()
+    @requires_kicad_running
+    def pcb_set_title_block_info(
+        title: str | None = None,
+        date: str | None = None,
+        revision: str | None = None,
+        company: str | None = None,
+        comment1: str | None = None,
+        comment2: str | None = None,
+        comment3: str | None = None,
+        comment4: str | None = None,
+    ) -> str:
+        """Set board title block information (KiCad 10.0.1+).
+
+        Title block fields appear on printed outputs and drawings.
+
+        Args:
+            title: Board title.
+            date: Board date.
+            revision: Board revision.
+            company: Company name.
+            comment1: Custom comment field 1.
+            comment2: Custom comment field 2.
+            comment3: Custom comment field 3.
+            comment4: Custom comment field 4.
+
+        Returns:
+            Confirmation message with updated fields.
+        """
+        try:
+            board = get_board()
+            set_title_block_info = getattr(board, "set_title_block_info", None)
+            if not callable(set_title_block_info):
+                return (
+                    "Title block editing requires KiCad 10.0.1 or later. "
+                    "The current KiCad version does not support this operation."
+                )
+            # Build kwargs for non-None fields
+            kwargs: dict[str, str] = {}
+            if title is not None:
+                kwargs["title"] = title
+            if date is not None:
+                kwargs["date"] = date
+            if revision is not None:
+                kwargs["revision"] = revision
+            if company is not None:
+                kwargs["company"] = company
+            if comment1 is not None:
+                kwargs["comment1"] = comment1
+            if comment2 is not None:
+                kwargs["comment2"] = comment2
+            if comment3 is not None:
+                kwargs["comment3"] = comment3
+            if comment4 is not None:
+                kwargs["comment4"] = comment4
+            if not kwargs:
+                return "No title block fields specified. Provide at least one field to update."
+            set_title_block_info(**kwargs)
+            updated_fields = ", ".join(kwargs.keys())
+            return f"Title block updated: {updated_fields}."
+        except (KiCadConnectionError, OSError) as exc:
+            return f"Failed to set title block info: {exc}"

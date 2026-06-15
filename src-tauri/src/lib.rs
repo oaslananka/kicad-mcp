@@ -7,17 +7,25 @@ use std::thread;
 use std::time::Duration;
 use tauri::tray::TrayIconBuilder;
 use tauri::{Manager, State};
+use tauri_plugin_dialog::DialogExt;
+
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+use tauri::menu::{MenuBuilder, MenuItemBuilder};
 
 #[derive(Clone, serde::Serialize)]
 pub struct ServerStatus {
     pub running: bool,
     pub message: String,
     pub pid: Option<u32>,
+    pub working_dir: Option<String>,
 }
 
 pub struct ServerProcess {
     pub child: Mutex<Option<Child>>,
     pub error: Mutex<Option<String>>,
+    pub working_dir: Mutex<Option<PathBuf>>,
 }
 
 impl Drop for ServerProcess {
@@ -122,10 +130,17 @@ fn start_server_inner(process: &ServerProcess, port: u16) -> Result<String, Stri
         };
         format!("uvx was not found. {hint}")
     })?;
-    // Use the user's home directory as working dir so uvx can resolve packages
-    let cwd = std::env::var_os("USERPROFILE")
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
+    // Use user-selected working directory (if set), or fall back to HOME
+    let cwd = process
+        .working_dir
+        .lock()
+        .ok()
+        .and_then(|guard| guard.clone())
+        .or_else(|| {
+            std::env::var_os("USERPROFILE")
+                .map(PathBuf::from)
+                .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
+        })
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
     // Log to a file for debugging (especially useful when spawned from Tauri GUI)
@@ -136,8 +151,8 @@ fn start_server_inner(process: &ServerProcess, port: u16) -> Result<String, Stri
     let log_file = std::fs::File::create(&log_path)
         .map_err(|e| format!("Failed to create server log {log_path:?}: {e}"))?;
 
-    let child = Command::new(&uvx)
-        .current_dir(&cwd)
+    let mut cmd = Command::new(&uvx);
+    cmd.current_dir(&cwd)
         .args([
             "kicad-mcp-pro",
             "dashboard",
@@ -148,6 +163,16 @@ fn start_server_inner(process: &ServerProcess, port: u16) -> Result<String, Stri
         ])
         .stdout(Stdio::null())
         .stderr(log_file)
+        .stdin(Stdio::null());
+
+    #[cfg(windows)]
+    {
+        // Prevent the console-mode uvx.exe from opening a cmd window
+        // when spawned from a Windows-subsystem (GUI) Tauri app.
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    let child = cmd
         .spawn()
         .map_err(|error| format!("Failed to start kicad-mcp-pro with {uvx:?}: {error}"))?;
 
@@ -230,6 +255,13 @@ fn server_status(state: State<'_, ServerProcess>) -> ServerStatus {
         .lock()
         .ok()
         .and_then(|guard| guard.clone());
+    let wd = state
+        .inner()
+        .working_dir
+        .lock()
+        .ok()
+        .and_then(|guard| guard.clone())
+        .map(|p| p.to_string_lossy().to_string());
     ServerStatus {
         running,
         message: error_msg.unwrap_or_else(|| {
@@ -240,7 +272,54 @@ fn server_status(state: State<'_, ServerProcess>) -> ServerStatus {
             }
         }),
         pid,
+        working_dir: wd,
     }
+}
+
+/// Opens a native OS folder-picker dialog and stores the selection
+/// as the working directory for the Python server process.
+#[tauri::command]
+fn select_working_dir(
+    app: tauri::AppHandle,
+    state: State<'_, ServerProcess>,
+) -> Result<String, String> {
+    let path = app
+        .dialog()
+        .file()
+        .blocking_pick_folder()
+        .ok_or_else(|| "No folder selected.".to_string())?;
+    let path_str = path.to_string();
+    let path_buf = path
+        .as_path()
+        .ok_or_else(|| "Selected path is not a valid filesystem path.".to_string())?
+        .to_path_buf();
+    if let Ok(mut guard) = state.working_dir.lock() {
+        *guard = Some(path_buf);
+    }
+    eprintln!("[kicad-mcp-pro] Working directory set to: {path_str}");
+    Ok(path_str)
+}
+
+/// Returns the currently selected working directory, if any.
+#[tauri::command]
+fn get_working_dir(state: State<'_, ServerProcess>) -> Option<String> {
+    state
+        .inner()
+        .working_dir
+        .lock()
+        .ok()
+        .and_then(|guard| guard.clone())
+        .map(|p| p.to_string_lossy().to_string())
+}
+
+/// Stops the running server (if any) and restarts it with the
+/// current settings (port, working directory, etc.).
+#[tauri::command]
+fn restart_server(state: State<'_, ServerProcess>, port: u16) -> Result<String, String> {
+    let _ = stop_server_inner(state.inner());
+    // Give the OS a moment to release the port
+    thread::sleep(Duration::from_millis(500));
+    start_server_inner(state.inner(), port)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -248,26 +327,63 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .manage(ServerProcess {
             child: Mutex::new(None),
             error: Mutex::new(None),
+            working_dir: Mutex::new(None),
         })
         .invoke_handler(tauri::generate_handler![
             start_server,
             stop_server,
             server_pid,
-            server_status
+            server_status,
+            select_working_dir,
+            get_working_dir,
+            restart_server,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // Close-to-tray: hide window instead of quitting.
+                // Use tray menu "Quit" to fully exit.
                 let _ = window.hide();
                 api.prevent_close();
             }
         })
         .setup(|app| {
+            // Build tray context menu
+            let show_item = MenuItemBuilder::with_id("show", "Show Window")
+                .build(app)?;
+            let quit_item = MenuItemBuilder::with_id("quit", "Quit")
+                .build(app)?;
+            let menu = MenuBuilder::new(app)
+                .item(&show_item)
+                .separator()
+                .item(&quit_item)
+                .build()?;
+
             let mut tray = TrayIconBuilder::new()
+                .menu(&menu)
                 .tooltip("KiCad MCP Pro - Starting...")
-                .show_menu_on_left_click(false);
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| {
+                    match event.id().as_ref() {
+                        "show" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                        "quit" => {
+                            // Stop the server first
+                            if let Some(state) = app.try_state::<ServerProcess>() {
+                                let _ = stop_server_inner(state.inner());
+                            }
+                            app.exit(0);
+                        }
+                        _ => {}
+                    }
+                });
             if let Some(icon) = app.default_window_icon() {
                 tray = tray.icon(icon.clone());
             }

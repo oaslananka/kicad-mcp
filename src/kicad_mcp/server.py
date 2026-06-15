@@ -802,6 +802,7 @@ class KiCadFastMCP(FastMCP):
     def streamable_http_app(self) -> Starlette:
         app = super().streamable_http_app()
         cfg = get_config()
+        app.add_middleware(_DashboardAuthMiddleware)
         app.add_middleware(_StreamableHttpContractMiddleware)
         if cfg.legacy_sse:
             sse_routes = self.sse_app().routes
@@ -1326,6 +1327,70 @@ class _OriginValidationMiddleware(BaseHTTPMiddleware):
             origin = request.headers.get("origin")
             if origin and origin not in cfg.cors_origin_list:
                 return PlainTextResponse("Origin not allowed for this MCP server.", status_code=403)
+        return await call_next(request)
+
+
+class _DashboardAuthMiddleware(BaseHTTPMiddleware):
+    """Enforce token verification on /api/* (except /api/health) and /ui* routes."""
+
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
+        from urllib.parse import urlparse
+        cfg = get_config()
+        path = request.url.path
+
+        is_api_or_ui = path.startswith("/api") or path.startswith("/ui") or path == "/"
+        is_health = path == "/api/health"
+
+        if cfg.auth_token and is_api_or_ui and not is_health:
+            # Check Authorization: Bearer <token> header
+            token = _bearer_token(request)
+            authorized = False
+            if token and token == cfg.auth_token:
+                authorized = True
+            else:
+                # Check query parameter ?token=<token>
+                query_token = request.query_params.get("token")
+                if query_token and query_token == cfg.auth_token:
+                    authorized = True
+
+            if not authorized:
+                return JSONResponse(
+                    {"error": "Unauthorized. Invalid or missing auth token."},
+                    status_code=401,
+                )
+
+            # Check Origin
+            origin = request.headers.get("origin")
+            if origin:
+                # Allow same-origin
+                allowed = False
+                if origin in cfg.cors_origin_list:
+                    allowed = True
+                else:
+                    parsed_origin = urlparse(origin)
+                    origin_host = parsed_origin.hostname or ""
+                    origin_port = parsed_origin.port or (
+                        80
+                        if parsed_origin.scheme == "http"
+                        else 443
+                        if parsed_origin.scheme == "https"
+                        else None
+                    )
+                    server_hosts = {cfg.host}
+                    if cfg.host.strip().casefold() in LOOPBACK_HOSTS:
+                        server_hosts.update(LOOPBACK_HOSTS)
+                    if origin_host in server_hosts and origin_port == cfg.port:
+                        allowed = True
+                if not allowed:
+                    return JSONResponse(
+                        {"error": "Forbidden. Origin not allowed."},
+                        status_code=403,
+                    )
+
         return await call_next(request)
 
 

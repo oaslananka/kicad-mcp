@@ -1,5 +1,5 @@
 schemaVersion: 1
-updated: "2026-06-06"
+updated: "2026-06-15"
 source: "https://github.com/oaslananka/kicad-mcp"
 
 kicad:
@@ -13,21 +13,15 @@ kicad:
       state: "primary"
       ci: "required"
       notes: "Primary optimized KiCad CLI and file-format target."
-    # Upstream ended active KiCad 9.x maintenance after KiCad 10.0.0 and
-    # described 9.0.9 as the final 9.0 bug-fix release. Keep this line in
-    # scheduled, non-blocking canaries until removal is announced in the next
-    # minor release.
-    - range: "9.x"
-      state: "deprecated"
-      upstreamEol: true
-      ci: "scheduled"
-      removal: "3.9.0"
-      notes: "Upstream KiCad 9.x is no longer actively maintained; core workflows remain best-effort while scheduled canaries gather removal evidence."
     - range: "8.x"
       state: "deprecated"
       ci: "manual"
       notes: "File-level read and migration support only; removal requires a release note."
-  dropped: []
+  dropped:
+    - range: "9.x"
+      reason: "Upstream KiCad 9.x reached end of life after KiCad 10.0.0; removal executed at kicad-mcp 3.9.0."
+      ci: "none"
+      removalVersion: "3.9.0"
   pcbImportWorkflows:
     reviewed: "2026-05-27"
     commandProbe: "kicad-cli pcb import --help"
@@ -569,16 +563,16 @@ products:
 
 featureGates:
   projectDiscovery:
-    kicad: ["8.x", "9.x", "10.0.x"]
+    kicad: ["8.x", "10.0.x"]
     tools: ["kicad_get_project_info", "kicad_set_project"]
   schematicRead:
-    kicad: ["8.x", "9.x", "10.0.x"]
+    kicad: ["8.x", "10.0.x"]
     tools: ["sch_get_symbols"]
   pcbRead:
-    kicad: ["8.x", "9.x", "10.0.x"]
+    kicad: ["8.x", "10.0.x"]
     tools: ["pcb_get_board_summary"]
   manufacturingExports:
-    kicad: ["9.x", "10.0.x"]
+    kicad: ["10.0.x"]
     tools: ["export_gerber", "export_drill", "export_manufacturing_package"]
   kicad10Variants:
     kicad: ["10.0.x"]

@@ -339,6 +339,18 @@ def register(mcp: FastMCP) -> None:
         pins = re.findall(
             r'\(pin\s+(\w+)\s+\w+.*?\(name\s+"([^"]*)".*?\(number\s+"([^"]*)"', block, re.DOTALL
         )
+        if not pins:
+            # Derived symbols inherit their pins from the parent via (extends "...").
+            extends = re.search(r'\(extends\s+"([^"]+)"\)', block)
+            if extends:
+                parent_start = content.find(f'(symbol "{extends.group(1)}"')
+                if parent_start != -1:
+                    parent_block, _ = _extract_block(content, parent_start)
+                    pins = re.findall(
+                        r'\(pin\s+(\w+)\s+\w+.*?\(name\s+"([^"]*)".*?\(number\s+"([^"]*)"',
+                        parent_block,
+                        re.DOTALL,
+                    )
         lines = [f"Symbol: {library}:{symbol_name}"]
         if description:
             lines.append(f"- Description: {description.group(1)}")
@@ -350,7 +362,7 @@ def register(mcp: FastMCP) -> None:
             lines.append(f"- Datasheet: {datasheet.group(1)}")
         if pins:
             lines.append(f"- Pins: {len(pins)}")
-            for pin in pins[:20]:
+            for pin in pins:
                 lines.append(f"  - {pin[2]} {pin[1]} ({pin[0]})")
         return "\n".join(lines)
 

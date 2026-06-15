@@ -271,9 +271,9 @@ def _operation_states(
                 major_version=major_version,
                 context_available=live_pcb_context,
                 context_name="PCB",
-                minimum_major=9,
+                minimum_major=10,
             ),
-            minimum_kicad_major=9,
+            minimum_kicad_major=10,
         )
     for tool_name in sorted(SCHEMATIC_LIVE_EDITING_TOOLS):
         available = reachable and live_schematic_context and _major_at_least(major_version, 10)

@@ -1642,6 +1642,24 @@ def _extract_labels(content: str) -> list[dict[str, Any]]:
     return labels
 
 
+def _parse_label_block(block: str) -> dict[str, Any] | None:
+    """Parse a single ``(label|global_label|hierarchical_label ...)`` block."""
+    match = re.match(
+        rf"\((label|global_label|hierarchical_label)\s+{_STRING_PATTERN}\s+"
+        r"(?:\(shape\s+\w+\)\s+)?\(at\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\)",
+        block,
+    )
+    if match is None:
+        return None
+    return {
+        "kind": match.group(1),
+        "name": _unescape_sexpr_string(match.group(2)),
+        "x": float(match.group(3)),
+        "y": float(match.group(4)),
+        "rotation": int(round(float(match.group(5)))),
+    }
+
+
 def _get_schematic_file() -> Path:
     cfg = get_config()
     if cfg.sch_file is None or not cfg.sch_file.exists():
@@ -1761,7 +1779,16 @@ def rotate_point(x: float, y: float, angle_deg: float) -> tuple[float, float]:
 
 
 def load_lib_symbol(library: str, symbol_name: str) -> str | None:
-    """Load a symbol definition from a KiCad symbol library."""
+    """Load a symbol definition from a KiCad symbol library.
+
+    Plain symbols are returned with their top-level name qualified by the
+    library prefix. Derived ``(extends ...)`` symbols are *flattened* into a
+    single self-contained symbol -- the way KiCad caches symbols inside a
+    schematic -- so the embedded body/pins render at exactly the coordinates
+    ``get_pin_positions`` reports. (Embedding the raw extends form instead left
+    the derived symbol's pins rendered off their reported positions, so labels
+    placed on them dangled in ERC.)
+    """
     sym_file = _get_symbol_library_dir() / f"{library}.kicad_sym"
     if not sym_file.exists():
         return None
@@ -1771,11 +1798,71 @@ def load_lib_symbol(library: str, symbol_name: str) -> str | None:
     if not blocks:
         return None
 
-    rendered_blocks = blocks[:-1]
-    rendered_blocks.append(
-        blocks[-1].replace(f'(symbol "{symbol_name}"', f'(symbol "{library}:{symbol_name}"', 1)
-    )
-    return "\n".join(rendered_blocks)
+    if len(blocks) == 1:
+        block = blocks[0]
+        block_name = _symbol_block_name(block)
+        if block_name is not None and not block_name.startswith(f"{library}:"):
+            block = block.replace(f'(symbol "{block_name}"', f'(symbol "{library}:{block_name}"', 1)
+        return block
+
+    return _flatten_extends_symbol(library, symbol_name, blocks)
+
+
+def _flatten_extends_symbol(library: str, symbol_name: str, blocks: list[str]) -> str:
+    """Collapse an ``(extends ...)`` chain into one self-contained symbol.
+
+    KiCad does not keep the extends relationship when it caches a symbol inside a
+    schematic: it copies the base symbol's graphic child units into the derived
+    symbol and renames them to the derived symbol's prefix. We reproduce that so
+    the embedded derived symbol behaves like a normal (non-derived) symbol and
+    its pins land where ``get_pin_positions`` reports.
+    """
+    # The base is the nearest ancestor that actually defines body/pin child
+    # units; _collect_symbol_blocks returns ancestors first, the derived last.
+    base = blocks[0]
+    base_name = _symbol_block_name(base) or ""
+    for block in blocks:
+        if _extract_child_symbol_blocks(block):
+            base = block
+            base_name = _symbol_block_name(block) or ""
+            break
+
+    flat = base
+    # Re-prefix the graphic child units (e.g. "BASE_0_1" -> "DERIVED_0_1") so
+    # KiCad associates them with the flattened, derived-named symbol.
+    if base_name and base_name != symbol_name:
+        flat = flat.replace(f'(symbol "{base_name}_', f'(symbol "{symbol_name}_')
+    # Qualify the top-level symbol name with the library prefix and derived name.
+    if base_name:
+        flat = flat.replace(f'(symbol "{base_name}"', f'(symbol "{library}:{symbol_name}"', 1)
+    # Override inherited properties (Value, Footprint, Datasheet, ...) with the
+    # derived symbol's own values so the flattened symbol matches KiCad's library.
+    base_props = _symbol_property_blocks(base)
+    for prop_name, derived_prop in _symbol_property_blocks(blocks[-1]).items():
+        base_prop = base_props.get(prop_name)
+        if base_prop and base_prop in flat:
+            flat = flat.replace(base_prop, derived_prop, 1)
+    return flat
+
+
+def _symbol_property_blocks(block: str) -> dict[str, str]:
+    """Return ``{property_name: "(property ...)" block}`` for a symbol's own
+    top-level properties (nested child sub-symbols are ignored)."""
+    shell = _strip_child_symbol_blocks(block)
+    props: dict[str, str] = {}
+    cursor = 0
+    while True:
+        idx = shell.find('(property "', cursor)
+        if idx < 0:
+            break
+        prop_block, consumed = _extract_block(shell, idx)
+        cursor = idx + max(consumed, 1)
+        if not prop_block:
+            continue
+        match = re.match(r'\(property\s+"([^"]+)"', prop_block)
+        if match:
+            props.setdefault(match.group(1), prop_block)
+    return props
 
 
 def _find_symbol_block(content: str, symbol_name: str) -> str | None:
@@ -1929,7 +2016,7 @@ def _pin_alias_positions(
     conflicts: set[str] = set()
     for record in _extract_pin_records(block):
         rx, ry = rotate_point(float(record["x"]), -float(record["y"]), rotation)
-        point = (round(sym_x + rx, 4), round(sym_y - ry, 4))
+        point = (round(sym_x + rx, 4), round(sym_y + ry, 4))
         number = str(record["number"])
         name = str(record["name"])
         for alias in {
@@ -1948,21 +2035,27 @@ def _pin_alias_positions(
 
 def _available_units_from_blocks(blocks: list[str]) -> set[int]:
     units: set[int] = set()
-    has_direct_pins = False
+    has_pins = False
     for block in blocks:
-        direct_pins = _extract_pin_definitions(_strip_child_symbol_blocks(block))
-        has_direct_pins = has_direct_pins or bool(direct_pins)
+        if _extract_pin_definitions(_strip_child_symbol_blocks(block)):
+            has_pins = True
         block_name = _symbol_block_name(block)
         if block_name is None:
             continue
         prefix = f"{block_name}_"
-        for child_name, _ in _extract_child_symbol_blocks(block):
+        for child_name, child_block in _extract_child_symbol_blocks(block):
             if not child_name.startswith(prefix):
                 continue
             unit_str, _, _ = child_name[len(prefix) :].partition("_")
-            if unit_str.isdigit() and int(unit_str) >= 1:
-                units.add(int(unit_str))
-    if not units and has_direct_pins:
+            if unit_str.isdigit():
+                unit_value = int(unit_str)
+                if unit_value >= 1:
+                    units.add(unit_value)
+                elif _extract_pin_definitions(child_block):
+                    # Unit-0 sub-symbol holds pins common to all units, e.g.
+                    # single-unit easyeda2kicad imports place every pin there.
+                    has_pins = True
+    if not units and has_pins:
         units.add(1)
     return units
 
@@ -1993,19 +2086,21 @@ def get_pin_positions(
         direct_pins = _extract_pin_definitions(_strip_child_symbol_blocks(block))
         for pin_number, (px, py) in direct_pins.items():
             rx, ry = rotate_point(px, -py, rotation)
-            pins[pin_number] = (round(sym_x + rx, 4), round(sym_y - ry, 4))
+            pins[pin_number] = (round(sym_x + rx, 4), round(sym_y + ry, 4))
 
         block_name = _symbol_block_name(block)
         if block_name is None:
             continue
-        unit_prefix = f"{block_name}_{unit}_"
+        # Match the requested unit and unit 0 (pins common to all units, where
+        # single-unit easyeda2kicad imports place every pin).
+        unit_prefixes = (f"{block_name}_{unit}_", f"{block_name}_0_")
         for child_name, child_block in _extract_child_symbol_blocks(block):
-            if not child_name.startswith(unit_prefix):
+            if not child_name.startswith(unit_prefixes):
                 continue
             for pin_number, (px, py) in _extract_pin_definitions(child_block).items():
                 # KiCad's pin (at x y angle) coordinate is the electrical connection point.
                 rx, ry = rotate_point(px, -py, rotation)
-                pins[pin_number] = (round(sym_x + rx, 4), round(sym_y - ry, 4))
+                pins[pin_number] = (round(sym_x + rx, 4), round(sym_y + ry, 4))
     return pins
 
 
@@ -2044,9 +2139,11 @@ def get_pin_alias_positions(
         block_name = _symbol_block_name(block)
         if block_name is None:
             continue
-        unit_prefix = f"{block_name}_{unit}_"
+        # Match the requested unit and unit 0 (pins common to all units, where
+        # single-unit easyeda2kicad imports place every pin).
+        unit_prefixes = (f"{block_name}_{unit}_", f"{block_name}_0_")
         for child_name, child_block in _extract_child_symbol_blocks(block):
-            if not child_name.startswith(unit_prefix):
+            if not child_name.startswith(unit_prefixes):
                 continue
             for alias, point in _pin_alias_positions(
                 child_block,
@@ -3484,6 +3581,85 @@ def register(mcp: FastMCP) -> None:
         return f"{result}\n{snap_note}" if snap_note else result
 
     @mcp.tool()
+    def sch_add_pin_labels(
+        connections: list[dict[str, Any]],
+        stub_mm: float = 5.08,
+        global_labels: bool = True,
+    ) -> str:
+        """Connect placed-symbol pins to nets with a short outward wire stub plus a
+        label placed clear of the symbol body (avoids label-on-pin overlap).
+
+        Each connection is ``{"reference": "U3", "pin": "VIN" | "5", "net":
+        "5V_SYS"}``; the pin may be a number or a name. The stub direction is
+        derived from the pin position relative to the symbol origin (dominant
+        axis), so the label lands outside the symbol and reads outward. Pins that
+        share a ``net`` are joined by their common label name. This is the clean
+        alternative to placing bare labels directly on pins.
+        """
+        data = parse_schematic_file(_get_schematic_file())
+        placed: dict[str, dict[str, Any]] = {}
+        for sym in data.get("symbols", []):
+            ref = str(sym.get("reference", ""))
+            if ref:
+                placed[ref] = sym
+
+        blocks: list[str] = []
+        results: list[str] = []
+        for conn in connections:
+            ref = str(conn.get("reference", ""))
+            pin = str(conn.get("pin", ""))
+            net = str(conn.get("net", conn.get("name", "")))
+            if not (ref and pin and net):
+                results.append(f"SKIP {conn}: needs reference, pin, net")
+                continue
+            sym = placed.get(ref)
+            if sym is None:
+                results.append(f"{ref}.{pin}: symbol not placed")
+                continue
+            lib_id = str(sym.get("lib_id", ""))
+            if ":" not in lib_id:
+                results.append(f"{ref}.{pin}: unresolved lib_id '{lib_id}'")
+                continue
+            library, symbol_name = lib_id.split(":", 1)
+            ox = float(sym.get("x", 0.0))
+            oy = float(sym.get("y", 0.0))
+            rot = int(sym.get("rotation", 0) or 0)
+            unit = int(sym.get("unit", 1) or 1)
+            point = get_pin_positions(library, symbol_name, ox, oy, rot, unit).get(pin)
+            if point is None:
+                aliases = get_pin_alias_positions(library, symbol_name, ox, oy, rot, unit)
+                point = aliases.get(pin) or aliases.get(pin.upper())
+            if point is None:
+                results.append(f"{ref}.{pin}: pin not found")
+                continue
+            px, py = point
+            dx, dy = px - ox, py - oy
+            if abs(dx) >= abs(dy):
+                ux, uy = (1.0 if dx >= 0 else -1.0), 0.0
+            else:
+                ux, uy = 0.0, (1.0 if dy >= 0 else -1.0)
+            ex = round(px + ux * stub_mm, 4)
+            ey = round(py + uy * stub_mm, 4)
+            rotation = 0 if ux > 0 else 180 if ux < 0 else 90 if uy < 0 else 270
+            blocks.append(wire_block(px, py, ex, ey))
+            blocks.append(label_block(net, ex, ey, rotation, global_label=global_labels))
+            results.append(f"{ref}.{pin} -> {net} @ ({ex}, {ey})")
+
+        if not blocks:
+            return "No pin labels were added.\n" + "\n".join(results)
+
+        def mutator(current: str) -> str:
+            for block in blocks:
+                current = _append_before_sheet_instances(current, block)
+            return current
+
+        transactional_write(mutator)
+        return (
+            f"{_reload_schematic()}\nAdded {len(blocks) // 2} pin label(s) with stubs:\n"
+            + "\n".join(results)
+        )
+
+    @mcp.tool()
     def sch_add_power_symbol(
         name: str,
         x_mm: float,
@@ -3910,6 +4086,124 @@ def register(mcp: FastMCP) -> None:
             f"Deleted {removed_symbol_count} symbol block(s) for '{payload.reference}' "
             f"and {removed_wire_count} directly connected wire(s)."
         )
+
+    @mcp.tool()
+    def sch_delete_label(name: str, x_mm: float, y_mm: float) -> str:
+        """Delete label(s) (local/global/hierarchical) matching ``name`` at the
+        given coordinate. Use sch_get_labels() to find exact names/positions."""
+        tol = 0.05
+        removed = 0
+
+        def mutator(current: str) -> str:
+            nonlocal removed
+            pieces: list[str] = []
+            cursor = 0
+            last = 0
+            while cursor < len(current):
+                if current[cursor:].startswith(
+                    ("(label", "(global_label", "(hierarchical_label")
+                ):
+                    block, length = _extract_block(current, cursor)
+                    parsed = _parse_label_block(block) if block else None
+                    if (
+                        parsed is not None
+                        and parsed["name"] == name
+                        and abs(parsed["x"] - x_mm) <= tol
+                        and abs(parsed["y"] - y_mm) <= tol
+                    ):
+                        pieces.append(current[last:cursor])
+                        cursor += length
+                        last = cursor
+                        removed += 1
+                        continue
+                cursor += 1
+            pieces.append(current[last:])
+            if removed == 0:
+                raise ValueError(
+                    f"No label '{name}' found near ({_fmt_mm(x_mm)}, {_fmt_mm(y_mm)})."
+                )
+            return "".join(pieces)
+
+        try:
+            transactional_write(mutator)
+        except ValueError as exc:
+            return str(exc)
+        return (
+            f"{_reload_schematic()}\n"
+            f"Deleted {removed} label(s) '{name}' at ({_fmt_mm(x_mm)}, {_fmt_mm(y_mm)})."
+        )
+
+    @mcp.tool()
+    def sch_move_label(
+        name: str,
+        x_mm: float,
+        y_mm: float,
+        new_x_mm: float,
+        new_y_mm: float,
+        new_rotation: int | None = None,
+        snap_to_grid: bool = False,
+    ) -> str:
+        """Move the label matching ``name`` at (x_mm, y_mm) to a new coordinate,
+        optionally re-rotating it. snap_to_grid defaults to False so the anchor
+        can land exactly on a pin/wire endpoint."""
+        target_x, target_y = _snap_point(new_x_mm, new_y_mm, snap_to_grid)
+        snap_note = _snap_notice((new_x_mm, new_y_mm), (target_x, target_y))
+        tol = 0.05
+        moved = 0
+
+        def mutator(current: str) -> str:
+            nonlocal moved
+            pieces: list[str] = []
+            cursor = 0
+            last = 0
+            while cursor < len(current):
+                if moved == 0 and current[cursor:].startswith(
+                    ("(label", "(global_label", "(hierarchical_label")
+                ):
+                    block, length = _extract_block(current, cursor)
+                    parsed = _parse_label_block(block) if block else None
+                    if (
+                        parsed is not None
+                        and parsed["name"] == name
+                        and abs(parsed["x"] - x_mm) <= tol
+                        and abs(parsed["y"] - y_mm) <= tol
+                    ):
+                        rot = (
+                            parsed["rotation"]
+                            if new_rotation is None
+                            else int(new_rotation)
+                        )
+                        updated_block = re.sub(
+                            r"\(at\s+[-\d.]+\s+[-\d.]+\s+[-\d.]+\)",
+                            f"(at {_fmt_mm(target_x)} {_fmt_mm(target_y)} {rot})",
+                            block,
+                            count=1,
+                        )
+                        pieces.append(current[last:cursor])
+                        pieces.append(updated_block)
+                        cursor += length
+                        last = cursor
+                        moved += 1
+                        continue
+                cursor += 1
+            pieces.append(current[last:])
+            if moved == 0:
+                raise ValueError(
+                    f"No label '{name}' found near ({_fmt_mm(x_mm)}, {_fmt_mm(y_mm)})."
+                )
+            return "".join(pieces)
+
+        try:
+            transactional_write(mutator)
+        except ValueError as exc:
+            return str(exc)
+        lines = [
+            _reload_schematic(),
+            f"Moved label '{name}' to ({target_x:.2f}, {target_y:.2f}) mm.",
+        ]
+        if snap_note:
+            lines.append(snap_note)
+        return "\n".join(lines)
 
     @mcp.tool()
     def sch_analyze_net_compilation(

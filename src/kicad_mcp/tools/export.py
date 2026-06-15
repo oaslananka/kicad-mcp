@@ -216,8 +216,11 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         ctx: Context[Any, Any, Any] | None = None,
     ) -> str:
         """Export Gerber manufacturing files."""
+        import anyio
         await _report_progress(ctx, 5, 100, "Starting Gerber export...")
-        result = _with_low_level_export_notice(_export_gerber(output_subdir, layers))
+        result = await anyio.to_thread.run_sync(
+            lambda: _with_low_level_export_notice(_export_gerber(output_subdir, layers))
+        )
         await _report_progress(ctx, 100, 100, "Gerber export complete.")
         return result
 
@@ -1479,11 +1482,12 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         ctx: Context[Any, Any, Any] | None = None,
     ) -> str:
         """Generate the standard set of manufacturing exports."""
+        import anyio
         from .validation import _evaluate_project_gate, _render_project_gate_report
 
         variant_name = variant.strip() or None
         await _report_progress(ctx, 5, 100, "Running full project quality gate...")
-        outcomes = _evaluate_project_gate()
+        outcomes = await anyio.to_thread.run_sync(_evaluate_project_gate)
         blocking = [outcome for outcome in outcomes if outcome.status != "PASS"]
         if blocking:
             return _render_project_gate_report(
@@ -1496,26 +1500,26 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
 
         await _report_progress(ctx, 25, 100, "Exporting Gerbers...")
         results = [
-            _export_gerber(variant_name=variant_name),
+            await anyio.to_thread.run_sync(lambda: _export_gerber(variant_name=variant_name)),
         ]
         await _report_progress(ctx, 45, 100, "Exporting drill files...")
-        results.extend([_export_drill(variant_name=variant_name)])
+        results.extend([await anyio.to_thread.run_sync(lambda: _export_drill(variant_name=variant_name))])
         await _report_progress(ctx, 65, 100, "Exporting BOM...")
         results.extend(
             [
-                _export_bom(variant_name=variant_name),
+                await anyio.to_thread.run_sync(lambda: _export_bom(variant_name=variant_name)),
             ]
         )
         await _report_progress(ctx, 85, 100, "Exporting pick-and-place data...")
         results.extend(
             [
-                _export_pick_and_place(variant_name=variant_name),
+                await anyio.to_thread.run_sync(lambda: _export_pick_and_place(variant_name=variant_name)),
             ]
         )
-        ipc_result = _export_ipc2581(variant_name=variant_name)
+        ipc_result = await anyio.to_thread.run_sync(lambda: _export_ipc2581(variant_name=variant_name))
         if not ipc_result.startswith("IPC-2581 export is not supported"):
             results.append(ipc_result)
-        odb_result = _export_odb(variant_name=variant_name)
+        odb_result = await anyio.to_thread.run_sync(lambda: _export_odb(variant_name=variant_name))
         if not odb_result.startswith("ODB++ export is not supported"):
             results.append(odb_result)
         await _report_progress(ctx, 100, 100, "Manufacturing package complete.")

@@ -53,6 +53,9 @@ _WRITE_PREFIXES = (
     "import_",
     "export_",
     "sync_",
+    "begin_",
+    "push_",
+    "drop_",
 )
 
 
@@ -166,6 +169,7 @@ def infer_tool_annotations(
                 "panelize",
                 "restore_checkpoint",
                 "commit_checkpoint",
+                "revert",
             )
         )
     ) and not is_read_only

@@ -1050,3 +1050,104 @@ async def test_lazy_startup_idempotency_and_deferral() -> None:
     tools_repeated = await server.list_tools()
     assert server._lazy_registration_complete is True
     assert len(tools_repeated) == count
+
+
+def test_dashboard_auth_middleware(sample_project: Path) -> None:
+    _ = sample_project
+    cfg = get_config()
+    cfg.transport = "streamable-http"
+    cfg.auth_token = "my_super_secret_test_auth_token_value_32_chars"
+
+    server = build_server("minimal")
+    client = TestClient(server.streamable_http_app())
+
+    # 1. Without auth: should be rejected with 401
+    response = client.get("/api/config")
+    assert response.status_code == 401
+    assert "Unauthorized" in response.json()["error"]
+
+    # 2. With header auth: should be accepted (200)
+    response = client.get(
+        "/api/config",
+        headers={"Authorization": "Bearer my_super_secret_test_auth_token_value_32_chars"},
+    )
+    assert response.status_code == 200
+
+    # 3. With query param auth: should be accepted (200)
+    response = client.get("/api/config?token=my_super_secret_test_auth_token_value_32_chars")
+    assert response.status_code == 200
+
+    # 4. Health endpoint: should be open without auth (200)
+    response = client.get("/api/health")
+    assert response.status_code == 200
+
+
+def test_dashboard_origin_checks(sample_project: Path) -> None:
+    _ = sample_project
+    cfg = get_config()
+    cfg.transport = "streamable-http"
+    cfg.auth_token = "my_super_secret_test_auth_token_value_32_chars"
+    cfg.cors_origins = "http://trusted-app.local"
+
+    server = build_server("minimal")
+    client = TestClient(server.streamable_http_app())
+
+    # Header auth + trusted origin: should be accepted (200)
+    response = client.get(
+        "/api/config",
+        headers={
+            "Authorization": "Bearer my_super_secret_test_auth_token_value_32_chars",
+            "Origin": "http://trusted-app.local",
+        },
+    )
+    assert response.status_code == 200
+
+    # Header auth + server itself origin (loopback): should be accepted (200)
+    response = client.get(
+        "/api/config",
+        headers={
+            "Authorization": "Bearer my_super_secret_test_auth_token_value_32_chars",
+            "Origin": f"http://127.0.0.1:{cfg.port}",
+        },
+    )
+    assert response.status_code == 200
+
+    # Header auth + untrusted origin: should be rejected (403)
+    response = client.get(
+        "/api/config",
+        headers={
+            "Authorization": "Bearer my_super_secret_test_auth_token_value_32_chars",
+            "Origin": "http://malicious-website.com",
+        },
+    )
+    assert response.status_code == 403
+    assert "Forbidden" in response.json()["error"]
+
+
+def test_dashboard_config_filtering(sample_project: Path) -> None:
+    _ = sample_project
+    cfg = get_config()
+    cfg.transport = "streamable-http"
+
+    server = build_server("minimal")
+    client = TestClient(server.streamable_http_app())
+
+    # Post updates: safe key (log_level) and unsafe key (kicad_cli)
+    original_cli = cfg.kicad_cli
+    response = client.post(
+        "/api/config",
+        json={
+            "log_level": "DEBUG",
+            "kicad_cli": "/path/to/malicious/binary",
+        },
+    )
+    assert response.status_code == 200
+
+    # Reload config and check results
+    updated_cfg = get_config()
+    assert updated_cfg.log_level == "DEBUG"
+    # The unsafe field must NOT have changed
+    assert updated_cfg.kicad_cli == original_cli
+
+
+

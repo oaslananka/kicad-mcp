@@ -437,21 +437,26 @@ def register(mcp: FastMCP) -> None:
             )
 
             try:
+                import anyio
                 await _report_progress(ctx, 10, 100, "Exporting DSN for FreeRouting...")
-                dsn_file = runner.export_dsn(pcb_file, dsn_target)
+                dsn_file = await anyio.to_thread.run_sync(
+                    lambda: runner.export_dsn(pcb_file, dsn_target)
+                )
                 await _report_progress(ctx, 40, 100, "Running FreeRouting...")
-                result = runner.run_freerouting(
-                    dsn_file,
-                    ses_target,
-                    max_passes=max_passes,
-                    thread_count=thread_count,
-                    use_docker=use_docker,
-                    freerouting_jar_path=Path(freerouting_jar_path).expanduser()
-                    if freerouting_jar_path
-                    else None,
-                    net_classes_to_ignore=net_classes_to_ignore,
-                    exclude_nets=exclude_nets,
-                    drc_report_path=drc_target,
+                result = await anyio.to_thread.run_sync(
+                    lambda: runner.run_freerouting(
+                        dsn_file,
+                        ses_target,
+                        max_passes=max_passes,
+                        thread_count=thread_count,
+                        use_docker=use_docker,
+                        freerouting_jar_path=Path(freerouting_jar_path).expanduser()
+                        if freerouting_jar_path
+                        else None,
+                        net_classes_to_ignore=net_classes_to_ignore,
+                        exclude_nets=exclude_nets,
+                        drc_report_path=drc_target,
+                    )
                 )
             except (FileNotFoundError, RuntimeError, ValueError) as exc:
                 return ToolResult.failure(
@@ -492,7 +497,9 @@ def register(mcp: FastMCP) -> None:
 
             try:
                 await _report_progress(ctx, 85, 100, "Staging SES session for KiCad import...")
-                staged = runner.import_ses(pcb_file, ses_path_obj)
+                staged = await anyio.to_thread.run_sync(
+                    lambda: runner.import_ses(pcb_file, ses_path_obj)
+                )
             except (FileNotFoundError, RuntimeError, ValueError) as exc:
                 return ToolResult.failure(
                     "route_autoroute_freerouting",

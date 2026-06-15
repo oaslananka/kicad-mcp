@@ -356,6 +356,22 @@ async def api_config_get(request: Request) -> JSONResponse:
     return JSONResponse({"config": payload, **payload})
 
 
+ALLOWED_CONFIG_KEYS = {
+    "transport",
+    "host",
+    "port",
+    "profile",
+    "log_level",
+    "project_dir",
+    "pcb_file",
+    "sch_file",
+    "operating_mode",
+    "enable_experimental_tools",
+    "enable_tasks",
+}
+_config_post_lock = threading.Lock()
+
+
 async def api_config_post(request: Request) -> JSONResponse:
     """Update the server configuration at runtime via environment overrides."""
     try:
@@ -367,14 +383,19 @@ async def api_config_post(request: Request) -> JSONResponse:
 
     applied: list[str] = []
     errors: list[dict[str, str]] = []
-    for key, value in body.items():
-        env_key = f"KICAD_MCP_{key.upper()}"
-        os.environ[env_key] = str(value)
-        applied.append(key)
 
-    if applied:
-        reset_config()
-        logger.info("config_updated_via_api", keys=applied)
+    # Filter body to only contain safe config keys
+    safe_body = {k: v for k, v in body.items() if k in ALLOWED_CONFIG_KEYS}
+
+    with _config_post_lock:
+        for key, value in safe_body.items():
+            env_key = f"KICAD_MCP_{key.upper()}"
+            os.environ[env_key] = str(value)
+            applied.append(key)
+
+        if applied:
+            reset_config()
+            logger.info("config_updated_via_api", keys=applied)
 
     payload = _config_public_payload()
     result = {
@@ -387,6 +408,7 @@ async def api_config_post(request: Request) -> JSONResponse:
     if errors:
         result["warning"] = "Some values were not applied."
     return JSONResponse(result)
+
 
 
 async def api_config_export(request: Request) -> JSONResponse:
@@ -506,7 +528,7 @@ async def api_server_action(request: Request) -> JSONResponse:
     if action == "start":
         return JSONResponse({"ok": True, "action": "start", "status": "running"})
     if action in {"stop", "shutdown"}:
-        thread = threading.Thread(target=lambda: os._exit(0), daemon=True)
+        thread = threading.Thread(target=_shutdown_process, daemon=True)
         thread.start()
         return JSONResponse(
             {
@@ -520,6 +542,12 @@ async def api_server_action(request: Request) -> JSONResponse:
         thread.start()
         return JSONResponse({"ok": True, "action": "restart", "status": "initiated"})
     return JSONResponse({"error": f"Unknown action: {action}"}, status_code=400)
+
+
+def _shutdown_process() -> None:
+    """Shutdown the current process after a short delay to allow response delivery."""
+    time.sleep(0.5)
+    os._exit(0)
 
 
 def _restart_process() -> None:

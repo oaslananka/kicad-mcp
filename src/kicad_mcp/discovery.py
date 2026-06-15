@@ -306,7 +306,6 @@ def find_recent_projects(limit: int = 10) -> list[Path]:
         config_dirs = [
             Path.home() / "AppData" / "Roaming" / "kicad" / "11.0",
             Path.home() / "AppData" / "Roaming" / "kicad" / "10.0",
-            Path.home() / "AppData" / "Roaming" / "kicad" / "9.0",
         ]
     elif system == "Darwin":
         config_dirs = [
@@ -317,7 +316,6 @@ def find_recent_projects(limit: int = 10) -> list[Path]:
         config_dirs = [
             Path.home() / ".config" / "kicad" / "11.0",
             Path.home() / ".config" / "kicad" / "10.0",
-            Path.home() / ".config" / "kicad" / "9.0",
         ]
 
     project_files: list[Path] = []

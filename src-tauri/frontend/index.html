@@ -113,29 +113,72 @@
           <div class="step pending" data-step="pkg">Check kicad-mcp-pro package</div>
           <div class="step pending" data-step="server">Check server health</div>
         </div>
+        <div id="error-detail" style="display:none;margin-top:12px;background:#1a1a2e;border:1px solid #ef5350;border-radius:6px;padding:12px;font-family:'Cascadia Code','Fira Code','Consolas',monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;color:#ef5350;"></div>
         <p style="margin-top:16px;font-size:13px;">
           Try running this command manually in a terminal to see the error:
         </p>
         <code>uvx kicad-mcp-pro dashboard --host 127.0.0.1 --port 3334</code>
-        <a class="btn secondary" href="http://127.0.0.1:3334/ui" target="_blank">Try opening dashboard</a>
-        <button class="btn" onclick="location.reload()">Retry</button>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+          <a class="btn secondary" href="http://127.0.0.1:3334/ui" target="_blank">Try opening dashboard</a>
+          <button class="btn secondary" onclick="handleRestartServer()">Restart Server</button>
+          <button class="btn" onclick="location.reload()">Retry</button>
+        </div>
       </div>
     </div>
 
     <script>
       const DASHBOARD_URL = 'http://127.0.0.1:3334/ui';
       const HEALTH_URL = 'http://127.0.0.1:3334/api/health';
-      const STATUS_URL = 'http://127.0.0.1:3334/api/status';
 
       const MAX_RETRIES = 30;
       const RETRY_INTERVAL_MS = 1000;
       let retries = 0;
       let healthOk = false;
-      let attempts = [];
 
       const statusEl = document.getElementById('status');
       const spinnerEl = document.getElementById('spinner');
       const detailsEl = document.getElementById('details');
+      const errorDetailEl = document.getElementById('error-detail');
+
+      /**
+       * Helper: invoke a Tauri backend command via IPC.
+       * Returns null when IPC is unavailable (e.g. direct browser open).
+       */
+      async function tauriInvoke(cmd, args) {
+        try {
+          const ipc = window.__TAURI_INTERNALS__;
+          if (ipc && typeof ipc.invoke === 'function') {
+            return await ipc.invoke(cmd, args || {});
+          }
+        } catch (_) { /* IPC not available */ }
+        return null;
+      }
+
+      /**
+       * Query the Rust backend via Tauri IPC to get server_status.
+       */
+      async function getTauriStatus() {
+        return await tauriInvoke('server_status');
+      }
+
+      /** Restart the Python server (stop + start). */
+      async function handleRestartServer() {
+        const result = await tauriInvoke('restart_server', { port: 3334 });
+        if (result === null) {
+          // IPC not available — fall back to page reload
+          location.reload();
+          return;
+        }
+        // Reset UI state and start polling again
+        retries = 0;
+        healthOk = false;
+        spinnerEl.style.display = 'block';
+        statusEl.textContent = 'Restarting server…';
+        statusEl.className = 'status';
+        detailsEl.classList.remove('visible');
+        if (errorDetailEl) errorDetailEl.style.display = 'none';
+        setTimeout(checkServer, 1000);
+      }
 
       function setStep(name, state) {
         const el = document.querySelector(`[data-step="${name}"]`);
@@ -144,9 +187,9 @@
         }
       }
 
-      function showError() {
+      function showError(msg) {
         spinnerEl.style.display = 'none';
-        statusEl.textContent = 'Server failed to start';
+        statusEl.textContent = msg || 'Server failed to start';
         statusEl.className = 'status error';
         detailsEl.classList.add('visible');
       }
@@ -154,21 +197,50 @@
       async function checkServer() {
         retries++;
 
-        // Step 1: basic connectivity check
+        // 1. Query Tauri backend for server status (no CORS issues)
+        const tauriStatus = await getTauriStatus();
+        if (tauriStatus) {
+          if (tauriStatus.running) {
+            // Backend says it's running — mark steps as ok
+            setStep('uvx', 'ok');
+            setStep('pkg', 'ok');
+          } else if (tauriStatus.message && tauriStatus.message !== 'Server is not running.') {
+            // Backend has a real error — show it immediately
+            if (errorDetailEl) {
+              errorDetailEl.textContent = tauriStatus.message;
+              errorDetailEl.style.display = 'block';
+            }
+            setStep('uvx', 'fail');
+            setStep('pkg', 'fail');
+            setStep('server', 'fail');
+            showError('Backend error');
+            return;
+          }
+        }
+
+        // 2. HTTP health-check the Python server directly
         try {
-          const resp = await fetch(HEALTH_URL, { method: 'GET', mode: 'no-cors', signal: AbortSignal.timeout(2000) });
+          const resp = await fetch(HEALTH_URL, {
+            method: 'GET',
+            mode: 'no-cors',
+            signal: AbortSignal.timeout(2000),
+          });
           if (resp.status === 200 || resp.status === 0) {
             healthOk = true;
           }
         } catch (_) {
-          // try HEAD
+          // Retry with HEAD
           try {
-            const headResp = await fetch(HEALTH_URL, { method: 'HEAD', mode: 'no-cors', signal: AbortSignal.timeout(2000) });
+            const headResp = await fetch(HEALTH_URL, {
+              method: 'HEAD',
+              mode: 'no-cors',
+              signal: AbortSignal.timeout(2000),
+            });
             if (headResp.status === 200 || headResp.status === 0) {
               healthOk = true;
             }
           } catch (_2) {
-            attempts.push({ retry: retries, error: String(_2).slice(0, 100) });
+            // Will retry
           }
         }
 
@@ -183,7 +255,15 @@
         }
 
         if (retries >= MAX_RETRIES) {
-          showError();
+          // One last check: pull the error from the Tauri backend
+          const finalStatus = await getTauriStatus();
+          if (finalStatus && finalStatus.message && !finalStatus.running) {
+            if (errorDetailEl) {
+              errorDetailEl.textContent = finalStatus.message;
+              errorDetailEl.style.display = 'block';
+            }
+          }
+          showError('Server failed to start');
           return;
         }
 

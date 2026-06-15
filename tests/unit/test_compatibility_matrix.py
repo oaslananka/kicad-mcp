@@ -25,16 +25,15 @@ def test_repository_compatibility_matrix_has_no_drift() -> None:
     assert validate_compatibility_matrix() == []
 
 
-def test_kicad_9_upstream_eol_policy_is_deprecated() -> None:
+def test_kicad_9_upstream_eol_policy_is_dropped() -> None:
     matrix = yaml.safe_load((REPO_ROOT / "compatibility.yaml").read_text(encoding="utf-8"))
-    kicad_9 = next(entry for entry in matrix["kicad"]["supported"] if entry["range"] == "9.x")
+    kicad_9 = next(entry for entry in matrix["kicad"]["dropped"] if entry["range"] == "9.x")
 
-    assert kicad_9["state"] == "deprecated"
-    assert kicad_9["upstreamEol"] is True
-    assert kicad_9["ci"] == "scheduled"
-    assert kicad_9["removal"] == "3.9.0"
-    assert "no longer actively maintained" in kicad_9["notes"]
-    assert COMPATIBILITY_MATRIX["kicad"]["deprecated"] == ["9.x", "8.x"]
+    assert "Upstream KiCad 9.x reached end of life" in kicad_9["reason"]
+    assert kicad_9["ci"] == "none"
+    assert kicad_9["removalVersion"] == "3.9.0"
+    assert "9.x" not in [e["range"] for e in matrix["kicad"]["supported"]]
+    assert COMPATIBILITY_MATRIX["kicad"]["deprecated"] == ["8.x"]
 
 
 def test_kicad_ipc_readiness_contract_covers_pcbnew_and_parity() -> None:

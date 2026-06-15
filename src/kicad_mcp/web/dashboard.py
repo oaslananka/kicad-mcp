@@ -443,6 +443,52 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 </div>
 
 <script>
+(function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  let token = urlParams.get('token');
+  if (!token) {
+    const hashQuery = window.location.hash.split('?')[1];
+    if (hashQuery) {
+      const hashParams = new URLSearchParams(hashQuery);
+      token = hashParams.get('token');
+    }
+  }
+  if (token) {
+    sessionStorage.setItem('kicad_mcp_token', token);
+  }
+  const savedToken = sessionStorage.getItem('kicad_mcp_token');
+  if (savedToken) {
+    const originalFetch = window.fetch;
+    window.fetch = function(input, init) {
+      let url = typeof input === 'string' ? input : input.url;
+      const separator = url.includes('?') ? '&' : '?';
+      url = url + separator + 'token=' + encodeURIComponent(savedToken);
+      init = init || {};
+      init.headers = init.headers || {};
+      if (init.headers instanceof Headers) {
+        init.headers.set('Authorization', 'Bearer ' + savedToken);
+      } else if (Array.isArray(init.headers)) {
+        init.headers.push(['Authorization', 'Bearer ' + savedToken]);
+      } else {
+        init.headers['Authorization'] = 'Bearer ' + savedToken;
+      }
+      if (typeof input === 'string') {
+        return originalFetch(url, init);
+      } else {
+        const newRequest = new Request(url, input);
+        return originalFetch(newRequest, init);
+      }
+    };
+    const originalEventSource = window.EventSource;
+    window.EventSource = function(url, configuration) {
+      const separator = url.includes('?') ? '&' : '?';
+      const newUrl = url + separator + 'token=' + encodeURIComponent(savedToken);
+      return new originalEventSource(newUrl, configuration);
+    };
+    window.EventSource.prototype = originalEventSource.prototype;
+  }
+})();
+
 /* ── State ── */
 const WEB_VERSION = '{{version}}';
 let statusInterval = null;
@@ -867,7 +913,10 @@ function renderWizardStep(step) {
     case 1:
       body.innerHTML =
         '<div class="form-group"><label>Default KiCad Project Directory</label>' +
-        '<input type="text" id="wizProjectDir" value="" placeholder="~/KiCad"></div>' +
+        '<div style="display:flex;gap:6px;">' +
+        '<input type="text" id="wizProjectDir" value="" placeholder="~/KiCad" style="flex:1;">' +
+        '<button class="btn btn-sm" onclick="browseProjectDir()" style="white-space:nowrap;flex-shrink:0;">Browse</button>' +
+        '</div></div>' +
         '<div class="msg info">PCB and schematic files in this directory can be offered to tools automatically.</div>';
       nav.innerHTML = '<button class="btn" onclick="wizardPrev()">&laquo; Back</button><button class="btn btn-primary" onclick="wizardNext()">Next: Transport &raquo;</button>';
       break;
@@ -946,6 +995,45 @@ function testConnection() {
     el.textContent = 'Connection failed. Check server is running.';
     el.className = 'wizard-result error';
   });
+}
+
+function browseProjectDir() {
+  var input = document.getElementById('wizProjectDir');
+  // Try Tauri IPC (available when running inside Tauri webview)
+  if (window.__TAURI_INTERNALS__ && typeof window.__TAURI_INTERNALS__.invoke === 'function') {
+    window.__TAURI_INTERNALS__.invoke('select_working_dir').then(function(path) {
+      if (path) input.value = path;
+    }).catch(function() { fallbackBrowseDir(input); });
+  } else {
+    fallbackBrowseDir(input);
+  }
+}
+function fallbackBrowseDir(input) {
+  var picker = document.createElement('input');
+  picker.type = 'file';
+  picker.setAttribute('webkitdirectory', '');
+  picker.style.display = 'none';
+  picker.addEventListener('change', function() {
+    if (this.files && this.files.length > 0) {
+      // Extract directory path from the first selected file
+      var p = this.files[0].path || this.files[0].webkitRelativePath;
+      if (p) {
+        // webkitRelativePath is like "folder/sub/file", take first component
+        var idx = p.indexOf('/');
+        if (idx > 0) p = p.substring(0, idx);
+        // full path includes the parent folder name from path property
+        if (this.files[0].path) {
+          var lastSlash = this.files[0].path.lastIndexOf('\\');
+          if (lastSlash > 0) p = this.files[0].path.substring(0, lastSlash);
+          else p = this.files[0].path;
+        }
+        input.value = p;
+      }
+    }
+  });
+  document.body.appendChild(picker);
+  picker.click();
+  setTimeout(function() { document.body.removeChild(picker); }, 200);
 }
 
 function wizardNext() {
