@@ -86,6 +86,7 @@ The documentation is organized from setup to operation:
 6. [Release process](docs/release-process.md)
 7. [Security and privacy](docs/security/threat-model.md)
 8. [KiCad capability parity](docs/compatibility/capability-parity.generated.md) — how much of KiCad's programmatic surface this server drives
+9. [Error code catalog](docs/errors.md) — stable error codes, retry classes, and recovery
 
 The `kicad_capability_parity()` tool reports, per workflow domain, what fraction of
 KiCad's programmatically reachable surface this server can drive (currently **77%**),

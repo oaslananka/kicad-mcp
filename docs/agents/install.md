@@ -1,9 +1,13 @@
-# Installation Guide
+# Agent Installation Guide
+
+The canonical, minimal install path lives in [`../installation.md`](../installation.md).
+This page adds the agent-specific setup (MCP client config, environment variables).
 
 ## Prerequisites
 
-- **Python 3.10+** and `pipx` or `uv`
-- **KiCad 8.0+** (for kicad-cli and full tool access)
+- **Python 3.13+** and `uvx` (or `pipx`)
+- **KiCad 10.0+** for `kicad-cli` and full tool access (file-level read and migration
+  support for 8.x; see the compatibility matrix)
 - Internet access for package installation
 
 ## Install kicad-mcp-pro

@@ -131,7 +131,7 @@ installed.
 - **Errors** — [`src/kicad_mcp/errors.py`](src/kicad_mcp/errors.py) defines the typed
   exception hierarchy and `ErrorPayload {code, message, hint, retryable}`. Every error
   surfaced to an agent is one of these stable codes (the consolidated catalog lives in
-  `docs/errors.md`).
+  [`docs/errors.md`](docs/errors.md)).
 - **Metadata / annotations** — [`tools/metadata.py`](src/kicad_mcp/tools/metadata.py).
   `server.json` is the canonical package contract and is kept in sync with
   `pyproject.toml` via `pnpm run metadata:check`.
@@ -188,4 +188,4 @@ Then `task verify` must be green.
 | Add EE math / file logic | [`utils/`](src/kicad_mcp/utils) (keep it KiCad-free) |
 | Change the release gate | [`tools/validation.py`](src/kicad_mcp/tools/validation.py), [`tools/gates.py`](src/kicad_mcp/tools/gates.py) |
 | Change transports/auth | [`server.py`](src/kicad_mcp/server.py), [`web/`](src/kicad_mcp/web) |
-| Understand error codes | [`errors.py`](src/kicad_mcp/errors.py), `docs/errors.md` |
+| Understand error codes | [`errors.py`](src/kicad_mcp/errors.py), [`docs/errors.md`](docs/errors.md) |
