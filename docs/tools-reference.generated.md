@@ -104,7 +104,7 @@ Total public tools: 328.
 | `lib_recommend_part` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | yes | no | Recommend a purchasable part given electrical requirements. |
 | `lib_remove_3d_model` | agent_full, builder, full, schematic, schematic_only, simulation | no | no | no | no | yes | no | Remove 3D model reference(s) from a footprint. |
 | `lib_search_3d_models` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | yes | no | Search for available 3D model files in the footprint library directory. |
-| `lib_search_components` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | yes | no | Search live component sources for purchasable parts. This KiCad MCP Pro tool supports production EDA automation workf... |
+| `lib_search_components` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | yes | no | Search live component sources for purchasable parts. |
 | `lib_search_footprints` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | yes | no | Search footprint libraries by footprint name. |
 | `lib_search_symbols` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | yes | no | Search symbol libraries by name, description, or keywords. |
 | `lib_set_3d_model_path` | agent_full, builder, full, schematic, schematic_only, simulation | no | yes | no | yes | yes | no | Set or replace the 3D model path on a footprint. |

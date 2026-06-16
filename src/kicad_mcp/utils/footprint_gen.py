@@ -7,7 +7,7 @@ B (nominal, default), and C (least-land/most-compact).
 Supported families
 ------------------
 - Chip passives: 0201, 0402, 0603, 0805, 1206, 1210, 2512
-- SOT-23 (3-lead), SOT-223 (4-lead), SOT-89 (3-lead)
+- SOT-23 (3-lead). SOT-223 / SOT-89 are not generated yet (tracked in P4-T3).
 - SOIC / SOP / SSOP / TSSOP (arbitrary pitch/pin-count)
 - QFP / LQFP / TQFP (quad flat pack)
 - QFN / DFN (quad flat no-lead with optional exposed pad)

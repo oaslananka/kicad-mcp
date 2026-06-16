@@ -27,6 +27,18 @@ configuration is documented in
 [`docs/configuration.md`](docs/configuration.md#opentelemetry), and privacy rules
 are documented in [`docs/privacy.md`](docs/privacy.md).
 
+## Scope and honesty
+
+KiCad MCP Pro is a **professional first-pass design and review assistant**, not an
+automated sign-off authority. ERC/DRC and the export pipeline drive KiCad's own
+engines. The signal-integrity, power-integrity, EMC, and thermal tools are
+**first-order, closed-form estimates** (typically ~5–10% accuracy) — fast first-pass
+review, **not** a substitute for a 2D/3D field solver, EM/FEA simulation, or formal
+sign-off. Live component sourcing uses the JLCPCB public catalog by default; Nexar and
+DigiKey are available only when their API credentials are configured. What fraction of
+KiCad's programmatic surface the server drives is tracked openly in the
+[capability-parity matrix](docs/compatibility/capability-parity.generated.md).
+
 ## Project identity
 
 | Field | Value |

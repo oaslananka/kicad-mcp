@@ -1,4 +1,10 @@
-"""Signal-integrity helpers for trace impedance, skew, and placement heuristics."""
+"""Signal-integrity helpers for trace impedance, skew, and placement heuristics.
+
+These are first-order, closed-form estimates (IPC-2141/Wheeler-class formulas), not a
+substitute for a 2D/3D field solver, EM simulation, or formal sign-off. Treat results as
+a fast first-pass review; accuracy is typically ~5-10%. A field-solver mode is planned
+(P3-T1/P3-T3).
+"""
 
 from __future__ import annotations
 

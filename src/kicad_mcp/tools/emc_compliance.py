@@ -1,4 +1,10 @@
-"""EMC-oriented board review helpers."""
+"""EMC-oriented board review helpers.
+
+These are first-order, geometry/heuristic checks, not a substitute for EM simulation,
+a compliance lab, or formal sign-off against a named standard. Use them as a fast
+first-pass review. EM-result-based, standard-named, fail-capable checks are planned
+(P3-T5).
+"""
 
 from __future__ import annotations
 
