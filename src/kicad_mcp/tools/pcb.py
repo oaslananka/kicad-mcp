@@ -59,6 +59,7 @@ from ..models.pcb import (
     StackupLayerSpec,
     SyncPcbFromSchematicInput,
 )
+from ..models.verdict import Finding, SuggestedFix, VerdictReport, stable_finding_id
 from ..utils import telemetry as otel
 from ..utils.cache import clear_ttl_cache, ttl_cache
 from ..utils.impedance import TraceType, copper_thickness_mm, trace_impedance
@@ -905,10 +906,53 @@ def _matches_file_layer_filter(layer_name: str, filter_layer: str) -> bool:
     return resolve_layer_name(filter_layer) == resolve_layer_name(layer_name)
 
 
-def _file_backed_board_summary(ipc_error: BaseException) -> str:
+def _board_summary_report(
+    *,
+    text: str,
+    source: str,
+    tracks: int = 0,
+    vias: int = 0,
+    footprints: int = 0,
+    zones: int = 0,
+    nets: int = 0,
+    shapes: int = 0,
+    findings: list[Finding] | None = None,
+) -> VerdictReport:
+    resolved_findings = findings or []
+    return VerdictReport(
+        text=text,
+        summary=f"Board summary from {source}: {footprints} footprint(s), {nets} net(s).",
+        verdict=VerdictReport.verdict_for([finding.severity for finding in resolved_findings]),
+        findings=resolved_findings,
+        next_action="Use pcb_get_tracks(), pcb_get_footprints(), or run_drc() for details.",
+        metadata={
+            "source": source,
+            "tracks": tracks,
+            "vias": vias,
+            "footprints": footprints,
+            "zones": zones,
+            "nets": nets,
+            "shapes": shapes,
+        },
+    )
+
+
+def _file_backed_board_summary(ipc_error: BaseException) -> VerdictReport:
     loaded = _load_file_backed_board(ipc_error)
     if isinstance(loaded, str):
-        return loaded
+        return _board_summary_report(
+            text=loaded,
+            source="file-backed",
+            findings=[
+                Finding(
+                    id=stable_finding_id("board_summary", "unavailable", loaded),
+                    severity="error",
+                    location=str(_configured_board_file() or ""),
+                    description=loaded.splitlines()[0],
+                    suggested_fix=SuggestedFix(tool="kicad_set_project", args={}),
+                )
+            ],
+        )
     board_file, content, diagnostics = loaded
     footprints = _parse_board_footprint_blocks(content)
     tracks = _board_file_segments(content)
@@ -916,7 +960,7 @@ def _file_backed_board_summary(ipc_error: BaseException) -> str:
     zones = list(_iter_blocks(content, "zone"))
     nets = _board_file_nets(content)
     shapes = re.findall(r"(?m)^\s*\(gr_[a-zA-Z_]+", content)
-    return "\n".join(
+    text = "\n".join(
         [
             "Board summary (file-backed fallback):",
             f"- Board file: {board_file}",
@@ -928,6 +972,25 @@ def _file_backed_board_summary(ipc_error: BaseException) -> str:
             f"- Shapes: {len(shapes)}",
             *diagnostics,
         ]
+    )
+    return _board_summary_report(
+        text=text,
+        source="file-backed",
+        tracks=len(tracks),
+        vias=len(vias),
+        footprints=len(footprints),
+        zones=len(zones),
+        nets=len(nets),
+        shapes=len(shapes),
+        findings=[
+            Finding(
+                id=stable_finding_id("board_summary", "ipc-fallback", board_file),
+                severity="warning",
+                location=str(board_file),
+                description="Live KiCad IPC is unavailable; using file-backed board parser.",
+                suggested_fix=SuggestedFix(tool="kicad_get_version", args={}),
+            )
+        ],
     )
 
 
@@ -2200,7 +2263,7 @@ def register(mcp: FastMCP) -> None:
     @mcp.tool()
     @headless_compatible
     @ttl_cache(ttl_seconds=5)
-    def pcb_get_board_summary() -> str:
+    def pcb_get_board_summary() -> VerdictReport:
         """Summarize the current board."""
         try:
             board = get_board()
@@ -2212,7 +2275,7 @@ def register(mcp: FastMCP) -> None:
         zones = board.get_zones()
         nets = board.get_nets(netclass_filter=None)
         shapes = board.get_shapes()
-        return "\n".join(
+        text = "\n".join(
             [
                 "Board summary:",
                 "- Source: live-gui",
@@ -2223,6 +2286,16 @@ def register(mcp: FastMCP) -> None:
                 f"- Nets: {len(nets)}",
                 f"- Shapes: {len(shapes)}",
             ]
+        )
+        return _board_summary_report(
+            text=text,
+            source="live-gui",
+            tracks=len(tracks),
+            vias=len(vias),
+            footprints=len(footprints),
+            zones=len(zones),
+            nets=len(nets),
+            shapes=len(shapes),
         )
 
     @mcp.tool()

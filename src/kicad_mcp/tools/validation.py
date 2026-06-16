@@ -19,6 +19,7 @@ from ..config import get_config
 from ..connection import KiCadConnectionError, get_board
 from ..discovery import get_cli_capabilities
 from ..models.component_contracts import find_component_contract
+from ..models.verdict import Finding, SuggestedFix, Verdict, VerdictReport, stable_finding_id
 from ..utils.dru import (
     SExprNode,
     delete_rule,
@@ -151,6 +152,247 @@ def _format_violations(title: str, entries: list[dict[str, object]]) -> str:
         description = str(entry.get("description", "(no description)"))
         lines.append(f"- [{severity}] {description}")
     return "\n".join(lines)
+
+
+def _normalize_report_severity(severity: object) -> str:
+    normalized = str(severity or "error").casefold()
+    if normalized in {"warning", "warn", "marginal"}:
+        return "warning"
+    return "error"
+
+
+def _entry_location(entry: dict[str, object], fallback: str) -> str:
+    for key in ("uuid", "location", "sheet", "path", "item", "ref", "reference"):
+        value = entry.get(key)
+        if value:
+            return str(value)
+    return fallback
+
+
+def _report_entry_finding(
+    source: str,
+    entry: dict[str, object],
+    *,
+    default_severity: str = "error",
+    fix_tool: str,
+) -> Finding:
+    issue_type = str(entry.get("type") or source)
+    description = str(entry.get("description") or entry.get("message") or issue_type)
+    severity = _normalize_report_severity(entry.get("severity", default_severity))
+    location = _entry_location(entry, source)
+    return Finding(
+        id=stable_finding_id(source, issue_type, location, description),
+        severity=severity,
+        location=location,
+        description=description,
+        suggested_fix=SuggestedFix(tool=fix_tool, args={"save_report": True}),
+    )
+
+
+def _gate_status_verdict(status: GateStatus) -> Verdict:
+    if status == "PASS":
+        return "PASS"
+    if status == "EMPTY":
+        return "WARN"
+    return "FAIL"
+
+
+def _fix_for_gate(gate_name: str) -> SuggestedFix | None:
+    from .fixers import fixers_for_gate
+
+    fixer = next(iter(fixers_for_gate(gate_name)), None)
+    if fixer is None:
+        return None
+    return SuggestedFix(tool=fixer.tool, args=fixer.args)
+
+
+def _finding_for_gate_detail(outcome: GateOutcome, detail: str) -> Finding:
+    cleaned = detail.strip()
+    severity = "warning" if outcome.status == "EMPTY" or cleaned.startswith("WARN: ") else "error"
+    description = (
+        cleaned.removeprefix("FAIL: ").removeprefix("WARN: ").removeprefix("BLOCKED: ").strip()
+        or outcome.summary
+    )
+    return Finding(
+        id=stable_finding_id("gate", outcome.name, outcome.status, description),
+        severity=severity,
+        location=outcome.name,
+        description=description,
+        suggested_fix=_fix_for_gate(outcome.name),
+    )
+
+
+def _gate_findings(outcome: GateOutcome) -> list[Finding]:
+    actionable = [
+        detail
+        for detail in outcome.details
+        if outcome.status != "PASS" or detail.strip().startswith(("FAIL: ", "WARN: ", "BLOCKED: "))
+    ]
+    if outcome.status != "PASS" and not actionable:
+        actionable = [outcome.summary]
+    return [_finding_for_gate_detail(outcome, detail) for detail in actionable]
+
+
+def _gate_report(outcome: GateOutcome) -> VerdictReport:
+    findings = _gate_findings(outcome)
+    verdict = VerdictReport.verdict_for([finding.severity for finding in findings])
+    if verdict == "PASS":
+        verdict = _gate_status_verdict(outcome.status)
+    next_action = "Proceed to the next gate."
+    if outcome.status != "PASS":
+        fixer = _fix_for_gate(outcome.name)
+        next_action = (
+            f"Call {fixer.tool} and re-run this gate."
+            if fixer is not None
+            else "Inspect this gate and re-run it after remediation."
+        )
+    return VerdictReport(
+        text=_format_gate(outcome),
+        summary=outcome.summary,
+        verdict=verdict,
+        findings=findings,
+        next_action=next_action,
+        metadata={"gate": outcome.name, "status": outcome.status, "details": outcome.details},
+    )
+
+
+def _drc_report_payload(
+    path: Path,
+    report: dict[str, object] | None,
+    error: str | None,
+    *,
+    save_report: bool,
+) -> VerdictReport:
+    if report is None:
+        message = f"DRC failed: {error or 'unknown error'}"
+        return VerdictReport(
+            text=message,
+            summary="DRC report is unavailable.",
+            verdict="FAIL",
+            findings=[
+                Finding(
+                    id=stable_finding_id("drc", "unavailable", error or "unknown"),
+                    severity="error",
+                    location=str(path),
+                    description=message,
+                    suggested_fix=SuggestedFix(tool="run_drc", args={"save_report": True}),
+                )
+            ],
+            next_action="Make kicad-cli/report generation available, then rerun run_drc().",
+            metadata={"report_path": str(path), "available": False},
+        )
+
+    violations = _entries(report, "violations")
+    unconnected = _entries(report, "unconnected_items")
+    courtyard = _entries(report, "items_not_passing_courtyard")
+    lines = [
+        "DRC summary:",
+        f"- Violations: {len(violations)}",
+        f"- Unconnected items: {len(unconnected)}",
+        f"- Courtyard issues: {len(courtyard)}",
+    ]
+    if violations:
+        lines.append(_format_violations("Violations", violations))
+    if save_report:
+        lines.append(f"Saved report: {path}")
+    findings = [_report_entry_finding("drc", entry, fix_tool="run_drc") for entry in violations]
+    findings.extend(
+        _report_entry_finding(
+            "drc.unconnected",
+            entry,
+            default_severity="error",
+            fix_tool="get_unconnected_nets",
+        )
+        for entry in unconnected
+    )
+    findings.extend(
+        _report_entry_finding(
+            "drc.courtyard",
+            entry,
+            default_severity="error",
+            fix_tool="get_courtyard_violations",
+        )
+        for entry in courtyard
+    )
+    verdict = VerdictReport.verdict_for([finding.severity for finding in findings])
+    return VerdictReport(
+        text="\n".join(lines),
+        summary=(
+            "DRC is clean."
+            if verdict == "PASS"
+            else f"DRC reported {len(findings)} actionable finding(s)."
+        ),
+        verdict=verdict,
+        findings=findings,
+        next_action=(
+            "No DRC action required."
+            if verdict == "PASS"
+            else "Fix DRC findings and rerun run_drc(save_report=True)."
+        ),
+        metadata={
+            "report_path": str(path),
+            "available": True,
+            "violations": len(violations),
+            "unconnected_items": len(unconnected),
+            "courtyard_issues": len(courtyard),
+        },
+    )
+
+
+def _erc_report_payload(
+    path: Path,
+    report: dict[str, object] | None,
+    error: str | None,
+    *,
+    save_report: bool,
+) -> VerdictReport:
+    if report is None:
+        message = f"ERC failed: {error or 'unknown error'}"
+        return VerdictReport(
+            text=message,
+            summary="ERC report is unavailable.",
+            verdict="FAIL",
+            findings=[
+                Finding(
+                    id=stable_finding_id("erc", "unavailable", error or "unknown"),
+                    severity="error",
+                    location=str(path),
+                    description=message,
+                    suggested_fix=SuggestedFix(tool="run_erc", args={"save_report": True}),
+                )
+            ],
+            next_action="Make kicad-cli/report generation available, then rerun run_erc().",
+            metadata={"report_path": str(path), "available": False},
+        )
+
+    violations = _erc_violations(report)
+    lines = ["ERC summary:", f"- Violations: {len(violations)}"]
+    if violations:
+        lines.append(_format_violations("Violations", violations))
+    if save_report:
+        lines.append(f"Saved report: {path}")
+    findings = [_report_entry_finding("erc", entry, fix_tool="run_erc") for entry in violations]
+    verdict = VerdictReport.verdict_for([finding.severity for finding in findings])
+    return VerdictReport(
+        text="\n".join(lines),
+        summary=(
+            "ERC is clean."
+            if verdict == "PASS"
+            else f"ERC reported {len(findings)} actionable finding(s)."
+        ),
+        verdict=verdict,
+        findings=findings,
+        next_action=(
+            "No ERC action required."
+            if verdict == "PASS"
+            else "Fix ERC findings and rerun run_erc(save_report=True)."
+        ),
+        metadata={
+            "report_path": str(path),
+            "available": True,
+            "violations": len(violations),
+        },
+    )
 
 
 def _run_drc_report(report_name: str) -> tuple[Path, dict[str, object] | None, str | None]:
@@ -1490,6 +1732,55 @@ def _project_gate_report_payload(
     )
 
 
+def _project_gate_verdict_report(
+    outcomes: list[GateOutcome],
+    *,
+    summary: str | None = None,
+) -> VerdictReport:
+    text = _render_project_gate_report(outcomes, summary=summary)
+    status = _combined_status(outcomes)
+    headline = summary or (
+        "This project is ready for the next stage."
+        if status == "PASS"
+        else "Blocking issues remain. Do not treat this design as production-ready yet."
+    )
+    findings = [finding for outcome in outcomes for finding in _gate_findings(outcome)]
+    if _design_intent_warning():
+        findings.append(
+            Finding(
+                id=stable_finding_id("gate", "project", "design-intent-missing"),
+                severity="warning",
+                location="Project design intent",
+                description="Design intent is not set; placement scoring will use defaults.",
+                suggested_fix=SuggestedFix(tool="project_set_design_intent", args={}),
+            )
+        )
+    verdict = VerdictReport.verdict_for([finding.severity for finding in findings])
+    if verdict == "PASS":
+        verdict = _gate_status_verdict(status)
+    first_blocker = next((outcome for outcome in outcomes if outcome.status != "PASS"), None)
+    if first_blocker is None:
+        next_action = "Proceed to export_manufacturing_package()."
+    else:
+        fixer = _fix_for_gate(first_blocker.name)
+        next_action = (
+            f"Call {fixer.tool} and re-run project_quality_gate()."
+            if fixer is not None
+            else "Fix the first blocking gate and re-run project_quality_gate()."
+        )
+    return VerdictReport(
+        text=text,
+        summary=headline.lstrip("- ").strip(),
+        verdict=verdict,
+        findings=findings,
+        next_action=next_action,
+        metadata={
+            "status": status,
+            "outcomes": [_gate_outcome_payload(outcome).model_dump() for outcome in outcomes],
+        },
+    )
+
+
 def _placement_gate_report_payload() -> PlacementGateReportPayload:
     analysis, blocked = _placement_analysis()
     if blocked is not None:
@@ -1803,42 +2094,17 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @headless_compatible
-    def run_drc(save_report: bool = False) -> str:
+    def run_drc(save_report: bool = False) -> VerdictReport:
         """Run PCB design rule checks."""
         path, report, error = _run_drc_report("drc_report.json")
-        if report is None:
-            return f"DRC failed: {error or 'unknown error'}"
-
-        violations = _entries(report, "violations")
-        unconnected = _entries(report, "unconnected_items")
-        courtyard = _entries(report, "items_not_passing_courtyard")
-        lines = [
-            "DRC summary:",
-            f"- Violations: {len(violations)}",
-            f"- Unconnected items: {len(unconnected)}",
-            f"- Courtyard issues: {len(courtyard)}",
-        ]
-        if violations:
-            lines.append(_format_violations("Violations", violations))
-        if save_report:
-            lines.append(f"Saved report: {path}")
-        return "\n".join(lines)
+        return _drc_report_payload(path, report, error, save_report=save_report)
 
     @mcp.tool()
     @headless_compatible
-    def run_erc(save_report: bool = False) -> str:
+    def run_erc(save_report: bool = False) -> VerdictReport:
         """Run schematic electrical rule checks."""
         path, report, error = _run_erc_report("erc_report.json")
-        if report is None:
-            return f"ERC failed: {error or 'unknown error'}"
-
-        violations = _erc_violations(report)
-        lines = ["ERC summary:", f"- Violations: {len(violations)}"]
-        if violations:
-            lines.append(_format_violations("Violations", violations))
-        if save_report:
-            lines.append(f"Saved report: {path}")
-        return "\n".join(lines)
+        return _erc_report_payload(path, report, error, save_report=save_report)
 
     @mcp.tool()
     @headless_compatible
@@ -1864,27 +2130,27 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @headless_compatible
-    def schematic_quality_gate() -> str:
+    def schematic_quality_gate() -> VerdictReport:
         """Evaluate whether the schematic is clean enough to proceed."""
-        return _format_gate(_evaluate_schematic_gate())
+        return _gate_report(_evaluate_schematic_gate())
 
     @mcp.tool()
     @headless_compatible
-    def pcb_quality_gate() -> str:
+    def pcb_quality_gate() -> VerdictReport:
         """Evaluate whether the PCB is physically clean enough to proceed."""
-        return _format_gate(_evaluate_pcb_gate())
+        return _gate_report(_evaluate_pcb_gate())
 
     @mcp.tool()
     @headless_compatible
-    def schematic_connectivity_gate() -> str:
+    def schematic_connectivity_gate() -> VerdictReport:
         """Evaluate whether schematic structure and hierarchy look electrically meaningful."""
-        return _format_gate(_evaluate_schematic_connectivity_gate())
+        return _gate_report(_evaluate_schematic_connectivity_gate())
 
     @mcp.tool()
     @headless_compatible
-    def pcb_placement_quality_gate() -> str:
+    def pcb_placement_quality_gate() -> VerdictReport:
         """Evaluate whether footprint placement is overlap-free and inside the board frame."""
-        return _format_gate(_evaluate_pcb_placement_gate())
+        return _gate_report(_evaluate_pcb_placement_gate())
 
     @mcp.tool()
     @headless_compatible
@@ -1894,9 +2160,9 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @headless_compatible
-    def pcb_transfer_quality_gate() -> str:
+    def pcb_transfer_quality_gate() -> VerdictReport:
         """Evaluate whether named schematic pad nets transferred cleanly onto PCB pads."""
-        return _format_gate(_evaluate_pcb_transfer_gate())
+        return _gate_report(_evaluate_pcb_transfer_gate())
 
     @mcp.tool()
     @headless_compatible
@@ -1920,26 +2186,26 @@ def register(mcp: FastMCP) -> None:
     def manufacturing_quality_gate(
         manufacturer: str = "",
         tier: str = "",
-    ) -> str:
+    ) -> VerdictReport:
         """Evaluate manufacturing readiness against the active or requested DFM profile."""
         outcome = _evaluate_manufacturing_gate(
             manufacturer=manufacturer or None,
             tier=tier or None,
         )
-        return _format_gate(outcome)
+        return _gate_report(outcome)
 
     @mcp.tool()
     @headless_compatible
     def project_quality_gate(
         manufacturer: str = "",
         tier: str = "",
-    ) -> str:
+    ) -> VerdictReport:
         """Run the full project quality gate across schematic, PCB, DFM, and parity checks."""
         outcomes = _evaluate_project_gate(
             manufacturer=manufacturer or None,
             tier=tier or None,
         )
-        return _render_project_gate_report(outcomes)
+        return _project_gate_verdict_report(outcomes)
 
     @mcp.tool()
     @headless_compatible

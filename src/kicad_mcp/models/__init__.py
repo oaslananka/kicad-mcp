@@ -37,6 +37,7 @@ from .state import (
     WorkspaceState,
 )
 from .tool_result import ArtifactRef, StateDelta, ToolResult
+from .verdict import Finding, SuggestedFix, Verdict, VerdictReport, stable_finding_id
 
 __all__ = [
     "ACAnalysisInput",
@@ -58,6 +59,7 @@ __all__ = [
     "DifferentialPairSkewInput",
     "ExportBOMInput",
     "ExportGerberInput",
+    "Finding",
     "ImpedanceForTraceInput",
     "LayerViaInput",
     "LengthMatchingInput",
@@ -66,6 +68,7 @@ __all__ = [
     "ProjectState",
     "SchematicState",
     "SetStackupInput",
+    "SuggestedFix",
     "StackupInput",
     "StackupLayerSpec",
     "StateDelta",
@@ -73,7 +76,10 @@ __all__ = [
     "TraceImpedanceInput",
     "TraceWidthForImpedanceInput",
     "TransientAnalysisInput",
+    "Verdict",
+    "VerdictReport",
     "VerificationState",
     "VoltageDropInput",
     "WorkspaceState",
+    "stable_finding_id",
 ]

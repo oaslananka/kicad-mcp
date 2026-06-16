@@ -26,6 +26,7 @@ from ..models.intent import (
     PowerRailSpec,
     ThermalEnvelope,
 )
+from ..models.verdict import Finding, SuggestedFix, Verdict, stable_finding_id
 from ..path_safety import assert_within
 from ..prompts.workflows import render_professional_circuit_design_prompt
 from ..utils.cache import clear_ttl_cache, ttl_cache
@@ -98,9 +99,12 @@ class ProjectNextActionPayload(BaseModel):
 
     text: str
     status: str
+    verdict: Verdict = "PASS"
     gate: str = ""
     reason: str = ""
     suggested_tool: str = ""
+    findings: list[Finding] = Field(default_factory=list)
+    next_action: str = ""
 
 
 class AutoFixAction(BaseModel):
@@ -713,6 +717,27 @@ def _suggested_tool_for_gate(name: str) -> str:
     }.get(name, "project_quality_gate()")
 
 
+def _tool_name_from_hint(tool_hint: str) -> str:
+    return tool_hint.removesuffix("()")
+
+
+def _next_action_finding(
+    *,
+    status: str,
+    gate: str,
+    reason: str,
+    suggested_tool: str,
+) -> Finding:
+    severity = "warning" if status == "EMPTY" else "error"
+    return Finding(
+        id=stable_finding_id("project_next_action", gate or "project", status, reason),
+        severity=severity,
+        location=gate or "Project",
+        description=reason,
+        suggested_fix=SuggestedFix(tool=_tool_name_from_hint(suggested_tool), args={}),
+    )
+
+
 def _next_action_payload() -> ProjectNextActionPayload:
     from .validation import _evaluate_project_gate
 
@@ -729,8 +754,18 @@ def _next_action_payload() -> ProjectNextActionPayload:
         return ProjectNextActionPayload(
             text="\n".join(lines),
             status="BLOCKED",
+            verdict="FAIL",
             reason=reason,
             suggested_tool="kicad_get_project_info()",
+            findings=[
+                _next_action_finding(
+                    status="BLOCKED",
+                    gate="Project",
+                    reason=reason,
+                    suggested_tool="kicad_get_project_info()",
+                )
+            ],
+            next_action="kicad_get_project_info()",
         )
     actionable = [outcome for outcome in outcomes if outcome.status != "PASS"]
     if not actionable:
@@ -743,8 +778,10 @@ def _next_action_payload() -> ProjectNextActionPayload:
         return ProjectNextActionPayload(
             text="\n".join(lines),
             status="PASS",
+            verdict="PASS",
             reason="No blocking issues remain.",
             suggested_tool="export_manufacturing_package()",
+            next_action="export_manufacturing_package()",
         )
 
     actionable.sort(key=lambda outcome: (0 if outcome.status == "BLOCKED" else 1, outcome.name))
@@ -761,9 +798,19 @@ def _next_action_payload() -> ProjectNextActionPayload:
     return ProjectNextActionPayload(
         text="\n".join(lines),
         status=target.status,
+        verdict="WARN" if target.status == "EMPTY" else "FAIL",
         gate=target.name,
         reason=reason,
         suggested_tool=suggested_tool,
+        findings=[
+            _next_action_finding(
+                status=target.status,
+                gate=target.name,
+                reason=reason,
+                suggested_tool=suggested_tool,
+            )
+        ],
+        next_action=suggested_tool,
     )
 
 
