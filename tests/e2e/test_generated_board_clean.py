@@ -42,8 +42,12 @@ pytestmark = pytest.mark.skipif(KICAD_CLI is None, reason="kicad-cli not install
 
 def _run_drc(pcb: Path, out_json: Path) -> dict[str, object]:
     assert KICAD_CLI is not None  # guarded by pytestmark
+    # Copy the board into the temp dir first so kicad-cli's side-effect files
+    # (e.g. .kicad_prl) never pollute the source fixtures.
+    board = out_json.parent / pcb.name
+    shutil.copy2(pcb, board)
     subprocess.run(  # noqa: S603
-        [KICAD_CLI, "pcb", "drc", "--format", "json", "--output", str(out_json), str(pcb)],
+        [KICAD_CLI, "pcb", "drc", "--format", "json", "--output", str(out_json), str(board)],
         capture_output=True,
         text=True,
         timeout=180,
