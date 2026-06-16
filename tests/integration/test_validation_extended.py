@@ -584,3 +584,18 @@ async def test_run_erc_tool(sample_project: Path, monkeypatch) -> None:
     result = await call_tool_text(server, "run_erc", {})
     assert "ERC summary" in result
     assert "Pin not connected" in result
+
+
+@pytest.mark.anyio
+async def test_project_signoff_report_is_unverified_without_intent(
+    sample_project: Path,
+) -> None:
+    """The project_signoff_report tool renders a verdict and is UNVERIFIED (never a
+    silent PASS) when no design intent is declared (P5-T3)."""
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    result = await call_tool_text(server, "project_signoff_report", {})
+
+    assert "Manufacturing sign-off:" in result
+    assert "UNVERIFIED" in result
