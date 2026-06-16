@@ -16,6 +16,7 @@ from ..utils.component_search import (
     ComponentSearchClient,
     DigiKeyClient,
     JLCSearchClient,
+    MouserClient,
     NexarClient,
     normalize_lcsc_code,
 )
@@ -101,7 +102,11 @@ def _component_search_client(source: str) -> ComponentSearchClient:
         return NexarClient()
     if normalized == "digikey":
         return DigiKeyClient()
-    raise ValueError("Unknown component source. Use 'jlcsearch', 'nexar', or 'digikey'.")
+    if normalized == "mouser":
+        return MouserClient()
+    raise ValueError(
+        "Unknown component source. Use 'jlcsearch', 'nexar', 'digikey', or 'mouser'."
+    )
 
 
 def _sort_component_results(
@@ -562,9 +567,10 @@ def register(mcp: FastMCP) -> None:
         """Search live component sources for purchasable parts.
 
         ``source``: ``jlcsearch`` (JLCPCB public catalog, no credentials; default),
-        ``nexar`` (requires NEXAR_CLIENT_ID/NEXAR_CLIENT_SECRET), or ``digikey``
-        (requires DIGIKEY_CLIENT_ID/DIGIKEY_CLIENT_SECRET). Nexar and DigiKey are
-        inactive until those credentials are configured in the deployment environment.
+        ``nexar`` (requires NEXAR_CLIENT_ID/NEXAR_CLIENT_SECRET), ``digikey``
+        (requires DIGIKEY_CLIENT_ID/DIGIKEY_CLIENT_SECRET), or ``mouser`` (requires
+        MOUSER_API_KEY). The authenticated sources are inactive until their
+        credentials are configured (loaded from ``.env`` at server startup).
         """
         try:
             client = _component_search_client(source)

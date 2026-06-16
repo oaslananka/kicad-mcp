@@ -9,6 +9,7 @@ from kicad_mcp.utils.component_search import (
     ComponentRecord,
     DigiKeyClient,
     JLCSearchClient,
+    MouserClient,
     NexarClient,
     RateLimiter,
     _plain_text_lines,
@@ -266,6 +267,55 @@ def test_digikey_search_parses_records_with_injected_transport() -> None:
     assert record.price == 0.123
     assert calls[0].endswith("/oauth2/token")
     assert calls[1].endswith("/search/keyword")
+
+
+def test_mouser_requires_api_key(monkeypatch) -> None:
+    monkeypatch.delenv("MOUSER_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="MOUSER_API_KEY"):
+        MouserClient().search("resistor")
+
+
+def test_mouser_search_parses_records_with_injected_transport() -> None:
+    seen_urls: list[str] = []
+
+    def transport(url: str, body: bytes, headers: dict[str, str]) -> dict[str, object]:
+        seen_urls.append(url)
+        return {
+            "SearchResults": {
+                "Parts": [
+                    {
+                        "ManufacturerPartNumber": "GRM188R71H104KA93D",
+                        "Manufacturer": "Murata",
+                        "Description": "CAP CER 0.1UF 50V X7R 0603",
+                        "AvailabilityInStock": "125,000",
+                        "PriceBreaks": [{"Price": "$0.018"}],
+                        "LifecycleStatus": "Active",
+                        "ROHSStatus": "RoHS Compliant",
+                    }
+                ]
+            }
+        }
+
+    client = MouserClient(api_key="mk-123", transport=transport)
+    records = client.search("0.1uF 0603", limit=5)
+
+    assert len(records) == 1
+    record = records[0]
+    assert record.source == "mouser"
+    assert record.mpn == "GRM188R71H104KA93D"
+    assert record.stock == 125000  # comma-separated availability parsed
+    assert record.price == 0.018
+    assert record.lifecycle == "Active"
+    # The API key is sent as a query parameter, not a header.
+    assert "apiKey=mk-123" in seen_urls[0]
+
+
+def test_mouser_api_error_surfaces() -> None:
+    def transport(url: str, body: bytes, headers: dict[str, str]) -> dict[str, object]:
+        return {"Errors": [{"Message": "Invalid API key"}]}
+
+    with pytest.raises(RuntimeError, match="Mouser API error: Invalid API key"):
+        MouserClient(api_key="bad", transport=transport).search("x")
 
 
 def test_digikey_token_is_cached_across_searches() -> None:

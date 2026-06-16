@@ -593,3 +593,95 @@ class DigiKeyClient:
             if record.mpn.casefold() == needle:
                 return record
         return results[0] if results else None
+
+
+_mouser_limiter = RateLimiter(max_calls=5, period_seconds=1.0)
+
+
+def _parse_mouser_price(price_breaks: list[dict[str, Any]]) -> float | None:
+    if not price_breaks:
+        return None
+    raw = str(price_breaks[0].get("Price", "")).replace("$", "").replace(",", "").strip()
+    try:
+        return float(raw) if raw else None
+    except ValueError:
+        return None
+
+
+def _record_from_mouser(part: dict[str, Any]) -> ComponentRecord:
+    manufacturer = str(part.get("Manufacturer", ""))
+    stock_digits = "".join(ch for ch in str(part.get("AvailabilityInStock", "")) if ch.isdigit())
+    return ComponentRecord(
+        source="mouser",
+        lcsc_code="",
+        mpn=str(part.get("ManufacturerPartNumber", "")),
+        package="",
+        description=str(part.get("Description", "")).strip() or manufacturer,
+        stock=int(stock_digits or 0),
+        price=_parse_mouser_price(part.get("PriceBreaks") or []),
+        is_basic=False,
+        is_preferred=False,
+        lifecycle=str(part.get("LifecycleStatus", "")),
+        rohs=str(part.get("ROHSStatus", "")),
+    )
+
+
+class MouserClient:
+    """Live Mouser keyword-search client.
+
+    Mouser authenticates with an API key (``MOUSER_API_KEY``, loaded from ``.env``
+    at server startup) passed as a query parameter, not OAuth. ``transport`` is
+    injectable so the search flow is unit-tested without the network.
+    """
+
+    SEARCH_URL = "https://api.mouser.com/api/v1/search/keyword"
+
+    def __init__(
+        self, api_key: str | None = None, *, transport: HttpPostJson | None = None
+    ) -> None:
+        self._api_key = api_key if api_key is not None else os.getenv("MOUSER_API_KEY")
+        self._transport = transport or _https_post_json
+
+    def _require_key(self) -> str:
+        if not self._api_key:
+            raise RuntimeError("Mouser search requires MOUSER_API_KEY.")
+        return self._api_key
+
+    def search(
+        self,
+        keyword: str,
+        *,
+        package: str | None = None,
+        only_basic: bool = True,
+        limit: int = 20,
+    ) -> list[ComponentRecord]:
+        _ = only_basic
+        api_key = self._require_key()
+        _mouser_limiter.acquire()
+        url = f"{self.SEARCH_URL}?apiKey={urllib.parse.quote(api_key)}"
+        body = json.dumps(
+            {"SearchByKeywordRequest": {"keyword": keyword, "records": max(1, min(limit, 50))}}
+        ).encode("utf-8")
+        response = self._transport(url, body, {"Content-Type": "application/json"})
+        errors = response.get("Errors")
+        if errors:
+            if isinstance(errors, list) and errors:
+                message = errors[0].get("Message", "unknown error")
+            else:
+                message = str(errors)
+            raise RuntimeError(f"Mouser API error: {message}")
+        parts = ((response.get("SearchResults") or {}).get("Parts")) or []
+        records = [_record_from_mouser(part) for part in parts]
+        if package:
+            needle = package.casefold()
+            records = [record for record in records if needle in record.description.casefold()]
+        return records[:limit]
+
+    def get_part(self, lcsc_code_or_mpn: str) -> ComponentRecord | None:
+        self._require_key()
+        results = self.search(lcsc_code_or_mpn, limit=5)
+        needle = lcsc_code_or_mpn.strip().casefold()
+        for record in results:
+            if record.mpn.casefold() == needle:
+                return record
+        return results[0] if results else None
