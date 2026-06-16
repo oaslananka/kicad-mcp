@@ -832,6 +832,48 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @headless_compatible
+    def lib_validate_footprint_ipc7351(
+        footprint_path: str,
+        size_code: str,
+        density: str = "B",
+        tolerance_mm: float = 0.12,
+    ) -> str:
+        """Validate a two-terminal chip footprint against its IPC-7351B nominal (hard gate).
+
+        Reads the .kicad_mod at ``footprint_path`` (relative to the project), parses its
+        SMD pads, and compares pad width/height/pitch to the IPC-7351B nominal for the
+        given chip ``size_code`` and ``density``. Gross deviation is a blocking FAIL,
+        minor deviation WARNs, a match PASSes. Scope: chip passives (0201–2512) against
+        the IPC-7351B *standard* nominal — not a datasheet-specific land-pattern check.
+        """
+        from ..utils.footprint_validate import parse_smd_pads, validate_chip_footprint
+
+        if density not in ("A", "B", "C"):
+            return f"Invalid density '{density}'. Must be A, B, or C."
+        cfg = get_config()
+        try:
+            path = cfg.resolve_within_project(footprint_path)
+        except Exception as exc:  # noqa: BLE001 - surface any path-safety rejection
+            return f"Invalid footprint path: {exc}"
+        if not path.exists():
+            return f"Footprint file not found: {path}"
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        pads = parse_smd_pads(text)
+        try:
+            result = validate_chip_footprint(
+                size_code,
+                pads,
+                density=density,  # type: ignore[arg-type]
+                tol_mm=tolerance_mm,
+            )
+        except ValueError as exc:
+            return f"Validation failed: {exc}"
+        lines = [f"Footprint IPC-7351B validation: {result.verdict}", f"- {result.summary}"]
+        lines.extend(f"  - {finding}" for finding in result.findings)
+        return "\n".join(lines)
+
+    @mcp.tool()
+    @headless_compatible
     def lib_generate_symbol_from_pintable(
         name: str,
         pins: list[dict[str, Any]],

@@ -1919,6 +1919,24 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
+    "name": "lib_validate_footprint_ipc7351",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "full",
+      "schematic",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
     "idempotent": true,
     "name": "manufacturing_quality_gate",
     "open_world": false,

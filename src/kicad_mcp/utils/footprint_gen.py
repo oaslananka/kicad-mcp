@@ -18,6 +18,7 @@ Supported families
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from typing import Literal
 
 from .sexpr import _sexpr_string
@@ -150,15 +151,44 @@ _CHIP_DIMS: dict[str, tuple[float, float, float, float]] = {
 }
 
 
-def _chip_passive(size_code: str, density: DensityLevel = "B") -> str:
-    """Generate a chip passive (resistor/capacitor/inductor) footprint."""
+@dataclass(frozen=True)
+class ChipPadGeometry:
+    """IPC-7351B nominal land geometry for a two-terminal chip package (mm)."""
+
+    pad_w: float
+    pad_h: float
+    pad_offset: float  # |x| of each pad centre from the footprint origin
+
+    @property
+    def pitch(self) -> float:
+        """Centre-to-centre distance between the two pads."""
+        return 2.0 * self.pad_offset
+
+
+def chip_pad_geometry(size_code: str, density: DensityLevel = "B") -> ChipPadGeometry:
+    """Return the IPC-7351B nominal pad geometry for a chip package + density.
+
+    Single source of truth shared by the generator and the validator so a footprint
+    is checked against exactly what we would have generated.
+    """
     if size_code not in _CHIP_DIMS:
         raise ValueError(f"Unknown chip size '{size_code}'. Choose from {sorted(_CHIP_DIMS)}")
     body_l, body_w, land_l, land_w = _CHIP_DIMS[size_code]
+    _ = body_w
     jt, _jh, js = _IPC_OFFSETS[density]
     pad_w = land_l + jt
     pad_h = land_w + 2 * js
-    cx = (body_l / 2.0 + pad_w / 2.0) / 1.0  # centre of outer edge
+    pad_offset = body_l / 2.0 + pad_w / 2.0
+    return ChipPadGeometry(pad_w=pad_w, pad_h=pad_h, pad_offset=pad_offset)
+
+
+def _chip_passive(size_code: str, density: DensityLevel = "B") -> str:
+    """Generate a chip passive (resistor/capacitor/inductor) footprint."""
+    body_l, body_w, _land_l, _land_w = _CHIP_DIMS[size_code]
+    geometry = chip_pad_geometry(size_code, density)
+    pad_w = geometry.pad_w
+    pad_h = geometry.pad_h
+    cx = geometry.pad_offset
     # Silk just outside body
     silk_x = body_l / 2.0 + 0.2
     silk_y = max(pad_h, body_w) / 2.0 + 0.2

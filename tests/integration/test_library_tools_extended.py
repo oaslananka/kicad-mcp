@@ -142,6 +142,16 @@ async def test_library_symbol_footprint_and_generator_surface(
         "lib_generate_footprint_ipc7351",
         {"package": "0805", "density": "Z"},
     )
+    footprint_validate = await call_tool_text(
+        server,
+        "lib_validate_footprint_ipc7351",
+        {"footprint_path": "generated/R.kicad_mod", "size_code": "0805", "density": "B"},
+    )
+    footprint_validate_bad = await call_tool_text(
+        server,
+        "lib_validate_footprint_ipc7351",
+        {"footprint_path": "generated/R.kicad_mod", "size_code": "0402", "density": "B"},
+    )
     symbol_bad_pin = await call_tool_text(
         server,
         "lib_generate_symbol_from_pintable",
@@ -183,6 +193,10 @@ async def test_library_symbol_footprint_and_generator_surface(
     assert "Created custom symbol" in custom
     assert "Footprint saved" in footprint_gen
     assert "Invalid density" in footprint_bad_density
+    # A generated 0805 land pattern validates PASS against its own IPC nominal,
+    # but FAILs the hard gate when checked against the wrong (0402) size.
+    assert "Footprint IPC-7351B validation: PASS" in footprint_validate
+    assert "Footprint IPC-7351B validation: FAIL" in footprint_validate_bad
     assert "Invalid pin specification" in symbol_bad_pin
     assert "Symbol saved" in symbol_gen
     assert "Assigned footprint" in assigned

@@ -1,6 +1,6 @@
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 329.
+Total public tools: 330.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -108,6 +108,7 @@ Total public tools: 329.
 | `lib_search_footprints` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | yes | no | Search footprint libraries by footprint name. |
 | `lib_search_symbols` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | yes | no | Search symbol libraries by name, description, or keywords. |
 | `lib_set_3d_model_path` | agent_full, builder, full, schematic, schematic_only, simulation | no | yes | no | yes | yes | no | Set or replace the 3D model path on a footprint. |
+| `lib_validate_footprint_ipc7351` | agent_full, builder, full, schematic, schematic_only, simulation | no | no | no | no | yes | no | Validate a two-terminal chip footprint against its IPC-7351B nominal (hard gate). |
 | `manufacturing_quality_gate` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | yes | no | no | yes | yes | no | Evaluate manufacturing readiness against the active or requested DFM profile. |
 | `mfg_check_import_support` | agent_full, full, manufacturing | yes | no | yes | yes | yes | no | Report whether the detected KiCad CLI advertises a given board-import format. |
 | `mfg_correct_cpl_rotations` | agent_full, full, manufacturing | no | no | no | no | yes | no | Apply JLCPCB CPL rotation corrections to a KiCad-exported pick-and-place CSV. |
@@ -440,6 +441,7 @@ Total public tools: 329.
 - `lib_search_footprints`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `lib_search_symbols`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `lib_set_3d_model_path`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
+- `lib_validate_footprint_ipc7351`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `manufacturing_quality_gate`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `mfg_check_import_support`: profiles=agent_full, full, manufacturing; readOnly=yes; destructive=no; openWorld=yes; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `mfg_correct_cpl_rotations`: profiles=agent_full, full, manufacturing; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
