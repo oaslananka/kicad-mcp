@@ -1542,6 +1542,24 @@
     "experimental": false,
     "headless": true,
     "idempotent": true,
+    "name": "lib_check_derating",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "full",
+      "schematic",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": true,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": true,
     "name": "lib_check_stock_availability",
     "open_world": false,
     "profiles": [

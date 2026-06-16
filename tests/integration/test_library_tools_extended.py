@@ -152,6 +152,30 @@ async def test_library_symbol_footprint_and_generator_surface(
         "lib_validate_footprint_ipc7351",
         {"footprint_path": "generated/R.kicad_mod", "size_code": "0402", "density": "B"},
     )
+    derating_ok = await call_tool_text(
+        server,
+        "lib_check_derating",
+        {
+            "kind": "capacitor",
+            "parameter": "voltage",
+            "rated_value": 25.0,
+            "operating_value": 12.0,
+            "manufacturer": "Murata",
+            "approved_vendors": ["Murata", "TDK"],
+        },
+    )
+    derating_bad = await call_tool_text(
+        server,
+        "lib_check_derating",
+        {
+            "kind": "capacitor",
+            "parameter": "voltage",
+            "rated_value": 25.0,
+            "operating_value": 23.0,
+            "manufacturer": "Acme Knockoff",
+            "approved_vendors": ["Murata", "TDK"],
+        },
+    )
     symbol_bad_pin = await call_tool_text(
         server,
         "lib_generate_symbol_from_pintable",
@@ -197,6 +221,10 @@ async def test_library_symbol_footprint_and_generator_surface(
     # but FAILs the hard gate when checked against the wrong (0402) size.
     assert "Footprint IPC-7351B validation: PASS" in footprint_validate
     assert "Footprint IPC-7351B validation: FAIL" in footprint_validate_bad
+    # A properly-derated part from an approved vendor passes; over-derating an
+    # unapproved vendor fails the sourcing-compliance gate.
+    assert "Part sourcing compliance: PASS" in derating_ok
+    assert "Part sourcing compliance: FAIL" in derating_bad
     assert "Invalid pin specification" in symbol_bad_pin
     assert "Symbol saved" in symbol_gen
     assert "Assigned footprint" in assigned

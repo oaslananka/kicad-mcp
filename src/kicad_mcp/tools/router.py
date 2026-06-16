@@ -254,6 +254,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             # v2.2.0 — generative library tools
             "lib_generate_footprint_ipc7351",
             "lib_validate_footprint_ipc7351",
+            "lib_check_derating",
             "lib_generate_symbol_from_pintable",
             "lib_recommend_part",
             "lib_bind_part_to_symbol",
