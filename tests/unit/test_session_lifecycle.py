@@ -13,7 +13,7 @@ from kicad_mcp.errors import (
     IpcDisconnectedError,
     KiCadConnectionTimeoutError,
 )
-from kicad_mcp.kicad.session import KiCadSession, SessionConfig
+from kicad_mcp.kicad.session import KiCadSession, SessionConfig, _classify_ipc_error
 
 
 @dataclass
@@ -256,3 +256,80 @@ def test_reconnect_after_reset() -> None:
     assert c1 is not c2
     assert c1.closed is True
     assert c2.closed is False
+
+
+# ---------------------------------------------------------------------------
+# Structural error classification (P5-T5)
+# ---------------------------------------------------------------------------
+
+
+def test_classify_ipc_error_prefers_type_over_message() -> None:
+    # Typed failures are classified by type — even when the message says nothing
+    # about the failure mode — so a reworded/localized message can't flip them.
+    assert _classify_ipc_error(TimeoutError("operation exceeded the deadline")) == "timeout"
+    assert _classify_ipc_error(ConnectionResetError("xyz")) == "disconnected"
+    assert _classify_ipc_error(BrokenPipeError("xyz")) == "disconnected"
+    assert _classify_ipc_error(ConnectionRefusedError()) == "disconnected"
+    assert _classify_ipc_error(EOFError()) == "disconnected"
+
+
+def test_classify_ipc_error_substring_is_only_a_fallback() -> None:
+    # Opaque RuntimeErrors (what kipy often raises) fall back to message parsing.
+    assert _classify_ipc_error(RuntimeError("Request timed out")) == "timeout"
+    assert _classify_ipc_error(RuntimeError("connection reset by peer")) == "disconnected"
+    assert _classify_ipc_error(RuntimeError("KiCad is busy with a modal dialog")) == "busy"
+    assert _classify_ipc_error(RuntimeError("totally unrelated")) == "other"
+
+
+# ---------------------------------------------------------------------------
+# KiCad-restart / disconnect cache invalidation (P5-T5)
+# ---------------------------------------------------------------------------
+
+
+class _BoardClient:
+    """Fake client whose get_board() outcome is scripted per instance."""
+
+    def __init__(self, *, board: object | None, error: Exception | None) -> None:
+        self._board = board
+        self._error = error
+        self.closed = False
+
+    def close(self) -> None:
+        self.closed = True
+
+    def get_board(self) -> object:
+        if self._error is not None:
+            raise self._error
+        return self._board
+
+
+def test_board_disconnect_invalidates_cache_and_reconnects() -> None:
+    # A disconnect (KiCad restarted) must drop the cached client and reconnect to
+    # the fresh session rather than serving the dead one for the rest of the TTL.
+    live_board = object()
+    clients: list[_BoardClient] = [
+        _BoardClient(board=None, error=ConnectionResetError("peer reset")),
+        _BoardClient(board=live_board, error=None),
+    ]
+    factory_calls = 0
+
+    def factory() -> _BoardClient:
+        nonlocal factory_calls
+        client = clients[factory_calls]
+        factory_calls += 1
+        return client
+
+    session = _make_session(client_factory=factory, config=FakeConfig(ipc_retries=2))
+    assert session.board() is live_board
+    assert factory_calls == 2  # reconnected after the disconnect
+    assert clients[0].closed is True  # stale client was closed, not reused
+
+
+def test_board_disconnect_exhausted_raises_ipc_disconnected() -> None:
+    def factory() -> _BoardClient:
+        return _BoardClient(board=None, error=BrokenPipeError("pipe gone"))
+
+    session = _make_session(client_factory=factory, config=FakeConfig(ipc_retries=1))
+    with pytest.raises(IpcDisconnectedError) as exc_info:
+        session.board()
+    assert exc_info.value.code == "IPC_DISCONNECTED"

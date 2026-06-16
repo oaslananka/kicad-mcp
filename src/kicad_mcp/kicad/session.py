@@ -7,13 +7,12 @@ import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Protocol, TypedDict
+from typing import Literal, Protocol, TypedDict
 
 from ..errors import (
     IpcDisconnectedError,
     KiCadBoardNotOpenError,
     KiCadConnectionTimeoutError,
-    KiCadNotRunningError,
 )
 
 
@@ -68,6 +67,44 @@ def _default_config() -> SessionConfig:
 def _is_busy_error(message: str) -> bool:
     lowered = message.casefold()
     return any(pattern in lowered for pattern in _BUSY_PATTERNS)
+
+
+IpcErrorKind = Literal["timeout", "disconnected", "busy", "other"]
+
+_TIMEOUT_PATTERNS = ("timeout", "timed out", "deadline")
+_DISCONNECT_PATTERNS = (
+    "disconnect",
+    "broken pipe",
+    "connection reset",
+    "connection refused",
+    "connection aborted",
+    "not connected",
+    "socket closed",
+    "eof",
+)
+
+
+def _classify_ipc_error(exc: BaseException) -> IpcErrorKind:
+    """Classify an IPC failure by exception *type* first, message only as a fallback.
+
+    Structural exception types (``TimeoutError``, the ``ConnectionError`` family,
+    ``EOFError``) are authoritative and translation-stable. Substring matching on the
+    message is a last resort for the opaque ``RuntimeError``s kipy raises when it
+    cannot surface a typed error — so a localized or reworded message can never flip
+    the classification of a genuinely typed failure.
+    """
+    if isinstance(exc, TimeoutError):
+        return "timeout"
+    if isinstance(exc, (ConnectionError, EOFError)):
+        return "disconnected"
+    lowered = str(exc).casefold()
+    if any(pattern in lowered for pattern in _TIMEOUT_PATTERNS):
+        return "timeout"
+    if any(pattern in lowered for pattern in _DISCONNECT_PATTERNS):
+        return "disconnected"
+    if _is_busy_error(lowered):
+        return "busy"
+    return "other"
 
 
 class KiCadSession:
@@ -203,8 +240,7 @@ class KiCadSession:
                         socket_path=str(cfg.kicad_socket_path) if cfg.kicad_socket_path else None,
                     )
 
-        message = str(last_error or "KiCad IPC connection failed")
-        if "timeout" in message.casefold() or "timed out" in message.casefold():
+        if last_error is not None and _classify_ipc_error(last_error) == "timeout":
             raise KiCadConnectionTimeoutError(
                 "Could not connect to KiCad IPC API before the configured timeout."
             ) from last_error
@@ -214,37 +250,52 @@ class KiCadSession:
         ) from last_error
 
     def board(self) -> object:
-        """Return the active KiCad board."""
+        """Return the active KiCad board.
+
+        Re-acquires the client on every attempt so that a connection dropped by a
+        KiCad restart invalidates the TTL cache immediately: on a disconnect-class
+        failure the stale client is closed and the next attempt reconnects to the
+        live session instead of serving a dead one (the TTL alone could keep a
+        post-restart stale client for several seconds).
+        """
         cfg = self._config_factory()
         attempts = max(1, cfg.ipc_retries + 1)
         last_error: BaseException | None = None
-        try:
-            client = self.client()
-        except KiCadNotRunningError:
-            raise
-        get_board = getattr(client, "get_board", None)
-        if not callable(get_board):
-            raise KiCadBoardNotOpenError("KiCad client does not expose get_board().")
 
         for attempt in range(1, attempts + 1):
+            client = self.client()  # reconnects if the cache was invalidated
+            get_board = getattr(client, "get_board", None)
+            if not callable(get_board):
+                raise KiCadBoardNotOpenError("KiCad client does not expose get_board().")
             try:
                 return get_board()
             except Exception as exc:
                 last_error = exc
-                message = str(exc)
+                kind = _classify_ipc_error(exc)
                 if self._logger is not None:
                     self._logger.warning(
                         "kicad_get_board_failed",
                         attempt=attempt,
                         attempts=attempts,
-                        error=message,
+                        error=str(exc),
+                        kind=kind,
                     )
-                if not _is_busy_error(message) or attempt >= attempts:
-                    break
-                self._sleep(min(0.2 * attempt, 1.0))
+                if kind == "disconnected":
+                    # KiCad went away or restarted — drop the stale client so the
+                    # next attempt reconnects rather than reusing a dead session.
+                    self.reset()
+                if kind in ("busy", "disconnected") and attempt < attempts:
+                    self._sleep(min(0.2 * attempt, 1.0))
+                    continue
+                break
 
-        message = str(last_error or "")
-        if _is_busy_error(message):
+        kind = _classify_ipc_error(last_error) if last_error is not None else "other"
+        if kind == "disconnected":
+            raise IpcDisconnectedError(
+                "The KiCad IPC connection dropped (KiCad may have closed or restarted) "
+                "and did not recover. Reopen the board in KiCad and retry."
+            ) from last_error
+        if kind == "busy":
             raise KiCadBoardNotOpenError(
                 "KiCad GUI appears to be busy or modal and cannot respond to IPC requests "
                 "right now. Try again, close any open KiCad dialog, or finish/save the "
