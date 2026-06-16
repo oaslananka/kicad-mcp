@@ -66,12 +66,15 @@ MCP client (agent)  --tool calls-->  KiCad MCP Pro
 
 - **Threat:** an attacker brute-forces the bridge pairing code or floods the daemon.
 - **Control:** the bridge is opt-in, binds locally, and requires a per-session pairing
-  code (`secrets.token_hex`). 
-- **Residual risk:** the pairing code is short (24-bit) and there is **no rate-limiting**
-  on connection/pairing attempts, so a local attacker with network access to the bridge
-  port could brute-force it. **Recommended control (not yet implemented): add
-  attempt rate-limiting / lockout and a longer code before exposing the bridge beyond
-  localhost.** Until then, do not expose the bridge port to untrusted networks.
+  code (`secrets.token_hex`). Inbound messages are now rate-limited by a token bucket
+  (`TokenBucket` in `bridge.py`): a general per-daemon budget blunts floods, and a
+  much stricter pairing budget (small burst, then one attempt every five seconds)
+  makes brute-forcing the 24-bit code infeasible. Exceeding either budget returns a
+  JSON-RPC rate-limit error (`-32004`) without doing any work. Covered by
+  `tests/unit/test_bridge_rate_limit.py`.
+- **Residual risk:** the pairing code is still short (24-bit). Rate-limiting makes
+  online brute force impractical, but **use a longer explicit `--code` and do not
+  expose the bridge port to untrusted networks** until a longer default code ships.
 
 ## Supply chain and release integrity
 
