@@ -438,7 +438,8 @@ async def test_pcb_and_routing_surface(
 
     joined_routing = "\n".join(routing_results)
     assert "Specctra DSN ready" in joined_routing
-    assert "FreeRouting completed successfully" in joined_routing
+    # P1-T7: applying the SES is a manual KiCad step, so the route reports honestly.
+    assert "FreeRouting produced a routed session" in joined_routing
     assert "Specctra SES session staged" in joined_routing
     assert "Net-class routing rule" in joined_routing
     assert "Differential-pair routing rule" in joined_routing
