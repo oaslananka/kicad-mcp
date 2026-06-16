@@ -105,7 +105,31 @@ def test_embedded_matrix_matches_yaml() -> None:
 
 
 def test_generated_artifacts_not_drifted() -> None:
+    # --check now also guards the README coverage badge against drift.
     assert builder.main(["--check"]) == 0, "Run: uv run python scripts/build_parity_matrix.py"
+
+
+def test_coverage_meets_committed_baseline(matrix: dict[str, Any]) -> None:
+    # P5-T6 regression gate: live coverage must not drop below the committed
+    # floor. A KiCad update that breaks a hook (covered -> gap) trips this.
+    assert builder.BASELINE_PATH.is_file(), (
+        "Missing parity baseline; run: "
+        "uv run python scripts/build_parity_matrix.py --update-baseline"
+    )
+    failures = builder.check_regression(matrix)
+    assert not failures, "Capability-parity coverage regressed:\n" + "\n".join(failures)
+
+
+def test_baseline_not_below_floor_is_a_real_check() -> None:
+    # Guard the guard: a fabricated drop below the baseline must be detected,
+    # so the gate cannot silently pass on a genuine regression.
+    matrix = get_matrix()
+    analysis = matrix["domains"]["analysis"]["capabilities"]
+    downgraded = next(cap for cap in analysis if cap["status"] == "covered")
+    downgraded["status"] = "gap"
+    downgraded["mcp_tool"] = None
+    failures = builder.check_regression(matrix)
+    assert any("analysis" in failure or "overall" in failure for failure in failures)
 
 
 def test_capability_parity_tool_registered(registered_tool_names: set[str]) -> None:
