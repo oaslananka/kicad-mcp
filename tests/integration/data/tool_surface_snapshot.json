@@ -5474,6 +5474,23 @@
     "experimental": false,
     "headless": false,
     "idempotent": false,
+    "name": "si_analyze_high_speed_channel",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "analysis",
+      "critic",
+      "full",
+      "high_speed"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": false,
+    "idempotent": false,
     "name": "si_bind_interfaces_to_net_classes",
     "open_world": false,
     "profiles": [

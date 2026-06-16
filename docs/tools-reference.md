@@ -131,7 +131,7 @@ Built-in prompt helpers for the critic/fixer loop:
 
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 332.
+Total public tools: 333.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -420,6 +420,7 @@ Total public tools: 332.
 | `sch_upgrade` | agent_full, full, manufacturing | no | no | no | yes | yes | no | Upgrade a schematic file to the current KiCad file format. |
 | `schematic_connectivity_gate` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | no | no | no | no | yes | no | Evaluate whether schematic structure and hierarchy look electrically meaningful. This KiCad MCP Pro tool supports pro... |
 | `schematic_quality_gate` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | yes | no | no | yes | yes | no | Evaluate whether the schematic is clean enough to proceed. This KiCad MCP Pro tool supports production EDA automation... |
+| `si_analyze_high_speed_channel` | agent_full, analysis, critic, full, high_speed | no | no | no | no | no | no | Estimate high-speed channel insertion loss and eye opening for a lossy trace. |
 | `si_bind_interfaces_to_net_classes` | agent_full, analysis, critic, full, high_speed | no | no | no | no | no | no | Map interface specs from the project design intent to KiCad net classes. |
 | `si_calculate_decoupling_placement` | agent_full, analysis, critic, full, high_speed | no | no | no | no | no | no | Estimate decoupling placement quality around an IC power pin. This KiCad MCP Pro tool supports production EDA automat... |
 | `si_calculate_trace_impedance` | agent_full, analysis, critic, full, high_speed | no | no | no | no | no | no | Estimate PCB trace impedance using quasi-static interconnect formulas. This KiCad MCP Pro tool supports production ED... |
@@ -755,6 +756,7 @@ Total public tools: 332.
 - `sch_upgrade`: profiles=agent_full, full, manufacturing; readOnly=no; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `schematic_connectivity_gate`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `schematic_quality_gate`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
+- `si_analyze_high_speed_channel`: profiles=agent_full, analysis, critic, full, high_speed; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `si_bind_interfaces_to_net_classes`: profiles=agent_full, analysis, critic, full, high_speed; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `si_calculate_decoupling_placement`: profiles=agent_full, analysis, critic, full, high_speed; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `si_calculate_trace_impedance`: profiles=agent_full, analysis, critic, full, high_speed; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.

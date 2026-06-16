@@ -444,6 +444,14 @@ _RAW = r"""
           "notes": "si_generate_stackup, si_bind_interfaces_to_net_classes, si_list_dielectric_materials."
         },
         {
+          "capability": "High-speed channel insertion-loss / eye analysis",
+          "kicad_channel": "file",
+          "mcp_tool": "si_analyze_high_speed_channel",
+          "status": "partial",
+          "kicad_version_introduced": "10.0.x",
+          "notes": "Closed-form lossy-line insertion loss (conductor skin-effect + dielectric loss) with a loss-limited eye and PASS/WARN/FAIL verdict; when an ngspice CLI is present the insertion loss is measured from an RLGC-ladder AC sweep (utils/channel + solver seam). Full S-parameter / IBIS-AMI channel simulation remains a future upgrade."
+        },
+        {
           "capability": "DC IR-drop / voltage-drop analysis",
           "kicad_channel": "file",
           "mcp_tool": "pdn_calculate_voltage_drop",

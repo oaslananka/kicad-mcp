@@ -420,6 +420,8 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "si_list_dielectric_materials",
             "si_synthesize_stackup_for_interfaces",
             "si_bind_interfaces_to_net_classes",
+            # P3-T3 — high-speed channel insertion-loss / eye analysis
+            "si_analyze_high_speed_channel",
         ],
     },
     "power_integrity": {

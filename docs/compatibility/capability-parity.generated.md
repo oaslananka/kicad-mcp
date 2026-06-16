@@ -4,7 +4,7 @@ Machine-generated from `docs/compatibility/capability-parity-matrix.yaml`. Refre
 
 KiCad baseline: `10.0.x` · Updated: 2026-06-16
 
-**Overall: 57 / 74 programmatically-reachable capabilities driven = 77.0%** (15 partial, 2 gap; 4 GUI-only with no KiCad API, excluded from the denominator).
+**Overall: 57 / 75 programmatically-reachable capabilities driven = 76.0%** (16 partial, 2 gap; 4 GUI-only with no KiCad API, excluded from the denominator).
 
 ## Coverage by domain
 
@@ -14,11 +14,11 @@ KiCad baseline: `10.0.x` · Updated: 2026-06-16
 | `pcb_edit` | 93.8% | 15 | 1 | 0 | 1 |
 | `routing` | 66.7% | 4 | 2 | 0 | 1 |
 | `library` | 57.1% | 4 | 3 | 0 | 0 |
-| `analysis` | 27.3% | 3 | 7 | 1 | 0 |
+| `analysis` | 25.0% | 3 | 8 | 1 | 0 |
 | `export` | 100.0% | 9 | 0 | 0 | 0 |
 | `project` | 100.0% | 5 | 0 | 0 | 0 |
 | `cosmetics` | 85.7% | 6 | 0 | 1 | 1 |
-| **Overall** | **77.0%** | 57 | 15 | 2 | 4 |
+| **Overall** | **76.0%** | 57 | 16 | 2 | 4 |
 
 ## Closeable surface (gap, then partial)
 
@@ -30,6 +30,7 @@ KiCad baseline: `10.0.x` · Updated: 2026-06-16
 | `analysis` | Decoupling recommendation / power-plane generation | `partial` | `file` | `pdn_recommend_decoupling_caps` | pdn_generate_power_plane covered; frequency-domain PDN target-Z checking now delivered via check_power_integrity (pdn_mesh Z(f) vs target_impedance_ohm with violations); a full plane-capacitance field model remains a future upgrade. |
 | `analysis` | Differential-pair skew gate | `partial` | `file` | `si_check_differential_pair_skew` | Real PASS/WARN/FAIL verdict with intent-derived skew budget (P1-T3); localized intra-pair phase-skew / mode-conversion is Phase 3 (P3-T3). |
 | `analysis` | EMC layout compliance checks | `partial` | `file` | `emc_run_full_compliance` | Presence/heuristic checks with fixed Er (work order K2/K10); EM-result-based, standard-named, fail-capable checks are Phase 3 (P3-T5). |
+| `analysis` | High-speed channel insertion-loss / eye analysis | `partial` | `file` | `si_analyze_high_speed_channel` | Closed-form lossy-line insertion loss (conductor skin-effect + dielectric loss) with a loss-limited eye and PASS/WARN/FAIL verdict; when an ngspice CLI is present the insertion loss is measured from an RLGC-ladder AC sweep (utils/channel + solver seam). Full S-parameter / IBIS-AMI channel simulation remains a future upgrade. |
 | `analysis` | Length-matching validation | `partial` | `file` | `si_validate_length_matching` | Three-level PASS/WARN/FAIL verdict against a tolerance budget (P1-T3); track-length based heuristic. |
 | `analysis` | Single-ended / differential trace impedance | `partial` | `file` | `si_calculate_trace_impedance` | First-order closed-form (IPC-2141/Wheeler) estimate ~5-10% (work order K4); field-solver accuracy is Phase 3 (P3-T1). |
 | `analysis` | Thermal via / copper-pour sizing | `partial` | `file` | `thermal_calculate_via_count` | thermal_check_copper_pour; first-order resistive estimate labeled honestly via the solver seam (utils/solver_seams: no FEA wired); real thermal-network/FEA is Phase 3 (P3-T4). |
@@ -127,6 +128,7 @@ SI / PI / EMC / thermal / DFM / SPICE analysis.
 | Differential-pair skew gate | `file` | `si_check_differential_pair_skew` | `partial` | 10.0.x | Real PASS/WARN/FAIL verdict with intent-derived skew budget (P1-T3); localized intra-pair phase-skew / mode-conversion is Phase 3 (P3-T3). |
 | Length-matching validation | `file` | `si_validate_length_matching` | `partial` | 10.0.x | Three-level PASS/WARN/FAIL verdict against a tolerance budget (P1-T3); track-length based heuristic. |
 | Synthesize a stackup for target interfaces | `file` | `si_synthesize_stackup_for_interfaces` | `covered` | 10.0.x | si_generate_stackup, si_bind_interfaces_to_net_classes, si_list_dielectric_materials. |
+| High-speed channel insertion-loss / eye analysis | `file` | `si_analyze_high_speed_channel` | `partial` | 10.0.x | Closed-form lossy-line insertion loss (conductor skin-effect + dielectric loss) with a loss-limited eye and PASS/WARN/FAIL verdict; when an ngspice CLI is present the insertion loss is measured from an RLGC-ladder AC sweep (utils/channel + solver seam). Full S-parameter / IBIS-AMI channel simulation remains a future upgrade. |
 | DC IR-drop / voltage-drop analysis | `file` | `pdn_calculate_voltage_drop` | `partial` | 10.0.x | pdn_calculate_voltage_drop is a first-order single-trace lumped estimate, now with an IPC-2221 current-density fusing / temperature-rise PASS/WARN/FAIL verdict; check_power_integrity runs a genuine distributed multi-load resistive PDN mesh (DC drop + frequency-domain Z(f)), labeled solver-grade via the seam (utils/solver_seams.pdn_mesh_method). Remaining P3-T2 upgrade: a 2-D copper-plane field solve. |
 | Decoupling recommendation / power-plane generation | `file` | `pdn_recommend_decoupling_caps` | `partial` | 10.0.x | pdn_generate_power_plane covered; frequency-domain PDN target-Z checking now delivered via check_power_integrity (pdn_mesh Z(f) vs target_impedance_ohm with violations); a full plane-capacitance field model remains a future upgrade. |
 | Thermal via / copper-pour sizing | `file` | `thermal_calculate_via_count` | `partial` | 10.0.x | thermal_check_copper_pour; first-order resistive estimate labeled honestly via the solver seam (utils/solver_seams: no FEA wired); real thermal-network/FEA is Phase 3 (P3-T4). |

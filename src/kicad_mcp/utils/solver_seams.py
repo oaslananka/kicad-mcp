@@ -27,6 +27,18 @@ PDN_MESH_ACCURACY = (
     "real network solve across all loads using 1-D equivalent trace resistance and "
     "lumped decoupling branches; not a 2-D copper-plane field solve"
 )
+CHANNEL_CLOSED_FORM_METHOD = (
+    "closed-form lossy-line (skin-effect + dielectric IL, loss-limited eye)"
+)
+CHANNEL_CLOSED_FORM_ACCURACY = (
+    "first-order analytic insertion loss and loss-limited eye; not a measured or "
+    "full-channel (S-parameter / IBIS-AMI) simulation"
+)
+CHANNEL_SPICE_METHOD = "ngspice AC sweep on an RLGC ladder (measured insertion loss)"
+CHANNEL_SPICE_ACCURACY = (
+    "insertion loss measured from a distributed RLGC ladder in ngspice; per-segment RLGC "
+    "is constant, so frequency dependence away from Nyquist is approximate"
+)
 
 
 def pdn_solver_available() -> bool:
@@ -83,6 +95,30 @@ def pdn_mesh_method() -> dict[str, Any]:
         "method": PDN_MESH_METHOD,
         "solver_grade": True,
         "accuracy": PDN_MESH_ACCURACY,
+    }
+
+
+def channel_method(measured: bool) -> dict[str, Any]:
+    """Describe the high-speed-channel computation method, honestly.
+
+    ``measured`` is True when an ngspice AC sweep produced the insertion loss, and False
+    when the closed-form lossy-line model was used because ngspice was unavailable or the
+    run failed.
+    """
+    if measured:
+        return {
+            "method": CHANNEL_SPICE_METHOD,
+            "solver_grade": True,
+            "accuracy": CHANNEL_SPICE_ACCURACY,
+        }
+    return {
+        "method": CHANNEL_CLOSED_FORM_METHOD,
+        "solver_grade": False,
+        "accuracy": CHANNEL_CLOSED_FORM_ACCURACY,
+        "note": (
+            "No ngspice channel simulation was run; this is a first-order analytic "
+            "estimate, not a measured or sign-off figure."
+        ),
     }
 
 
