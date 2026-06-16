@@ -482,26 +482,55 @@ def register(mcp: FastMCP) -> None:
                 "Run export_manufacturing_package() first to generate Gerber/drill/BOM files."
             )
 
-        # Compute hashes
-        file_hashes: list[dict[str, str]] = []
-        for f in release_files:
-            file_hashes.append(
+        # Compute per-file hashes, sorted by name for deterministic, reproducible output.
+        file_hashes: list[dict[str, str]] = sorted(
+            (
                 {
                     "filename": f.name,
                     "sha256": _sha256_file(f),
                     "size_bytes": str(f.stat().st_size),
                 }
-            )
+                for f in release_files
+            ),
+            key=lambda entry: entry["filename"],
+        )
 
         # Intent hash
         intent = load_design_intent()
         intent_json = json.dumps(intent.model_dump(), sort_keys=True)
         intent_hash = hashlib.sha256(intent_json.encode()).hexdigest()[:16]
 
+        # Provenance: what produced this package (kept out of the wall-clock path so the
+        # content_hash stays stable across runs for identical inputs).
+        caps = get_cli_capabilities(cfg.kicad_cli)
+        source_hashes = {
+            label: _sha256_file(path)
+            for label, path in (
+                ("project", cfg.project_file),
+                ("pcb", cfg.pcb_file),
+                ("schematic", cfg.sch_file),
+            )
+            if path is not None and path.exists()
+        }
+        provenance: dict[str, Any] = {
+            "kicad_mcp_version": __version__,
+            "kicad_cli": str(cfg.kicad_cli),
+            "kicad_cli_version": caps.version,
+            "intent_hash": intent_hash,
+            "source_hashes": source_hashes,
+        }
+
+        # content_hash is a stable fingerprint of the package contents plus what produced
+        # them: identical inputs -> identical content_hash, regardless of generation time.
+        content_basis = json.dumps({"files": file_hashes, "provenance": provenance}, sort_keys=True)
+        content_hash = hashlib.sha256(content_basis.encode()).hexdigest()
+
         manifest: dict[str, Any] = {
             "kicad_mcp_version": __version__,
             "generated_utc": datetime.now(UTC).isoformat(),
+            "content_hash": content_hash,
             "intent_hash": intent_hash,
+            "provenance": provenance,
             "files": file_hashes,
         }
 
@@ -514,6 +543,8 @@ def register(mcp: FastMCP) -> None:
             "kicad-mcp-pro Release Manifest",
             f"Generated: {manifest['generated_utc']}",
             f"Tool version: kicad-mcp-pro {__version__}",
+            f"KiCad CLI version: {caps.version or 'unknown'}",
+            f"Content hash: {content_hash}",
             f"Intent hash: {intent_hash}",
             "",
             f"{'Filename':<50} {'SHA256':>16}",
@@ -529,6 +560,7 @@ def register(mcp: FastMCP) -> None:
             f"Release manifest generated:\n"
             f"- {manifest_json_path} ({len(file_hashes)} files)\n"
             f"- {manifest_txt_path}\n"
+            f"Content hash: {content_hash}\n"
             f"Intent hash: {intent_hash}\n"
             f"Files covered: {', '.join(e['filename'] for e in file_hashes[:10])}"
             + ("…" if len(file_hashes) > 10 else "")

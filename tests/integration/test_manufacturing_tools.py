@@ -241,3 +241,36 @@ async def test_manufacturing_import_support_and_import_cli(
 
     sym_upgrade_result = await call_tool_text(server, "sym_upgrade", {"dry_run": False})
     assert isinstance(sym_upgrade_result, str)
+
+
+@pytest.mark.anyio
+async def test_release_manifest_is_reproducible_with_provenance(
+    sample_project: Path,
+) -> None:
+    """Same inputs -> identical content_hash across runs, despite a changing wall-clock
+    timestamp, plus provenance is recorded (work order P2-T5)."""
+    import json
+
+    server = build_server("manufacturing")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    output_dir = sample_project / "output"
+    output_dir.mkdir(exist_ok=True)
+    (output_dir / "demo-F_Cu.gbr").write_text("gerber", encoding="utf-8")
+    (output_dir / "demo.drl").write_text("drill", encoding="utf-8")
+
+    first = await call_tool_text(server, "mfg_generate_release_manifest", {})
+    manifest_one = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+    second = await call_tool_text(server, "mfg_generate_release_manifest", {})
+    manifest_two = json.loads((output_dir / "manifest.json").read_text(encoding="utf-8"))
+
+    assert "Content hash:" in first and "Content hash:" in second
+    # Reproducible: identical inputs produce an identical content hash...
+    assert manifest_one["content_hash"] == manifest_two["content_hash"]
+    assert manifest_one["content_hash"]
+    # ...even though the informational timestamp differs and is not part of the hash.
+    assert "generated_utc" in manifest_one
+    # Provenance is recorded.
+    provenance = manifest_one["provenance"]
+    assert provenance["kicad_mcp_version"]
+    assert "source_hashes" in provenance
