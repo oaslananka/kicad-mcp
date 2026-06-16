@@ -199,3 +199,29 @@ async def test_power_integrity_edge_paths(sample_project, mock_board) -> None:
     assert "No copper pours were found" in thermal
     assert "PDN mesh check" in pdn
     assert "- FAIL:" in pdn
+
+
+@pytest.mark.anyio
+async def test_pi_thermal_results_state_their_method(sample_project, mock_board) -> None:
+    """PDN and thermal results label their method honestly (work order P3-T2/P3-T4):
+    a reader can tell from the result alone that it is a first-order estimate, not a
+    distributed IR-drop / thermal-FEA solve."""
+    _configure_power_board(mock_board)
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    drop = await call_tool_text(
+        server,
+        "pdn_calculate_voltage_drop",
+        {"current_a": 1.0, "trace_width_mm": 0.5, "trace_length_mm": 100.0, "copper_oz": 1.0},
+    )
+    assert "- Method:" in drop
+    assert "not a" in drop.lower()
+
+    vias = await call_tool_text(
+        server,
+        "thermal_calculate_via_count",
+        {"power_w": 1.5, "via_diameter_mm": 0.3, "thermal_resistance_target": 5.0},
+    )
+    assert "- Method:" in vias
+    assert "FEA" in vias

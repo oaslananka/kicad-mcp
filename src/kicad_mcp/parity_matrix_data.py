@@ -449,7 +449,7 @@ _RAW = r"""
           "mcp_tool": "pdn_calculate_voltage_drop",
           "status": "partial",
           "kicad_version_introduced": "10.0.x",
-          "notes": "First-order estimate; distributed IR-drop / current-density solver is Phase 3 (P3-T2)."
+          "notes": "First-order lumped estimate, labeled honestly via the solver seam (utils/solver_seams: no distributed solver wired); the distributed IR-drop / current-density solver is the Phase 3 (P3-T2) upgrade."
         },
         {
           "capability": "Decoupling recommendation / power-plane generation",
@@ -465,7 +465,7 @@ _RAW = r"""
           "mcp_tool": "thermal_calculate_via_count",
           "status": "partial",
           "kicad_version_introduced": "10.0.x",
-          "notes": "thermal_check_copper_pour; proximity heuristic, real thermal network/FEA is Phase 3 (P3-T4)."
+          "notes": "thermal_check_copper_pour; first-order resistive estimate labeled honestly via the solver seam (utils/solver_seams: no FEA wired); real thermal-network/FEA is Phase 3 (P3-T4)."
         },
         {
           "capability": "EMC layout compliance checks",

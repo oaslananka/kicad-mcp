@@ -30,6 +30,7 @@ from ..models.power_integrity import (
 from ..utils.impedance import copper_thickness_mm, recommended_decoupling_distance_mm
 from ..utils.layers import resolve_layer
 from ..utils.pdn_mesh import PdnDecouplingCap, PdnLoad, PdnMesh
+from ..utils.solver_seams import ir_drop_method, thermal_method
 from ..utils.units import _coord_nm, mm_to_mil, mm_to_nm, nm_to_mm
 
 _COPPER_RESISTIVITY_OHM_M = 1.724e-8
@@ -239,18 +240,21 @@ def register(mcp: FastMCP) -> None:
         current_density_a_per_mm2 = payload.current_a / (
             payload.trace_width_mm * copper_thickness_mm(payload.copper_oz)
         )
-        return "\n".join(
-            [
-                "PDN voltage-drop estimate:",
-                f"- Current: {payload.current_a:.3f} A",
-                f"- Trace width: {payload.trace_width_mm:.3f} mm",
-                f"- Trace length: {payload.trace_length_mm:.3f} mm",
-                f"- Copper: {payload.copper_oz:.2f} oz",
-                f"- Estimated resistance: {resistance_ohm:.5f} ohm",
-                f"- Estimated voltage drop: {drop_v * 1_000.0:.2f} mV",
-                f"- Estimated current density: {current_density_a_per_mm2:.2f} A/mm^2",
-            ]
-        )
+        lines = [
+            "PDN voltage-drop estimate:",
+            f"- Current: {payload.current_a:.3f} A",
+            f"- Trace width: {payload.trace_width_mm:.3f} mm",
+            f"- Trace length: {payload.trace_length_mm:.3f} mm",
+            f"- Copper: {payload.copper_oz:.2f} oz",
+            f"- Estimated resistance: {resistance_ohm:.5f} ohm",
+            f"- Estimated voltage drop: {drop_v * 1_000.0:.2f} mV",
+            f"- Estimated current density: {current_density_a_per_mm2:.2f} A/mm^2",
+        ]
+        method = ir_drop_method()
+        lines.append(f"- Method: {method['method']} — {method['accuracy']}")
+        if not method["solver_grade"]:
+            lines.append(f"- Note: {method['note']}")
+        return "\n".join(lines)
 
     @mcp.tool()
     def check_power_integrity(
@@ -501,24 +505,27 @@ def register(mcp: FastMCP) -> None:
         via_count = max(1, math.ceil(single_via_theta / required_via_network_theta))
         delta_temp_c = effective_power_w * required_via_network_theta
 
-        return "\n".join(
-            [
-                "Thermal via estimate:",
-                f"- Power to spread: {effective_power_w:.3f} W",
-                (
-                    f"- Ambient / max junction: {payload.ambient_c:.1f} C / "
-                    f"{payload.max_junction_c:.1f} C"
-                ),
-                f"- Package theta JA: {payload.theta_ja_deg_c_w:.2f} C/W",
-                f"- Via diameter: {payload.via_diameter_mm:.3f} mm",
-                f"- Board thickness used: {_board_thickness_mm():.3f} mm",
-                "- Single-via rule of thumb: 0.3 mm, 1 oz copper is approximately 100 C/W",
-                f"- Single-via thermal resistance estimate: {single_via_theta:.2f} C/W",
-                f"- Required via-network resistance: {required_via_network_theta:.2f} C/W",
-                f"- Required via count: {via_count}",
-                f"- Target temperature rise at the interface: {delta_temp_c:.2f} C",
-            ]
-        )
+        lines = [
+            "Thermal via estimate:",
+            f"- Power to spread: {effective_power_w:.3f} W",
+            (
+                f"- Ambient / max junction: {payload.ambient_c:.1f} C / "
+                f"{payload.max_junction_c:.1f} C"
+            ),
+            f"- Package theta JA: {payload.theta_ja_deg_c_w:.2f} C/W",
+            f"- Via diameter: {payload.via_diameter_mm:.3f} mm",
+            f"- Board thickness used: {_board_thickness_mm():.3f} mm",
+            "- Single-via rule of thumb: 0.3 mm, 1 oz copper is approximately 100 C/W",
+            f"- Single-via thermal resistance estimate: {single_via_theta:.2f} C/W",
+            f"- Required via-network resistance: {required_via_network_theta:.2f} C/W",
+            f"- Required via count: {via_count}",
+            f"- Target temperature rise at the interface: {delta_temp_c:.2f} C",
+        ]
+        method = thermal_method()
+        lines.append(f"- Method: {method['method']} — {method['accuracy']}")
+        if not method["solver_grade"]:
+            lines.append(f"- Note: {method['note']}")
+        return "\n".join(lines)
 
     @mcp.tool()
     def thermal_check_copper_pour(
