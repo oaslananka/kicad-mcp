@@ -2,7 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Literal, TypedDict
+
+# A transient class tells an agent *why* an error is retryable and how to retry:
+#   none    - not transient; do not retry without changing the request.
+#   network - IPC/connection problem; safe to retry after a short backoff.
+#   timeout - the operation timed out; retry after a longer backoff.
+#   lock    - a resource was locked; retry after a short backoff.
+#   state   - a precondition is unmet (e.g. no board open); reconcile state first,
+#             then retry. Retrying blindly will not help.
+TransientClass = Literal["none", "network", "timeout", "lock", "state"]
 
 
 class ErrorPayload(TypedDict):
@@ -12,6 +21,8 @@ class ErrorPayload(TypedDict):
     message: str
     hint: str
     retryable: bool
+    transient_class: TransientClass
+    retry_after_ms: int | None
 
 
 class KiCadMcpError(Exception):
@@ -20,6 +31,8 @@ class KiCadMcpError(Exception):
     code = "KICAD_MCP_ERROR"
     hint = "Inspect the request, project configuration, and diagnostics output."
     retryable = False
+    transient_class: TransientClass = "none"
+    retry_after_ms: int | None = None
 
     def to_payload(self) -> ErrorPayload:
         """Return a stable JSON-serializable error payload."""
@@ -28,6 +41,8 @@ class KiCadMcpError(Exception):
             "message": str(self),
             "hint": self.hint,
             "retryable": self.retryable,
+            "transient_class": self.transient_class,
+            "retry_after_ms": self.retry_after_ms,
         }
 
 
@@ -37,6 +52,8 @@ class KiCadNotRunningError(KiCadMcpError):
     code = "KICAD_NOT_RUNNING"
     hint = "Start KiCad and enable the IPC API server, or run doctor for diagnostics."
     retryable = True
+    transient_class: TransientClass = "network"
+    retry_after_ms = 1000
 
 
 class KiCadConnectionTimeoutError(KiCadNotRunningError):
@@ -45,6 +62,8 @@ class KiCadConnectionTimeoutError(KiCadNotRunningError):
     code = "KICAD_CONNECTION_TIMEOUT"
     hint = "Increase KICAD_MCP_TIMEOUT_MS or verify that the KiCad IPC API is responding."
     retryable = True
+    transient_class: TransientClass = "timeout"
+    retry_after_ms = 2000
 
 
 class KiCadVersionMismatchError(KiCadMcpError):
@@ -69,6 +88,8 @@ class KiCadBoardNotOpenError(KiCadMcpError):
     code = "KICAD_BOARD_NOT_OPEN"
     hint = "Open a .kicad_pcb file in KiCad or set the active project before using board tools."
     retryable = True
+    # Retrying alone will not open a board; reconcile state (open a board) first.
+    transient_class: TransientClass = "state"
 
 
 class IpcDisconnectedError(KiCadNotRunningError):
@@ -77,6 +98,8 @@ class IpcDisconnectedError(KiCadNotRunningError):
     code = "IPC_DISCONNECTED"
     hint = "Open KiCad and enable the IPC API server in Preferences, or run doctor for diagnostics."
     retryable = True
+    transient_class: TransientClass = "network"
+    retry_after_ms = 1000
 
 
 class UnsafePathError(KiCadMcpError, ValueError):
@@ -112,4 +135,6 @@ def error_payload(exc: BaseException) -> ErrorPayload:
         "message": str(exc) or exc.__class__.__name__,
         "hint": "Run doctor for diagnostics and retry with corrected configuration.",
         "retryable": False,
+        "transient_class": "none",
+        "retry_after_ms": None,
     }

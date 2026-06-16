@@ -38,6 +38,7 @@ def _current_surface() -> list[dict[str, object]]:
                 "read_only": row.read_only,
                 "destructive": row.destructive,
                 "open_world": row.open_world,
+                "idempotent": row.idempotent,
                 "headless": row.headless,
                 "requires_kicad_running": row.requires_kicad_running,
                 "experimental": row.name in EXPERIMENTAL_TOOL_NAMES,

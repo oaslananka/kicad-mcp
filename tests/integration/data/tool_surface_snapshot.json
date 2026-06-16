@@ -3,6 +3,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "add_footprint_inner_layer_graphic",
     "open_world": false,
     "profiles": [
@@ -21,6 +22,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "check_design_for_manufacture",
     "open_world": false,
     "profiles": [
@@ -43,6 +45,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "check_power_integrity",
     "open_world": false,
     "profiles": [
@@ -59,6 +62,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "dfm_calculate_manufacturing_cost",
     "open_world": false,
     "profiles": [
@@ -75,6 +79,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "dfm_load_manufacturer_profile",
     "open_world": false,
     "profiles": [
@@ -91,6 +96,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "dfm_run_manufacturer_check",
     "open_world": false,
     "profiles": [
@@ -107,6 +113,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "drc_add_exclusion",
     "open_world": false,
     "profiles": [
@@ -129,6 +136,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "drc_export_rules",
     "open_world": true,
     "profiles": [
@@ -151,6 +159,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "drc_list_exclusions",
     "open_world": false,
     "profiles": [
@@ -173,6 +182,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "drc_list_rules",
     "open_world": false,
     "profiles": [
@@ -195,6 +205,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "drc_remove_exclusion",
     "open_world": false,
     "profiles": [
@@ -217,6 +228,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "drc_rule_create",
     "open_world": false,
     "profiles": [
@@ -239,6 +251,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "drc_rule_delete",
     "open_world": false,
     "profiles": [
@@ -261,6 +274,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "drc_rule_enable",
     "open_world": false,
     "profiles": [
@@ -283,6 +297,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "drc_validate_exclusions",
     "open_world": false,
     "profiles": [
@@ -305,6 +320,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "emc_check_decoupling_placement",
     "open_world": false,
     "profiles": [
@@ -321,6 +337,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "emc_check_differential_pair_symmetry",
     "open_world": false,
     "profiles": [
@@ -337,6 +354,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "emc_check_ground_plane_voids",
     "open_world": false,
     "profiles": [
@@ -353,6 +371,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "emc_check_high_speed_routing_rules",
     "open_world": false,
     "profiles": [
@@ -369,6 +388,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "emc_check_return_path_continuity",
     "open_world": false,
     "profiles": [
@@ -385,6 +405,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "emc_check_split_plane_crossing",
     "open_world": false,
     "profiles": [
@@ -401,6 +422,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "emc_check_via_stitching",
     "open_world": false,
     "profiles": [
@@ -417,6 +439,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "emc_run_full_compliance",
     "open_world": false,
     "profiles": [
@@ -433,6 +456,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "erc_list_rules",
     "open_world": false,
     "profiles": [
@@ -455,6 +479,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "erc_reset_rules",
     "open_world": false,
     "profiles": [
@@ -477,6 +502,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "erc_set_rule_severity",
     "open_world": false,
     "profiles": [
@@ -499,6 +525,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_3d_render",
     "open_world": true,
     "profiles": [
@@ -518,6 +545,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_3d_step",
     "open_world": true,
     "profiles": [
@@ -537,6 +565,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_bom",
     "open_world": true,
     "profiles": [
@@ -556,6 +585,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_brep",
     "open_world": true,
     "profiles": [
@@ -575,6 +605,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_drill",
     "open_world": true,
     "profiles": [
@@ -594,6 +625,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_dxf",
     "open_world": true,
     "profiles": [
@@ -613,6 +645,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_gencad",
     "open_world": true,
     "profiles": [
@@ -632,6 +665,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_gerber",
     "open_world": true,
     "profiles": [
@@ -651,6 +685,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_glb",
     "open_world": true,
     "profiles": [
@@ -670,6 +705,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_ipc2581",
     "open_world": true,
     "profiles": [
@@ -689,6 +725,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_ipc_d356",
     "open_world": true,
     "profiles": [
@@ -708,6 +745,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_manufacturing_package",
     "open_world": true,
     "profiles": [
@@ -723,6 +761,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_netlist",
     "open_world": true,
     "profiles": [
@@ -742,6 +781,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_odb",
     "open_world": true,
     "profiles": [
@@ -761,6 +801,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_pcb_pdf",
     "open_world": true,
     "profiles": [
@@ -780,6 +821,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_pick_and_place",
     "open_world": true,
     "profiles": [
@@ -799,6 +841,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_ply",
     "open_world": true,
     "profiles": [
@@ -818,6 +861,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_ps",
     "open_world": true,
     "profiles": [
@@ -837,6 +881,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_sch_dxf",
     "open_world": true,
     "profiles": [
@@ -856,6 +901,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_sch_pdf",
     "open_world": true,
     "profiles": [
@@ -875,6 +921,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_sch_python_bom",
     "open_world": true,
     "profiles": [
@@ -894,6 +941,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_sch_svg",
     "open_world": true,
     "profiles": [
@@ -913,6 +961,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_spice_netlist",
     "open_world": true,
     "profiles": [
@@ -932,6 +981,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_step",
     "open_world": true,
     "profiles": [
@@ -951,6 +1001,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_stepz",
     "open_world": true,
     "profiles": [
@@ -970,6 +1021,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_stl",
     "open_world": true,
     "profiles": [
@@ -989,6 +1041,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_svg",
     "open_world": true,
     "profiles": [
@@ -1008,6 +1061,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_u3d",
     "open_world": true,
     "profiles": [
@@ -1027,6 +1081,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_vrml",
     "open_world": true,
     "profiles": [
@@ -1046,6 +1101,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "export_xao",
     "open_world": true,
     "profiles": [
@@ -1065,6 +1121,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "fp_export",
     "open_world": true,
     "profiles": [
@@ -1079,6 +1136,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "fp_export_svg",
     "open_world": true,
     "profiles": [
@@ -1093,6 +1151,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "fp_get_info",
     "open_world": false,
     "profiles": [
@@ -1107,6 +1166,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "fp_upgrade",
     "open_world": false,
     "profiles": [
@@ -1121,6 +1181,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "get_board_stats",
     "open_world": false,
     "profiles": [
@@ -1136,6 +1197,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "get_courtyard_violations",
     "open_world": false,
     "profiles": [
@@ -1158,6 +1220,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "get_silk_to_pad_violations",
     "open_world": false,
     "profiles": [
@@ -1180,6 +1243,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "get_unconnected_nets",
     "open_world": false,
     "profiles": [
@@ -1202,6 +1266,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "jobset_export",
     "open_world": true,
     "profiles": [
@@ -1216,6 +1281,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "jobset_list_templates",
     "open_world": false,
     "profiles": [
@@ -1230,6 +1296,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "jobset_run",
     "open_world": false,
     "profiles": [
@@ -1244,6 +1311,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "jobset_validate",
     "open_world": false,
     "profiles": [
@@ -1258,6 +1326,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "kicad_capability_parity",
     "open_world": false,
     "profiles": [
@@ -1270,6 +1339,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "kicad_create_new_project",
     "open_world": false,
     "profiles": [
@@ -1282,6 +1352,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "kicad_get_project_info",
     "open_world": false,
     "profiles": [
@@ -1294,6 +1365,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "kicad_get_server_info",
     "open_world": false,
     "profiles": [
@@ -1306,6 +1378,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "kicad_get_tools_in_category",
     "open_world": false,
     "profiles": [
@@ -1318,6 +1391,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "kicad_get_version",
     "open_world": false,
     "profiles": [
@@ -1330,6 +1404,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "kicad_help",
     "open_world": false,
     "profiles": [
@@ -1342,6 +1417,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "kicad_list_recent_projects",
     "open_world": false,
     "profiles": [
@@ -1354,6 +1430,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "kicad_list_tool_categories",
     "open_world": false,
     "profiles": [
@@ -1366,6 +1443,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "kicad_scan_directory",
     "open_world": false,
     "profiles": [
@@ -1378,6 +1456,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "kicad_set_project",
     "open_world": false,
     "profiles": [
@@ -1390,6 +1469,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "lib_assign_footprint",
     "open_world": false,
     "profiles": [
@@ -1407,6 +1487,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "lib_assign_lcsc_to_symbol",
     "open_world": false,
     "profiles": [
@@ -1424,6 +1505,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "lib_bind_part_to_symbol",
     "open_world": false,
     "profiles": [
@@ -1441,6 +1523,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "lib_bulk_assign_3d_models",
     "open_world": false,
     "profiles": [
@@ -1458,6 +1541,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_check_stock_availability",
     "open_world": false,
     "profiles": [
@@ -1475,6 +1559,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "lib_create_custom_symbol",
     "open_world": false,
     "profiles": [
@@ -1492,6 +1577,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_find_alternative_parts",
     "open_world": false,
     "profiles": [
@@ -1509,6 +1595,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "lib_generate_footprint_ipc7351",
     "open_world": false,
     "profiles": [
@@ -1526,6 +1613,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "lib_generate_symbol_from_pintable",
     "open_world": false,
     "profiles": [
@@ -1543,6 +1631,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_get_bom_with_pricing",
     "open_world": false,
     "profiles": [
@@ -1560,6 +1649,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_get_component_details",
     "open_world": false,
     "profiles": [
@@ -1577,6 +1667,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_get_datasheet_url",
     "open_world": false,
     "profiles": [
@@ -1594,6 +1685,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_get_footprint_3d_model",
     "open_world": false,
     "profiles": [
@@ -1611,6 +1703,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_get_footprint_info",
     "open_world": false,
     "profiles": [
@@ -1628,6 +1721,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_get_symbol_info",
     "open_world": false,
     "profiles": [
@@ -1645,6 +1739,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_list_footprints",
     "open_world": false,
     "profiles": [
@@ -1662,6 +1757,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_list_libraries",
     "open_world": false,
     "profiles": [
@@ -1679,6 +1775,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "lib_rebuild_index",
     "open_world": false,
     "profiles": [
@@ -1696,6 +1793,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_recommend_part",
     "open_world": false,
     "profiles": [
@@ -1713,6 +1811,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "lib_remove_3d_model",
     "open_world": false,
     "profiles": [
@@ -1730,6 +1829,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_search_3d_models",
     "open_world": false,
     "profiles": [
@@ -1747,6 +1847,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_search_components",
     "open_world": false,
     "profiles": [
@@ -1764,6 +1865,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_search_footprints",
     "open_world": false,
     "profiles": [
@@ -1781,6 +1883,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_search_symbols",
     "open_world": false,
     "profiles": [
@@ -1798,6 +1901,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "lib_set_3d_model_path",
     "open_world": false,
     "profiles": [
@@ -1815,6 +1919,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "manufacturing_quality_gate",
     "open_world": false,
     "profiles": [
@@ -1837,6 +1942,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "mfg_check_import_support",
     "open_world": true,
     "profiles": [
@@ -1851,6 +1957,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "mfg_correct_cpl_rotations",
     "open_world": false,
     "profiles": [
@@ -1865,6 +1972,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "mfg_generate_release_manifest",
     "open_world": true,
     "profiles": [
@@ -1879,6 +1987,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "mfg_generate_test_plan",
     "open_world": false,
     "profiles": [
@@ -1893,6 +2002,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "mfg_import_allegro",
     "open_world": true,
     "profiles": [
@@ -1907,6 +2017,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "mfg_import_geda",
     "open_world": true,
     "profiles": [
@@ -1921,6 +2032,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "mfg_import_pads",
     "open_world": true,
     "profiles": [
@@ -1935,6 +2047,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "mfg_import_specctra",
     "open_world": true,
     "profiles": [
@@ -1949,6 +2062,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "mfg_panelize",
     "open_world": true,
     "profiles": [
@@ -1963,6 +2077,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_add_barcode",
     "open_world": false,
     "profiles": [
@@ -1981,6 +2096,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_add_blind_via",
     "open_world": false,
     "profiles": [
@@ -1999,6 +2115,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_add_circle",
     "open_world": false,
     "profiles": [
@@ -2017,6 +2134,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_add_copper_zone",
     "open_world": false,
     "profiles": [
@@ -2035,6 +2153,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_add_fiducial_marks",
     "open_world": false,
     "profiles": [
@@ -2053,6 +2172,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_add_microvia",
     "open_world": false,
     "profiles": [
@@ -2071,6 +2191,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_add_mounting_holes",
     "open_world": false,
     "profiles": [
@@ -2089,6 +2210,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_add_rectangle",
     "open_world": false,
     "profiles": [
@@ -2107,6 +2229,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_add_segment",
     "open_world": false,
     "profiles": [
@@ -2125,6 +2248,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_add_teardrops",
     "open_world": false,
     "profiles": [
@@ -2143,6 +2267,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_add_test_point",
     "open_world": false,
     "profiles": [
@@ -2166,6 +2291,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_add_text",
     "open_world": false,
     "profiles": [
@@ -2184,6 +2310,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_add_track",
     "open_world": false,
     "profiles": [
@@ -2202,6 +2329,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_add_tracks_bulk",
     "open_world": false,
     "profiles": [
@@ -2220,6 +2348,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_add_via",
     "open_world": false,
     "profiles": [
@@ -2238,6 +2367,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_add_zone",
     "open_world": false,
     "profiles": [
@@ -2256,6 +2386,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_align_footprints",
     "open_world": false,
     "profiles": [
@@ -2274,6 +2405,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_auto_place_by_schematic",
     "open_world": false,
     "profiles": [
@@ -2292,6 +2424,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_auto_place_force_directed",
     "open_world": false,
     "profiles": [
@@ -2310,6 +2443,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_begin_commit",
     "open_world": false,
     "profiles": [
@@ -2328,6 +2462,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_bga_fanout",
     "open_world": false,
     "profiles": [
@@ -2346,6 +2481,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_block_create_from_selection",
     "open_world": false,
     "profiles": [
@@ -2364,6 +2500,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_block_list",
     "open_world": false,
     "profiles": [
@@ -2387,6 +2524,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_block_place",
     "open_world": false,
     "profiles": [
@@ -2405,6 +2543,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_check_creepage_clearance",
     "open_world": false,
     "profiles": [
@@ -2428,6 +2567,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_check_test_coverage",
     "open_world": false,
     "profiles": [
@@ -2451,6 +2591,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_delete_items",
     "open_world": false,
     "profiles": [
@@ -2469,6 +2610,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_delete_object",
     "open_world": false,
     "profiles": [
@@ -2487,6 +2629,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_drop_commit",
     "open_world": false,
     "profiles": [
@@ -2505,6 +2648,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_export_3d_pdf",
     "open_world": true,
     "profiles": [
@@ -2524,6 +2668,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_export_stats",
     "open_world": true,
     "profiles": [
@@ -2543,6 +2688,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_board_as_string",
     "open_world": false,
     "profiles": [
@@ -2566,6 +2712,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_board_summary",
     "open_world": false,
     "profiles": [
@@ -2589,6 +2736,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_design_rules",
     "open_world": false,
     "profiles": [
@@ -2612,6 +2760,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_footprint_layers",
     "open_world": false,
     "profiles": [
@@ -2635,6 +2784,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_footprints",
     "open_world": false,
     "profiles": [
@@ -2658,6 +2808,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_groups",
     "open_world": false,
     "profiles": [
@@ -2681,6 +2832,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_impedance_for_trace",
     "open_world": false,
     "profiles": [
@@ -2704,6 +2856,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_layers",
     "open_world": false,
     "profiles": [
@@ -2727,6 +2880,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_net_statistics",
     "open_world": false,
     "profiles": [
@@ -2750,6 +2904,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_nets",
     "open_world": false,
     "profiles": [
@@ -2773,6 +2928,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_origin",
     "open_world": false,
     "profiles": [
@@ -2796,6 +2952,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "pcb_get_pads",
     "open_world": false,
     "profiles": [
@@ -2819,6 +2976,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_ratsnest",
     "open_world": false,
     "profiles": [
@@ -2842,6 +3000,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_selection",
     "open_world": false,
     "profiles": [
@@ -2865,6 +3024,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "pcb_get_shapes",
     "open_world": false,
     "profiles": [
@@ -2888,6 +3048,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_stackup",
     "open_world": false,
     "profiles": [
@@ -2911,6 +3072,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_tracks",
     "open_world": false,
     "profiles": [
@@ -2934,6 +3096,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_vias",
     "open_world": false,
     "profiles": [
@@ -2957,6 +3120,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_get_zones",
     "open_world": false,
     "profiles": [
@@ -2980,6 +3144,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_group_by_function",
     "open_world": false,
     "profiles": [
@@ -2998,6 +3163,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_highlight_net",
     "open_world": false,
     "profiles": [
@@ -3016,6 +3182,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_import_board",
     "open_world": true,
     "profiles": [
@@ -3029,6 +3196,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_list_test_points",
     "open_world": false,
     "profiles": [
@@ -3052,6 +3220,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_move_component",
     "open_world": false,
     "profiles": [
@@ -3070,6 +3239,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_move_footprint",
     "open_world": false,
     "profiles": [
@@ -3088,6 +3258,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_net_inspector",
     "open_world": false,
     "profiles": [
@@ -3111,6 +3282,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_optimize_test_point_placement",
     "open_world": false,
     "profiles": [
@@ -3134,6 +3306,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_place_component",
     "open_world": false,
     "profiles": [
@@ -3152,6 +3325,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_place_decoupling_caps",
     "open_world": false,
     "profiles": [
@@ -3170,6 +3344,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_placement_quality_gate",
     "open_world": false,
     "profiles": [
@@ -3192,6 +3367,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_placement_quality_report",
     "open_world": false,
     "profiles": [
@@ -3214,6 +3390,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_push_commit",
     "open_world": false,
     "profiles": [
@@ -3232,6 +3409,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_quality_gate",
     "open_world": false,
     "profiles": [
@@ -3254,6 +3432,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "pcb_refill_zones",
     "open_world": false,
     "profiles": [
@@ -3272,6 +3451,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_revert",
     "open_world": false,
     "profiles": [
@@ -3290,6 +3470,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pcb_route_trace",
     "open_world": false,
     "profiles": [
@@ -3308,6 +3489,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "pcb_save",
     "open_world": false,
     "profiles": [
@@ -3326,6 +3508,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_score_placement",
     "open_world": false,
     "profiles": [
@@ -3348,6 +3531,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "pcb_set_board_outline",
     "open_world": false,
     "profiles": [
@@ -3366,6 +3550,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_set_design_rules",
     "open_world": false,
     "profiles": [
@@ -3384,6 +3569,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "pcb_set_footprint_layer",
     "open_world": false,
     "profiles": [
@@ -3402,6 +3588,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "pcb_set_keepout_zone",
     "open_world": false,
     "profiles": [
@@ -3420,6 +3607,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "pcb_set_net_class",
     "open_world": false,
     "profiles": [
@@ -3438,6 +3626,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "pcb_set_origin",
     "open_world": false,
     "profiles": [
@@ -3456,6 +3645,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_set_stackup",
     "open_world": false,
     "profiles": [
@@ -3474,6 +3664,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "pcb_set_title_block_info",
     "open_world": false,
     "profiles": [
@@ -3492,6 +3683,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "pcb_sync_from_schematic",
     "open_world": false,
     "profiles": [
@@ -3510,6 +3702,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_transfer_quality_gate",
     "open_world": false,
     "profiles": [
@@ -3532,6 +3725,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "pcb_upgrade",
     "open_world": false,
     "profiles": [
@@ -3546,6 +3740,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pdn_calculate_voltage_drop",
     "open_world": false,
     "profiles": [
@@ -3562,6 +3757,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pdn_check_copper_weight",
     "open_world": false,
     "profiles": [
@@ -3578,6 +3774,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pdn_generate_power_plane",
     "open_world": false,
     "profiles": [
@@ -3594,6 +3791,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "pdn_recommend_decoupling_caps",
     "open_world": false,
     "profiles": [
@@ -3610,6 +3808,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "project_auto_fix_loop",
     "open_world": false,
     "profiles": [
@@ -3622,6 +3821,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "project_design_report",
     "open_world": false,
     "profiles": [
@@ -3634,6 +3834,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "project_embed_file",
     "open_world": false,
     "profiles": [
@@ -3646,6 +3847,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "project_extract_embedded_file",
     "open_world": false,
     "profiles": [
@@ -3658,6 +3860,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "project_full_validation_loop",
     "open_world": false,
     "profiles": [
@@ -3670,6 +3873,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "project_gate_trend",
     "open_world": false,
     "profiles": [
@@ -3682,6 +3886,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "project_generate_design_prompt",
     "open_world": false,
     "profiles": [
@@ -3694,6 +3899,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "project_get_design_intent",
     "open_world": false,
     "profiles": [
@@ -3706,6 +3912,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "project_get_design_spec",
     "open_world": false,
     "profiles": [
@@ -3718,6 +3925,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "project_get_next_action",
     "open_world": false,
     "profiles": [
@@ -3730,6 +3938,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "project_infer_design_spec",
     "open_world": false,
     "profiles": [
@@ -3742,6 +3951,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "project_list_embedded_files",
     "open_world": false,
     "profiles": [
@@ -3754,6 +3964,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "project_quality_gate",
     "open_world": false,
     "profiles": [
@@ -3776,6 +3987,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "project_quality_gate_report",
     "open_world": false,
     "profiles": [
@@ -3798,6 +4010,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "project_remove_embedded_file",
     "open_world": false,
     "profiles": [
@@ -3810,6 +4023,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "project_set_design_intent",
     "open_world": false,
     "profiles": [
@@ -3822,6 +4036,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "project_validate_design_spec",
     "open_world": false,
     "profiles": [
@@ -3834,6 +4049,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "route_apply_tuning_profile",
     "open_world": false,
     "profiles": [
@@ -3851,6 +4067,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "route_autoroute_freerouting",
     "open_world": false,
     "profiles": [
@@ -3868,6 +4085,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "route_create_tuning_profile",
     "open_world": false,
     "profiles": [
@@ -3885,6 +4103,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "route_differential_pair",
     "open_world": false,
     "profiles": [
@@ -3902,6 +4121,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "route_export_dsn",
     "open_world": true,
     "profiles": [
@@ -3919,6 +4139,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "route_from_pad_to_pad",
     "open_world": false,
     "profiles": [
@@ -3936,6 +4157,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "route_import_ses",
     "open_world": true,
     "profiles": [
@@ -3953,6 +4175,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "route_list_tuning_profiles",
     "open_world": false,
     "profiles": [
@@ -3970,6 +4193,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "route_set_net_class_rules",
     "open_world": false,
     "profiles": [
@@ -3987,6 +4211,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "route_single_track",
     "open_world": false,
     "profiles": [
@@ -4004,6 +4229,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "route_tune_length",
     "open_world": false,
     "profiles": [
@@ -4021,6 +4247,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "route_tune_time_domain",
     "open_world": false,
     "profiles": [
@@ -4038,6 +4265,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "run_drc",
     "open_world": false,
     "profiles": [
@@ -4060,6 +4288,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "run_erc",
     "open_world": false,
     "profiles": [
@@ -4082,6 +4311,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_add_bus",
     "open_world": false,
     "profiles": [
@@ -4102,6 +4332,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_add_bus_wire_entry",
     "open_world": false,
     "profiles": [
@@ -4122,6 +4353,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_add_component",
     "open_world": false,
     "profiles": [
@@ -4142,6 +4374,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_add_global_label",
     "open_world": false,
     "profiles": [
@@ -4162,6 +4395,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_add_hierarchical_label",
     "open_world": false,
     "profiles": [
@@ -4182,6 +4416,7 @@
     "destructive": true,
     "experimental": true,
     "headless": false,
+    "idempotent": false,
     "name": "sch_add_jumper",
     "open_world": false,
     "profiles": [
@@ -4202,6 +4437,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_add_label",
     "open_world": false,
     "profiles": [
@@ -4222,6 +4458,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sch_add_missing_junctions",
     "open_world": false,
     "profiles": [
@@ -4242,6 +4479,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_add_no_connect",
     "open_world": false,
     "profiles": [
@@ -4262,6 +4500,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_add_pin_labels",
     "open_world": false,
     "profiles": [
@@ -4282,6 +4521,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_add_power_symbol",
     "open_world": false,
     "profiles": [
@@ -4302,6 +4542,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_add_symbol",
     "open_world": false,
     "profiles": [
@@ -4322,6 +4563,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_add_wire",
     "open_world": false,
     "profiles": [
@@ -4342,6 +4584,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_analyze_net_compilation",
     "open_world": false,
     "profiles": [
@@ -4362,6 +4605,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_annotate",
     "open_world": false,
     "profiles": [
@@ -4382,6 +4626,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sch_auto_place_functional",
     "open_world": false,
     "profiles": [
@@ -4402,6 +4647,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_auto_place_symbols",
     "open_world": false,
     "profiles": [
@@ -4422,6 +4668,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sch_auto_resize_sheet",
     "open_world": false,
     "profiles": [
@@ -4442,6 +4689,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_build_circuit",
     "open_world": false,
     "profiles": [
@@ -4462,6 +4710,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_check_power_flags",
     "open_world": false,
     "profiles": [
@@ -4482,6 +4731,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_create_sheet",
     "open_world": false,
     "profiles": [
@@ -4502,6 +4752,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_delete_label",
     "open_world": false,
     "profiles": [
@@ -4522,6 +4773,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_delete_symbol",
     "open_world": false,
     "profiles": [
@@ -4542,6 +4794,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_delete_wire",
     "open_world": false,
     "profiles": [
@@ -4562,6 +4815,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sch_find_free_placement",
     "open_world": false,
     "profiles": [
@@ -4582,6 +4836,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "sch_get_bounding_boxes",
     "open_world": false,
     "profiles": [
@@ -4602,6 +4857,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "sch_get_connectivity_graph",
     "open_world": false,
     "profiles": [
@@ -4622,6 +4878,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "sch_get_labels",
     "open_world": false,
     "profiles": [
@@ -4642,6 +4899,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "sch_get_net_names",
     "open_world": false,
     "profiles": [
@@ -4662,6 +4920,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "sch_get_pin_positions",
     "open_world": false,
     "profiles": [
@@ -4682,6 +4941,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "sch_get_sheet_info",
     "open_world": false,
     "profiles": [
@@ -4702,6 +4962,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "sch_get_symbols",
     "open_world": false,
     "profiles": [
@@ -4722,6 +4983,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "sch_get_template_info",
     "open_world": false,
     "profiles": [
@@ -4742,6 +5004,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": true,
     "name": "sch_get_wires",
     "open_world": false,
     "profiles": [
@@ -4762,6 +5025,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sch_instantiate_template",
     "open_world": false,
     "profiles": [
@@ -4782,6 +5046,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_list_sheets",
     "open_world": false,
     "profiles": [
@@ -4802,6 +5067,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sch_list_swappable_pins",
     "open_world": false,
     "profiles": [
@@ -4822,6 +5088,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sch_list_templates",
     "open_world": false,
     "profiles": [
@@ -4842,6 +5109,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_modify_property",
     "open_world": false,
     "profiles": [
@@ -4862,6 +5130,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_move_label",
     "open_world": false,
     "profiles": [
@@ -4882,6 +5151,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_move_symbol",
     "open_world": false,
     "profiles": [
@@ -4902,6 +5172,7 @@
     "destructive": false,
     "experimental": true,
     "headless": false,
+    "idempotent": false,
     "name": "sch_reload",
     "open_world": false,
     "profiles": [
@@ -4922,6 +5193,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_route_wire_between_pins",
     "open_world": false,
     "profiles": [
@@ -4942,6 +5214,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "sch_set_hop_over",
     "open_world": false,
     "profiles": [
@@ -4962,6 +5235,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "sch_set_sheet_size",
     "open_world": false,
     "profiles": [
@@ -4982,6 +5256,7 @@
     "destructive": false,
     "experimental": true,
     "headless": true,
+    "idempotent": false,
     "name": "sch_swap_gates",
     "open_world": false,
     "profiles": [
@@ -5002,6 +5277,7 @@
     "destructive": false,
     "experimental": true,
     "headless": true,
+    "idempotent": false,
     "name": "sch_swap_pins",
     "open_world": false,
     "profiles": [
@@ -5022,6 +5298,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_trace_net",
     "open_world": false,
     "profiles": [
@@ -5042,6 +5319,7 @@
     "destructive": true,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "sch_update_properties",
     "open_world": false,
     "profiles": [
@@ -5062,6 +5340,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "sch_upgrade",
     "open_world": false,
     "profiles": [
@@ -5076,6 +5355,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "schematic_connectivity_gate",
     "open_world": false,
     "profiles": [
@@ -5098,6 +5378,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "schematic_quality_gate",
     "open_world": false,
     "profiles": [
@@ -5120,6 +5401,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "si_bind_interfaces_to_net_classes",
     "open_world": false,
     "profiles": [
@@ -5136,6 +5418,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "si_calculate_decoupling_placement",
     "open_world": false,
     "profiles": [
@@ -5152,6 +5435,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "si_calculate_trace_impedance",
     "open_world": false,
     "profiles": [
@@ -5168,6 +5452,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "si_calculate_trace_width_for_impedance",
     "open_world": false,
     "profiles": [
@@ -5184,6 +5469,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "si_check_differential_pair_skew",
     "open_world": false,
     "profiles": [
@@ -5200,6 +5486,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "si_check_via_stub",
     "open_world": false,
     "profiles": [
@@ -5216,6 +5503,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "si_generate_stackup",
     "open_world": false,
     "profiles": [
@@ -5232,6 +5520,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "si_list_dielectric_materials",
     "open_world": false,
     "profiles": [
@@ -5248,6 +5537,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "si_synthesize_stackup_for_interfaces",
     "open_world": false,
     "profiles": [
@@ -5264,6 +5554,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "si_validate_length_matching",
     "open_world": false,
     "profiles": [
@@ -5280,6 +5571,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sim_add_spice_directive",
     "open_world": false,
     "profiles": [
@@ -5295,6 +5587,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sim_add_spice_library",
     "open_world": false,
     "profiles": [
@@ -5310,6 +5603,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sim_assign_spice_model",
     "open_world": false,
     "profiles": [
@@ -5325,6 +5619,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sim_check_stability",
     "open_world": false,
     "profiles": [
@@ -5340,6 +5635,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sim_list_spice_libraries",
     "open_world": false,
     "profiles": [
@@ -5355,6 +5651,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sim_remove_spice_library",
     "open_world": false,
     "profiles": [
@@ -5370,6 +5667,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sim_run_ac_analysis",
     "open_world": false,
     "profiles": [
@@ -5385,6 +5683,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sim_run_dc_sweep",
     "open_world": false,
     "profiles": [
@@ -5400,6 +5699,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sim_run_operating_point",
     "open_world": false,
     "profiles": [
@@ -5415,6 +5715,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sim_run_transient",
     "open_world": false,
     "profiles": [
@@ -5430,6 +5731,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "sim_validate_spice_setup",
     "open_world": false,
     "profiles": [
@@ -5445,6 +5747,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "studio_push_context",
     "open_world": false,
     "profiles": [
@@ -5457,6 +5760,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "sym_export",
     "open_world": true,
     "profiles": [
@@ -5471,6 +5775,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "sym_export_svg",
     "open_world": true,
     "profiles": [
@@ -5485,6 +5790,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "sym_upgrade",
     "open_world": false,
     "profiles": [
@@ -5499,6 +5805,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "thermal_calculate_via_count",
     "open_world": false,
     "profiles": [
@@ -5515,6 +5822,7 @@
     "destructive": false,
     "experimental": false,
     "headless": false,
+    "idempotent": false,
     "name": "thermal_check_copper_pour",
     "open_world": false,
     "profiles": [
@@ -5531,6 +5839,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "tune_diff_pair_length",
     "open_world": false,
     "profiles": [
@@ -5548,6 +5857,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "validate_design",
     "open_world": false,
     "profiles": [
@@ -5570,6 +5880,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "validate_footprints_vs_schematic",
     "open_world": false,
     "profiles": [
@@ -5592,6 +5903,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "variant_clone",
     "open_world": false,
     "profiles": [
@@ -5612,6 +5924,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "variant_create",
     "open_world": false,
     "profiles": [
@@ -5632,6 +5945,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "variant_delete",
     "open_world": false,
     "profiles": [
@@ -5652,6 +5966,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "variant_diff_bom",
     "open_world": false,
     "profiles": [
@@ -5672,6 +5987,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "variant_export_bom",
     "open_world": true,
     "profiles": [
@@ -5692,6 +6008,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "variant_export_manufacturing_package",
     "open_world": true,
     "profiles": [
@@ -5712,6 +6029,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "variant_export_schematic",
     "open_world": true,
     "profiles": [
@@ -5732,6 +6050,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "variant_get_component_status",
     "open_world": false,
     "profiles": [
@@ -5752,6 +6071,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "variant_list",
     "open_world": false,
     "profiles": [
@@ -5772,6 +6092,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "variant_set_active",
     "open_world": false,
     "profiles": [
@@ -5792,6 +6113,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": true,
     "name": "variant_set_component_override",
     "open_world": false,
     "profiles": [
@@ -5812,6 +6134,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "vcs_commit_checkpoint",
     "open_world": false,
     "profiles": [
@@ -5828,6 +6151,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "vcs_diff_with_checkpoint",
     "open_world": false,
     "profiles": [
@@ -5844,6 +6168,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "vcs_init_git",
     "open_world": false,
     "profiles": [
@@ -5860,6 +6185,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "vcs_list_checkpoints",
     "open_world": false,
     "profiles": [
@@ -5876,6 +6202,7 @@
     "destructive": true,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "vcs_restore_checkpoint",
     "open_world": false,
     "profiles": [
@@ -5892,6 +6219,7 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
     "name": "vcs_tag_release",
     "open_world": false,
     "profiles": [

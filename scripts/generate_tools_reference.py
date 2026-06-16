@@ -29,6 +29,7 @@ class ToolRow:
     read_only: bool
     destructive: bool
     open_world: bool
+    idempotent: bool
     headless: bool
     requires_kicad_running: bool
     summary: str
@@ -97,6 +98,7 @@ def collect_rows() -> list[ToolRow]:
                 read_only=_annotation_bool(annotations, "readOnlyHint"),
                 destructive=_annotation_bool(annotations, "destructiveHint"),
                 open_world=_annotation_bool(annotations, "openWorldHint"),
+                idempotent=_annotation_bool(annotations, "idempotentHint"),
                 headless=bool(metadata and metadata.headless_compatible),
                 requires_kicad_running=bool(metadata and metadata.requires_kicad_running),
                 summary=_summary(all_tools[name]),
@@ -112,17 +114,17 @@ def render_generated(rows: list[ToolRow]) -> str:
         f"Total public tools: {len(rows)}.",
         "",
         (
-            "| Tool | Profile(s) | Read-Only | Destructive | Open-World | Headless | "
-            "Requires KiCad Running | Summary |"
+            "| Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | "
+            "Headless | Requires KiCad Running | Summary |"
         ),
-        "|---|---|---:|---:|---:|---:|---:|---|",
+        "|---|---|---:|---:|---:|---:|---:|---:|---|",
     ]
     for row in rows:
         profiles = ", ".join(row.profiles)
         lines.append(
             "| "
             f"`{row.name}` | {profiles} | {_yes(row.read_only)} | {_yes(row.destructive)} | "
-            f"{_yes(row.open_world)} | {_yes(row.headless)} | "
+            f"{_yes(row.open_world)} | {_yes(row.idempotent)} | {_yes(row.headless)} | "
             f"{_yes(row.requires_kicad_running)} | {row.summary} |"
         )
 
@@ -133,6 +135,7 @@ def render_generated(rows: list[ToolRow]) -> str:
             f"readOnly={_yes(row.read_only)}",
             f"destructive={_yes(row.destructive)}",
             f"openWorld={_yes(row.open_world)}",
+            f"idempotent={_yes(row.idempotent)}",
             f"headless={_yes(row.headless)}",
             f"requiresKiCadRunning={_yes(row.requires_kicad_running)}",
         ]

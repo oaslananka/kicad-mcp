@@ -203,6 +203,31 @@ Use the project fix queue as the source of truth for what to fix next.
         return [TextContent(type="text", text=text)]
 
     @mcp.prompt()
+    def error_recovery() -> list[TextContent]:
+        """How to read structured errors and retry safely (idempotency contract)."""
+        text = """
+When a tool call fails, read the structured error payload before retrying.
+
+Every error carries: code, message, hint, retryable, transient_class, retry_after_ms.
+
+1. If `retryable` is false, do not retry the same call. Fix the request or
+   configuration using `hint`, then proceed.
+2. If `retryable` is true, branch on `transient_class`:
+   - `network` / `timeout` / `lock`: a transient fault. Wait `retry_after_ms`
+     (or a short backoff) and retry — but ONLY if the tool is idempotent
+     (annotation `idempotentHint: true`). Re-calling a non-idempotent write can
+     double-apply (e.g. a second track, via, or symbol).
+   - `state`: a precondition is unmet (e.g. no board open). Reconcile first
+     (open the board / set the project), then retry. Retrying alone will not help.
+3. For a non-idempotent tool after a transient error, reconcile-then-retry: read
+   current state (e.g. `pcb_get_board_summary()`, `sch_get_symbols()`) to check
+   whether the operation already applied before calling it again.
+4. Read-only tools and converging writes (set_/save/refill/export/upgrade) are
+   idempotent; additive writes (add_/create_/place_/route_/build_) are not.
+""".strip()
+        return [TextContent(type="text", text=text)]
+
+    @mcp.prompt()
     def manufacturing_release_checklist() -> list[TextContent]:
         """Final release checklist for fab-ready handoff."""
         text = """

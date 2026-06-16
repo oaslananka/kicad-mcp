@@ -126,6 +126,36 @@ def get_tool_metadata(tool_name: str) -> ToolMetadata | None:
     return _TOOL_METADATA.get(tool_name)
 
 
+# Converging write verbs whose repetition lands on the same state. Additive or
+# sequence-sensitive writes (add/create/place/route/build/commit) are deliberately
+# excluded, so they are classified non-idempotent.
+_IDEMPOTENT_WRITE_TOKENS = ("set_", "save", "refill", "export", "upgrade", "reset_")
+
+
+def _is_read_only_name(normalized: str) -> bool:
+    return (
+        normalized.startswith(_READ_ONLY_PREFIXES)
+        or normalized.startswith("lib_search_")
+        or normalized.startswith("pcb_get_")
+        or normalized.startswith("sch_get_")
+        or normalized.endswith("_quality_gate")
+    )
+
+
+def is_tool_idempotent(tool_name: str) -> bool:
+    """Return whether re-invoking the tool with the same args is safe (no double-apply).
+
+    Read-only tools are always idempotent. Among writes, only converging operations
+    (set/save/refill/export/upgrade/reset) are idempotent; additive or sequence-sensitive
+    writes are not, so an agent must reconcile state before retrying them on a transient
+    error rather than blindly re-calling.
+    """
+    normalized = tool_name.casefold()
+    if _is_read_only_name(normalized):
+        return True
+    return any(token in normalized for token in _IDEMPOTENT_WRITE_TOKENS)
+
+
 def infer_tool_annotations(
     tool_name: str,
     explicit: ToolAnnotations | dict[str, object] | None = None,
@@ -134,13 +164,7 @@ def infer_tool_annotations(
     metadata = get_tool_metadata(tool_name) or ToolMetadata()
     normalized = tool_name.casefold()
 
-    is_read_only = (
-        normalized.startswith(_READ_ONLY_PREFIXES)
-        or normalized.startswith("lib_search_")
-        or normalized.startswith("pcb_get_")
-        or normalized.startswith("sch_get_")
-        or normalized.endswith("_quality_gate")
-    )
+    is_read_only = _is_read_only_name(normalized)
 
     is_write = (
         normalized.startswith(_WRITE_PREFIXES)
@@ -177,7 +201,8 @@ def infer_tool_annotations(
     annotations: dict[str, object] = {}
     if is_read_only:
         annotations["readOnlyHint"] = True
-        annotations["idempotentHint"] = True
+    # Set idempotency explicitly for every tool so agents can decide retry safety.
+    annotations["idempotentHint"] = is_tool_idempotent(tool_name)
     if is_write:
         annotations["destructiveHint"] = True
     if metadata.requires_kicad_running:
