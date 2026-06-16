@@ -1706,6 +1706,21 @@ def project_schematic_files() -> list[Path]:
     return candidates or [active]
 
 
+def _sort_symbols_for_annotation(symbols: list[dict[str, Any]], order: str) -> None:
+    """Order symbols in place for sequential reference annotation.
+
+    ``sheet`` numbers top-to-bottom then left-to-right; ``left_to_right`` numbers
+    left-to-right then top-to-bottom; everything else falls back to alphabetical
+    by existing reference.
+    """
+    if order == "sheet":
+        symbols.sort(key=lambda item: (item["y"], item["x"]))
+    elif order == "left_to_right":
+        symbols.sort(key=lambda item: (item["x"], item["y"]))
+    else:
+        symbols.sort(key=lambda item: item["reference"])
+
+
 def run_auto_annotate(start_number: int = 1, order: str = "alpha") -> str:
     """Module-level annotation runner — callable from project_auto_fix_loop.
 
@@ -1718,10 +1733,7 @@ def run_auto_annotate(start_number: int = 1, order: str = "alpha") -> str:
     payload = AnnotateInput(start_number=start_number, order=order)
     data = parse_schematic_file(sch_file)
     symbols = list(data["symbols"])
-    if payload.order == "sheet":
-        symbols.sort(key=lambda item: (item["y"], item["x"]))
-    else:
-        symbols.sort(key=lambda item: item["reference"])
+    _sort_symbols_for_annotation(symbols, payload.order)
 
     counters: dict[str, int] = {}
     updates: list[tuple[str, str]] = []
@@ -4093,6 +4105,17 @@ def register(mcp: FastMCP) -> None:
         given coordinate. Use sch_get_labels() to find exact names/positions."""
         tol = 0.05
         removed = 0
+        # sch_add_label snaps to the 2.54 mm grid by default, so a label placed at
+        # (50, 50) actually lands at (50.8, 50.8). Match against both the raw query
+        # point and its grid-snapped position so the obvious add/delete round trip
+        # works, while still deleting labels that were placed off-grid.
+        snapped_x, snapped_y = _snap_point(x_mm, y_mm, True)
+
+        def _matches_target(parsed: dict[str, Any]) -> bool:
+            for target_x, target_y in ((x_mm, y_mm), (snapped_x, snapped_y)):
+                if abs(parsed["x"] - target_x) <= tol and abs(parsed["y"] - target_y) <= tol:
+                    return True
+            return False
 
         def mutator(current: str) -> str:
             nonlocal removed
@@ -4103,12 +4126,7 @@ def register(mcp: FastMCP) -> None:
                 if current[cursor:].startswith(("(label", "(global_label", "(hierarchical_label")):
                     block, length = _extract_block(current, cursor)
                     parsed = _parse_label_block(block) if block else None
-                    if (
-                        parsed is not None
-                        and parsed["name"] == name
-                        and abs(parsed["x"] - x_mm) <= tol
-                        and abs(parsed["y"] - y_mm) <= tol
-                    ):
+                    if parsed is not None and parsed["name"] == name and _matches_target(parsed):
                         pieces.append(current[last:cursor])
                         cursor += length
                         last = cursor
@@ -4494,10 +4512,7 @@ def register(mcp: FastMCP) -> None:
         payload = AnnotateInput(start_number=start_number, order=order)
         data = parse_schematic_file(_get_schematic_file())
         symbols = list(data["symbols"])
-        if payload.order == "sheet":
-            symbols.sort(key=lambda item: (item["y"], item["x"]))
-        else:
-            symbols.sort(key=lambda item: item["reference"])
+        _sort_symbols_for_annotation(symbols, payload.order)
 
         counters: dict[str, int] = {}
         updates: list[tuple[str, str]] = []
@@ -4896,7 +4911,7 @@ def register(mcp: FastMCP) -> None:
         symbol_list: list[str] | None = None,
         strategy: str = "cluster",
     ) -> str:
-        """Auto-place selected references using deterministic cluster, linear, or star layouts.
+        """Place selected references with a deterministic cluster, linear, star, or grid layout.
 
         Unlike the legacy behaviour, this version reads all already-placed symbols
         first and avoids placing new symbols on top of them.  Fixed/already-placed
@@ -4968,6 +4983,11 @@ def register(mcp: FastMCP) -> None:
                     )
                     row = int(round((raw_y - AUTO_LAYOUT_ORIGIN_Y_MM) / AUTO_LAYOUT_ROW_SPACING_MM))
                     x, y = _next_free_cell(occupied, start_col=col, start_row=row)
+            elif payload.strategy == "grid":
+                # Uniform 2D grid: wrap into a roughly square arrangement so the
+                # references fill rows and columns evenly instead of one long row.
+                grid_cols = max(1, math.ceil(math.sqrt(len(requested))))
+                x, y = _next_free_cell(occupied, max_cols=grid_cols)
             else:
                 # cluster: row-major grid, skip occupied cells
                 x, y = _next_free_cell(occupied)

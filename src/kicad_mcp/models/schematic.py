@@ -70,7 +70,7 @@ class AnnotateInput(BaseModel):
     """Reference annotation parameters."""
 
     start_number: int = Field(default=1, ge=1, le=9999)
-    order: Literal["alpha", "sheet", "existing"] = "alpha"
+    order: Literal["alpha", "sheet", "existing", "left_to_right"] = "alpha"
 
 
 class UpdatePropertiesInput(BaseModel):
@@ -178,4 +178,4 @@ class AutoPlaceSymbolsInput(BaseModel):
     """Auto-placement request for an explicit list of schematic references."""
 
     symbol_list: list[str] = Field(default_factory=list)
-    strategy: Literal["cluster", "linear", "star"] = "cluster"
+    strategy: Literal["cluster", "linear", "star", "grid"] = "cluster"

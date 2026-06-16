@@ -117,8 +117,8 @@ async def test_schematic_find_free_placement_with_count(sample_project, mock_kic
     server = build_server("schematic")
     result = await call_tool_text(server, "sch_find_free_placement", {"count": 5})
     assert "Free placement coordinates" in result
-    # Should have 5 coordinate entries
-    matches = re.findall(r"\d+:\s*\(", result)
+    # Should have 5 coordinate entries (rendered as "Slot N: x_mm=..., y_mm=...").
+    matches = re.findall(r"Slot \d+:", result)
     assert len(matches) >= 5
 
 
@@ -136,7 +136,9 @@ async def test_schematic_set_sheet_size_valid(sample_project, mock_kicad) -> Non
     server = build_server("schematic")
     for paper in ["A4", "A3", "A2", "USLetter", "USLegal"]:
         result = await call_tool_text(server, "sch_set_sheet_size", {"paper": paper})
-        assert "Sheet resized" in result or "already fits" in result
+        # The sample sheet starts as A4, so resizing to A4 reports "already"; any
+        # other target reports the resize.
+        assert "Sheet resized" in result or "already" in result.lower()
 
 
 @pytest.mark.anyio
@@ -561,7 +563,7 @@ async def test_schematic_get_pin_positions_missing_library(sample_project, mock_
         "sch_get_pin_positions",
         {"library": "MissingLib", "symbol_name": "R", "x_mm": 10.0, "y_mm": 10.0},
     )
-    assert "not found" in result.lower() or "library" in result.lower()
+    assert "could not calculate pin positions" in result.lower()
 
 
 @pytest.mark.anyio
@@ -569,7 +571,7 @@ async def test_schematic_get_symbols_empty(sample_project, mock_kicad) -> None:
     """sch_get_symbols should handle empty schematic."""
     server = build_server("schematic")
     result = await call_tool_text(server, "sch_get_symbols", {})
-    assert "Symbols" in result or "No symbols" in result or "0 total" in result
+    assert "no symbols" in result.lower()
 
 
 @pytest.mark.anyio
@@ -585,7 +587,7 @@ async def test_schematic_get_labels_empty(sample_project, mock_kicad) -> None:
     """sch_get_labels should handle schematic with no labels."""
     server = build_server("schematic")
     result = await call_tool_text(server, "sch_get_labels", {})
-    assert "Labels" in result or "No labels" in result
+    assert "no labels" in result.lower()
 
 
 @pytest.mark.anyio
@@ -593,7 +595,7 @@ async def test_schematic_get_net_names_empty(sample_project, mock_kicad) -> None
     """sch_get_net_names should handle schematic with no nets."""
     server = build_server("schematic")
     result = await call_tool_text(server, "sch_get_net_names", {})
-    assert "Nets" in result or "No nets" in result
+    assert "no named nets" in result.lower()
 
 
 @pytest.mark.anyio
@@ -650,10 +652,13 @@ async def test_schematic_build_circuit_with_nets(sample_project, mock_kicad) -> 
             ],
         },
     )
-    assert "Circuit" in result or "built" in result.lower()
+    assert "Circuit" in result or "built" in result.lower() or "updated" in result.lower()
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
-    assert '(label "VIN"' in schematic
-    assert '(label "MID"' in schematic
+    # Without auto_layout, sch_build_circuit routes nets that resolve to >=2 pins
+    # into Manhattan wire segments. The two-pin "MID" net (R1.2 -> R2.1) is routed
+    # as a wire; net names only become labels in the auto_layout path (covered by
+    # the netlist auto-layout tests in test_schematic_tools.py).
+    assert "(wire" in schematic
 
 
 @pytest.mark.anyio

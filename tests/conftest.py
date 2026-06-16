@@ -241,6 +241,17 @@ def sample_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fake_cli: Pa
             '      (pin power_in line (at 0 0 270) (length 0) (name "") (number "1"))\n'
             "    )\n"
             "  )\n"
+            '  (symbol "VCC"\n'
+            "    (power global)\n"
+            '    (property "Reference" "#PWR" (id 0) (at 0 2.54 0))\n'
+            '    (property "Value" "VCC" (id 1) (at 0 3.81 0))\n'
+            '    (symbol "VCC_0_1"\n'
+            "      (polyline (pts (xy 0 0) (xy 0 1.27)))\n"
+            "    )\n"
+            '    (symbol "VCC_1_1"\n'
+            '      (pin power_in line (at 0 0 90) (length 0) (name "") (number "1"))\n'
+            "    )\n"
+            "  )\n"
             ")\n"
         ),
         encoding="utf-8",

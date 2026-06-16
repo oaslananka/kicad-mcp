@@ -624,8 +624,14 @@ async def test_schematic_add_symbol_embeds_extended_symbol_chain(
     )
 
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
-    assert '(symbol "BaseTimer"' in schematic
+    # KiCad caches a derived symbol by flattening it (LIB_SYMBOL::Flatten), the same
+    # way kicad-sch-api's inheritance resolver does: the base body/pins are merged
+    # into a single self-contained, library-qualified symbol with no (extends ...).
     assert '(symbol "Extended:ChildTimer"' in schematic
+    assert "(extends" not in schematic
+    # The base symbol's pins are merged in rather than left behind a separate block.
+    assert '(name "IN")' in schematic
+    assert '(name "OUT")' in schematic
 
 
 @pytest.mark.anyio
@@ -649,8 +655,11 @@ async def test_schematic_pin_positions_support_multi_unit_inherited_symbols(
     )
 
     assert "unit=2" in text
-    assert "Pin 5: (32.3800, 42.5400)" in text
-    assert "Pin 6: (32.3800, 37.4600)" in text
+    # KiCad inverts the symbol-library Y axis when placing a symbol, so a pin at
+    # library +Y renders above the origin (smaller schematic Y). Pin 5 (+B, local
+    # +2.54) -> 40 - 2.54 = 37.46; Pin 6 (-B, local -2.54) -> 40 + 2.54 = 42.54.
+    assert "Pin 5: (32.3800, 37.4600)" in text
+    assert "Pin 6: (32.3800, 42.5400)" in text
     assert "Pin 7: (47.6200, 40.0000)" in text
 
 
@@ -746,8 +755,12 @@ async def test_build_circuit_netlist_auto_layout_supports_extended_symbols(
 
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
     assert "Applied netlist-aware auto-layout" in result
-    assert '(symbol "BaseTimer"' in schematic
+    # The derived symbol is embedded as a flattened, self-contained cache entry
+    # (base body merged in, no separate base block, no (extends ...)).
     assert '(symbol "Extended:ChildTimer"' in schematic
+    assert "(extends" not in schematic
+    assert '(name "IN")' in schematic
+    assert '(name "OUT")' in schematic
     assert '(lib_id "power:GND")' in schematic
     assert schematic.count("(wire") >= 2
 
@@ -802,8 +815,14 @@ async def test_build_circuit_netlist_auto_layout_uses_symbol_unit_for_routing(
 
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
     assert "Applied netlist-aware auto-layout" in result
-    assert '(symbol "DualOpamp"' in schematic
+    # The multi-unit derived symbol is embedded as a flattened, self-contained cache
+    # entry: the base's unit sub-symbols are merged in and renamed to the derived
+    # symbol, with no separate base block and no (extends ...).
     assert '(symbol "MultiUnit:DualChild"' in schematic
+    assert "(extends" not in schematic
+    # Unit-2 pins (OUTB/-B) are present, confirming the requested unit was embedded.
+    assert '(name "OUTB")' in schematic
+    assert '(name "-B")' in schematic
     assert '(label "OUT2"' in schematic
     assert '(label "FB2"' in schematic
     assert schematic.count("(wire") >= 3
