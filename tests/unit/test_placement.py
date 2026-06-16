@@ -38,6 +38,69 @@ def test_force_directed_placement_is_deterministic_and_snaps_to_grid() -> None:
     assert all(item.y == round(item.y) for item in first)
 
 
+def test_force_directed_placement_converges_before_iteration_ceiling() -> None:
+    # K7: stopping must be convergence-based (deterministic), never wall-clock,
+    # so the same input yields the same board regardless of machine speed.
+    components = [
+        PlacementComponent(ref="J1", x=2.0, y=2.0, w=3.0, h=3.0),
+        PlacementComponent(ref="U1", x=18.0, y=8.0, w=4.0, h=4.0),
+        PlacementComponent(ref="U2", x=32.0, y=18.0, w=4.0, h=4.0),
+        PlacementComponent(ref="C1", x=25.0, y=5.0, w=2.0, h=2.0),
+    ]
+    nets = [
+        PlacementNet(name="USB_DP", refs=["J1", "U1", "U2"], weight=1.0),
+        PlacementNet(name="VBUS", refs=["U1", "C1"], weight=2.0),
+    ]
+    cfg = ForceDirectedConfig(
+        iterations=2000,  # generous ceiling — convergence must stop us first
+        board_w=40.0,
+        board_h=25.0,
+        grid_mm=1.0,
+        seed=7,
+        convergence_patience=4,
+    )
+
+    stats: dict[str, object] = {}
+    placed = force_directed_placement(components, nets, cfg, stats=stats)
+
+    # Stopped on convergence, strictly before the 2000-iteration ceiling.
+    assert stats["converged"] is True
+    iterations_run = stats["iterations_run"]
+    assert isinstance(iterations_run, int)
+    assert iterations_run < cfg.iterations
+
+    # Deterministic: a second run reproduces the layout exactly.
+    second = force_directed_placement(components, nets, cfg)
+    assert [(c.ref, c.x, c.y) for c in placed] == [(c.ref, c.x, c.y) for c in second]
+
+
+def test_force_directed_placement_output_independent_of_wall_clock_budget() -> None:
+    # A slow and a fast machine must produce the same board: once the layout has
+    # converged the wall-clock safety valve never fires, so the result cannot
+    # depend on the time budget. This is the core K7 guarantee.
+    components = [
+        PlacementComponent(ref="J1", x=2.0, y=2.0, w=3.0, h=3.0),
+        PlacementComponent(ref="U1", x=18.0, y=8.0, w=4.0, h=4.0),
+        PlacementComponent(ref="U2", x=32.0, y=18.0, w=4.0, h=4.0),
+    ]
+    nets = [PlacementNet(name="USB_DP", refs=["J1", "U1", "U2"], weight=1.0)]
+
+    def run(max_seconds: float) -> list[tuple[str, float, float]]:
+        cfg = ForceDirectedConfig(
+            iterations=2000,
+            board_w=40.0,
+            board_h=25.0,
+            grid_mm=1.0,
+            seed=7,
+            max_seconds=max_seconds,
+        )
+        return [(c.ref, c.x, c.y) for c in force_directed_placement(components, nets, cfg)]
+
+    # Disabled valve (the deterministic default) vs a generous budget that never
+    # fires because convergence is reached first — byte-identical output.
+    assert run(0.0) == run(600.0)
+
+
 def test_force_directed_placement_respects_keepout_regions() -> None:
     components = [PlacementComponent(ref="U1", x=15.0, y=10.0, w=4.0, h=4.0)]
     cfg = ForceDirectedConfig(

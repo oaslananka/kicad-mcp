@@ -1627,7 +1627,7 @@ def _decoupling_rule_for_value(value: str, fallback_max_distance_mm: float) -> d
 def _auto_place_force_directed_board_file(
     *,
     grid_mm: float = 1.0,
-    max_seconds: float = 30.0,
+    max_seconds: float = 0.0,
 ) -> str:
     board_file = _get_pcb_file_for_sync()
     board_content = _normalize_board_content(
@@ -1658,6 +1658,7 @@ def _auto_place_force_directed_board_file(
     if not nets:
         return "Auto-placement skipped: no multi-footprint named nets were found."
 
+    stats: dict[str, object] = {}
     result = force_directed_placement(
         components,
         nets,
@@ -1671,6 +1672,7 @@ def _auto_place_force_directed_board_file(
             grid_mm=grid_mm,
             max_seconds=max_seconds,
         ),
+        stats=stats,
     )
     replacements: dict[str, str] = {}
     for placed in result:
@@ -1682,9 +1684,14 @@ def _auto_place_force_directed_board_file(
             rotation=int(entry["rotation"]),
         )
     _transactional_board_write(lambda current: _replace_board_blocks(current, replacements, []))
+    convergence = (
+        f"converged after {stats.get('iterations_run')} iterations"
+        if stats.get("converged")
+        else f"stopped after {stats.get('iterations_run')} iterations (iteration ceiling)"
+    )
     return (
         "Force-directed auto-placement completed after PCB sync: "
-        f"{len(replacements)} footprint(s), {len(nets)} weighted net(s)."
+        f"{len(replacements)} footprint(s), {len(nets)} weighted net(s); {convergence}."
     )
 
 
@@ -3631,7 +3638,7 @@ def register(mcp: FastMCP) -> None:
 
         auto_place_note = ""
         if (additions or replacements) and payload.auto_place:
-            auto_place_note = _auto_place_force_directed_board_file(grid_mm=1.0, max_seconds=30.0)
+            auto_place_note = _auto_place_force_directed_board_file(grid_mm=1.0)
 
         reload_note = (
             _reload_board_after_file_sync()
@@ -4541,14 +4548,16 @@ def register(mcp: FastMCP) -> None:
         k_repel: float = 80.0,
         seed: int = 42,
         grid_mm: float = 0.5,
-        max_seconds: float = 10.0,
+        max_seconds: float = 0.0,
         keepout_regions: list[tuple[float, float, float, float]] | None = None,
     ) -> str:
         """Run a force-directed spring-embedder placement algorithm on a set of components.
 
         This tool computes optimised X/Y positions for components based on their net
-        connectivity without requiring KiCad to be open. Same seed + same inputs
-        yields identical output. Use it to get a placement suggestion, then apply
+        connectivity without requiring KiCad to be open. Stopping is deterministic:
+        iteration halts on convergence (or the ``iterations`` ceiling), never on
+        wall-clock, so the same seed + same inputs yield bit-for-bit identical
+        output on any machine. Use it to get a placement suggestion, then apply
         the result with pcb_move_footprint for each component.
 
         Args:
@@ -4565,7 +4574,10 @@ def register(mcp: FastMCP) -> None:
             k_repel: Coulomb repulsion coefficient (default 80.0).
             seed: Deterministic tie-break seed used for fallback searches.
             grid_mm: Final snap-to-grid spacing in mm (default 0.5).
-            max_seconds: Max wall-clock budget before returning best-so-far.
+            max_seconds: Opt-in wall-clock safety valve in seconds. 0 (default)
+                keeps placement deterministic and convergence-bounded; a positive
+                value caps runtime on pathologically large boards but makes the
+                result depend on host speed (not reproducible).
             keepout_regions: Optional rectangular keepouts as
                 ``[(x_min, y_min, x_max, y_max), ...]`` in mm.
 
@@ -4602,7 +4614,8 @@ def register(mcp: FastMCP) -> None:
             max_seconds=max_seconds,
             keepout_regions=list(keepout_regions or []),
         )
-        result = force_directed_placement(comps, placement_nets, cfg)
+        stats: dict[str, object] = {}
+        result = force_directed_placement(comps, placement_nets, cfg, stats=stats)
         output = [
             {"ref": c.ref, "x": round(c.x, 4), "y": round(c.y, 4), "fixed": c.fixed} for c in result
         ]
@@ -4610,6 +4623,10 @@ def register(mcp: FastMCP) -> None:
             {
                 "placements": output,
                 "iterations": iterations,
+                "iterations_run": stats.get("iterations_run"),
+                "converged": stats.get("converged"),
+                "max_displacement_mm": stats.get("max_displacement_mm"),
+                "deterministic": max_seconds <= 0.0,
                 "seed": seed,
                 "grid_mm": grid_mm,
                 "max_seconds": max_seconds,
