@@ -1,6 +1,6 @@
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 333.
+Total public tools: 334.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -317,6 +317,7 @@ Total public tools: 333.
 | `sym_upgrade` | agent_full, full, manufacturing | no | no | no | yes | yes | no | Upgrade a KiCad symbol library file to the current file format. |
 | `thermal_calculate_via_count` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Estimate thermal via count from package heat and board thermal resistance. |
 | `thermal_check_copper_pour` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Check whether the board already has copper pour support for the net. |
+| `thermal_simulate_plane_spreading` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Solve copper-plane heat spreading with a 2-D finite-difference thermal solver. |
 | `tune_diff_pair_length` | agent_full, builder, full, high_speed, pcb, pcb_only | no | no | no | no | yes | no | Write matched-length rules for both nets in a differential pair. |
 | `validate_design` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | yes | no | no | yes | yes | no | Run DRC and ERC and summarize readiness. This KiCad MCP Pro tool supports production EDA automation workflows for MCP... |
 | `validate_footprints_vs_schematic` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | yes | no | no | yes | yes | no | Compare PCB footprint references against the schematic symbol references. This KiCad MCP Pro tool supports production... |
@@ -653,6 +654,7 @@ Total public tools: 333.
 - `sym_upgrade`: profiles=agent_full, full, manufacturing; readOnly=no; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `thermal_calculate_via_count`: profiles=agent_full, analysis, critic, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `thermal_check_copper_pour`: profiles=agent_full, analysis, critic, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
+- `thermal_simulate_plane_spreading`: profiles=agent_full, analysis, critic, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `tune_diff_pair_length`: profiles=agent_full, builder, full, high_speed, pcb, pcb_only; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `validate_design`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `validate_footprints_vs_schematic`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.

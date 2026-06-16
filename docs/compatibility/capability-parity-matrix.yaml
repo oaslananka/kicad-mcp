@@ -379,7 +379,13 @@ domains:
         mcp_tool: thermal_calculate_via_count
         status: partial
         kicad_version_introduced: "10.0.x"
-        notes: "thermal_check_copper_pour; first-order resistive estimate labeled honestly via the solver seam (utils/solver_seams: no FEA wired); real thermal-network/FEA is Phase 3 (P3-T4)."
+        notes: "thermal_check_copper_pour; first-order theta_JA / via-count rule of thumb labeled honestly via the solver seam (utils/solver_seams.thermal_method); for distributed spreading use thermal_simulate_plane_spreading."
+      - capability: "Copper-plane thermal spreading (2-D FD solve)"
+        kicad_channel: file
+        mcp_tool: thermal_simulate_plane_spreading
+        status: partial
+        kicad_version_introduced: "10.0.x"
+        notes: "Genuine 2-D finite-difference steady-state heat-spreading solve over the copper plane (utils/thermal_solver + solver_seams.thermal_fd_method) with peak/average temperature rise and a PASS/WARN/FAIL verdict; not a 3-D FEA with airflow / board-stack conduction (full FEA remains a future upgrade)."
       - capability: "EMC layout compliance checks"
         kicad_channel: file
         mcp_tool: emc_run_full_compliance

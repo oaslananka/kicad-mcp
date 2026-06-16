@@ -249,3 +249,35 @@ async def test_pdn_voltage_drop_ipc2221_fusing_verdict(sample_project) -> None:
         {"current_a": 5.0, "trace_width_mm": 0.5, "trace_length_mm": 50.0},
     )
     assert "(FAIL;" in overload
+
+
+@pytest.mark.anyio
+async def test_thermal_plane_spreading_distributed_solve(sample_project) -> None:
+    """thermal_simulate_plane_spreading runs a real 2-D FD solve with a PASS/FAIL verdict
+    and a solver-grade method label (work order P3-T4)."""
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    cool = await call_tool_text(
+        server,
+        "thermal_simulate_plane_spreading",
+        {
+            "power_w": 0.5,
+            "plane_width_mm": 60.0,
+            "plane_height_mm": 60.0,
+            "film_coefficient_w_per_m2_k": 40.0,
+            "max_temp_rise_c": 40.0,
+        },
+    )
+    assert "Thermal plane-spreading analysis" in cool
+    assert "Peak temperature rise" in cool
+    assert "Lateral spreading length" in cool
+    assert "(PASS;" in cool
+    assert "- Method: 2-D finite-difference copper-plane spreading solve" in cool
+
+    hot = await call_tool_text(
+        server,
+        "thermal_simulate_plane_spreading",
+        {"power_w": 4.0, "plane_width_mm": 30.0, "plane_height_mm": 30.0, "max_temp_rise_c": 40.0},
+    )
+    assert "(FAIL;" in hot

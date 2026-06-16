@@ -5927,6 +5927,23 @@
   {
     "destructive": false,
     "experimental": false,
+    "headless": false,
+    "idempotent": false,
+    "name": "thermal_simulate_plane_spreading",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "analysis",
+      "critic",
+      "full",
+      "power"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
     "headless": true,
     "idempotent": false,
     "name": "tune_diff_pair_length",

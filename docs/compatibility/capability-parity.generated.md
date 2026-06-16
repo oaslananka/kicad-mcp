@@ -4,7 +4,7 @@ Machine-generated from `docs/compatibility/capability-parity-matrix.yaml`. Refre
 
 KiCad baseline: `10.0.x` · Updated: 2026-06-16
 
-**Overall: 57 / 75 programmatically-reachable capabilities driven = 76.0%** (16 partial, 2 gap; 4 GUI-only with no KiCad API, excluded from the denominator).
+**Overall: 57 / 76 programmatically-reachable capabilities driven = 75.0%** (17 partial, 2 gap; 4 GUI-only with no KiCad API, excluded from the denominator).
 
 ## Coverage by domain
 
@@ -14,11 +14,11 @@ KiCad baseline: `10.0.x` · Updated: 2026-06-16
 | `pcb_edit` | 93.8% | 15 | 1 | 0 | 1 |
 | `routing` | 66.7% | 4 | 2 | 0 | 1 |
 | `library` | 57.1% | 4 | 3 | 0 | 0 |
-| `analysis` | 25.0% | 3 | 8 | 1 | 0 |
+| `analysis` | 23.1% | 3 | 9 | 1 | 0 |
 | `export` | 100.0% | 9 | 0 | 0 | 0 |
 | `project` | 100.0% | 5 | 0 | 0 | 0 |
 | `cosmetics` | 85.7% | 6 | 0 | 1 | 1 |
-| **Overall** | **76.0%** | 57 | 16 | 2 | 4 |
+| **Overall** | **75.0%** | 57 | 17 | 2 | 4 |
 
 ## Closeable surface (gap, then partial)
 
@@ -26,6 +26,7 @@ KiCad baseline: `10.0.x` · Updated: 2026-06-16
 |---|---|---|---|---|---|
 | `analysis` | 2D/3D field / EM solver for impedance & coupling | `gap` | `file` | — | No field-solver integration yet; this is the Phase 3 (P3-T1/T3) accuracy upgrade. |
 | `cosmetics` | Import a logo/bitmap as board art (bitmap2component) | `gap` | `cli` | — | KiCad's bitmap-to-silkscreen conversion has no MCP driver yet. |
+| `analysis` | Copper-plane thermal spreading (2-D FD solve) | `partial` | `file` | `thermal_simulate_plane_spreading` | Genuine 2-D finite-difference steady-state heat-spreading solve over the copper plane (utils/thermal_solver + solver_seams.thermal_fd_method) with peak/average temperature rise and a PASS/WARN/FAIL verdict; not a 3-D FEA with airflow / board-stack conduction (full FEA remains a future upgrade). |
 | `analysis` | DC IR-drop / voltage-drop analysis | `partial` | `file` | `pdn_calculate_voltage_drop` | pdn_calculate_voltage_drop is a first-order single-trace lumped estimate, now with an IPC-2221 current-density fusing / temperature-rise PASS/WARN/FAIL verdict; check_power_integrity runs a genuine distributed multi-load resistive PDN mesh (DC drop + frequency-domain Z(f)), labeled solver-grade via the seam (utils/solver_seams.pdn_mesh_method). Remaining P3-T2 upgrade: a 2-D copper-plane field solve. |
 | `analysis` | Decoupling recommendation / power-plane generation | `partial` | `file` | `pdn_recommend_decoupling_caps` | pdn_generate_power_plane covered; frequency-domain PDN target-Z checking now delivered via check_power_integrity (pdn_mesh Z(f) vs target_impedance_ohm with violations); a full plane-capacitance field model remains a future upgrade. |
 | `analysis` | Differential-pair skew gate | `partial` | `file` | `si_check_differential_pair_skew` | Real PASS/WARN/FAIL verdict with intent-derived skew budget (P1-T3); localized intra-pair phase-skew / mode-conversion is Phase 3 (P3-T3). |
@@ -33,7 +34,7 @@ KiCad baseline: `10.0.x` · Updated: 2026-06-16
 | `analysis` | High-speed channel insertion-loss / eye analysis | `partial` | `file` | `si_analyze_high_speed_channel` | Closed-form lossy-line insertion loss (conductor skin-effect + dielectric loss) with a loss-limited eye and PASS/WARN/FAIL verdict; when an ngspice CLI is present the insertion loss is measured from an RLGC-ladder AC sweep (utils/channel + solver seam). Full S-parameter / IBIS-AMI channel simulation remains a future upgrade. |
 | `analysis` | Length-matching validation | `partial` | `file` | `si_validate_length_matching` | Three-level PASS/WARN/FAIL verdict against a tolerance budget (P1-T3); track-length based heuristic. |
 | `analysis` | Single-ended / differential trace impedance | `partial` | `file` | `si_calculate_trace_impedance` | First-order closed-form (IPC-2141/Wheeler) estimate ~5-10% (work order K4); field-solver accuracy is Phase 3 (P3-T1). |
-| `analysis` | Thermal via / copper-pour sizing | `partial` | `file` | `thermal_calculate_via_count` | thermal_check_copper_pour; first-order resistive estimate labeled honestly via the solver seam (utils/solver_seams: no FEA wired); real thermal-network/FEA is Phase 3 (P3-T4). |
+| `analysis` | Thermal via / copper-pour sizing | `partial` | `file` | `thermal_calculate_via_count` | thermal_check_copper_pour; first-order theta_JA / via-count rule of thumb labeled honestly via the solver seam (utils/solver_seams.thermal_method); for distributed spreading use thermal_simulate_plane_spreading. |
 | `library` | Generate an IPC-7351 footprint | `partial` | `file` | `lib_generate_footprint_ipc7351` | Footprint family coverage is limited (work order K10: SOT-23 implemented, SOT-223/SOT-89 not yet); datasheet/IPC validation hard-gate is Phase 4 (P4-T3). |
 | `library` | Recommend / bind a part to a symbol | `partial` | `file` | `lib_recommend_part` | lib_bind_part_to_symbol; depends on the same sourcing backends as above. |
 | `library` | Source live component data (price/stock/lifecycle) | `partial` | `file` | `lib_search_components` | Distributor clients (Nexar/DigiKey) are stubs requiring authenticated deployment (work order K10); real APIs land in Phase 4 (P4-T3). |
@@ -131,7 +132,8 @@ SI / PI / EMC / thermal / DFM / SPICE analysis.
 | High-speed channel insertion-loss / eye analysis | `file` | `si_analyze_high_speed_channel` | `partial` | 10.0.x | Closed-form lossy-line insertion loss (conductor skin-effect + dielectric loss) with a loss-limited eye and PASS/WARN/FAIL verdict; when an ngspice CLI is present the insertion loss is measured from an RLGC-ladder AC sweep (utils/channel + solver seam). Full S-parameter / IBIS-AMI channel simulation remains a future upgrade. |
 | DC IR-drop / voltage-drop analysis | `file` | `pdn_calculate_voltage_drop` | `partial` | 10.0.x | pdn_calculate_voltage_drop is a first-order single-trace lumped estimate, now with an IPC-2221 current-density fusing / temperature-rise PASS/WARN/FAIL verdict; check_power_integrity runs a genuine distributed multi-load resistive PDN mesh (DC drop + frequency-domain Z(f)), labeled solver-grade via the seam (utils/solver_seams.pdn_mesh_method). Remaining P3-T2 upgrade: a 2-D copper-plane field solve. |
 | Decoupling recommendation / power-plane generation | `file` | `pdn_recommend_decoupling_caps` | `partial` | 10.0.x | pdn_generate_power_plane covered; frequency-domain PDN target-Z checking now delivered via check_power_integrity (pdn_mesh Z(f) vs target_impedance_ohm with violations); a full plane-capacitance field model remains a future upgrade. |
-| Thermal via / copper-pour sizing | `file` | `thermal_calculate_via_count` | `partial` | 10.0.x | thermal_check_copper_pour; first-order resistive estimate labeled honestly via the solver seam (utils/solver_seams: no FEA wired); real thermal-network/FEA is Phase 3 (P3-T4). |
+| Thermal via / copper-pour sizing | `file` | `thermal_calculate_via_count` | `partial` | 10.0.x | thermal_check_copper_pour; first-order theta_JA / via-count rule of thumb labeled honestly via the solver seam (utils/solver_seams.thermal_method); for distributed spreading use thermal_simulate_plane_spreading. |
+| Copper-plane thermal spreading (2-D FD solve) | `file` | `thermal_simulate_plane_spreading` | `partial` | 10.0.x | Genuine 2-D finite-difference steady-state heat-spreading solve over the copper plane (utils/thermal_solver + solver_seams.thermal_fd_method) with peak/average temperature rise and a PASS/WARN/FAIL verdict; not a 3-D FEA with airflow / board-stack conduction (full FEA remains a future upgrade). |
 | EMC layout compliance checks | `file` | `emc_run_full_compliance` | `partial` | 10.0.x | Presence/heuristic checks with fixed Er (work order K2/K10); EM-result-based, standard-named, fail-capable checks are Phase 3 (P3-T5). |
 | DFM manufacturer checks and cost | `file` | `dfm_run_manufacturer_check` | `covered` | 10.0.x | dfm_load_manufacturer_profile, dfm_calculate_manufacturing_cost. |
 | SPICE simulation (op / AC / transient / DC sweep) | `cli` | `sim_run_transient` | `covered` | 10.0.x | ngspice engine; sim_run_operating_point/ac_analysis/dc_sweep, sim_check_stability. |

@@ -60,3 +60,17 @@ class ThermalPourInput(BaseModel):
     net_name: str = Field(min_length=1, max_length=200)
     expected_power_w: float = Field(gt=0.0, le=10_000.0)
     preferred_layer: Literal["auto", "F_Cu", "B_Cu"] = Field(default="auto")
+
+
+class ThermalPlaneSpreadInput(BaseModel):
+    """2-D finite-difference copper-plane thermal spreading request."""
+
+    power_w: float = Field(gt=0.0, le=10_000.0)
+    plane_width_mm: float = Field(gt=0.0, le=1_000.0)
+    plane_height_mm: float = Field(gt=0.0, le=1_000.0)
+    source_width_mm: float = Field(default=5.0, gt=0.0, le=1_000.0)
+    source_height_mm: float = Field(default=5.0, gt=0.0, le=1_000.0)
+    copper_oz: float = Field(default=1.0, gt=0.1, le=10.0)
+    ambient_c: float = Field(default=25.0, ge=-55.0, le=200.0)
+    film_coefficient_w_per_m2_k: float = Field(default=20.0, gt=0.0, le=10_000.0)
+    max_temp_rise_c: float = Field(default=40.0, gt=0.0, le=300.0)

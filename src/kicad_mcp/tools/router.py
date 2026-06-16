@@ -437,6 +437,8 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "pdn_generate_power_plane",
             "thermal_calculate_via_count",
             "thermal_check_copper_pour",
+            # P3-T4 — 2-D finite-difference copper-plane thermal spreading solver
+            "thermal_simulate_plane_spreading",
         ],
     },
     "emc": {

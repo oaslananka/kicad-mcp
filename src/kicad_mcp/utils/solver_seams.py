@@ -39,6 +39,11 @@ CHANNEL_SPICE_ACCURACY = (
     "insertion loss measured from a distributed RLGC ladder in ngspice; per-segment RLGC "
     "is constant, so frequency dependence away from Nyquist is approximate"
 )
+THERMAL_FD_METHOD = "2-D finite-difference copper-plane spreading solve (convective sink)"
+THERMAL_FD_ACCURACY = (
+    "distributed steady-state lateral heat-spreading solve over the copper plane; not a "
+    "3-D FEA with airflow, board-stack conduction, or radiation detail"
+)
 
 
 def pdn_solver_available() -> bool:
@@ -131,3 +136,17 @@ def thermal_method() -> dict[str, Any]:
         closed_accuracy=THERMAL_CLOSED_FORM_ACCURACY,
         what="thermal FEA",
     )
+
+
+def thermal_fd_method() -> dict[str, Any]:
+    """Describe the 2-D finite-difference copper-plane thermal solve, honestly.
+
+    Unlike the theta_JA / via-count rule of thumb (:func:`thermal_method`), this is a
+    genuine distributed steady-state solve of lateral heat spreading in the copper plane,
+    so it is solver-grade -- but it is 2-D with a lumped convective sink, not a 3-D FEA.
+    """
+    return {
+        "method": THERMAL_FD_METHOD,
+        "solver_grade": True,
+        "accuracy": THERMAL_FD_ACCURACY,
+    }
