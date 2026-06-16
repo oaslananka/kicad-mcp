@@ -454,6 +454,60 @@ async def test_analyze_net_compilation_reports_unresolved_endpoints(
 
 
 @pytest.mark.anyio
+async def test_build_circuit_surfaces_partial_unresolved_nets(
+    sample_project,
+    mock_kicad,
+) -> None:
+    """A partially-unroutable netlist must surface the dropped nets in the result, not
+    only in the server log (work order P2-T4): no connection vanishes silently."""
+    server = build_server("schematic")
+
+    result = await call_tool_text(
+        server,
+        "sch_build_circuit",
+        {
+            "auto_layout": True,
+            "symbols": [
+                {
+                    "library": "Device",
+                    "symbol_name": "R",
+                    "reference": "R1",
+                    "value": "10k",
+                    "footprint": "Resistor_SMD:R_0805",
+                },
+                {
+                    "library": "Device",
+                    "symbol_name": "R",
+                    "reference": "R2",
+                    "value": "10k",
+                    "footprint": "Resistor_SMD:R_0805",
+                },
+            ],
+            "nets": [
+                {
+                    "name": "GOOD_NET",
+                    "endpoints": [
+                        {"reference": "R1", "pin": "1"},
+                        {"reference": "R2", "pin": "1"},
+                    ],
+                },
+                {
+                    "name": "BROKEN_NET",
+                    "endpoints": [
+                        {"reference": "U9", "pin": "1"},
+                        {"reference": "U10", "pin": "2"},
+                    ],
+                },
+            ],
+        },
+    )
+
+    assert "could not be auto-routed" in result
+    assert "1 net(s)" in result
+    assert "BROKEN_NET" in result
+
+
+@pytest.mark.anyio
 async def test_build_circuit_netlist_auto_layout_raises_when_no_wires_resolve(
     sample_project,
     mock_kicad,

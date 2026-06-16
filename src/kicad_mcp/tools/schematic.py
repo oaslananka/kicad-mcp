@@ -4425,10 +4425,21 @@ def register(mcp: FastMCP) -> None:
         _get_schematic_file().write_text(content, encoding="utf-8")
         result = _reload_schematic()
         if auto_layout and raw_nets:
-            return (
+            summary = (
                 f"{result}\nApplied netlist-aware auto-layout and generated "
                 f"{len(generated_wires)} wire segment(s)."
             )
+            # Never drop a connection silently: if some nets did not resolve to two
+            # routable endpoints, surface them in the result, not just the server log.
+            if unresolved_nets:
+                names = ", ".join(str(item["name"]) for item in unresolved_nets[:8])
+                more = " …" if len(unresolved_nets) > 8 else ""
+                summary += (
+                    f"\nWARNING: {len(unresolved_nets)} net(s) could not be auto-routed and "
+                    f"were left unconnected: {names}{more}. "
+                    "Use sch_analyze_net_compilation() for per-endpoint details."
+                )
+            return summary
         if auto_layout:
             return f"{result}\nApplied basic auto-layout to schematic symbols."
         return result

@@ -29,6 +29,7 @@ class SchematicLike(Protocol):
 
     def save(self) -> object: ...
 
+
 # Structural node kinds whose counts must not silently drop on a round trip.
 _NODE_KINDS: tuple[str, ...] = (
     "symbol",
