@@ -37,8 +37,8 @@ KiCad baseline: `10.0.x` · Updated: 2026-06-16
 | `library` | Recommend / bind a part to a symbol | `partial` | `file` | `lib_recommend_part` | lib_bind_part_to_symbol; depends on the same sourcing backends as above. |
 | `library` | Source live component data (price/stock/lifecycle) | `partial` | `file` | `lib_search_components` | Distributor clients (Nexar/DigiKey) are stubs requiring authenticated deployment (work order K10); real APIs land in Phase 4 (P4-T3). |
 | `pcb_edit` | Auto-place footprints from schematic | `partial` | `ipc` | `pcb_auto_place_by_schematic` | Force-directed placement (pcb_auto_place_force_directed) is non-deterministic under a wall-clock cap (work order K7); deterministic placement is Phase 4 (P4-T2). |
-| `routing` | Export Specctra DSN / import routed SES | `partial` | `cli` | `route_export_dsn` | route_import_ses stages but does not yet import headlessly (K1); honest manual-step surfacing is P1-T7. |
-| `routing` | Full autoroute (FreeRouting orchestration) | `partial` | `cli` | `route_autoroute_freerouting` | End-to-end headless route is not yet wired; DSN export / SES import may require a manual KiCad step (work order K1). Full solution is Phase 4 (P4-T1). |
+| `routing` | Export Specctra DSN / import routed SES | `partial` | `cli` | `route_export_dsn` | route_export_dsn attempts headless kicad-cli specctra export, else returns a clear human-gated manual-step result; route_import_ses stages and surfaces the GUI import step (P1-T7, K1). |
+| `routing` | Full autoroute (FreeRouting orchestration) | `partial` | `cli` | `route_autoroute_freerouting` | Routes headlessly (Docker/JAR); applying the routed SES is a manual KiCad GUI step (no headless SES import) surfaced via human_gate_required (P1-T7). Full headless flow is Phase 4 (P4-T1). |
 | `schematic_edit` | Modify a symbol property by reference | `partial` | `ipc` | `sch_modify_property` | Text-level property write uses regex fallback (work order K5); round-trip-safe AST is Phase 2 (P2-T1). |
 | `schematic_edit` | Swap pins / gates | `partial` | `file` | `sch_swap_pins` | Experimental; sch_swap_gates is also experimental and profile-gated. |
 
@@ -98,8 +98,8 @@ Autoroute, length/skew tuning, diff-pair, and interactive routing.
 | Route a single track / pad-to-pad | `ipc` | `route_single_track` | `covered` | 10.0.x | route_from_pad_to_pad. |
 | Route a differential pair | `ipc` | `route_differential_pair` | `covered` | 10.0.x |  |
 | Tune track / diff-pair length | `file` | `route_tune_length` | `covered` | 10.0.x | tune_diff_pair_length, route_tune_time_domain, tuning-profile tools. |
-| Full autoroute (FreeRouting orchestration) | `cli` | `route_autoroute_freerouting` | `partial` | 10.0.x | End-to-end headless route is not yet wired; DSN export / SES import may require a manual KiCad step (work order K1). Full solution is Phase 4 (P4-T1). |
-| Export Specctra DSN / import routed SES | `cli` | `route_export_dsn` | `partial` | 10.0.x | route_import_ses stages but does not yet import headlessly (K1); honest manual-step surfacing is P1-T7. |
+| Full autoroute (FreeRouting orchestration) | `cli` | `route_autoroute_freerouting` | `partial` | 10.0.x | Routes headlessly (Docker/JAR); applying the routed SES is a manual KiCad GUI step (no headless SES import) surfaced via human_gate_required (P1-T7). Full headless flow is Phase 4 (P4-T1). |
+| Export Specctra DSN / import routed SES | `cli` | `route_export_dsn` | `partial` | 10.0.x | route_export_dsn attempts headless kicad-cli specctra export, else returns a clear human-gated manual-step result; route_import_ses stages and surfaces the GUI import step (P1-T7, K1). |
 | Set per-net-class routing rules | `file` | `route_set_net_class_rules` | `covered` | 10.0.x |  |
 | Interactive length tuning / meander drawing | `gui-only` | — | `gui-only-no-api` | 10.0.x | Interactive trace tuning UX is GUI-only; programmatic tuning is modeled by route_tune_length. |
 

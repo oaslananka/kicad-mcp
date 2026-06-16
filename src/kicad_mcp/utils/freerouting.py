@@ -14,6 +14,7 @@ import structlog
 
 from ..config import get_config
 from ..discovery import get_cli_capabilities
+from ..errors import ManualStepRequiredError
 
 logger = structlog.get_logger(__name__)
 
@@ -125,8 +126,37 @@ class FreeRoutingRunner:
         self._docker_executable = docker_executable or cfg.docker_executable
         self._java_executable = java_executable or cfg.java_executable
 
+    def _cli_export_dsn(self, kicad_cli: str | Path, pcb_path: Path, target: Path) -> bool:
+        """Attempt the headless ``kicad-cli pcb export specctra`` command.
+
+        Returns True only if a non-empty DSN file was produced. The capability probe
+        gates the call, but the exact CLI build may still reject it, so failure is not
+        fatal — the caller falls back to a manual-step path.
+        """
+        cli = str(kicad_cli)
+        variants = [
+            [cli, "pcb", "export", "specctra", "--output", str(target), str(pcb_path)],
+            [cli, "pcb", "export", "specctra", "--input", str(pcb_path), "--output", str(target)],
+        ]
+        for cmd in variants:
+            try:
+                result = subprocess.run(  # noqa: S603
+                    cmd, capture_output=True, text=True, timeout=120, check=False
+                )
+            except (OSError, subprocess.SubprocessError):
+                continue
+            if result.returncode == 0 and target.exists() and target.stat().st_size > 0:
+                return True
+        return False
+
     def export_dsn(self, pcb_path: Path, dsn_path: Path) -> Path:
-        """Stage an existing DSN file for FreeRouting or explain the missing export path."""
+        """Export a Specctra DSN for FreeRouting, or raise a clear manual-step error.
+
+        Tries an already-staged file, then a headless ``kicad-cli pcb export specctra``
+        when the CLI advertises it, then known sidecar locations. If none succeed it
+        raises ``ManualStepRequiredError`` describing the one-time GUI export rather than
+        dead-ending.
+        """
         cfg = get_config()
         target = cfg.resolve_within_project(dsn_path)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -135,12 +165,8 @@ class FreeRoutingRunner:
             return target
 
         caps = get_cli_capabilities(cfg.kicad_cli)
-        if caps.supports_specctra_export:
-            raise RuntimeError(
-                "Specctra DSN export appears to be available in this KiCad CLI build, "
-                "but the exact headless export syntax has not been wired yet. "
-                f"Export the DSN once from KiCad and place it at {target}."
-            )
+        if caps.supports_specctra_export and self._cli_export_dsn(cfg.kicad_cli, pcb_path, target):
+            return target
 
         candidates = [
             pcb_path.with_suffix(".dsn"),
@@ -154,10 +180,10 @@ class FreeRoutingRunner:
                 shutil.copy2(candidate, target)
             return target
 
-        raise RuntimeError(
-            "The detected KiCad CLI does not provide headless Specctra DSN export on this "
-            f"machine ({cfg.kicad_cli}). Export a .dsn file from KiCad's PCB Editor and place "
-            f"it at {target} or next to {pcb_path.name}."
+        raise ManualStepRequiredError(
+            "Headless Specctra DSN export is not available from this KiCad CLI "
+            f"({cfg.kicad_cli}). In KiCad's PCB Editor run File > Export > Specctra DSN and "
+            f"save it to {target} (or next to {pcb_path.name}), then retry."
         )
 
     def run_freerouting(
@@ -311,22 +337,27 @@ class FreeRoutingRunner:
             ses_path=output,
         )
 
-    def import_ses(self, pcb_path: Path, ses_path: Path) -> Path:
-        """Stage a session file for KiCad import and explain the remaining manual step."""
+    def stage_ses(self, ses_path: Path) -> Path:
+        """Copy the routed SES session into the project routing output and return it."""
         cfg = get_config()
         if not ses_path.exists():
             raise FileNotFoundError(f"Specctra SES session was not found: {ses_path}")
-
         staged = cfg.resolve_within_project(cfg.ensure_output_dir("routing") / ses_path.name)
         if staged.resolve() != ses_path.resolve():
             shutil.copy2(ses_path, staged)
-
-        caps = get_cli_capabilities(cfg.kicad_cli)
-        if caps.supports_specctra_import:
-            logger.warning(
-                "specctra_import_detected_but_manual",
-                pcb=str(pcb_path),
-                ses=str(staged),
-            )
-
         return staged
+
+    def import_ses(self, pcb_path: Path, ses_path: Path) -> Path:
+        """Stage the SES session, then raise the manual-import step it still requires.
+
+        KiCad exposes no headless path to apply a routed Specctra SES session to a board,
+        so this never silently "succeeds": it stages the file and raises
+        ``ManualStepRequiredError`` describing the one-time GUI import. The staged path is
+        in the message so the caller can surface exactly where the session is.
+        """
+        staged = self.stage_ses(ses_path)
+        raise ManualStepRequiredError(
+            f"The routed session is staged at {staged}, but KiCad has no headless Specctra "
+            "SES import. Open the PCB in KiCad's PCB Editor and run File > Import > Specctra "
+            "Session to apply the routing, then save the board."
+        )

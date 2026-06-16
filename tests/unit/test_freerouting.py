@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from kicad_mcp.errors import ManualStepRequiredError
 from kicad_mcp.utils.freerouting import FreeRoutingRunner
 
 
@@ -23,10 +24,11 @@ def test_export_dsn_copies_existing_sibling_dsn(sample_project: Path) -> None:
 def test_export_dsn_requires_manual_export_when_cli_lacks_specctra(sample_project: Path) -> None:
     runner = FreeRoutingRunner()
 
-    with pytest.raises(RuntimeError) as exc_info:
+    with pytest.raises(ManualStepRequiredError) as exc_info:
         runner.export_dsn(sample_project / "demo.kicad_pcb", Path("output/routing/board.dsn"))
 
-    assert "Export a .dsn file from KiCad's PCB Editor" in str(exc_info.value)
+    assert "Specctra DSN" in str(exc_info.value)
+    assert exc_info.value.code == "MANUAL_STEP_REQUIRED"
 
 
 def test_run_freerouting_docker_builds_expected_command(
@@ -122,12 +124,28 @@ def test_run_freerouting_jar_requires_jar_path(sample_project: Path) -> None:
     assert "FreeRouting JAR path is required" in str(exc_info.value)
 
 
-def test_import_ses_stages_session(sample_project: Path, tmp_path: Path) -> None:
+def test_stage_ses_copies_session(sample_project: Path, tmp_path: Path) -> None:
     ses_path = tmp_path / "board.ses"
     ses_path.write_text("ses", encoding="utf-8")
 
-    staged = FreeRoutingRunner().import_ses(sample_project / "demo.kicad_pcb", ses_path)
+    staged = FreeRoutingRunner().stage_ses(ses_path)
 
     assert staged.exists()
     assert staged.read_text(encoding="utf-8") == "ses"
     assert staged.parent.name == "routing"
+
+
+def test_import_ses_stages_then_requires_manual_gui_step(
+    sample_project: Path, tmp_path: Path
+) -> None:
+    ses_path = tmp_path / "board.ses"
+    ses_path.write_text("ses", encoding="utf-8")
+
+    # The session is staged (a real action), but applying it has no headless path, so
+    # import_ses must never silently succeed: it raises a clear manual-step error.
+    with pytest.raises(ManualStepRequiredError) as exc_info:
+        FreeRoutingRunner().import_ses(sample_project / "demo.kicad_pcb", ses_path)
+
+    assert "File > Import > Specctra Session" in str(exc_info.value)
+    staged = sample_project / "output" / "routing" / "board.ses"
+    assert staged.exists()

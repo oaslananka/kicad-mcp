@@ -91,7 +91,8 @@ Move a design from schematic capture to PCB layout.
 3. Run ERC and power checks.
 4. Export the netlist.
 5. Inspect footprints and assign missing ones.
-6. Move footprints, then do not skip the post-placement routing pass:
+6. Move footprints, then run the post-placement routing pass (apply the routed
+   session in KiCad when the tool surfaces the manual import step):
    a. `route_export_dsn()`
    b. `route_autoroute_freerouting()` — Docker-first, JAR fallback
    c. `route_import_ses()`
@@ -125,8 +126,10 @@ Run the mandatory post-placement routing loop.
 
 1. Confirm placement is acceptable with `pcb_score_placement()`.
 2. Export routing input with `route_export_dsn()`.
-3. Run `route_autoroute_freerouting()` — run this after placement and do not skip it.
-4. Import the routed result with `route_import_ses()`.
+3. Run `route_autoroute_freerouting()` after placement; it routes headlessly and
+   surfaces the KiCad import step (`human_gate_required`) when the SES must be applied.
+4. Apply the routed result with `route_import_ses()`, then perform the KiCad GUI
+   import it describes.
 5. Refill copper with `pcb_refill_zones()`.
 6. Run `run_drc()` and inspect `kicad://project/fix_queue`.
 7. Repeat only the failing step; do not restart schematic capture unless the transfer gate fails.

@@ -126,6 +126,20 @@ class ExternalToolUnavailableError(KiCadMcpError):
     retryable = False
 
 
+class ManualStepRequiredError(KiCadMcpError):
+    """Raised when a workflow cannot complete headlessly and needs a KiCad GUI step.
+
+    Used where KiCad exposes no headless path (e.g. applying a routed Specctra SES
+    session). The message describes the exact GUI step so an agent can surface it
+    instead of silently dead-ending or falsely reporting success.
+    """
+
+    code = "MANUAL_STEP_REQUIRED"
+    hint = "Perform the described step in the KiCad GUI, then retry."
+    retryable = True
+    transient_class: TransientClass = "state"
+
+
 def error_payload(exc: BaseException) -> ErrorPayload:
     """Map an arbitrary exception to the stable error payload shape."""
     if isinstance(exc, KiCadMcpError):

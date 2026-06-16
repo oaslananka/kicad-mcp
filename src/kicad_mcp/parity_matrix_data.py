@@ -319,7 +319,7 @@ _RAW = r"""
           "mcp_tool": "route_autoroute_freerouting",
           "status": "partial",
           "kicad_version_introduced": "10.0.x",
-          "notes": "End-to-end headless route is not yet wired; DSN export / SES import may require a manual KiCad step (work order K1). Full solution is Phase 4 (P4-T1)."
+          "notes": "Routes headlessly (Docker/JAR); applying the routed SES is a manual KiCad GUI step (no headless SES import) surfaced via human_gate_required (P1-T7). Full headless flow is Phase 4 (P4-T1)."
         },
         {
           "capability": "Export Specctra DSN / import routed SES",
@@ -327,7 +327,7 @@ _RAW = r"""
           "mcp_tool": "route_export_dsn",
           "status": "partial",
           "kicad_version_introduced": "10.0.x",
-          "notes": "route_import_ses stages but does not yet import headlessly (K1); honest manual-step surfacing is P1-T7."
+          "notes": "route_export_dsn attempts headless kicad-cli specctra export, else returns a clear human-gated manual-step result; route_import_ses stages and surfaces the GUI import step (P1-T7, K1)."
         },
         {
           "capability": "Set per-net-class routing rules",
