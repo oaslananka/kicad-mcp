@@ -104,9 +104,7 @@ def _component_search_client(source: str) -> ComponentSearchClient:
         return DigiKeyClient()
     if normalized == "mouser":
         return MouserClient()
-    raise ValueError(
-        "Unknown component source. Use 'jlcsearch', 'nexar', 'digikey', or 'mouser'."
-    )
+    raise ValueError("Unknown component source. Use 'jlcsearch', 'nexar', 'digikey', or 'mouser'.")
 
 
 def _sort_component_results(

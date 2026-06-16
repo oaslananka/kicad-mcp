@@ -80,9 +80,7 @@ def _identity(item: object) -> str:
     return str(item)
 
 
-def _diff_collection(
-    category: str, before: list[Any], after: list[Any]
-) -> list[IntentChange]:
+def _diff_collection(category: str, before: list[Any], after: list[Any]) -> list[IntentChange]:
     before_by_id = {_identity(item): item for item in before}
     after_by_id = {_identity(item): item for item in after}
     changes: list[IntentChange] = []
