@@ -199,6 +199,7 @@ async def test_power_integrity_edge_paths(sample_project, mock_board) -> None:
     assert "No copper pours were found" in thermal
     assert "PDN mesh check" in pdn
     assert "- FAIL:" in pdn
+    assert "- Method: distributed multi-load resistive PDN mesh" in pdn
 
 
 @pytest.mark.anyio
@@ -225,3 +226,26 @@ async def test_pi_thermal_results_state_their_method(sample_project, mock_board)
     )
     assert "- Method:" in vias
     assert "FEA" in vias
+
+
+@pytest.mark.anyio
+async def test_pdn_voltage_drop_ipc2221_fusing_verdict(sample_project) -> None:
+    """pdn_calculate_voltage_drop reports IPC-2221 temperature rise with a real
+    PASS/WARN/FAIL fusing verdict (work order P3-T2)."""
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    safe = await call_tool_text(
+        server,
+        "pdn_calculate_voltage_drop",
+        {"current_a": 1.0, "trace_width_mm": 0.5, "trace_length_mm": 50.0},
+    )
+    assert "IPC-2221 temperature rise" in safe
+    assert "(PASS;" in safe
+
+    overload = await call_tool_text(
+        server,
+        "pdn_calculate_voltage_drop",
+        {"current_a": 5.0, "trace_width_mm": 0.5, "trace_length_mm": 50.0},
+    )
+    assert "(FAIL;" in overload

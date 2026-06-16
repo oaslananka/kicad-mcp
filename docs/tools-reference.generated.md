@@ -200,7 +200,7 @@ Total public tools: 332.
 | `pcb_sync_from_schematic` | agent_full, builder, full, high_speed, pcb, pcb_only, power | no | no | no | no | yes | no | Sync missing PCB footprints from schematic footprint assignments. |
 | `pcb_transfer_quality_gate` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | yes | no | no | yes | yes | no | Evaluate whether named schematic pad nets transferred cleanly onto PCB pads. |
 | `pcb_upgrade` | agent_full, full, manufacturing | no | no | no | yes | yes | no | Upgrade a PCB file to the current KiCad file format. |
-| `pdn_calculate_voltage_drop` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Estimate DC voltage drop and trace resistance. This KiCad MCP Pro tool supports production EDA automation workflows f... |
+| `pdn_calculate_voltage_drop` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Estimate DC voltage drop, trace resistance, and IPC-2221 current-density fusing. |
 | `pdn_check_copper_weight` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Check whether the routed copper for a net looks sufficient for the load current. |
 | `pdn_generate_power_plane` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Generate a rectangular copper plane on the requested copper layer. |
 | `pdn_recommend_decoupling_caps` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Recommend local and bulk decoupling from a simple PDN heuristic. |

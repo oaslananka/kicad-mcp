@@ -46,3 +46,22 @@ def test_pdn_mesh_reports_voltage_drop_and_violations() -> None:
     assert result.max_drop_mv > 0.0
     assert result.violations
     assert "Widen +3V3 traces" in result.recommendations[0]
+
+
+def test_ipc2221_temperature_rise_physics() -> None:
+    """IPC-2221 self-heating estimate behaves physically (work order P3-T2)."""
+    from kicad_mcp.utils.pdn_mesh import ipc2221_temperature_rise_c
+
+    # Known-good order of magnitude: 1 A on a 0.5 mm / 1 oz external trace ~ a few C.
+    mild = ipc2221_temperature_rise_c(1.0, 0.5, 1.0)
+    assert 3.0 < mild < 6.0
+
+    # No current -> no rise.
+    assert ipc2221_temperature_rise_c(0.0, 0.5, 1.0) == 0.0
+
+    # Internal traces run hotter than external for the same geometry (less cooling).
+    assert ipc2221_temperature_rise_c(1.0, 0.5, 1.0, internal=True) > mild
+
+    # Wider copper runs cooler; an overloaded thin trace gets very hot.
+    assert ipc2221_temperature_rise_c(3.0, 2.0, 1.0) < ipc2221_temperature_rise_c(3.0, 0.5, 1.0)
+    assert ipc2221_temperature_rise_c(5.0, 0.5, 1.0) > 100.0

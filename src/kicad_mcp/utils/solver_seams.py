@@ -22,6 +22,11 @@ THERMAL_CLOSED_FORM_METHOD = "first-order resistive estimate (theta_JA / via-cou
 THERMAL_CLOSED_FORM_ACCURACY = (
     "first-order; not a thermal-network / FEA solve with copper spreading and airflow"
 )
+PDN_MESH_METHOD = "distributed multi-load resistive PDN mesh (DC) + lumped-branch Z(f)"
+PDN_MESH_ACCURACY = (
+    "real network solve across all loads using 1-D equivalent trace resistance and "
+    "lumped decoupling branches; not a 2-D copper-plane field solve"
+)
 
 
 def pdn_solver_available() -> bool:
@@ -64,6 +69,21 @@ def ir_drop_method() -> dict[str, Any]:
         closed_accuracy=PDN_CLOSED_FORM_ACCURACY,
         what="distributed IR-drop",
     )
+
+
+def pdn_mesh_method() -> dict[str, Any]:
+    """Describe check_power_integrity's distributed PDN mesh solve, honestly.
+
+    Unlike the single-trace lumped estimate (:func:`ir_drop_method`), this is a genuine
+    multi-load resistive network solve with frequency-domain PDN impedance, so it is
+    solver-grade — but it models traces as 1-D equivalent resistances, not a 2-D
+    copper-plane field solver.
+    """
+    return {
+        "method": PDN_MESH_METHOD,
+        "solver_grade": True,
+        "accuracy": PDN_MESH_ACCURACY,
+    }
 
 
 def thermal_method() -> dict[str, Any]:

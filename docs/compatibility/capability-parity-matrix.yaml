@@ -361,13 +361,13 @@ domains:
         mcp_tool: pdn_calculate_voltage_drop
         status: partial
         kicad_version_introduced: "10.0.x"
-        notes: "First-order lumped estimate, labeled honestly via the solver seam (utils/solver_seams: no distributed solver wired); the distributed IR-drop / current-density solver is the Phase 3 (P3-T2) upgrade."
+        notes: "pdn_calculate_voltage_drop is a first-order single-trace lumped estimate, now with an IPC-2221 current-density fusing / temperature-rise PASS/WARN/FAIL verdict; check_power_integrity runs a genuine distributed multi-load resistive PDN mesh (DC drop + frequency-domain Z(f)), labeled solver-grade via the seam (utils/solver_seams.pdn_mesh_method). Remaining P3-T2 upgrade: a 2-D copper-plane field solve."
       - capability: "Decoupling recommendation / power-plane generation"
         kicad_channel: file
         mcp_tool: pdn_recommend_decoupling_caps
         status: partial
         kicad_version_introduced: "10.0.x"
-        notes: "pdn_generate_power_plane covered; frequency-domain PDN target-Z synthesis is Phase 3 (P3-T2)."
+        notes: "pdn_generate_power_plane covered; frequency-domain PDN target-Z checking now delivered via check_power_integrity (pdn_mesh Z(f) vs target_impedance_ohm with violations); a full plane-capacitance field model remains a future upgrade."
       - capability: "Thermal via / copper-pour sizing"
         kicad_channel: file
         mcp_tool: thermal_calculate_via_count

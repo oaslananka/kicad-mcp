@@ -29,9 +29,15 @@ from ..models.power_integrity import (
 )
 from ..utils.impedance import copper_thickness_mm, recommended_decoupling_distance_mm
 from ..utils.layers import resolve_layer
-from ..utils.pdn_mesh import PdnDecouplingCap, PdnLoad, PdnMesh
-from ..utils.solver_seams import ir_drop_method, thermal_method
+from ..utils.pdn_mesh import (
+    PdnDecouplingCap,
+    PdnLoad,
+    PdnMesh,
+    ipc2221_temperature_rise_c,
+)
+from ..utils.solver_seams import ir_drop_method, pdn_mesh_method, thermal_method
 from ..utils.units import _coord_nm, mm_to_mil, mm_to_nm, nm_to_mm
+from ..verdicts import three_level_verdict, warn_max_from
 
 _COPPER_RESISTIVITY_OHM_M = 1.724e-8
 _TEMPERATURE_COEFFICIENT = 0.0039
@@ -223,8 +229,15 @@ def register(mcp: FastMCP) -> None:
         trace_width_mm: float,
         trace_length_mm: float,
         copper_oz: float = 1.0,
+        max_temp_rise_c: float = 10.0,
+        internal_layer: bool = False,
     ) -> str:
-        """Estimate DC voltage drop and trace resistance."""
+        """Estimate DC voltage drop, trace resistance, and IPC-2221 current-density fusing.
+
+        ``max_temp_rise_c`` is the temperature-rise budget; the verdict is PASS within it,
+        WARN up to 2x, FAIL beyond. Set ``internal_layer=True`` for a buried trace (lower
+        ampacity).
+        """
         payload = VoltageDropInput(
             current_a=current_a,
             trace_width_mm=trace_width_mm,
@@ -240,15 +253,30 @@ def register(mcp: FastMCP) -> None:
         current_density_a_per_mm2 = payload.current_a / (
             payload.trace_width_mm * copper_thickness_mm(payload.copper_oz)
         )
+        # IPC-2221 self-heating / fusing temperature rise for this current density.
+        temp_rise_c = ipc2221_temperature_rise_c(
+            payload.current_a,
+            payload.trace_width_mm,
+            payload.copper_oz,
+            internal=internal_layer,
+        )
+        fail_temp_c = warn_max_from(max_temp_rise_c)
+        fusing_verdict = three_level_verdict(
+            temp_rise_c, pass_max=max_temp_rise_c, warn_max=fail_temp_c
+        )
         lines = [
             "PDN voltage-drop estimate:",
             f"- Current: {payload.current_a:.3f} A",
             f"- Trace width: {payload.trace_width_mm:.3f} mm",
             f"- Trace length: {payload.trace_length_mm:.3f} mm",
-            f"- Copper: {payload.copper_oz:.2f} oz",
+            f"- Copper: {payload.copper_oz:.2f} oz "
+            f"({'internal' if internal_layer else 'external'} layer)",
             f"- Estimated resistance: {resistance_ohm:.5f} ohm",
             f"- Estimated voltage drop: {drop_v * 1_000.0:.2f} mV",
             f"- Estimated current density: {current_density_a_per_mm2:.2f} A/mm^2",
+            f"- IPC-2221 temperature rise: {temp_rise_c:.1f} C ({fusing_verdict}; "
+            f"PASS <= {max_temp_rise_c:.1f} C, WARN <= {fail_temp_c:.1f} C, "
+            f"FAIL > {fail_temp_c:.1f} C)",
         ]
         method = ir_drop_method()
         lines.append(f"- Method: {method['method']} — {method['accuracy']}")
@@ -315,6 +343,8 @@ def register(mcp: FastMCP) -> None:
                 lines.append(f"- Z({frequency_hz:.0f} Hz): {impedance:.4f} ohm")
         lines.extend(f"- IMPEDANCE FAIL: {item}" for item in result.impedance_violations)
         lines.extend(f"- Recommendation: {item}" for item in result.recommendations)
+        mesh_method = pdn_mesh_method()
+        lines.append(f"- Method: {mesh_method['method']} — {mesh_method['accuracy']}")
         return "\n".join(lines)
 
     @mcp.tool()
