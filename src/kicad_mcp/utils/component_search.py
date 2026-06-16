@@ -9,10 +9,15 @@ import time
 import urllib.parse
 import urllib.request
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
 from html import unescape
 from html.parser import HTMLParser
 from typing import Any, Protocol, cast
+
+# Transport seam: (url, body, headers) -> decoded JSON. Injectable so the live
+# distributor clients can be unit-tested without touching the network.
+HttpPostJson = Callable[[str, bytes, dict[str, str]], dict[str, Any]]
 
 DEFAULT_USER_AGENT = "kicad-mcp-pro/1.0 (+https://github.com/oaslananka/kicad-mcp)"
 
@@ -281,15 +286,120 @@ def _record_from_jlcpcb_detail_page(html: str, lcsc_code: str) -> ComponentRecor
     )
 
 
+def _https_post_json(url: str, body: bytes, headers: dict[str, str]) -> dict[str, Any]:
+    """POST ``body`` to an https URL and decode the JSON response."""
+    if urllib.parse.urlparse(url).scheme != "https":
+        raise ValueError("Only https distributor endpoints are permitted.")
+    merged = {"User-Agent": DEFAULT_USER_AGENT, **headers}
+    request = urllib.request.Request(url, data=body, headers=merged, method="POST")  # noqa: S310
+    with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310  # nosec B310
+        return cast(dict[str, Any], json.load(response))
+
+
+_NEXAR_SEARCH_QUERY = (
+    "query KicadMcpSearch($q: String!, $limit: Int!) {"
+    "  supSearchMpn(q: $q, limit: $limit) {"
+    "    results {"
+    "      part {"
+    "        mpn"
+    "        manufacturer { name }"
+    "        shortDescription"
+    "        totalAvail"
+    "        medianPrice1000 { price }"
+    "        specs { attribute { name } displayValue }"
+    "      }"
+    "    }"
+    "  }"
+    "}"
+)
+
+_nexar_limiter = RateLimiter(max_calls=5, period_seconds=1.0)
+
+
+def _record_from_nexar(part: dict[str, Any]) -> ComponentRecord:
+    manufacturer = str((part.get("manufacturer") or {}).get("name", ""))
+    price: float | None = None
+    median = part.get("medianPrice1000")
+    if isinstance(median, dict) and median.get("price") is not None:
+        price = float(median["price"])
+    package = ""
+    for spec in part.get("specs") or []:
+        attribute = str((spec.get("attribute") or {}).get("name", "")).casefold()
+        if attribute in ("case/package", "package", "case / package"):
+            package = str(spec.get("displayValue", ""))
+            break
+    description = str(part.get("shortDescription") or "").strip() or manufacturer
+    return ComponentRecord(
+        source="nexar",
+        lcsc_code="",
+        mpn=str(part.get("mpn", "")),
+        package=package,
+        description=description,
+        stock=int(part.get("totalAvail", 0) or 0),
+        price=price,
+        is_basic=False,
+        is_preferred=False,
+    )
+
+
 class NexarClient:
-    """Optional Nexar GraphQL client."""
+    """Live Nexar Supply (Octopart) GraphQL client.
+
+    Authenticates with the OAuth2 ``client_credentials`` grant against
+    ``identity.nexar.com`` and queries ``supSearchMpn`` on the Supply API. Requires
+    ``NEXAR_CLIENT_ID`` / ``NEXAR_CLIENT_SECRET`` (loaded from ``.env`` at server
+    startup) and an app subscribed to the Supply API. ``transport`` is injectable
+    so the OAuth + GraphQL flow is unit-testable without the network.
+    """
 
     ENDPOINT = "https://api.nexar.com/graphql"
     TOKEN_URL = "https://identity.nexar.com/connect/token"  # noqa: S105
 
-    def __init__(self) -> None:
-        self._client_id = os.getenv("NEXAR_CLIENT_ID")
-        self._client_secret = os.getenv("NEXAR_CLIENT_SECRET")
+    def __init__(
+        self,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        *,
+        transport: HttpPostJson | None = None,
+    ) -> None:
+        self._client_id = client_id if client_id is not None else os.getenv("NEXAR_CLIENT_ID")
+        self._client_secret = (
+            client_secret if client_secret is not None else os.getenv("NEXAR_CLIENT_SECRET")
+        )
+        self._transport = transport or _https_post_json
+        self._token: str | None = None
+        self._token_expiry = 0.0
+
+    def _require_credentials(self) -> tuple[str, str]:
+        if not self._client_id or not self._client_secret:
+            raise RuntimeError("Nexar search requires NEXAR_CLIENT_ID and NEXAR_CLIENT_SECRET.")
+        return self._client_id, self._client_secret
+
+    def _access_token(self) -> str:
+        now = time.monotonic()
+        if self._token is not None and now < self._token_expiry:
+            return self._token
+        client_id, client_secret = self._require_credentials()
+        _nexar_limiter.acquire()
+        body = urllib.parse.urlencode(
+            {
+                "grant_type": "client_credentials",
+                "client_id": client_id,
+                "client_secret": client_secret,
+            }
+        ).encode("utf-8")
+        response = self._transport(
+            self.TOKEN_URL,
+            body,
+            {"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        token = response.get("access_token")
+        if not token:
+            raise RuntimeError("Nexar token endpoint did not return an access_token.")
+        self._token = str(token)
+        # Refresh a minute early to avoid using a token that expires mid-request.
+        self._token_expiry = now + float(response.get("expires_in", 3600)) - 60.0
+        return self._token
 
     def search(
         self,
@@ -299,17 +409,41 @@ class NexarClient:
         only_basic: bool = True,
         limit: int = 20,
     ) -> list[ComponentRecord]:
-        _ = (package, only_basic, limit)
-        if not self._client_id or not self._client_secret:
-            raise RuntimeError("Nexar search requires NEXAR_CLIENT_ID and NEXAR_CLIENT_SECRET.")
-        raise RuntimeError(
-            "Nexar live search is reserved for authenticated deployments. "
-            f"Use the zero-auth 'jlcsearch' source for local usage. Query was: {keyword}"
+        _ = only_basic
+        self._require_credentials()
+        token = self._access_token()
+        _nexar_limiter.acquire()
+        capped = max(1, min(limit, 20))
+        body = json.dumps(
+            {"query": _NEXAR_SEARCH_QUERY, "variables": {"q": keyword, "limit": capped}}
+        ).encode("utf-8")
+        response = self._transport(
+            self.ENDPOINT,
+            body,
+            {"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         )
+        errors = response.get("errors")
+        if errors:
+            if isinstance(errors, list) and errors:
+                message = errors[0].get("message", "unknown error")
+            else:
+                message = str(errors)
+            raise RuntimeError(f"Nexar GraphQL error: {message}")
+        results = ((response.get("data") or {}).get("supSearchMpn") or {}).get("results") or []
+        records = [_record_from_nexar(entry.get("part") or {}) for entry in results]
+        if package:
+            needle = package.casefold()
+            records = [record for record in records if needle in record.package.casefold()]
+        return records[:limit]
 
     def get_part(self, lcsc_code_or_mpn: str) -> ComponentRecord | None:
-        _ = lcsc_code_or_mpn
-        raise RuntimeError("Nexar component detail lookups require authenticated deployment.")
+        self._require_credentials()
+        results = self.search(lcsc_code_or_mpn, limit=5)
+        needle = lcsc_code_or_mpn.strip().casefold()
+        for record in results:
+            if record.mpn.casefold() == needle:
+                return record
+        return results[0] if results else None
 
 
 class DigiKeyClient:

@@ -218,7 +218,7 @@ def test_optional_search_clients_raise_clear_messages(monkeypatch) -> None:
     monkeypatch.delenv("NEXAR_CLIENT_SECRET", raising=False)
     with pytest.raises(RuntimeError, match="NEXAR_CLIENT_ID"):
         NexarClient().search("accelerometer")
-    with pytest.raises(RuntimeError, match="detail lookups require authenticated deployment"):
+    with pytest.raises(RuntimeError, match="NEXAR_CLIENT_ID"):
         NexarClient().get_part("C12345")
 
     monkeypatch.delenv("DIGIKEY_CLIENT_ID", raising=False)
@@ -227,6 +227,81 @@ def test_optional_search_clients_raise_clear_messages(monkeypatch) -> None:
         DigiKeyClient().search("buzzer")
     with pytest.raises(RuntimeError, match="detail lookups require authenticated deployment"):
         DigiKeyClient().get_part("C12345")
+
+
+class _FakeNexarTransport:
+    """Scripted OAuth + GraphQL transport for hermetic NexarClient tests."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def __call__(self, url: str, body: bytes, headers: dict[str, str]) -> dict[str, object]:
+        self.calls.append(url)
+        if url.endswith("/connect/token"):
+            assert b"client_credentials" in body
+            return {"access_token": "tok-123", "expires_in": 3600}
+        assert headers.get("Authorization") == "Bearer tok-123"
+        return {
+            "data": {
+                "supSearchMpn": {
+                    "results": [
+                        {
+                            "part": {
+                                "mpn": "STM32F103C8T6",
+                                "manufacturer": {"name": "STMicroelectronics"},
+                                "shortDescription": "ARM Cortex-M3 MCU",
+                                "totalAvail": 4200,
+                                "medianPrice1000": {"price": 1.83},
+                                "specs": [
+                                    {
+                                        "attribute": {"name": "Case/Package"},
+                                        "displayValue": "LQFP-48",
+                                    }
+                                ],
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+
+
+def test_nexar_search_parses_records_with_injected_transport() -> None:
+    transport = _FakeNexarTransport()
+    client = NexarClient(client_id="id", client_secret="secret", transport=transport)  # noqa: S106
+    records = client.search("STM32F103", limit=5)
+
+    assert len(records) == 1
+    record = records[0]
+    assert record.source == "nexar"
+    assert record.mpn == "STM32F103C8T6"
+    assert record.package == "LQFP-48"
+    assert record.stock == 4200
+    assert record.price == 1.83
+    # OAuth token fetched, then the GraphQL query issued.
+    assert transport.calls[0].endswith("/connect/token")
+    assert transport.calls[1].endswith("/graphql")
+
+
+def test_nexar_token_is_cached_across_searches() -> None:
+    transport = _FakeNexarTransport()
+    client = NexarClient(client_id="id", client_secret="secret", transport=transport)  # noqa: S106
+    client.search("a")
+    client.search("b")
+    # One token call, two graphql calls — the token is reused, not re-fetched.
+    assert transport.calls.count("https://identity.nexar.com/connect/token") == 1
+    assert transport.calls.count("https://api.nexar.com/graphql") == 2
+
+
+def test_nexar_graphql_errors_surface_as_runtime_error() -> None:
+    def transport(url: str, body: bytes, headers: dict[str, str]) -> dict[str, object]:
+        if url.endswith("/connect/token"):
+            return {"access_token": "t", "expires_in": 3600}
+        return {"errors": [{"message": "rate limit exceeded"}]}
+
+    client = NexarClient(client_id="id", client_secret="secret", transport=transport)  # noqa: S106
+    with pytest.raises(RuntimeError, match="Nexar GraphQL error: rate limit exceeded"):
+        client.search("anything")
 
 
 def test_rate_limiter_waits_when_window_is_full(monkeypatch) -> None:
