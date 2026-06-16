@@ -117,7 +117,7 @@ domains:
         mcp_tool: sch_modify_property
         status: partial
         kicad_version_introduced: "10.0.x"
-        notes: "Text-level property write uses regex fallback (work order K5); round-trip-safe AST is Phase 2 (P2-T1)."
+        notes: "Round-trip-safe edit primitive (utils/schematic_roundtrip) with a corruption guard exists (P2-T1); testing showed kicad-sch-api 0.5.x drops global_label on save, so writes refuse+restore rather than silently corrupt (K5). Migrating each regex write path through the guarded primitive is incremental."
       - capability: "Swap pins / gates"
         kicad_channel: file
         mcp_tool: sch_swap_pins

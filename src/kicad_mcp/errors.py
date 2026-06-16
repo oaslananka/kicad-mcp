@@ -140,6 +140,19 @@ class ManualStepRequiredError(KiCadMcpError):
     transient_class: TransientClass = "state"
 
 
+class SchematicWriteUnsafeError(KiCadMcpError):
+    """Raised when a schematic write would lose structure and is refused.
+
+    A round-trip-safe edit verifies that no structural nodes (e.g. global labels,
+    sheets) were dropped. If the serializer would silently corrupt the file, the
+    original is restored and this is raised instead — writes never silently lose data.
+    """
+
+    code = "SCHEMATIC_WRITE_UNSAFE"
+    hint = "The original file was restored. Edit the affected construct another way."
+    retryable = False
+
+
 def error_payload(exc: BaseException) -> ErrorPayload:
     """Map an arbitrary exception to the stable error payload shape."""
     if isinstance(exc, KiCadMcpError):

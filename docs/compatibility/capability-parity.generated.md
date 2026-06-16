@@ -39,7 +39,7 @@ KiCad baseline: `10.0.x` · Updated: 2026-06-16
 | `pcb_edit` | Auto-place footprints from schematic | `partial` | `ipc` | `pcb_auto_place_by_schematic` | Force-directed placement (pcb_auto_place_force_directed) is non-deterministic under a wall-clock cap (work order K7); deterministic placement is Phase 4 (P4-T2). |
 | `routing` | Export Specctra DSN / import routed SES | `partial` | `cli` | `route_export_dsn` | route_export_dsn attempts headless kicad-cli specctra export, else returns a clear human-gated manual-step result; route_import_ses stages and surfaces the GUI import step (P1-T7, K1). |
 | `routing` | Full autoroute (FreeRouting orchestration) | `partial` | `cli` | `route_autoroute_freerouting` | Routes headlessly (Docker/JAR); applying the routed SES is a manual KiCad GUI step (no headless SES import) surfaced via human_gate_required (P1-T7). Full headless flow is Phase 4 (P4-T1). |
-| `schematic_edit` | Modify a symbol property by reference | `partial` | `ipc` | `sch_modify_property` | Text-level property write uses regex fallback (work order K5); round-trip-safe AST is Phase 2 (P2-T1). |
+| `schematic_edit` | Modify a symbol property by reference | `partial` | `ipc` | `sch_modify_property` | Round-trip-safe edit primitive (utils/schematic_roundtrip) with a corruption guard exists (P2-T1); testing showed kicad-sch-api 0.5.x drops global_label on save, so writes refuse+restore rather than silently corrupt (K5). Migrating each regex write path through the guarded primitive is incremental. |
 | `schematic_edit` | Swap pins / gates | `partial` | `file` | `sch_swap_pins` | Experimental; sch_swap_gates is also experimental and profile-gated. |
 
 ## Full matrix
@@ -61,7 +61,7 @@ Symbol/wire/label/bus/hierarchy/power/no-connect/annotate/ERC editing of .kicad_
 | Create and wire hierarchical sheets | `file` | `sch_create_sheet` | `covered` | 10.0.x | sch_list_sheets / sch_get_sheet_info for inspection. |
 | Annotate references | `file` | `sch_annotate` | `covered` | 10.0.x |  |
 | Run ERC and inspect violations | `cli` | `run_erc` | `covered` | 10.0.x | erc_set_rule_severity / erc_list_rules tune severities. |
-| Modify a symbol property by reference | `ipc` | `sch_modify_property` | `partial` | 10.0.x | Text-level property write uses regex fallback (work order K5); round-trip-safe AST is Phase 2 (P2-T1). |
+| Modify a symbol property by reference | `ipc` | `sch_modify_property` | `partial` | 10.0.x | Round-trip-safe edit primitive (utils/schematic_roundtrip) with a corruption guard exists (P2-T1); testing showed kicad-sch-api 0.5.x drops global_label on save, so writes refuse+restore rather than silently corrupt (K5). Migrating each regex write path through the guarded primitive is incremental. |
 | Swap pins / gates | `file` | `sch_swap_pins` | `partial` | 10.0.x | Experimental; sch_swap_gates is also experimental and profile-gated. |
 | Interactive symbol graphic drawing in the editor | `gui-only` | — | `gui-only-no-api` | 10.0.x | Custom symbol bodies are created via lib_create_custom_symbol; freehand editor drawing is GUI-only. |
 
