@@ -1,6 +1,6 @@
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 330.
+Total public tools: 331.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -203,6 +203,7 @@ Total public tools: 330.
 | `pdn_check_copper_weight` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Check whether the routed copper for a net looks sufficient for the load current. |
 | `pdn_generate_power_plane` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Generate a rectangular copper plane on the requested copper layer. |
 | `pdn_recommend_decoupling_caps` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Recommend local and bulk decoupling from a simple PDN heuristic. |
+| `project_assess_edit_impact` | all | no | no | no | no | yes | no | Scope re-validation after an edit: semantic-diff the design intent and report |
 | `project_auto_fix_loop` | all | no | yes | no | no | yes | no | Run the project quality gate and automatically apply server-side fixes. |
 | `project_design_report` | all | no | no | no | no | yes | no | Generate a comprehensive design-status report. |
 | `project_embed_file` | all | no | no | no | no | yes | no | Embed an external file into the KiCad project as project metadata. |
@@ -536,6 +537,7 @@ Total public tools: 330.
 - `pdn_check_copper_weight`: profiles=agent_full, analysis, critic, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `pdn_generate_power_plane`: profiles=agent_full, analysis, critic, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `pdn_recommend_decoupling_caps`: profiles=agent_full, analysis, critic, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
+- `project_assess_edit_impact`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_auto_fix_loop`: profiles=all; readOnly=no; destructive=yes; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_design_report`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_embed_file`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.

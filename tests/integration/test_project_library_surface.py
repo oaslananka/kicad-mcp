@@ -198,6 +198,11 @@ async def test_project_resources_prompts_and_library_surface(
 
     design_spec = await call_tool_payload(server, "project_get_design_spec", {})
     design_spec_validation = await call_tool_payload(server, "project_validate_design_spec", {})
+    edit_impact = await call_tool_text(
+        server,
+        "project_assess_edit_impact",
+        {"baseline_spec_json": '{"manufacturer": "ACME", "critical_nets": ["EDIT_NET"]}'},
+    )
     next_action = await call_tool_payload(server, "project_get_next_action", {})
     placement_report = await call_tool_payload(server, "pcb_placement_quality_report", {})
     gate_report = await call_tool_payload(server, "project_quality_gate_report", {})
@@ -206,6 +211,10 @@ async def test_project_resources_prompts_and_library_surface(
     assert design_spec["resolved"]["connector_refs"] == []
     assert isinstance(design_spec_validation, dict)
     assert design_spec_validation["valid"] is True
+    # Edit-impact diff vs the ACME/EDIT_NET baseline scopes which gates must re-run.
+    assert "Edit-impact analysis:" in edit_impact
+    assert "Gates to re-run:" in edit_impact
+    assert "Gates preserved:" in edit_impact
     assert isinstance(next_action, dict)
     assert next_action["status"] in {"PASS", "FAIL", "BLOCKED", "EMPTY"}
     assert isinstance(placement_report, dict)
