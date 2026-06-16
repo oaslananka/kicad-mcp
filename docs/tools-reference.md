@@ -351,12 +351,12 @@ Total public tools: 328.
 | `project_set_design_intent` | all | no | yes | no | yes | yes | no | Call this FIRST to store design intent for placement, routing, and gates. |
 | `project_validate_design_spec` | all | no | no | no | no | yes | no | Validate the resolved design spec against the active project PCB. |
 | `route_apply_tuning_profile` | agent_full, builder, full, high_speed, pcb, pcb_only | no | no | no | no | yes | no | Assign a named tuning profile to a net or wildcard net group. |
-| `route_autoroute_freerouting` | agent_full, builder, full, high_speed, pcb, pcb_only | no | yes | no | no | yes | no | Run FreeRouting after placement; do not skip this post-placement routing step. |
+| `route_autoroute_freerouting` | agent_full, builder, full, high_speed, pcb, pcb_only | no | yes | no | no | yes | no | Run FreeRouting after placement, then surface the KiCad import step. |
 | `route_create_tuning_profile` | agent_full, builder, full, high_speed, pcb, pcb_only | no | no | no | no | yes | no | Create or update a KiCad 10-style time-domain tuning profile. |
 | `route_differential_pair` | agent_full, builder, full, high_speed, pcb, pcb_only | no | no | no | no | yes | no | Write differential-pair routing constraints for a pair of nets. |
-| `route_export_dsn` | agent_full, builder, full, high_speed, pcb, pcb_only | no | yes | yes | yes | yes | no | Stage a Specctra DSN file for FreeRouting. This KiCad MCP Pro tool supports production EDA automation workflows for M... |
+| `route_export_dsn` | agent_full, builder, full, high_speed, pcb, pcb_only | no | yes | yes | yes | yes | no | Export a Specctra DSN for FreeRouting; may require a one-time KiCad GUI step. |
 | `route_from_pad_to_pad` | agent_full, builder, full, high_speed, pcb, pcb_only | no | no | no | no | no | yes | Create a simple orthogonal route between two pads. This KiCad MCP Pro tool supports production EDA automation workflo... |
-| `route_import_ses` | agent_full, builder, full, high_speed, pcb, pcb_only | no | yes | yes | no | yes | no | Stage a Specctra SES file and explain the KiCad import step. |
+| `route_import_ses` | agent_full, builder, full, high_speed, pcb, pcb_only | no | yes | yes | no | yes | no | Stage a routed Specctra SES and surface the required KiCad GUI import step. |
 | `route_list_tuning_profiles` | agent_full, builder, full, high_speed, pcb, pcb_only | no | no | no | no | yes | no | List configured time-domain tuning profiles. This KiCad MCP Pro tool supports production EDA automation workflows for... |
 | `route_set_net_class_rules` | agent_full, builder, full, high_speed, pcb, pcb_only | no | yes | no | yes | yes | no | Write net-class routing constraints into the active .kicad_dru file. |
 | `route_single_track` | agent_full, builder, full, high_speed, pcb, pcb_only | no | no | no | no | no | yes | Route a single straight track segment. This KiCad MCP Pro tool supports production EDA automation workflows for MCP c... |
