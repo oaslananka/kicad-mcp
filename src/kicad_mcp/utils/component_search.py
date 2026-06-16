@@ -463,12 +463,97 @@ class NexarClient:
         return results[0] if results else None
 
 
-class DigiKeyClient:
-    """Optional DigiKey client placeholder."""
+_digikey_limiter = RateLimiter(max_calls=5, period_seconds=1.0)
 
-    def __init__(self) -> None:
-        self._client_id = os.getenv("DIGIKEY_CLIENT_ID")
-        self._client_secret = os.getenv("DIGIKEY_CLIENT_SECRET")
+
+def _record_from_digikey(product: dict[str, Any]) -> ComponentRecord:
+    mpn = str(product.get("ManufacturerProductNumber", ""))
+    manufacturer = str((product.get("Manufacturer") or {}).get("Name", ""))
+    description = (
+        str((product.get("Description") or {}).get("ProductDescription", "")).strip()
+        or manufacturer
+    )
+    price_raw = product.get("UnitPrice")
+    price = float(price_raw) if isinstance(price_raw, (int, float)) else None
+    package = ""
+    for param in product.get("Parameters") or []:
+        text = str(param.get("ParameterText", "")).casefold()
+        if text in ("package / case", "supplier device package", "package"):
+            package = str(param.get("ValueText", ""))
+            break
+    return ComponentRecord(
+        source="digikey",
+        lcsc_code="",
+        mpn=mpn,
+        package=package,
+        description=description,
+        stock=int(product.get("QuantityAvailable", 0) or 0),
+        price=price,
+        is_basic=False,
+        is_preferred=False,
+    )
+
+
+class DigiKeyClient:
+    """Live DigiKey Product Information (v4) client.
+
+    Authenticates with the OAuth2 ``client_credentials`` grant and queries the v4
+    keyword-search endpoint. Requires ``DIGIKEY_CLIENT_ID`` / ``DIGIKEY_CLIENT_SECRET``
+    (loaded from ``.env`` at server startup) for an app subscribed to the Product
+    Information API. ``transport`` is injectable so the OAuth + search flow is
+    unit-tested without the network. The response schema follows DigiKey API v4; run
+    a live smoke test to confirm field mapping against the production response.
+    """
+
+    TOKEN_URL = "https://api.digikey.com/v1/oauth2/token"  # noqa: S105
+    SEARCH_URL = "https://api.digikey.com/products/v4/search/keyword"
+
+    def __init__(
+        self,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        *,
+        transport: HttpPostJson | None = None,
+    ) -> None:
+        self._client_id = client_id if client_id is not None else os.getenv("DIGIKEY_CLIENT_ID")
+        self._client_secret = (
+            client_secret if client_secret is not None else os.getenv("DIGIKEY_CLIENT_SECRET")
+        )
+        self._transport = transport or _https_post_json
+        self._token: str | None = None
+        self._token_expiry = 0.0
+
+    def _require_credentials(self) -> tuple[str, str]:
+        if not self._client_id or not self._client_secret:
+            raise RuntimeError(
+                "DigiKey search requires DIGIKEY_CLIENT_ID and DIGIKEY_CLIENT_SECRET."
+            )
+        return self._client_id, self._client_secret
+
+    def _access_token(self) -> str:
+        now = time.monotonic()
+        if self._token is not None and now < self._token_expiry:
+            return self._token
+        client_id, client_secret = self._require_credentials()
+        _digikey_limiter.acquire()
+        body = urllib.parse.urlencode(
+            {
+                "grant_type": "client_credentials",
+                "client_id": client_id,
+                "client_secret": client_secret,
+            }
+        ).encode("utf-8")
+        response = self._transport(
+            self.TOKEN_URL,
+            body,
+            {"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        token = response.get("access_token")
+        if not token:
+            raise RuntimeError("DigiKey token endpoint did not return an access_token.")
+        self._token = str(token)
+        self._token_expiry = now + float(response.get("expires_in", 600)) - 60.0
+        return self._token
 
     def search(
         self,
@@ -478,16 +563,33 @@ class DigiKeyClient:
         only_basic: bool = True,
         limit: int = 20,
     ) -> list[ComponentRecord]:
-        _ = (package, only_basic, limit)
-        if not self._client_id or not self._client_secret:
-            raise RuntimeError(
-                "DigiKey search requires DIGIKEY_CLIENT_ID and DIGIKEY_CLIENT_SECRET."
-            )
-        raise RuntimeError(
-            "DigiKey live search wiring is not enabled in the default zero-auth profile. "
-            f"Query was: {keyword}"
+        _ = only_basic
+        client_id, _secret = self._require_credentials()
+        token = self._access_token()
+        _digikey_limiter.acquire()
+        capped = max(1, min(limit, 50))
+        body = json.dumps({"Keywords": keyword, "Limit": capped, "Offset": 0}).encode("utf-8")
+        response = self._transport(
+            self.SEARCH_URL,
+            body,
+            {
+                "Authorization": f"Bearer {token}",
+                "X-DIGIKEY-Client-Id": client_id,
+                "Content-Type": "application/json",
+            },
         )
+        products = response.get("Products") or []
+        records = [_record_from_digikey(product) for product in products]
+        if package:
+            needle = package.casefold()
+            records = [record for record in records if needle in record.package.casefold()]
+        return records[:limit]
 
     def get_part(self, lcsc_code_or_mpn: str) -> ComponentRecord | None:
-        _ = lcsc_code_or_mpn
-        raise RuntimeError("DigiKey component detail lookups require authenticated deployment.")
+        self._require_credentials()
+        results = self.search(lcsc_code_or_mpn, limit=5)
+        needle = lcsc_code_or_mpn.strip().casefold()
+        for record in results:
+            if record.mpn.casefold() == needle:
+                return record
+        return results[0] if results else None

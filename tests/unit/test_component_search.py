@@ -225,8 +225,63 @@ def test_optional_search_clients_raise_clear_messages(monkeypatch) -> None:
     monkeypatch.delenv("DIGIKEY_CLIENT_SECRET", raising=False)
     with pytest.raises(RuntimeError, match="DIGIKEY_CLIENT_ID"):
         DigiKeyClient().search("buzzer")
-    with pytest.raises(RuntimeError, match="detail lookups require authenticated deployment"):
+    with pytest.raises(RuntimeError, match="DIGIKEY_CLIENT_ID"):
         DigiKeyClient().get_part("C12345")
+
+
+def test_digikey_search_parses_records_with_injected_transport() -> None:
+    calls: list[str] = []
+
+    def transport(url: str, body: bytes, headers: dict[str, str]) -> dict[str, object]:
+        calls.append(url)
+        if url.endswith("/oauth2/token"):
+            assert b"client_credentials" in body
+            return {"access_token": "dk-tok", "expires_in": 600}
+        assert headers.get("X-DIGIKEY-Client-Id") == "id"
+        assert headers.get("Authorization") == "Bearer dk-tok"
+        return {
+            "Products": [
+                {
+                    "ManufacturerProductNumber": "LM358DR",
+                    "Manufacturer": {"Name": "Texas Instruments"},
+                    "Description": {"ProductDescription": "Op-amp dual"},
+                    "QuantityAvailable": 125000,
+                    "UnitPrice": 0.123,
+                    "Parameters": [
+                        {"ParameterText": "Package / Case", "ValueText": "8-SOIC"},
+                    ],
+                }
+            ]
+        }
+
+    client = DigiKeyClient(client_id="id", client_secret="secret", transport=transport)  # noqa: S106
+    records = client.search("LM358", limit=5)
+
+    assert len(records) == 1
+    record = records[0]
+    assert record.source == "digikey"
+    assert record.mpn == "LM358DR"
+    assert record.package == "8-SOIC"
+    assert record.stock == 125000
+    assert record.price == 0.123
+    assert calls[0].endswith("/oauth2/token")
+    assert calls[1].endswith("/search/keyword")
+
+
+def test_digikey_token_is_cached_across_searches() -> None:
+    calls: list[str] = []
+
+    def transport(url: str, body: bytes, headers: dict[str, str]) -> dict[str, object]:
+        calls.append(url)
+        if url.endswith("/oauth2/token"):
+            return {"access_token": "dk", "expires_in": 600}
+        return {"Products": []}
+
+    client = DigiKeyClient(client_id="id", client_secret="secret", transport=transport)  # noqa: S106
+    client.search("a")
+    client.search("b")
+    assert calls.count("https://api.digikey.com/v1/oauth2/token") == 1
+    assert calls.count("https://api.digikey.com/products/v4/search/keyword") == 2
 
 
 class _FakeNexarTransport:
