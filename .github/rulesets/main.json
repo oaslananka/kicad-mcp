@@ -42,7 +42,7 @@
             "context": "mcp-server (ubuntu-24.04)"
           },
           {
-            "context": "mcp-server (windows-2025-vs2026)"
+            "context": "mcp-server (windows-2025)"
           },
           {
             "context": "mcp-server (macos-15)"
@@ -51,7 +51,7 @@
             "context": "mcp-npm (ubuntu-24.04)"
           },
           {
-            "context": "mcp-npm (windows-2025-vs2026)"
+            "context": "mcp-npm (windows-2025)"
           },
           {
             "context": "mcp-npm (macos-15)"
