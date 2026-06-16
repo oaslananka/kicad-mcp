@@ -26,6 +26,7 @@ from ..models.signal_integrity import (
     TraceWidthForImpedanceInput,
     ViaStubInput,
 )
+from ..utils.field_solver import impedance_method
 from ..utils.impedance import (
     DIELECTRIC_LIBRARY,
     copper_thickness_mm,
@@ -318,6 +319,10 @@ def _format_impedance_result(
         lines.append(f"- Gap / spacing: {spacing_mm:.4f} mm")
     if differential_ohm is not None:
         lines.append(f"- Estimated differential impedance: {differential_ohm:.2f} ohm")
+    method = impedance_method()
+    lines.append(f"- Method: {method['method']} — {method['accuracy']}")
+    if not method["solver_grade"]:
+        lines.append(f"- Note: {method['note']}")
     return "\n".join(lines)
 
 
