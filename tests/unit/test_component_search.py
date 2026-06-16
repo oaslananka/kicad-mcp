@@ -256,7 +256,15 @@ class _FakeNexarTransport:
                                     {
                                         "attribute": {"name": "Case/Package"},
                                         "displayValue": "LQFP-48",
-                                    }
+                                    },
+                                    {
+                                        "attribute": {"name": "Lifecycle Status"},
+                                        "displayValue": "Active",
+                                    },
+                                    {
+                                        "attribute": {"name": "RoHS Status"},
+                                        "displayValue": "Compliant",
+                                    },
                                 ],
                             }
                         }
@@ -278,6 +286,9 @@ def test_nexar_search_parses_records_with_injected_transport() -> None:
     assert record.package == "LQFP-48"
     assert record.stock == 4200
     assert record.price == 1.83
+    # Sourcing/compliance metadata is parsed from the part specs.
+    assert record.lifecycle == "Active"
+    assert record.rohs == "Compliant"
     # OAuth token fetched, then the GraphQL query issued.
     assert transport.calls[0].endswith("/connect/token")
     assert transport.calls[1].endswith("/graphql")
@@ -302,6 +313,19 @@ def test_nexar_graphql_errors_surface_as_runtime_error() -> None:
     client = NexarClient(client_id="id", client_secret="secret", transport=transport)  # noqa: S106
     with pytest.raises(RuntimeError, match="Nexar GraphQL error: rate limit exceeded"):
         client.search("anything")
+
+
+def test_nexar_quota_limit_gives_actionable_error() -> None:
+    def transport(url: str, body: bytes, headers: dict[str, str]) -> dict[str, object]:
+        if url.endswith("/connect/token"):
+            return {"access_token": "t", "expires_in": 3600}
+        return {"errors": [{"message": "You have exceeded your part limit of 10."}]}
+
+    client = NexarClient(client_id="id", client_secret="secret", transport=transport)  # noqa: S106
+    with pytest.raises(RuntimeError, match="quota reached") as exc_info:
+        client.search("anything")
+    # Steers the caller to the zero-auth fallback rather than a bare GraphQL error.
+    assert "jlcsearch" in str(exc_info.value)
 
 
 def test_rate_limiter_waits_when_window_is_full(monkeypatch) -> None:

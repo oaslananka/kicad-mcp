@@ -140,9 +140,14 @@ def _format_component_lines(
         basic = "basic" if item.is_basic else "extended"
         preferred = " preferred" if item.is_preferred else ""
         description = f" - {item.description}" if item.description else ""
+        sourcing = ""
+        if item.lifecycle:
+            sourcing += f" | lifecycle {item.lifecycle}"
+        if item.rohs:
+            sourcing += f" | RoHS {item.rohs}"
         lines.append(
             f"- {item.lcsc_code} | {item.mpn} | {item.package or '(no package)'} | "
-            f"stock {stock} | {price} | {basic}{preferred}{description}"
+            f"stock {stock} | {price} | {basic}{preferred}{sourcing}{description}"
         )
     if len(results) > limit:
         lines.append(f"... and {len(results) - limit} more matches")

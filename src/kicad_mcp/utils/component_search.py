@@ -35,6 +35,9 @@ class ComponentRecord:
     price: float | None
     is_basic: bool
     is_preferred: bool
+    # Sourcing/compliance metadata (populated when the provider reports it).
+    lifecycle: str = ""
+    rohs: str = ""
 
 
 class ComponentSearchClient(Protocol):
@@ -323,11 +326,17 @@ def _record_from_nexar(part: dict[str, Any]) -> ComponentRecord:
     if isinstance(median, dict) and median.get("price") is not None:
         price = float(median["price"])
     package = ""
+    lifecycle = ""
+    rohs = ""
     for spec in part.get("specs") or []:
         attribute = str((spec.get("attribute") or {}).get("name", "")).casefold()
-        if attribute in ("case/package", "package", "case / package"):
-            package = str(spec.get("displayValue", ""))
-            break
+        value = str(spec.get("displayValue", ""))
+        if not package and attribute in ("case/package", "package", "case / package"):
+            package = value
+        elif not lifecycle and "lifecycle" in attribute:
+            lifecycle = value
+        elif not rohs and ("rohs" in attribute or "reach" in attribute):
+            rohs = value
     description = str(part.get("shortDescription") or "").strip() or manufacturer
     return ComponentRecord(
         source="nexar",
@@ -339,6 +348,8 @@ def _record_from_nexar(part: dict[str, Any]) -> ComponentRecord:
         price=price,
         is_basic=False,
         is_preferred=False,
+        lifecycle=lifecycle,
+        rohs=rohs,
     )
 
 
@@ -428,6 +439,12 @@ class NexarClient:
                 message = errors[0].get("message", "unknown error")
             else:
                 message = str(errors)
+            lowered = message.casefold()
+            if "part limit" in lowered or "upgrade your plan" in lowered:
+                raise RuntimeError(
+                    f"Nexar part-lookup quota reached: {message} Use source='jlcsearch' "
+                    "(zero-auth) for local work, or upgrade/await reset of the Nexar plan."
+                )
             raise RuntimeError(f"Nexar GraphQL error: {message}")
         results = ((response.get("data") or {}).get("supSearchMpn") or {}).get("results") or []
         records = [_record_from_nexar(entry.get("part") or {}) for entry in results]
