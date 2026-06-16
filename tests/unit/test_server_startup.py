@@ -4,6 +4,8 @@ import sys
 import threading
 from pathlib import Path
 
+import pytest
+
 from kicad_mcp.config import get_config
 from kicad_mcp.connection import KiCadConnectionError
 from kicad_mcp.server import (
@@ -212,6 +214,28 @@ def test_lazy_registration_thread_does_not_capture_protocol_stdout(capsys) -> No
     assert "2026-lazy-thread-before-json" not in captured.out
     assert "2026-lazy-thread-before-json" in captured.err
     assert server._lazy_registration_complete is True
+
+
+async def test_ensure_registered_async_times_out_on_hung_registration() -> None:
+    # P5-T5: a registration that hangs must not block requests forever — the
+    # awaiting handler gets a retryable timeout error and the thread is abandoned.
+    from kicad_mcp.errors import ToolRegistrationTimeoutError
+
+    server = KiCadFastMCP(name="kicad-mcp-pro-test")
+    server._lazy_registration_timeout_s = 0.1
+    release = threading.Event()
+
+    def register() -> None:
+        release.wait(timeout=5)  # blocks well past the 0.1s budget
+
+    server.set_lazy_registration(register)
+    try:
+        with pytest.raises(ToolRegistrationTimeoutError) as exc_info:
+            await server._ensure_registered_async()
+        assert exc_info.value.code == "SERVER_INITIALIZING"
+        assert exc_info.value.retryable is True
+    finally:
+        release.set()  # let the abandoned worker thread finish cleanly
 
 
 def test_deferred_build_registers_tools_on_first_discovery(sample_project: Path) -> None:

@@ -102,6 +102,20 @@ class IpcDisconnectedError(KiCadNotRunningError):
     retry_after_ms = 1000
 
 
+class ToolRegistrationTimeoutError(KiCadMcpError):
+    """Raised when deferred tool registration does not finish within its budget.
+
+    Registration runs in the background; if a request waits longer than the
+    configured timeout it gets this retryable error instead of hanging forever.
+    """
+
+    code = "SERVER_INITIALIZING"
+    hint = "Tool registration is still in progress; retry in a moment."
+    retryable = True
+    transient_class: TransientClass = "timeout"
+    retry_after_ms = 2000
+
+
 class UnsafePathError(KiCadMcpError, ValueError):
     """Raised when a requested path escapes the configured workspace."""
 
