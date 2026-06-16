@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import re
@@ -10,11 +11,12 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
+from .. import __version__
 from ..config import get_config
 from ..connection import KiCadConnectionError, get_board
 from ..discovery import get_cli_capabilities
@@ -33,6 +35,9 @@ from .export_support import _ensure_output_dir, _get_pcb_file, _get_sch_file, _r
 from .gates import GateOutcome, GateStatus, _combined_status
 from .metadata import headless_compatible
 from .schematic_transfer import _collect_schematic_components, _export_schematic_net_map
+
+if TYPE_CHECKING:
+    from .design_intent_state import ProjectDesignIntent
 
 
 @dataclass(slots=True)
@@ -1682,6 +1687,36 @@ def _evaluate_project_gate(
     ]
 
 
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _signoff_provenance(intent: ProjectDesignIntent) -> dict[str, Any]:
+    """Build deterministic sign-off provenance (no timestamps, so the hash is stable)."""
+    cfg = get_config()
+    caps = get_cli_capabilities(cfg.kicad_cli)
+    intent_hash = hashlib.sha256(
+        json.dumps(intent.model_dump(), sort_keys=True).encode()
+    ).hexdigest()[:16]
+    source_hashes = {
+        label: _sha256_file(path)
+        for label, path in (
+            ("project", cfg.project_file),
+            ("pcb", cfg.pcb_file),
+            ("schematic", cfg.sch_file),
+        )
+        if path is not None and path.exists()
+    }
+    return {
+        "kicad_mcp_version": __version__,
+        "kicad_cli": str(cfg.kicad_cli),
+        "kicad_cli_version": caps.version,
+        "rule_profile": f"{cfg.profile}/{cfg.operating_mode}",
+        "intent_hash": intent_hash,
+        "source_hashes": source_hashes,
+    }
+
+
 def _render_project_gate_report(
     outcomes: list[GateOutcome],
     *,
@@ -2219,6 +2254,30 @@ def register(mcp: FastMCP) -> None:
             tier=tier or None,
         )
         return _project_gate_report_payload(outcomes)
+
+    @mcp.tool()
+    @headless_compatible
+    def project_signoff_report(manufacturer: str = "", tier: str = "") -> str:
+        """Produce the single manufacturing sign-off report.
+
+        Binds each declared design-intent requirement to the gate check(s) that
+        would catch a violation, attaches the gate evidence and full provenance
+        (engine versions, rule profile, intent and source hashes), and returns one
+        PASS/FAIL verdict. A board with no declared intent is UNVERIFIED, not a
+        silent PASS. ``export_manufacturing_package`` is hard-gated on the same
+        underlying project gate, so a PASS here means the package will export.
+        """
+        from .project import load_design_intent
+        from .signoff import build_signoff_report, render_signoff_report
+
+        outcomes = _evaluate_project_gate(manufacturer=manufacturer or None, tier=tier or None)
+        intent = load_design_intent()
+        report = build_signoff_report(
+            intent.model_dump(),
+            outcomes,
+            _signoff_provenance(intent),
+        )
+        return render_signoff_report(report)
 
     @mcp.tool()
     @headless_compatible

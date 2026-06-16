@@ -4037,6 +4037,29 @@
     "experimental": false,
     "headless": true,
     "idempotent": false,
+    "name": "project_signoff_report",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "analysis",
+      "builder",
+      "critic",
+      "full",
+      "high_speed",
+      "manufacturing",
+      "pcb",
+      "power",
+      "release_manager",
+      "schematic"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
     "name": "project_validate_design_spec",
     "open_world": false,
     "profiles": [

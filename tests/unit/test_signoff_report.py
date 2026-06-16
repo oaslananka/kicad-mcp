@@ -1,0 +1,72 @@
+"""Manufacturing sign-off report builder (work order P5-T3)."""
+
+from __future__ import annotations
+
+from kicad_mcp.tools.gates import GateOutcome
+from kicad_mcp.tools.signoff import build_signoff_report, render_signoff_report
+
+_PROVENANCE = {
+    "kicad_mcp_version": "9.9.9",
+    "kicad_cli_version": "10.0.1",
+    "rule_profile": "full/manufacturing",
+    "intent_hash": "deadbeef",
+}
+
+_INTENT = {
+    "critical_nets": ["USB_DP", "USB_DM"],
+    "power_rails": [{"name": "+3V3"}],
+    "thermal_hotspots": ["U1"],
+    "manufacturer": "JLCPCB",
+    "manufacturer_tier": "standard",
+}
+
+
+def _passing_gates() -> list[GateOutcome]:
+    return [
+        GateOutcome(name="Schematic", status="PASS", summary="ERC clean"),
+        GateOutcome(name="PCB", status="PASS", summary="DRC clean"),
+        GateOutcome(name="Manufacturing", status="PASS", summary="DFM clean"),
+    ]
+
+
+def test_signoff_passes_and_binds_every_requirement_to_a_check() -> None:
+    report = build_signoff_report(_INTENT, _passing_gates(), _PROVENANCE)
+    assert report["verdict"] == "PASS"
+    assert report["requirements"], "requirements must be derived from intent"
+    # Every requirement is bound to at least one passing check.
+    for req in report["requirements"]:
+        assert req["bound_checks"], f"{req['requirement']} not bound to a check"
+        assert req["status"] == "PASS"
+    # Provenance is carried through.
+    assert report["provenance"]["intent_hash"] == "deadbeef"
+
+
+def test_signoff_fails_when_a_backing_gate_fails() -> None:
+    gates = _passing_gates()
+    gates[1] = GateOutcome(name="PCB", status="FAIL", summary="DRC violations")
+    report = build_signoff_report(_INTENT, gates, _PROVENANCE)
+    assert report["verdict"] == "FAIL"
+
+
+def test_signoff_unverified_without_declared_intent() -> None:
+    report = build_signoff_report({}, _passing_gates(), _PROVENANCE)
+    assert report["verdict"] == "UNVERIFIED"
+    assert report["requirements"] == []
+    assert "nothing to sign off" in report["summary"].lower()
+
+
+def test_signoff_content_hash_is_deterministic() -> None:
+    a = build_signoff_report(_INTENT, _passing_gates(), _PROVENANCE)
+    b = build_signoff_report(_INTENT, _passing_gates(), _PROVENANCE)
+    assert a["content_hash"] == b["content_hash"]
+    # A material change (a failing gate) changes the hash.
+    gates = _passing_gates()
+    gates[0] = GateOutcome(name="Schematic", status="FAIL", summary="ERC errors")
+    assert build_signoff_report(_INTENT, gates, _PROVENANCE)["content_hash"] != a["content_hash"]
+
+
+def test_render_signoff_is_human_readable() -> None:
+    text = render_signoff_report(build_signoff_report(_INTENT, _passing_gates(), _PROVENANCE))
+    assert "Manufacturing sign-off: PASS" in text
+    assert "Provenance:" in text
+    assert "content hash:" in text
