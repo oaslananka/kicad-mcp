@@ -187,6 +187,8 @@ def test_error_payload_masks_domain_shape() -> None:
         "message": "boom",
         "hint": "Run doctor for diagnostics and retry with corrected configuration.",
         "retryable": False,
+        "transient_class": "none",
+        "retry_after_ms": None,
     }
 
 

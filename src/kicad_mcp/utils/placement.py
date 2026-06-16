@@ -58,7 +58,18 @@ class ForceDirectedConfig:
     board_h: float = 80.0  # board height (mm) — soft boundary
     seed: int = 42
     grid_mm: float = 0.5
-    max_seconds: float = 10.0
+    # Deterministic early stop: iteration halts once the grid-snapped layout —
+    # the actual deliverable — stays unchanged for this many consecutive
+    # iterations. Because it depends only on geometry (never on wall-clock) the
+    # result is reproducible bit-for-bit across machines, and snapping makes it
+    # robust to the sub-grid jitter the cooling floor leaves behind. Set it to
+    # <= 0 to always run the full ``iterations`` count.
+    convergence_patience: int = 4
+    # Optional wall-clock safety valve (seconds). 0 (the default) disables it so
+    # placement stays deterministic. A positive value bounds runtime on
+    # pathologically large boards but makes the result depend on host speed —
+    # i.e. NOT reproducible — so use it only as a last resort.
+    max_seconds: float = 0.0
     keepout_regions: list[tuple[float, float, float, float]] = field(default_factory=list)
 
 
@@ -178,10 +189,23 @@ def force_directed_placement(
     components: list[PlacementComponent],
     nets: list[PlacementNet],
     cfg: ForceDirectedConfig | None = None,
+    *,
+    stats: dict[str, object] | None = None,
 ) -> list[PlacementComponent]:
     """Run force-directed placement and return updated component list (copies).
 
     Fixed components are not moved but still exert forces on others.
+
+    Stopping is deterministic by default: iteration halts once the grid-snapped
+    layout is stable for ``cfg.convergence_patience`` consecutive iterations (or
+    the ``cfg.iterations`` ceiling is reached), so identical inputs yield
+    bit-for-bit identical output on any machine regardless of CPU speed.
+    ``cfg.max_seconds`` is an opt-in, off-by-default wall-clock safety valve only
+    and, when set, sacrifices that cross-machine reproducibility.
+
+    When ``stats`` is provided it is populated with ``iterations_run``,
+    ``converged`` (bool) and ``max_displacement_mm`` so callers can report the
+    convergence rationale.
     """
     if cfg is None:
         cfg = ForceDirectedConfig()
@@ -193,6 +217,11 @@ def force_directed_placement(
     vx: list[float] = [0.0] * len(comps)
     vy: list[float] = [0.0] * len(comps)
     start_time = time.perf_counter()
+    converged = False
+    iterations_run = 0
+    final_max_disp = 0.0
+    stable_count = 0
+    prev_snapshot: tuple[tuple[float, float], ...] | None = None
 
     # Build adjacency: for each component, which other components are connected?
     adjacency: dict[str, list[tuple[str, float]]] = {c.ref: [] for c in comps}
@@ -205,8 +234,7 @@ def force_directed_placement(
     step_size = min(cfg.board_w, cfg.board_h) * 0.05  # initial max displacement
 
     for iteration in range(cfg.iterations):
-        if time.perf_counter() - start_time >= cfg.max_seconds:
-            break
+        iterations_run = iteration + 1
         # Cooling: reduce step size over time
         temperature = step_size * (1.0 - iteration / cfg.iterations) + 0.1
 
@@ -263,6 +291,7 @@ def force_directed_placement(
                 fy[i] -= cfg.k_wall / max(bottom_gap, 0.01)
 
         # --- Integrate ---
+        max_disp = 0.0
         for i, comp in enumerate(comps):
             if comp.fixed:
                 vx[i] = 0.0
@@ -275,13 +304,39 @@ def force_directed_placement(
             if speed > temperature:
                 vx[i] = vx[i] / speed * temperature
                 vy[i] = vy[i] / speed * temperature
-            comp.x, comp.y = _resolve_candidate_position(
+            new_x, new_y = _resolve_candidate_position(
                 comp.x + vx[i],
                 comp.y + vy[i],
                 comp,
                 cfg,
                 snap_to_grid=False,
             )
+            disp = math.hypot(new_x - comp.x, new_y - comp.y)
+            if disp > max_disp:
+                max_disp = disp
+            comp.x, comp.y = new_x, new_y
+
+        final_max_disp = max_disp
+        # Deterministic convergence stop: halt once the grid-snapped layout (the
+        # deliverable) is unchanged for ``convergence_patience`` consecutive
+        # iterations. Snapping makes this robust to the sub-grid jitter the
+        # cooling floor leaves behind, and it depends only on geometry — never on
+        # wall-clock — so the result is reproducible across machines.
+        if cfg.convergence_patience > 0:
+            snapshot = tuple(
+                (_snap(comp.x, cfg.grid_mm), _snap(comp.y, cfg.grid_mm)) for comp in comps
+            )
+            if snapshot == prev_snapshot:
+                stable_count += 1
+                if stable_count >= cfg.convergence_patience:
+                    converged = True
+                    break
+            else:
+                stable_count = 0
+            prev_snapshot = snapshot
+        # Opt-in, off-by-default wall-clock safety valve (breaks determinism).
+        if cfg.max_seconds > 0.0 and time.perf_counter() - start_time >= cfg.max_seconds:
+            break
 
     for component in comps:
         if component.fixed:
@@ -293,6 +348,11 @@ def force_directed_placement(
             cfg,
             snap_to_grid=True,
         )
+
+    if stats is not None:
+        stats["iterations_run"] = iterations_run
+        stats["converged"] = converged
+        stats["max_displacement_mm"] = round(final_max_disp, 6)
 
     return comps
 

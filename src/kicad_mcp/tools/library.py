@@ -554,7 +554,13 @@ def register(mcp: FastMCP) -> None:
         min_stock: int = 10,
         sort_by: str = "price",
     ) -> str:
-        """Search live component sources for purchasable parts."""
+        """Search live component sources for purchasable parts.
+
+        ``source``: ``jlcsearch`` (JLCPCB public catalog, no credentials; default),
+        ``nexar`` (requires NEXAR_CLIENT_ID/NEXAR_CLIENT_SECRET), or ``digikey``
+        (requires DIGIKEY_CLIENT_ID/DIGIKEY_CLIENT_SECRET). Nexar and DigiKey are
+        inactive until those credentials are configured in the deployment environment.
+        """
         try:
             client = _component_search_client(source)
             results = client.search(

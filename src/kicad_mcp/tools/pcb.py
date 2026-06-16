@@ -59,6 +59,7 @@ from ..models.pcb import (
     StackupLayerSpec,
     SyncPcbFromSchematicInput,
 )
+from ..models.verdict import Finding, SuggestedFix, VerdictReport, stable_finding_id
 from ..utils import telemetry as otel
 from ..utils.cache import clear_ttl_cache, ttl_cache
 from ..utils.impedance import TraceType, copper_thickness_mm, trace_impedance
@@ -905,10 +906,53 @@ def _matches_file_layer_filter(layer_name: str, filter_layer: str) -> bool:
     return resolve_layer_name(filter_layer) == resolve_layer_name(layer_name)
 
 
-def _file_backed_board_summary(ipc_error: BaseException) -> str:
+def _board_summary_report(
+    *,
+    text: str,
+    source: str,
+    tracks: int = 0,
+    vias: int = 0,
+    footprints: int = 0,
+    zones: int = 0,
+    nets: int = 0,
+    shapes: int = 0,
+    findings: list[Finding] | None = None,
+) -> VerdictReport:
+    resolved_findings = findings or []
+    return VerdictReport(
+        text=text,
+        summary=f"Board summary from {source}: {footprints} footprint(s), {nets} net(s).",
+        verdict=VerdictReport.verdict_for([finding.severity for finding in resolved_findings]),
+        findings=resolved_findings,
+        next_action="Use pcb_get_tracks(), pcb_get_footprints(), or run_drc() for details.",
+        metadata={
+            "source": source,
+            "tracks": tracks,
+            "vias": vias,
+            "footprints": footprints,
+            "zones": zones,
+            "nets": nets,
+            "shapes": shapes,
+        },
+    )
+
+
+def _file_backed_board_summary(ipc_error: BaseException) -> VerdictReport:
     loaded = _load_file_backed_board(ipc_error)
     if isinstance(loaded, str):
-        return loaded
+        return _board_summary_report(
+            text=loaded,
+            source="file-backed",
+            findings=[
+                Finding(
+                    id=stable_finding_id("board_summary", "unavailable", loaded),
+                    severity="error",
+                    location=str(_configured_board_file() or ""),
+                    description=loaded.splitlines()[0],
+                    suggested_fix=SuggestedFix(tool="kicad_set_project", args={}),
+                )
+            ],
+        )
     board_file, content, diagnostics = loaded
     footprints = _parse_board_footprint_blocks(content)
     tracks = _board_file_segments(content)
@@ -916,7 +960,7 @@ def _file_backed_board_summary(ipc_error: BaseException) -> str:
     zones = list(_iter_blocks(content, "zone"))
     nets = _board_file_nets(content)
     shapes = re.findall(r"(?m)^\s*\(gr_[a-zA-Z_]+", content)
-    return "\n".join(
+    text = "\n".join(
         [
             "Board summary (file-backed fallback):",
             f"- Board file: {board_file}",
@@ -928,6 +972,25 @@ def _file_backed_board_summary(ipc_error: BaseException) -> str:
             f"- Shapes: {len(shapes)}",
             *diagnostics,
         ]
+    )
+    return _board_summary_report(
+        text=text,
+        source="file-backed",
+        tracks=len(tracks),
+        vias=len(vias),
+        footprints=len(footprints),
+        zones=len(zones),
+        nets=len(nets),
+        shapes=len(shapes),
+        findings=[
+            Finding(
+                id=stable_finding_id("board_summary", "ipc-fallback", board_file),
+                severity="warning",
+                location=str(board_file),
+                description="Live KiCad IPC is unavailable; using file-backed board parser.",
+                suggested_fix=SuggestedFix(tool="kicad_get_version", args={}),
+            )
+        ],
     )
 
 
@@ -1564,7 +1627,7 @@ def _decoupling_rule_for_value(value: str, fallback_max_distance_mm: float) -> d
 def _auto_place_force_directed_board_file(
     *,
     grid_mm: float = 1.0,
-    max_seconds: float = 30.0,
+    max_seconds: float = 0.0,
 ) -> str:
     board_file = _get_pcb_file_for_sync()
     board_content = _normalize_board_content(
@@ -1595,6 +1658,7 @@ def _auto_place_force_directed_board_file(
     if not nets:
         return "Auto-placement skipped: no multi-footprint named nets were found."
 
+    stats: dict[str, object] = {}
     result = force_directed_placement(
         components,
         nets,
@@ -1608,6 +1672,7 @@ def _auto_place_force_directed_board_file(
             grid_mm=grid_mm,
             max_seconds=max_seconds,
         ),
+        stats=stats,
     )
     replacements: dict[str, str] = {}
     for placed in result:
@@ -1619,9 +1684,14 @@ def _auto_place_force_directed_board_file(
             rotation=int(entry["rotation"]),
         )
     _transactional_board_write(lambda current: _replace_board_blocks(current, replacements, []))
+    convergence = (
+        f"converged after {stats.get('iterations_run')} iterations"
+        if stats.get("converged")
+        else f"stopped after {stats.get('iterations_run')} iterations (iteration ceiling)"
+    )
     return (
         "Force-directed auto-placement completed after PCB sync: "
-        f"{len(replacements)} footprint(s), {len(nets)} weighted net(s)."
+        f"{len(replacements)} footprint(s), {len(nets)} weighted net(s); {convergence}."
     )
 
 
@@ -2200,7 +2270,7 @@ def register(mcp: FastMCP) -> None:
     @mcp.tool()
     @headless_compatible
     @ttl_cache(ttl_seconds=5)
-    def pcb_get_board_summary() -> str:
+    def pcb_get_board_summary() -> VerdictReport:
         """Summarize the current board."""
         try:
             board = get_board()
@@ -2212,7 +2282,7 @@ def register(mcp: FastMCP) -> None:
         zones = board.get_zones()
         nets = board.get_nets(netclass_filter=None)
         shapes = board.get_shapes()
-        return "\n".join(
+        text = "\n".join(
             [
                 "Board summary:",
                 "- Source: live-gui",
@@ -2223,6 +2293,16 @@ def register(mcp: FastMCP) -> None:
                 f"- Nets: {len(nets)}",
                 f"- Shapes: {len(shapes)}",
             ]
+        )
+        return _board_summary_report(
+            text=text,
+            source="live-gui",
+            tracks=len(tracks),
+            vias=len(vias),
+            footprints=len(footprints),
+            zones=len(zones),
+            nets=len(nets),
+            shapes=len(shapes),
         )
 
     @mcp.tool()
@@ -3558,7 +3638,7 @@ def register(mcp: FastMCP) -> None:
 
         auto_place_note = ""
         if (additions or replacements) and payload.auto_place:
-            auto_place_note = _auto_place_force_directed_board_file(grid_mm=1.0, max_seconds=30.0)
+            auto_place_note = _auto_place_force_directed_board_file(grid_mm=1.0)
 
         reload_note = (
             _reload_board_after_file_sync()
@@ -4468,14 +4548,16 @@ def register(mcp: FastMCP) -> None:
         k_repel: float = 80.0,
         seed: int = 42,
         grid_mm: float = 0.5,
-        max_seconds: float = 10.0,
+        max_seconds: float = 0.0,
         keepout_regions: list[tuple[float, float, float, float]] | None = None,
     ) -> str:
         """Run a force-directed spring-embedder placement algorithm on a set of components.
 
         This tool computes optimised X/Y positions for components based on their net
-        connectivity without requiring KiCad to be open. Same seed + same inputs
-        yields identical output. Use it to get a placement suggestion, then apply
+        connectivity without requiring KiCad to be open. Stopping is deterministic:
+        iteration halts on convergence (or the ``iterations`` ceiling), never on
+        wall-clock, so the same seed + same inputs yield bit-for-bit identical
+        output on any machine. Use it to get a placement suggestion, then apply
         the result with pcb_move_footprint for each component.
 
         Args:
@@ -4492,7 +4574,10 @@ def register(mcp: FastMCP) -> None:
             k_repel: Coulomb repulsion coefficient (default 80.0).
             seed: Deterministic tie-break seed used for fallback searches.
             grid_mm: Final snap-to-grid spacing in mm (default 0.5).
-            max_seconds: Max wall-clock budget before returning best-so-far.
+            max_seconds: Opt-in wall-clock safety valve in seconds. 0 (default)
+                keeps placement deterministic and convergence-bounded; a positive
+                value caps runtime on pathologically large boards but makes the
+                result depend on host speed (not reproducible).
             keepout_regions: Optional rectangular keepouts as
                 ``[(x_min, y_min, x_max, y_max), ...]`` in mm.
 
@@ -4529,7 +4614,8 @@ def register(mcp: FastMCP) -> None:
             max_seconds=max_seconds,
             keepout_regions=list(keepout_regions or []),
         )
-        result = force_directed_placement(comps, placement_nets, cfg)
+        stats: dict[str, object] = {}
+        result = force_directed_placement(comps, placement_nets, cfg, stats=stats)
         output = [
             {"ref": c.ref, "x": round(c.x, 4), "y": round(c.y, 4), "fixed": c.fixed} for c in result
         ]
@@ -4537,6 +4623,10 @@ def register(mcp: FastMCP) -> None:
             {
                 "placements": output,
                 "iterations": iterations,
+                "iterations_run": stats.get("iterations_run"),
+                "converged": stats.get("converged"),
+                "max_displacement_mm": stats.get("max_displacement_mm"),
+                "deterministic": max_seconds <= 0.0,
                 "seed": seed,
                 "grid_mm": grid_mm,
                 "max_seconds": max_seconds,

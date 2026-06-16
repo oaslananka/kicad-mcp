@@ -13,6 +13,9 @@
 [![Docs](https://github.com/oaslananka/kicad-mcp/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/docs.yml)
 [![CodeQL](https://github.com/oaslananka/kicad-mcp/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/oaslananka/kicad-mcp/badge)](https://securityscorecards.dev/viewer/?uri=github.com/oaslananka/kicad-mcp)
+<!-- parity-coverage-badge:start -->
+[![KiCad programmatic parity](https://img.shields.io/badge/KiCad_programmatic_parity-77.0%25-green)](docs/compatibility/capability-parity.generated.md)
+<!-- parity-coverage-badge:end -->
 
 <!-- Badges: documentation and knowledge base -->
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://oaslananka.github.io/kicad-mcp/)
@@ -26,6 +29,18 @@ Telemetry and error reporting are disabled by default. Opt-in OpenTelemetry
 configuration is documented in
 [`docs/configuration.md`](docs/configuration.md#opentelemetry), and privacy rules
 are documented in [`docs/privacy.md`](docs/privacy.md).
+
+## Scope and honesty
+
+KiCad MCP Pro is a **professional first-pass design and review assistant**, not an
+automated sign-off authority. ERC/DRC and the export pipeline drive KiCad's own
+engines. The signal-integrity, power-integrity, EMC, and thermal tools are
+**first-order, closed-form estimates** (typically ~5–10% accuracy) — fast first-pass
+review, **not** a substitute for a 2D/3D field solver, EM/FEA simulation, or formal
+sign-off. Live component sourcing uses the JLCPCB public catalog by default; Nexar and
+DigiKey are available only when their API credentials are configured. What fraction of
+KiCad's programmatic surface the server drives is tracked openly in the
+[capability-parity matrix](docs/compatibility/capability-parity.generated.md).
 
 ## Project identity
 
@@ -73,6 +88,13 @@ The documentation is organized from setup to operation:
 5. [Workflows](docs/workflows/first-pcb.md)
 6. [Release process](docs/release-process.md)
 7. [Security and privacy](docs/security/threat-model.md)
+8. [KiCad capability parity](docs/compatibility/capability-parity.generated.md) — how much of KiCad's programmatic surface this server drives
+9. [Error code catalog](docs/errors.md) — stable error codes, retry classes, and recovery
+
+The `kicad_capability_parity()` tool reports, per workflow domain, what fraction of
+KiCad's programmatically reachable surface this server can drive (currently **77%**),
+keeping genuine `gap`s distinct from `gui-only-no-api` items that KiCad exposes no
+headless API for.
 
 The published documentation site is available at
 [https://oaslananka.github.io/kicad-mcp/](https://oaslananka.github.io/kicad-mcp/).
@@ -124,6 +146,12 @@ MCP client. The generated tool catalog is available in
 [`docs/tools-reference.generated.md`](docs/tools-reference.generated.md).
 
 ## Development
+
+New contributors should start with [`ARCHITECTURE.md`](ARCHITECTURE.md), which maps
+the five layers (transport → MCP protocol → orchestration → KiCad adapter seam →
+pure domain) and shows exactly how to add a new tool. The runtime model and
+quality-gate stack are documented in
+[`docs/development/architecture.md`](docs/development/architecture.md).
 
 The project uses a `Taskfile.yml` for common development commands. After
 cloning the repository:

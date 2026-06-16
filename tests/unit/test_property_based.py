@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 try:
-    from hypothesis import assume, given
+    from hypothesis import assume, given, settings
     from hypothesis import strategies as st
 
     HYPOTHESIS_AVAILABLE = True
@@ -61,6 +61,7 @@ def test_tool_result_warnings_list(warnings: list[str]) -> None:
 
 
 @given(st.binary(min_size=0, max_size=1024))
+@settings(deadline=None)
 def test_schematic_state_hash_is_sha256_hex(content: bytes) -> None:
     """SchematicState.from_path always produces a SHA-256 hex string for files."""
     assume(len(content) > 0)

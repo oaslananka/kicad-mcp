@@ -28,7 +28,7 @@ jobs:
           - os: ubuntu-24.04
             artifact-name: linux-tauri
             args: ""
-          - os: windows-2025-vs2026
+          - os: windows-2025
             artifact-name: windows-tauri
             args: ""
           - os: macos-15

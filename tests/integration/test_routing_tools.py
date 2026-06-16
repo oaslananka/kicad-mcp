@@ -6,7 +6,39 @@ from pathlib import Path
 import pytest
 
 from kicad_mcp.server import build_server
-from tests.conftest import call_tool_text
+from tests.conftest import call_tool_payload, call_tool_text
+
+
+@pytest.mark.anyio
+async def test_route_export_dsn_surfaces_manual_step_when_headless_unavailable(
+    sample_project: Path,
+) -> None:
+    """When KiCad cannot export the DSN headlessly, the tool returns a clear human-gated
+    result instead of dead-ending (work order P1-T7, K1)."""
+    server = build_server("pcb")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    payload = await call_tool_payload(server, "route_export_dsn", {})
+
+    assert payload["ok"] is False
+    assert payload["human_gate_required"] is True
+    assert any("Specctra DSN" in error for error in payload["errors"])
+
+
+@pytest.mark.anyio
+async def test_route_import_ses_surfaces_manual_gui_step(sample_project: Path) -> None:
+    """SES import never claims the board is routed; it stages and surfaces the GUI step."""
+    ses = sample_project / "output" / "routing" / "board.ses"
+    ses.parent.mkdir(parents=True, exist_ok=True)
+    ses.write_text("ses", encoding="utf-8")
+    server = build_server("pcb")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    payload = await call_tool_payload(server, "route_import_ses", {})
+
+    assert payload["human_gate_required"] is True
+    assert payload["changed"] is False
+    assert "Specctra Session" in payload["state_delta"]["summary"]
 
 
 @pytest.mark.anyio
@@ -55,7 +87,10 @@ async def test_route_autoroute_freerouting_smoke_handles_large_dsn(
         },
     )
 
-    assert "FreeRouting completed successfully" in result
+    # The route runs headlessly but applying the SES is a manual KiCad step (P1-T7),
+    # so the result is honest about not having changed the board yet.
+    assert "FreeRouting produced a routed session" in result
+    assert "File > Import > Specctra Session" in result
     assert (sample_project / "output" / "routing" / "board.ses").exists()
     assert "Thread count: 8" in result
     assert "Routed: 100.00%" in result

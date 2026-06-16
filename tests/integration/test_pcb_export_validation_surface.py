@@ -438,7 +438,8 @@ async def test_pcb_and_routing_surface(
 
     joined_routing = "\n".join(routing_results)
     assert "Specctra DSN ready" in joined_routing
-    assert "FreeRouting completed successfully" in joined_routing
+    # P1-T7: applying the SES is a manual KiCad step, so the route reports honestly.
+    assert "FreeRouting produced a routed session" in joined_routing
     assert "Specctra SES session staged" in joined_routing
     assert "Net-class routing rule" in joined_routing
     assert "Differential-pair routing rule" in joined_routing
@@ -507,8 +508,13 @@ async def test_pcb_read_tools_fall_back_to_configured_board_file(
     layers = await call_tool_text(server, "pcb_get_layers", {})
     rules = await call_tool_text(server, "pcb_get_design_rules", {})
 
+    # pcb_get_board_summary now returns a structured VerdictReport (P1-T4); its human
+    # text lives in the `text` field. Asserting raw paths against the JSON-serialized
+    # text would fail on Windows because backslashes are JSON-escaped, so check the
+    # unescaped `text` field directly instead.
+    summary_text = json.loads(summary)["text"]
     for text in (
-        summary,
+        summary_text,
         tracks,
         tracks_filtered_out,
         tracks_out_of_range,
@@ -528,8 +534,8 @@ async def test_pcb_read_tools_fall_back_to_configured_board_file(
         assert f"Board file: {sample_project / 'demo.kicad_pcb'}" in text
         assert "Fallback status: using file-backed .kicad_pcb parser" in text
 
-    assert "- Tracks: 1" in summary
-    assert "- Footprints: 1" in summary
+    assert "- Tracks: 1" in summary_text
+    assert "- Footprints: 1" in summary_text
     assert "- Nets: 2" in summary
     assert "Tracks (file-backed fallback, 1 total)" in tracks
     assert "net=/VIN" in tracks

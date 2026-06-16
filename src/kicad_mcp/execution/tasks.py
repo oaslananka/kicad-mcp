@@ -44,6 +44,7 @@ class _TaskRecord:
         description: str,
         ttl_s: int = _TASK_DEFAULT_TTL_S,
         poll_interval_s: int = _TASK_DEFAULT_POLL_INTERVAL_S,
+        timeout_s: float | None = None,
     ) -> None:
         self.task_id = task_id
         self.description = description
@@ -53,8 +54,12 @@ class _TaskRecord:
         self.last_updated_at = self.created_at
         self.ttl_s = ttl_s
         self.poll_interval_s = poll_interval_s
+        # Optional wall-clock execution budget. None = no timeout (default).
+        self.timeout_s = timeout_s
         self._cancel_event = asyncio.Event()
         self._finished_event = asyncio.Event()
+        # Handle to the background runner so cancel() can truly interrupt it.
+        self._runner: asyncio.Task[Any] | None = None
         self._result: Any = None
         self._error: str | None = None
 
@@ -162,13 +167,19 @@ class TaskManager:
     # Lifecycle
     # ------------------------------------------------------------------
 
-    async def start(self, description: str, ttl_s: int | None = None) -> Task:
+    async def start(
+        self,
+        description: str,
+        ttl_s: int | None = None,
+        timeout_s: float | None = None,
+    ) -> Task:
         """Create a new task in ``working`` state and return its MCP ``Task`` descriptor."""
         task_id = str(uuid4())
         record = _TaskRecord(
             task_id=task_id,
             description=description,
             ttl_s=_TASK_DEFAULT_TTL_S if ttl_s is None else ttl_s,
+            timeout_s=timeout_s,
         )
         async with self._lock:
             self._tasks[task_id] = record
@@ -179,14 +190,22 @@ class TaskManager:
         description: str,
         coro_factory: Callable[[], Awaitable[Any]],
         ttl_s: int | None = None,
+        timeout_s: float | None = None,
     ) -> Task:
         """Create a task, execute the coroutine in the background, and return the task descriptor.
 
-        The caller should poll ``tasks/get`` to check completion or failure.
+        The caller should poll ``tasks/get`` to check completion or failure. When
+        ``timeout_s`` is set the work is bounded by that wall-clock budget and fails
+        with a timeout if it overruns. The background runner handle is recorded so
+        ``cancel()`` can truly interrupt the coroutine, not just flip the status.
         """
-        task = await self.start(description, ttl_s=ttl_s)
-        # Fire-and-forget the actual work
-        asyncio.ensure_future(self._run(task.taskId, coro_factory))
+        task = await self.start(description, ttl_s=ttl_s, timeout_s=timeout_s)
+        record = await self._get_record(task.taskId)
+        runner = asyncio.ensure_future(self._run(task.taskId, coro_factory))
+        # No await between ensure_future and this assignment, so the runner handle
+        # is in place before _run can execute — cancel() can always reach it.
+        if record is not None:
+            record._runner = runner
         return task
 
     async def _run(
@@ -199,16 +218,23 @@ class TaskManager:
         if record is None:
             return
         try:
-            result = await coro_factory()
+            if record.timeout_s is not None:
+                result = await asyncio.wait_for(coro_factory(), timeout=record.timeout_s)
+            else:
+                result = await coro_factory()
             if not record.cancelled:
                 record.finish(result=result)
+        except TimeoutError:
+            if not record.cancelled:
+                record.finish(error=f"Task exceeded its {record.timeout_s}s timeout.")
         except asyncio.CancelledError:
-            record.mark("cancelled", message="Task was cancelled.")
-            record._finished_event.set()
+            if not record.finished:
+                record.mark("cancelled", message="Task was cancelled.")
+                record._finished_event.set()
         except Exception as exc:
             if not record.cancelled:
                 record.finish(error=f"{type(exc).__name__}: {exc}")
-            else:
+            elif not record.finished:
                 record.mark("cancelled", message="Task was cancelled.")
                 record._finished_event.set()
 
@@ -227,6 +253,11 @@ class TaskManager:
             record._cancel_event.set()
             record.mark("cancelled", message="Cancellation requested.")
             record._finished_event.set()
+            runner = record._runner
+        # Interrupt the running coroutine itself (cancel() is non-blocking), so a
+        # long operation actually stops instead of leaking until it finishes.
+        if runner is not None and not runner.done():
+            runner.cancel()
         return record.to_cancel_result()
 
     async def get(self, task_id: str) -> GetTaskResult | None:

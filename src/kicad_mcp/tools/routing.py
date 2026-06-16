@@ -14,6 +14,7 @@ from mcp.server.fastmcp import Context, FastMCP
 
 from ..config import get_config
 from ..connection import board_transaction, get_board
+from ..errors import ManualStepRequiredError
 from ..models.common import _PadLike
 from ..models.pcb import AddTrackInput
 from ..models.tool_result import ArtifactRef, StateDelta, ToolResult
@@ -354,11 +355,20 @@ def register(mcp: FastMCP) -> None:
     @mcp.tool()
     @headless_compatible
     def route_export_dsn(output_path: str = "output/routing/board.dsn") -> ToolResult:
-        """Stage a Specctra DSN file for FreeRouting."""
+        """Export a Specctra DSN for FreeRouting; may require a one-time KiCad GUI step.
+
+        Uses headless ``kicad-cli pcb export specctra`` when the CLI supports it. If KiCad
+        cannot export the DSN headlessly, returns a human-gated result describing the
+        File > Export > Specctra DSN step instead of failing opaquely.
+        """
         runner = FreeRoutingRunner()
         pcb_file = _get_pcb_file()
         try:
             dsn_path = runner.export_dsn(pcb_file, Path(output_path))
+        except ManualStepRequiredError as exc:
+            manual = ToolResult.failure("route_export_dsn", str(exc))
+            manual.human_gate_required = True
+            return manual
         except (RuntimeError, ValueError) as exc:
             return ToolResult.failure(
                 "route_export_dsn", f"Specctra DSN export is unavailable: {exc}"
@@ -379,28 +389,34 @@ def register(mcp: FastMCP) -> None:
     @mcp.tool()
     @headless_compatible
     def route_import_ses(ses_path: str = "output/routing/board.ses") -> ToolResult:
-        """Stage a Specctra SES file and explain the KiCad import step."""
+        """Stage a routed Specctra SES and surface the required KiCad GUI import step.
+
+        KiCad has no headless SES import, so this stages the session and returns a
+        human-gated result: the routing is applied by running File > Import > Specctra
+        Session in the PCB Editor. It never reports the board as routed when it is not
+        (``changed=False``, ``human_gate_required=True``).
+        """
         runner = FreeRoutingRunner()
-        pcb_file = _get_pcb_file()
         try:
             resolved_ses = get_config().resolve_within_project(Path(ses_path))
-            staged = runner.import_ses(pcb_file, resolved_ses)
+            staged = runner.stage_ses(resolved_ses)
         except (FileNotFoundError, RuntimeError, ValueError) as exc:
-            return ToolResult.failure(
-                "route_import_ses", f"Specctra SES import is unavailable: {exc}"
-            )
-        return ToolResult.success(
+            return ToolResult.failure("route_import_ses", f"Specctra SES staging failed: {exc}")
+        result = ToolResult.success(
             "route_import_ses",
-            changed=True,
+            changed=False,
             artifacts=[ArtifactRef(path=str(staged), kind="ses")],
             state_delta=StateDelta(
                 summary=(
                     f"Specctra SES session staged at {_relative_project_path(staged)}. "
-                    "KiCad 10 still requires importing the session from the PCB Editor UI."
+                    "KiCad has no headless SES import: open the PCB Editor and run "
+                    "File > Import > Specctra Session to apply the routing, then save."
                 ),
                 changed_files=[str(staged)],
             ),
         )
+        result.human_gate_required = True
+        return result
 
     @mcp.tool()
     @headless_compatible
@@ -417,7 +433,14 @@ def register(mcp: FastMCP) -> None:
         drc_report_path: str = "output/routing/freerouting.drc.json",
         ctx: Context[Any, Any, Any] | None = None,
     ) -> ToolResult:
-        """Run FreeRouting after placement; do not skip this post-placement routing step.
+        """Run FreeRouting after placement, then surface the KiCad import step.
+
+        DSN export is attempted headlessly; FreeRouting runs via Docker or a local JAR.
+        Applying the routed SES session back to the board has no headless path in KiCad,
+        so this returns a human-gated result (``human_gate_required=True``) describing the
+        File > Import > Specctra Session step — it does not claim the board is routed when
+        the session has only been staged. If headless DSN export is unavailable, the
+        manual export step is surfaced instead of failing opaquely.
 
         When the experimental MCP Tasks extension is enabled
         (``KICAD_MCP_ENABLE_TASKS=1``), the routing runs in the background and a
@@ -438,6 +461,7 @@ def register(mcp: FastMCP) -> None:
 
             try:
                 import anyio
+
                 await _report_progress(ctx, 10, 100, "Exporting DSN for FreeRouting...")
                 dsn_file = await anyio.to_thread.run_sync(
                     lambda: runner.export_dsn(pcb_file, dsn_target)
@@ -458,6 +482,10 @@ def register(mcp: FastMCP) -> None:
                         drc_report_path=drc_target,
                     )
                 )
+            except ManualStepRequiredError as exc:
+                manual = ToolResult.failure("route_autoroute_freerouting", str(exc))
+                manual.human_gate_required = True
+                return manual
             except (FileNotFoundError, RuntimeError, ValueError) as exc:
                 return ToolResult.failure(
                     "route_autoroute_freerouting", f"FreeRouting autoroute failed: {exc}"
@@ -497,9 +525,7 @@ def register(mcp: FastMCP) -> None:
 
             try:
                 await _report_progress(ctx, 85, 100, "Staging SES session for KiCad import...")
-                staged = await anyio.to_thread.run_sync(
-                    lambda: runner.import_ses(pcb_file, ses_path_obj)
-                )
+                staged = await anyio.to_thread.run_sync(lambda: runner.stage_ses(ses_path_obj))
             except (FileNotFoundError, RuntimeError, ValueError) as exc:
                 return ToolResult.failure(
                     "route_autoroute_freerouting",
@@ -509,17 +535,19 @@ def register(mcp: FastMCP) -> None:
             ignore_text = (
                 ", ".join([*(net_classes_to_ignore or []), *(exclude_nets or [])]) or "none"
             )
-            await _report_progress(ctx, 100, 100, "FreeRouting autoroute complete.")
-            return ToolResult.success(
+            await _report_progress(ctx, 100, 100, "FreeRouting routed; manual import remains.")
+            # The route ran headlessly, but applying the SES has no headless path in KiCad.
+            # Report changed=False + human_gate_required so the board is never claimed routed.
+            routed = ToolResult.success(
                 "route_autoroute_freerouting",
-                changed=True,
+                changed=False,
                 artifacts=[
                     ArtifactRef(path=str(dsn_file), kind="dsn"),
                     ArtifactRef(path=str(staged), kind="ses"),
                 ],
                 state_delta=StateDelta(
                     summary=(
-                        "FreeRouting completed successfully.\n"
+                        "FreeRouting produced a routed session; apply it in KiCad to finish.\n"
                         f"Mode: {result.mode}\n"
                         f"DSN: {_relative_project_path(dsn_file)}\n"
                         f"SES: {_relative_project_path(staged)}\n"
@@ -529,12 +557,15 @@ def register(mcp: FastMCP) -> None:
                         f"Wall time: {result.wall_seconds:.3f}s\n"
                         f"Ignored net classes: {ignore_text}\n"
                         f"Thread count: {thread_count}\n"
-                        f"SES path: {_relative_project_path(result.ses_path)}\n"
+                        "Manual step: open the PCB in KiCad and run "
+                        "File > Import > Specctra Session, then save the board.\n"
                         f"stdout tail: {result.stdout_tail or '(empty)'}"
                     ),
                     changed_files=[str(dsn_file), str(staged)],
                 ),
             )
+            routed.human_gate_required = True
+            return routed
 
         # Check if the experimental MCP Tasks extension is active
         task_mgr = getattr(ctx.fastmcp, "_task_manager", None) if ctx is not None else None

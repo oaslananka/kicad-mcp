@@ -89,9 +89,7 @@ async def test_sim_assign_spice_model_no_fields_provided(sample_project: Path) -
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
-    result = await call_tool_text(
-        server, "sim_assign_spice_model", {"reference": "R1"}
-    )
+    result = await call_tool_text(server, "sim_assign_spice_model", {"reference": "R1"})
     assert "No fields were provided" in result
 
 
@@ -153,9 +151,7 @@ async def test_sim_remove_spice_library(sample_project: Path) -> None:
         "sim_add_spice_library",
         {"name": "MyModels", "uri": "models/mylib.lib"},
     )
-    result = await call_tool_text(
-        server, "sim_remove_spice_library", {"name": "MyModels"}
-    )
+    result = await call_tool_text(server, "sim_remove_spice_library", {"name": "MyModels"})
     assert "Removed SPICE library 'MyModels'" in result
 
     listing = await call_tool_text(server, "sim_list_spice_libraries", {})
@@ -168,9 +164,7 @@ async def test_sim_remove_spice_library_missing(sample_project: Path) -> None:
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
-    result = await call_tool_text(
-        server, "sim_remove_spice_library", {"name": "MissingLib"}
-    )
+    result = await call_tool_text(server, "sim_remove_spice_library", {"name": "MissingLib"})
     assert "No SPICE library named 'MissingLib' was found" in result
 
 
@@ -240,14 +234,10 @@ async def test_sim_add_spice_directive_validation(sample_project: Path) -> None:
     ]
 
     for directive in valid_directives:
-        result = await call_tool_text(
-            server, "sim_add_spice_directive", {"directive": directive}
-        )
+        result = await call_tool_text(server, "sim_add_spice_directive", {"directive": directive})
         assert "Stored simulation directive" in result, f"Failed for {directive}"
 
-    invalid = await call_tool_text(
-        server, "sim_add_spice_directive", {"directive": "R1 out 0 1k"}
-    )
+    invalid = await call_tool_text(server, "sim_add_spice_directive", {"directive": "R1 out 0 1k"})
     assert "Unsupported SPICE directive prefix" in invalid
 
 
@@ -276,9 +266,7 @@ async def test_sim_run_operating_point_with_empty_netlist_path(
                 traces=[SimulationTrace(name="out", values=[1.8])],
             )
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.simulation._run_cli_variants", fake_run_cli_variants
-    )
+    monkeypatch.setattr("kicad_mcp.tools.simulation._run_cli_variants", fake_run_cli_variants)
     monkeypatch.setattr("kicad_mcp.tools.simulation._runner", lambda: FakeRunner())
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
@@ -548,8 +536,6 @@ async def test_sim_run_operating_point_no_traces(sample_project: Path, monkeypat
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
-    result = await call_tool_text(
-        server, "sim_run_operating_point", {"netlist_path": "op.cir"}
-    )
+    result = await call_tool_text(server, "sim_run_operating_point", {"netlist_path": "op.cir"})
     assert "Operating point analysis" in result
     assert "No node or branch data was returned" in result

@@ -203,6 +203,52 @@ async def test_run_and_wait_cancellation_stops_execution() -> None:
     pytest.fail("Task was not cancelled in time")
 
 
+async def test_cancellation_actually_interrupts_the_coroutine() -> None:
+    # P5-T5: cancel() must interrupt the running coroutine, not just flip the
+    # record's status while the work leaks on in the background.
+    tm = TaskManager()
+    started = asyncio.Event()
+    interrupted = asyncio.Event()
+
+    async def work() -> str:
+        started.set()
+        try:
+            await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            interrupted.set()
+            raise
+        return "never"
+
+    task = await tm.run_and_wait("interruptible", work, ttl_s=60)
+    await started.wait()
+    await tm.cancel(task.taskId)
+
+    # The coroutine itself received CancelledError — proves real interruption.
+    await asyncio.wait_for(interrupted.wait(), timeout=1.0)
+    result = await tm.get(task.taskId)
+    assert result is not None
+    assert result.status == "cancelled"
+
+
+async def test_run_and_wait_enforces_execution_timeout() -> None:
+    # P5-T5: a task that overruns its timeout fails instead of hanging forever.
+    tm = TaskManager()
+
+    async def slow() -> str:
+        await asyncio.sleep(10)
+        return "never"
+
+    task = await tm.run_and_wait("slow", slow, ttl_s=60, timeout_s=0.05)
+    for _ in range(50):
+        result = await tm.get(task.taskId)
+        assert result is not None
+        if result.status == "failed":
+            assert "timeout" in (result.statusMessage or "").lower()
+            return
+        await asyncio.sleep(0.02)
+    pytest.fail("Task did not time out in time")
+
+
 # =========================================================================
 # Concurrent tasks
 # =========================================================================

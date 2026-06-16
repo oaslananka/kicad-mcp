@@ -19,6 +19,7 @@ import secrets
 import signal
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -132,6 +133,62 @@ def _generate_pairing_code() -> str:
 
 
 # ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+
+# General inbound message budget: a burst plus a steady refill. Generous for any
+# legitimate client, but bounds floods even though the daemon binds to localhost.
+BRIDGE_RATE_CAPACITY = 60.0
+BRIDGE_RATE_REFILL = 20.0  # tokens/second
+# Pairing attempts are bounded hard so a 24-bit code cannot be brute-forced: a
+# small burst then one attempt every five seconds.
+BRIDGE_PAIR_CAPACITY = 5.0
+BRIDGE_PAIR_REFILL = 0.2  # tokens/second
+
+# JSON-RPC error returned when a caller exceeds its budget.
+RATE_LIMIT_ERROR_CODE = -32004
+
+
+@dataclass
+class TokenBucket:
+    """Monotonic token-bucket rate limiter.
+
+    Refills continuously at ``refill_per_second`` up to ``capacity``. ``allow()``
+    consumes one token and returns whether the caller is within budget. ``time_fn``
+    is injectable so the limiter can be tested deterministically. Intended for a
+    single asyncio event loop (no internal locking).
+    """
+
+    capacity: float
+    refill_per_second: float
+    time_fn: Callable[[], float] = time.monotonic
+    _tokens: float = field(init=False)
+    _last: float = field(init=False)
+
+    def __post_init__(self) -> None:
+        self._tokens = self.capacity
+        self._last = self.time_fn()
+
+    def allow(self, cost: float = 1.0) -> bool:
+        now = self.time_fn()
+        refilled = self._tokens + (now - self._last) * self.refill_per_second
+        self._tokens = min(self.capacity, refilled)
+        self._last = now
+        if self._tokens >= cost:
+            self._tokens -= cost
+            return True
+        return False
+
+
+def _rate_limited_error(msg_id: object) -> dict[str, object]:
+    return {
+        "jsonrpc": "2.0",
+        "id": msg_id,
+        "error": {"code": RATE_LIMIT_ERROR_CODE, "message": "Rate limit exceeded. Slow down."},
+    }
+
+
+# ---------------------------------------------------------------------------
 # Bridge State
 # ---------------------------------------------------------------------------
 
@@ -147,7 +204,14 @@ class BridgeState:
     paired_at: float | None = None
     request_count: int = 0
     error_count: int = 0
+    rate_limited_count: int = 0
     start_time: float = field(default_factory=time.time)
+    rate_limiter: TokenBucket = field(
+        default_factory=lambda: TokenBucket(BRIDGE_RATE_CAPACITY, BRIDGE_RATE_REFILL)
+    )
+    pair_limiter: TokenBucket = field(
+        default_factory=lambda: TokenBucket(BRIDGE_PAIR_CAPACITY, BRIDGE_PAIR_REFILL)
+    )
     _ws_server: Any = None
 
     @property
@@ -163,6 +227,7 @@ class BridgeState:
             "paired_at": self.paired_at,
             "request_count": self.request_count,
             "error_count": self.error_count,
+            "rate_limited_count": self.rate_limited_count,
             "uptime_seconds": int(self.uptime_seconds),
         }
 
@@ -233,12 +298,25 @@ async def _route_message(
     state: BridgeState, message: dict[str, object]
 ) -> dict[str, object] | None:
     """Route an incoming JSON-RPC message to the local kicad-mcp server."""
-    state.request_count += 1
     method = message.get("method", "")
     msg_id = message.get("id")
 
+    # Rate limit every inbound message before doing any work. The daemon binds to
+    # localhost, but this still blunts request floods and — together with the
+    # stricter pairing budget below — makes brute-forcing the pairing code
+    # infeasible.
+    if not state.rate_limiter.allow():
+        state.rate_limited_count += 1
+        return _rate_limited_error(msg_id)
+
+    state.request_count += 1
+
     # --- Bridge control methods ---
     if method == "bridge.pair":
+        # Bound pairing attempts hard so the 24-bit code cannot be guessed at speed.
+        if not state.pair_limiter.allow():
+            state.rate_limited_count += 1
+            return _rate_limited_error(msg_id)
         params = message.get("params", {})
         code = params.get("code", "") if isinstance(params, dict) else ""
         if code == state.pairing_code:

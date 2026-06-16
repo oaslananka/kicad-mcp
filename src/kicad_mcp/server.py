@@ -72,7 +72,12 @@ from .diagnostics import (
     write_diagnostic_bundle,
 )
 from .discovery import ensure_studio_project_watcher, find_kicad_version
-from .errors import IpcDisconnectedError, KiCadConnectionTimeoutError, KiCadNotRunningError
+from .errors import (
+    IpcDisconnectedError,
+    KiCadConnectionTimeoutError,
+    KiCadNotRunningError,
+    ToolRegistrationTimeoutError,
+)
 from .execution.tasks import TaskManager
 from .i18n import SERVER_DESCRIPTION, localize, option_help
 from .ipc.capabilities import KiCadIpcCapabilityState, get_ipc_capability_state
@@ -659,6 +664,10 @@ class KiCadFastMCP(FastMCP):
     _lazy_registration_error: BaseException | None = None
     _lazy_registration_lock: threading.Lock
     _lazy_registration_thread: threading.Thread | None = None
+    # Generous wall-clock budget for deferred registration. It normally finishes
+    # in well under a second; the timeout only guards a pathological hang so a
+    # request fails fast (retryable) instead of blocking forever.
+    _lazy_registration_timeout_s: float = 30.0
     _telemetry_catalog_hash: str | None = None
     _telemetry_kicad_version: str | None = None
     _ipc_capability_state: KiCadIpcCapabilityState | None = None
@@ -713,7 +722,21 @@ class KiCadFastMCP(FastMCP):
             self._lazy_registration_complete = True
 
     async def _ensure_registered_async(self) -> None:
-        await anyio.to_thread.run_sync(self.ensure_registered)
+        if self._lazy_registration_complete:
+            return
+        try:
+            await asyncio.wait_for(
+                anyio.to_thread.run_sync(self.ensure_registered, abandon_on_cancel=True),
+                timeout=self._lazy_registration_timeout_s,
+            )
+        except TimeoutError as exc:
+            # Registration keeps running in the background thread; surface a
+            # retryable error rather than blocking this request indefinitely.
+            raise ToolRegistrationTimeoutError(
+                "Tool registration has not finished yet and exceeded its "
+                f"{self._lazy_registration_timeout_s:g}s budget. It continues in the "
+                "background — retry shortly."
+            ) from exc
 
     def tool(
         self,
@@ -1339,6 +1362,7 @@ class _DashboardAuthMiddleware(BaseHTTPMiddleware):
         call_next: RequestResponseEndpoint,
     ) -> Response:
         from urllib.parse import urlparse
+
         cfg = get_config()
         path = request.url.path
 
@@ -1485,6 +1509,7 @@ def _register_profile_components(
     from .prompts import workflows
     from .resources import analysis, board_state, server_info, studio_context
     from .tools import (
+        capability_parity,
         dfm,
         embedded_files,
         emc_compliance,
@@ -1510,6 +1535,7 @@ def _register_profile_components(
 
     router.register(server)
     project.register(server)
+    capability_parity.register(server)
     embedded_files.register(server)
 
     if "pcb_read" in enabled or "pcb_write" in enabled:

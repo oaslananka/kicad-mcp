@@ -410,7 +410,6 @@ async def api_config_post(request: Request) -> JSONResponse:
     return JSONResponse(result)
 
 
-
 async def api_config_export(request: Request) -> JSONResponse:
     """Export an MCP config snippet for a specific client."""
     raw_client = request.path_params.get("client", "").strip().casefold()

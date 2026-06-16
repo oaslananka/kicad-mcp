@@ -20,6 +20,7 @@ from ..models.export import (
     ExportNetlistInput,
     ExportPdfInput,
 )
+from .aliases import notify_deprecated, register_alias
 from .export_support import (
     _ensure_output_dir,
     _get_pcb_file,
@@ -217,6 +218,7 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
     ) -> str:
         """Export Gerber manufacturing files."""
         import anyio
+
         await _report_progress(ctx, 5, 100, "Starting Gerber export...")
         result = await anyio.to_thread.run_sync(
             lambda: _with_low_level_export_notice(_export_gerber(output_subdir, layers))
@@ -974,13 +976,13 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
 
     @headless_compatible
     def export_3d_step() -> str:
-        """Export a STEP model for the active board."""
-        caps = get_cli_capabilities(get_config().kicad_cli)
-        return _with_low_level_export_notice(
-            _export_3d_model(
-                "step", "", supported=caps.supports_step, default_name="board.step", label="STEP"
-            )
-        )
+        """Deprecated alias of ``export_step``; exports a STEP model for the active board.
+
+        Retained for backward compatibility. Prefer ``export_step``, which accepts an
+        optional output path. This alias logs a one-time deprecation warning.
+        """
+        notify_deprecated("export_3d_step")
+        return export_step()
 
     @headless_compatible
     def export_step(output_path: str = "") -> str:
@@ -1483,6 +1485,7 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
     ) -> str:
         """Generate the standard set of manufacturing exports."""
         import anyio
+
         from .validation import _evaluate_project_gate, _render_project_gate_report
 
         variant_name = variant.strip() or None
@@ -1503,7 +1506,9 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
             await anyio.to_thread.run_sync(lambda: _export_gerber(variant_name=variant_name)),
         ]
         await _report_progress(ctx, 45, 100, "Exporting drill files...")
-        results.extend([await anyio.to_thread.run_sync(lambda: _export_drill(variant_name=variant_name))])
+        results.extend(
+            [await anyio.to_thread.run_sync(lambda: _export_drill(variant_name=variant_name))]
+        )
         await _report_progress(ctx, 65, 100, "Exporting BOM...")
         results.extend(
             [
@@ -1513,10 +1518,14 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         await _report_progress(ctx, 85, 100, "Exporting pick-and-place data...")
         results.extend(
             [
-                await anyio.to_thread.run_sync(lambda: _export_pick_and_place(variant_name=variant_name)),
+                await anyio.to_thread.run_sync(
+                    lambda: _export_pick_and_place(variant_name=variant_name)
+                ),
             ]
         )
-        ipc_result = await anyio.to_thread.run_sync(lambda: _export_ipc2581(variant_name=variant_name))
+        ipc_result = await anyio.to_thread.run_sync(
+            lambda: _export_ipc2581(variant_name=variant_name)
+        )
         if not ipc_result.startswith("IPC-2581 export is not supported"):
             results.append(ipc_result)
         odb_result = await anyio.to_thread.run_sync(lambda: _export_odb(variant_name=variant_name))
@@ -1536,7 +1545,7 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         mcp.tool()(export_sch_svg)
         mcp.tool()(export_sch_dxf)
         mcp.tool()(export_sch_python_bom)
-        mcp.tool()(export_3d_step)
+        register_alias(mcp, export_3d_step, "export_step")
         mcp.tool()(export_step)
         mcp.tool()(export_stepz)
         mcp.tool()(export_xao)

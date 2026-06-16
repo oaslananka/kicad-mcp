@@ -1,4 +1,9 @@
-"""Power-integrity and thermal heuristics for practical PCB review."""
+"""Power-integrity and thermal heuristics for practical PCB review.
+
+These are first-order estimates, not a substitute for a distributed IR-drop / current-
+density solver or a thermal FEA tool. Use them as a fast first-pass review, not as
+formal sign-off. Distributed PDN and thermal-network solvers are planned (P3-T2/P3-T4).
+"""
 
 from __future__ import annotations
 

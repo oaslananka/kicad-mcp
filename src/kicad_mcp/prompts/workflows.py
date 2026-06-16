@@ -91,7 +91,8 @@ Move a design from schematic capture to PCB layout.
 3. Run ERC and power checks.
 4. Export the netlist.
 5. Inspect footprints and assign missing ones.
-6. Move footprints, then do not skip the post-placement routing pass:
+6. Move footprints, then run the post-placement routing pass (apply the routed
+   session in KiCad when the tool surfaces the manual import step):
    a. `route_export_dsn()`
    b. `route_autoroute_freerouting()` — Docker-first, JAR fallback
    c. `route_import_ses()`
@@ -125,8 +126,10 @@ Run the mandatory post-placement routing loop.
 
 1. Confirm placement is acceptable with `pcb_score_placement()`.
 2. Export routing input with `route_export_dsn()`.
-3. Run `route_autoroute_freerouting()` — run this after placement and do not skip it.
-4. Import the routed result with `route_import_ses()`.
+3. Run `route_autoroute_freerouting()` after placement; it routes headlessly and
+   surfaces the KiCad import step (`human_gate_required`) when the SES must be applied.
+4. Apply the routed result with `route_import_ses()`, then perform the KiCad GUI
+   import it describes.
 5. Refill copper with `pcb_refill_zones()`.
 6. Run `run_drc()` and inspect `kicad://project/fix_queue`.
 7. Repeat only the failing step; do not restart schematic capture unless the transfer gate fails.
@@ -199,6 +202,31 @@ Use the project fix queue as the source of truth for what to fix next.
    before moving footprints again.
 6. Re-run `project_quality_gate()` after the fix.
 7. Stop only when the queue says there are no blocking issues left.
+""".strip()
+        return [TextContent(type="text", text=text)]
+
+    @mcp.prompt()
+    def error_recovery() -> list[TextContent]:
+        """How to read structured errors and retry safely (idempotency contract)."""
+        text = """
+When a tool call fails, read the structured error payload before retrying.
+
+Every error carries: code, message, hint, retryable, transient_class, retry_after_ms.
+
+1. If `retryable` is false, do not retry the same call. Fix the request or
+   configuration using `hint`, then proceed.
+2. If `retryable` is true, branch on `transient_class`:
+   - `network` / `timeout` / `lock`: a transient fault. Wait `retry_after_ms`
+     (or a short backoff) and retry — but ONLY if the tool is idempotent
+     (annotation `idempotentHint: true`). Re-calling a non-idempotent write can
+     double-apply (e.g. a second track, via, or symbol).
+   - `state`: a precondition is unmet (e.g. no board open). Reconcile first
+     (open the board / set the project), then retry. Retrying alone will not help.
+3. For a non-idempotent tool after a transient error, reconcile-then-retry: read
+   current state (e.g. `pcb_get_board_summary()`, `sch_get_symbols()`) to check
+   whether the operation already applied before calling it again.
+4. Read-only tools and converging writes (set_/save/refill/export/upgrade) are
+   idempotent; additive writes (add_/create_/place_/route_/build_) are not.
 """.strip()
         return [TextContent(type="text", text=text)]
 

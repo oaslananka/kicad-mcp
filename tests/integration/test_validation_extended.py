@@ -46,15 +46,11 @@ async def test_drc_add_exclusion_creates_file(sample_project: Path, monkeypatch)
         report_path.write_text(json.dumps(report), encoding="utf-8")
         return report_path, report, None
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_drc_report", fake_run_drc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
-    result = await call_tool_text(
-        server, "drc_add_exclusion", {"reason": "Fabricator approved"}
-    )
+    result = await call_tool_text(server, "drc_add_exclusion", {"reason": "Fabricator approved"})
     assert "Added 2 DRC exclusion(s)" in result
 
     listing = await call_tool_text(server, "drc_list_exclusions", {})
@@ -71,16 +67,12 @@ async def test_drc_add_exclusion_skips_duplicates(sample_project: Path, monkeypa
         report_path = sample_project / "output" / report_name
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report = {
-            "violations": [
-                {"uuid": "abc123", "severity": "error", "description": "Clearance"}
-            ]
+            "violations": [{"uuid": "abc123", "severity": "error", "description": "Clearance"}]
         }
         report_path.write_text(json.dumps(report), encoding="utf-8")
         return report_path, report, None
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_drc_report", fake_run_drc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
@@ -101,9 +93,7 @@ async def test_drc_add_exclusion_no_violations(sample_project: Path, monkeypatch
         report_path.write_text(json.dumps(report), encoding="utf-8")
         return report_path, report, None
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_drc_report", fake_run_drc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
@@ -118,9 +108,7 @@ async def test_drc_add_exclusion_drc_failure(sample_project: Path, monkeypatch) 
     def fake_run_drc(report_name: str) -> tuple[Path, dict | None, str | None]:
         return sample_project / "output" / report_name, None, "DRC crashed"
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_drc_report", fake_run_drc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
@@ -136,23 +124,17 @@ async def test_drc_remove_exclusion(sample_project: Path, monkeypatch) -> None:
         report_path = sample_project / "output" / report_name
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report = {
-            "violations": [
-                {"uuid": "abc123", "severity": "error", "description": "Clearance"}
-            ]
+            "violations": [{"uuid": "abc123", "severity": "error", "description": "Clearance"}]
         }
         report_path.write_text(json.dumps(report), encoding="utf-8")
         return report_path, report, None
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_drc_report", fake_run_drc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
     await call_tool_text(server, "drc_add_exclusion", {})
-    result = await call_tool_text(
-        server, "drc_remove_exclusion", {"uuid": "abc123"}
-    )
+    result = await call_tool_text(server, "drc_remove_exclusion", {"uuid": "abc123"})
     assert "Removed 1 DRC exclusion" in result
 
     listing = await call_tool_text(server, "drc_list_exclusions", {})
@@ -165,9 +147,7 @@ async def test_drc_remove_exclusion_missing_uuid(sample_project: Path) -> None:
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
-    result = await call_tool_text(
-        server, "drc_remove_exclusion", {"uuid": "nonexistent"}
-    )
+    result = await call_tool_text(server, "drc_remove_exclusion", {"uuid": "nonexistent"})
     assert "No exclusion found with UUID 'nonexistent'" in result
 
 
@@ -179,16 +159,12 @@ async def test_drc_validate_exclusions(sample_project: Path, monkeypatch) -> Non
         report_path = sample_project / "output" / report_name
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report = {
-            "violations": [
-                {"uuid": "abc123", "severity": "error", "description": "Clearance"}
-            ]
+            "violations": [{"uuid": "abc123", "severity": "error", "description": "Clearance"}]
         }
         report_path.write_text(json.dumps(report), encoding="utf-8")
         return report_path, report, None
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_drc_report", fake_run_drc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
@@ -229,18 +205,14 @@ async def test_drc_validate_exclusions_drc_failure(sample_project: Path, monkeyp
     def fake_run_drc(report_name: str) -> tuple[Path, dict | None, str | None]:
         return sample_project / "output" / report_name, None, "DRC failed"
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_drc_report", fake_run_drc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
     # Create empty exclusions file
     exclusions_path = sample_project / ".kicad-mcp" / "drc_exclusions.json"
     exclusions_path.parent.mkdir(parents=True, exist_ok=True)
-    exclusions_path.write_text(
-        json.dumps({"exclusions": []}, indent=2), encoding="utf-8"
-    )
+    exclusions_path.write_text(json.dumps({"exclusions": []}, indent=2), encoding="utf-8")
 
     result = await call_tool_text(server, "drc_validate_exclusions", {})
     assert "No DRC exclusions stored" in result
@@ -316,9 +288,7 @@ async def test_erc_reset_rules_single(sample_project: Path) -> None:
         "erc_set_rule_severity",
         {"rule_name": "pin_not_connected", "severity": "warning"},
     )
-    result = await call_tool_text(
-        server, "erc_reset_rules", {"rule_name": "pin_not_connected"}
-    )
+    result = await call_tool_text(server, "erc_reset_rules", {"rule_name": "pin_not_connected"})
     assert "ERC rule 'pin_not_connected' reset to default severity (error)" in result
 
     listing = await call_tool_text(server, "erc_list_rules", {})
@@ -358,9 +328,7 @@ async def test_erc_reset_rules_unknown_rule(sample_project: Path) -> None:
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
-    result = await call_tool_text(
-        server, "erc_reset_rules", {"rule_name": "unknown_rule"}
-    )
+    result = await call_tool_text(server, "erc_reset_rules", {"rule_name": "unknown_rule"})
     assert "Unknown ERC rule 'unknown_rule'" in result
 
 
@@ -379,9 +347,7 @@ async def test_validate_silk_to_pad_no_violations(sample_project: Path, monkeypa
         report_path.write_text(json.dumps(report), encoding="utf-8")
         return report_path, report, None
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_drc_report", fake_run_drc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
@@ -413,9 +379,7 @@ async def test_validate_silk_to_pad_with_violations(sample_project: Path, monkey
         report_path.write_text(json.dumps(report), encoding="utf-8")
         return report_path, report, None
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_drc_report", fake_run_drc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
@@ -436,9 +400,7 @@ async def test_schematic_quality_gate_pass(sample_project: Path, monkeypatch) ->
         report_path.write_text(json.dumps(report), encoding="utf-8")
         return report_path, report, None
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_erc_report", fake_run_erc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_erc_report", fake_run_erc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
@@ -470,9 +432,7 @@ async def test_schematic_quality_gate_fail(sample_project: Path, monkeypatch) ->
         report_path.write_text(json.dumps(report), encoding="utf-8")
         return report_path, report, None
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_erc_report", fake_run_erc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_erc_report", fake_run_erc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
@@ -496,9 +456,7 @@ async def test_pcb_quality_gate_pass(sample_project: Path, monkeypatch) -> None:
         report_path.write_text(json.dumps(report), encoding="utf-8")
         return report_path, report, None
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_drc_report", fake_run_drc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
@@ -514,18 +472,14 @@ async def test_pcb_quality_gate_fail(sample_project: Path, monkeypatch) -> None:
         report_path = sample_project / "output" / report_name
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report = {
-            "violations": [
-                {"severity": "error", "type": "clearance", "description": "Clearance"}
-            ],
+            "violations": [{"severity": "error", "type": "clearance", "description": "Clearance"}],
             "unconnected_items": [{"severity": "error", "description": "NET1"}],
             "items_not_passing_courtyard": [],
         }
         report_path.write_text(json.dumps(report), encoding="utf-8")
         return report_path, report, None
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_drc_report", fake_run_drc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
@@ -550,15 +504,11 @@ async def test_manufacturing_quality_gate(sample_project: Path, monkeypatch) -> 
         report_path.write_text(json.dumps(report), encoding="utf-8")
         return report_path, report, None
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_drc_report", fake_run_drc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
-    result = await call_tool_text(
-        server, "manufacturing_quality_gate", {"profile": "JLCPCB"}
-    )
+    result = await call_tool_text(server, "manufacturing_quality_gate", {"profile": "JLCPCB"})
     assert "Manufacturing quality gate" in result
 
 
@@ -588,18 +538,14 @@ async def test_run_drc_tool(sample_project: Path, monkeypatch) -> None:
         report_path = sample_project / "output" / report_name
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report = {
-            "violations": [
-                {"severity": "error", "type": "clearance", "description": "Clearance"}
-            ],
+            "violations": [{"severity": "error", "type": "clearance", "description": "Clearance"}],
             "unconnected_items": [],
             "items_not_passing_courtyard": [],
         }
         report_path.write_text(json.dumps(report), encoding="utf-8")
         return report_path, report, None
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_drc_report", fake_run_drc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 
@@ -631,9 +577,7 @@ async def test_run_erc_tool(sample_project: Path, monkeypatch) -> None:
         report_path.write_text(json.dumps(report), encoding="utf-8")
         return report_path, report, None
 
-    monkeypatch.setattr(
-        "kicad_mcp.tools.validation._run_erc_report", fake_run_erc
-    )
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_erc_report", fake_run_erc)
     server = build_server("full")
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
 

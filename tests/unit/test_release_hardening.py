@@ -1056,7 +1056,7 @@ def test_dashboard_auth_middleware(sample_project: Path) -> None:
     _ = sample_project
     cfg = get_config()
     cfg.transport = "streamable-http"
-    cfg.auth_token = "my_super_secret_test_auth_token_value_32_chars"
+    cfg.auth_token = "my_super_secret_test_auth_token_value_32_chars"  # noqa: S105
 
     server = build_server("minimal")
     client = TestClient(server.streamable_http_app())
@@ -1086,7 +1086,7 @@ def test_dashboard_origin_checks(sample_project: Path) -> None:
     _ = sample_project
     cfg = get_config()
     cfg.transport = "streamable-http"
-    cfg.auth_token = "my_super_secret_test_auth_token_value_32_chars"
+    cfg.auth_token = "my_super_secret_test_auth_token_value_32_chars"  # noqa: S105
     cfg.cors_origins = "http://trusted-app.local"
 
     server = build_server("minimal")
@@ -1148,6 +1148,3 @@ def test_dashboard_config_filtering(sample_project: Path) -> None:
     assert updated_cfg.log_level == "DEBUG"
     # The unsafe field must NOT have changed
     assert updated_cfg.kicad_cli == original_cli
-
-
-

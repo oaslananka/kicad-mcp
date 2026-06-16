@@ -30,7 +30,7 @@
     },
     "macOSPrivateApi": true,
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:*; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset:; font-src 'self' data:; script-src 'self' 'unsafe-inline'"
     }
   },
   "bundle": {

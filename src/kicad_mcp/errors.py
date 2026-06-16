@@ -2,7 +2,16 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Literal, TypedDict
+
+# A transient class tells an agent *why* an error is retryable and how to retry:
+#   none    - not transient; do not retry without changing the request.
+#   network - IPC/connection problem; safe to retry after a short backoff.
+#   timeout - the operation timed out; retry after a longer backoff.
+#   lock    - a resource was locked; retry after a short backoff.
+#   state   - a precondition is unmet (e.g. no board open); reconcile state first,
+#             then retry. Retrying blindly will not help.
+TransientClass = Literal["none", "network", "timeout", "lock", "state"]
 
 
 class ErrorPayload(TypedDict):
@@ -12,6 +21,8 @@ class ErrorPayload(TypedDict):
     message: str
     hint: str
     retryable: bool
+    transient_class: TransientClass
+    retry_after_ms: int | None
 
 
 class KiCadMcpError(Exception):
@@ -20,6 +31,8 @@ class KiCadMcpError(Exception):
     code = "KICAD_MCP_ERROR"
     hint = "Inspect the request, project configuration, and diagnostics output."
     retryable = False
+    transient_class: TransientClass = "none"
+    retry_after_ms: int | None = None
 
     def to_payload(self) -> ErrorPayload:
         """Return a stable JSON-serializable error payload."""
@@ -28,6 +41,8 @@ class KiCadMcpError(Exception):
             "message": str(self),
             "hint": self.hint,
             "retryable": self.retryable,
+            "transient_class": self.transient_class,
+            "retry_after_ms": self.retry_after_ms,
         }
 
 
@@ -37,6 +52,8 @@ class KiCadNotRunningError(KiCadMcpError):
     code = "KICAD_NOT_RUNNING"
     hint = "Start KiCad and enable the IPC API server, or run doctor for diagnostics."
     retryable = True
+    transient_class: TransientClass = "network"
+    retry_after_ms = 1000
 
 
 class KiCadConnectionTimeoutError(KiCadNotRunningError):
@@ -45,6 +62,8 @@ class KiCadConnectionTimeoutError(KiCadNotRunningError):
     code = "KICAD_CONNECTION_TIMEOUT"
     hint = "Increase KICAD_MCP_TIMEOUT_MS or verify that the KiCad IPC API is responding."
     retryable = True
+    transient_class: TransientClass = "timeout"
+    retry_after_ms = 2000
 
 
 class KiCadVersionMismatchError(KiCadMcpError):
@@ -69,6 +88,8 @@ class KiCadBoardNotOpenError(KiCadMcpError):
     code = "KICAD_BOARD_NOT_OPEN"
     hint = "Open a .kicad_pcb file in KiCad or set the active project before using board tools."
     retryable = True
+    # Retrying alone will not open a board; reconcile state (open a board) first.
+    transient_class: TransientClass = "state"
 
 
 class IpcDisconnectedError(KiCadNotRunningError):
@@ -77,6 +98,22 @@ class IpcDisconnectedError(KiCadNotRunningError):
     code = "IPC_DISCONNECTED"
     hint = "Open KiCad and enable the IPC API server in Preferences, or run doctor for diagnostics."
     retryable = True
+    transient_class: TransientClass = "network"
+    retry_after_ms = 1000
+
+
+class ToolRegistrationTimeoutError(KiCadMcpError):
+    """Raised when deferred tool registration does not finish within its budget.
+
+    Registration runs in the background; if a request waits longer than the
+    configured timeout it gets this retryable error instead of hanging forever.
+    """
+
+    code = "SERVER_INITIALIZING"
+    hint = "Tool registration is still in progress; retry in a moment."
+    retryable = True
+    transient_class: TransientClass = "timeout"
+    retry_after_ms = 2000
 
 
 class UnsafePathError(KiCadMcpError, ValueError):
@@ -103,6 +140,33 @@ class ExternalToolUnavailableError(KiCadMcpError):
     retryable = False
 
 
+class ManualStepRequiredError(KiCadMcpError):
+    """Raised when a workflow cannot complete headlessly and needs a KiCad GUI step.
+
+    Used where KiCad exposes no headless path (e.g. applying a routed Specctra SES
+    session). The message describes the exact GUI step so an agent can surface it
+    instead of silently dead-ending or falsely reporting success.
+    """
+
+    code = "MANUAL_STEP_REQUIRED"
+    hint = "Perform the described step in the KiCad GUI, then retry."
+    retryable = True
+    transient_class: TransientClass = "state"
+
+
+class SchematicWriteUnsafeError(KiCadMcpError):
+    """Raised when a schematic write would lose structure and is refused.
+
+    A round-trip-safe edit verifies that no structural nodes (e.g. global labels,
+    sheets) were dropped. If the serializer would silently corrupt the file, the
+    original is restored and this is raised instead — writes never silently lose data.
+    """
+
+    code = "SCHEMATIC_WRITE_UNSAFE"
+    hint = "The original file was restored. Edit the affected construct another way."
+    retryable = False
+
+
 def error_payload(exc: BaseException) -> ErrorPayload:
     """Map an arbitrary exception to the stable error payload shape."""
     if isinstance(exc, KiCadMcpError):
@@ -112,4 +176,6 @@ def error_payload(exc: BaseException) -> ErrorPayload:
         "message": str(exc) or exc.__class__.__name__,
         "hint": "Run doctor for diagnostics and retry with corrected configuration.",
         "retryable": False,
+        "transient_class": "none",
+        "retry_after_ms": None,
     }
