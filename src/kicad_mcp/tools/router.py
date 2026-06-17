@@ -54,6 +54,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "project_get_design_spec",
             "project_infer_design_spec",
             "project_assess_edit_impact",
+            "project_revalidate_after_edit",
             "project_validate_design_spec",
             "project_generate_design_prompt",
             "project_get_next_action",

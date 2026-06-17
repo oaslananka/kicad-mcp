@@ -131,7 +131,7 @@ Built-in prompt helpers for the critic/fixer loop:
 
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 334.
+Total public tools: 335.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -351,6 +351,7 @@ Total public tools: 334.
 | `project_quality_gate` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | yes | no | no | yes | yes | no | Run the full project quality gate across schematic, PCB, DFM, and parity checks. |
 | `project_quality_gate_report` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | no | no | no | no | yes | no | Return the full project gate in structured form for capable MCP clients. |
 | `project_remove_embedded_file` | all | no | no | no | no | yes | no | Remove an embedded file entry from the project metadata. |
+| `project_revalidate_after_edit` | all | no | no | no | no | yes | no | Re-run only the gates an edit could have invalidated; prove the rest preserved. |
 | `project_set_design_intent` | all | no | yes | no | yes | yes | no | Call this FIRST to store design intent for placement, routing, and gates. |
 | `project_signoff_report` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | no | no | no | no | yes | no | Produce the single manufacturing sign-off report. |
 | `project_validate_design_spec` | all | no | no | no | no | yes | no | Validate the resolved design spec against the active project PCB. |
@@ -688,6 +689,7 @@ Total public tools: 334.
 - `project_quality_gate`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `project_quality_gate_report`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_remove_embedded_file`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
+- `project_revalidate_after_edit`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_set_design_intent`: profiles=all; readOnly=no; destructive=yes; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `project_signoff_report`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_validate_design_spec`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.

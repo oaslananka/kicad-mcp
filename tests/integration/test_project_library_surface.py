@@ -203,6 +203,11 @@ async def test_project_resources_prompts_and_library_surface(
         "project_assess_edit_impact",
         {"baseline_spec_json": '{"manufacturer": "ACME", "critical_nets": ["EDIT_NET"]}'},
     )
+    revalidate = await call_tool_text(
+        server,
+        "project_revalidate_after_edit",
+        {"baseline_spec_json": '{"manufacturer": "ACME", "critical_nets": ["EDIT_NET"]}'},
+    )
     next_action = await call_tool_payload(server, "project_get_next_action", {})
     placement_report = await call_tool_payload(server, "pcb_placement_quality_report", {})
     gate_report = await call_tool_payload(server, "project_quality_gate_report", {})
@@ -215,6 +220,13 @@ async def test_project_resources_prompts_and_library_surface(
     assert "Edit-impact analysis:" in edit_impact
     assert "Gates to re-run:" in edit_impact
     assert "Gates preserved:" in edit_impact
+    # Selective re-validation actually re-runs only the impacted project gates and lists
+    # the preserved ones + analysis categories needing their own tools (work order P4-T4).
+    assert "Selective re-validation after edit:" in revalidate
+    assert "Preserved project gates" in revalidate
+    assert ("Re-ran impacted project gates" in revalidate) or (
+        "No bundled project gate was impacted" in revalidate
+    )
     assert isinstance(next_action, dict)
     assert next_action["status"] in {"PASS", "FAIL", "BLOCKED", "EMPTY"}
     assert isinstance(placement_report, dict)

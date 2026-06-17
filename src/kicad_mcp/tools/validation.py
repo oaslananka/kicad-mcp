@@ -1667,23 +1667,43 @@ def _empty_project_onboarding_outcome() -> GateOutcome:
     )
 
 
+# The edit-impact categories that the bundled project gate can actually re-run. The
+# remaining categories (signal_integrity, power, thermal, emc) are covered by separate
+# analysis tools, not by this sign-off gate.
+PROJECT_GATE_CATEGORIES: frozenset[str] = frozenset(
+    {"schematic", "connectivity", "pcb", "manufacturing", "dfm"}
+)
+
+
 def _evaluate_project_gate(
     *,
     manufacturer: str | None = None,
     tier: str | None = None,
+    only_categories: set[str] | frozenset[str] | None = None,
 ) -> list[GateOutcome]:
+    """Evaluate the project gate. When ``only_categories`` is given, run only the
+    evaluators whose edit-impact category is in that set (selective re-validation)."""
     if _is_project_empty():
         return [_empty_project_onboarding_outcome()]
 
+    # (edit-impact category, evaluator) — order is the report order.
+    evaluators: tuple[tuple[str, Callable[[], GateOutcome]], ...] = (
+        ("schematic", _evaluate_schematic_gate),
+        ("connectivity", _evaluate_schematic_connectivity_gate),
+        ("connectivity", _evaluate_pre_sync_gate),
+        ("pcb", _evaluate_pcb_gate),
+        ("pcb", _evaluate_pcb_placement_gate),
+        ("pcb", _evaluate_pcb_transfer_gate),
+        (
+            "manufacturing",
+            lambda: _evaluate_manufacturing_gate(manufacturer=manufacturer, tier=tier),
+        ),
+        ("dfm", _footprint_parity_outcome),
+    )
     return [
-        _evaluate_schematic_gate(),
-        _evaluate_schematic_connectivity_gate(),
-        _evaluate_pre_sync_gate(),
-        _evaluate_pcb_gate(),
-        _evaluate_pcb_placement_gate(),
-        _evaluate_pcb_transfer_gate(),
-        _evaluate_manufacturing_gate(manufacturer=manufacturer, tier=tier),
-        _footprint_parity_outcome(),
+        evaluator()
+        for category, evaluator in evaluators
+        if only_categories is None or category in only_categories
     ]
 
 
