@@ -10,6 +10,63 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.10.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.9.2...mcp-server-v3.10.0) (2026-06-17)
+
+
+### Features
+
+* 2-D finite-difference copper-plane thermal spreading solver (P3-T4) ([1aa70c5](https://github.com/oaslananka/kicad-mcp/commit/1aa70c5bee163b82f74f52f58648e30e69f9ae6f))
+* add KiCad capability-parity matrix and kicad_capability_parity tool (P0-T4) ([c742a9e](https://github.com/oaslananka/kicad-mcp/commit/c742a9e0a303dc1245163490a384b959522f8947))
+* bound deferred tool registration with a timeout (P5-T5) ([081f87b](https://github.com/oaslananka/kicad-mcp/commit/081f87b05e949b75a18fae638a0c4e3cc70e481e))
+* complete error transient-class and tool idempotency contract (P1-T5, K9) ([97460dd](https://github.com/oaslananka/kicad-mcp/commit/97460dd587316e78a04a7142075bad1c939331bd))
+* component derating + approved-vendor (AVL) sourcing gate (P4-T3) ([2e5e3e9](https://github.com/oaslananka/kicad-mcp/commit/2e5e3e954a6a2004abf83f69f16b8b5cd9a30ae5))
+* deterministic convergence-based placement, no wall-clock cap (P4-T2, K7) ([cade887](https://github.com/oaslananka/kicad-mcp/commit/cade8877d6158f214c394cf39b5ebcf028a60148))
+* deterministic, provenance-stamped reproducible release manifest (P2-T5) ([a6d9de2](https://github.com/oaslananka/kicad-mcp/commit/a6d9de21790a7f272af5d0103fc31550830e89c8))
+* edit-impact analysis to scope re-validation after edits (P4-T4) ([fca853f](https://github.com/oaslananka/kicad-mcp/commit/fca853ffcdcfc016af00fbd10170423110c08722))
+* field-solver adapter seam + honest impedance method labeling (P3-T1) ([11a4a4d](https://github.com/oaslananka/kicad-mcp/commit/11a4a4d10ebff4a4b3bed83e4f71cc44ce197b1a))
+* high-speed channel insertion-loss / eye analysis via ngspice (P3-T3) ([e3f3778](https://github.com/oaslananka/kicad-mcp/commit/e3f377833a73267c253773c8d800438c7864cf2e))
+* honest FreeRouting manual-step handling and headless DSN attempt (P1-T7, K1) ([e0154f5](https://github.com/oaslananka/kicad-mcp/commit/e0154f572b51ab23973d631187dff3a493433420))
+* IPC-2221 current-density fusing + honest distributed-PDN labeling (P3-T2) ([4e278d8](https://github.com/oaslananka/kicad-mcp/commit/4e278d8f8bad3decb02de826ee92df983f905783))
+* IPC-7351B footprint validation hard-gate for chip packages (P4-T3) ([6db8e46](https://github.com/oaslananka/kicad-mcp/commit/6db8e461b9555acc425c30364c954ded64872a35))
+* live Mouser keyword-search client completes the distributor trio (P4-T3) ([ee613ae](https://github.com/oaslananka/kicad-mcp/commit/ee613ae712923d280667892fb882bfc99fbf178b))
+* manufacturing sign-off report binding requirements to checks (P5-T3) ([de3c500](https://github.com/oaslananka/kicad-mcp/commit/de3c500fdecbd4b451876af93608485e5cfec1c9))
+* Nexar lifecycle/RoHS sourcing data + actionable quota error (P4-T3) ([f6b98c7](https://github.com/oaslananka/kicad-mcp/commit/f6b98c7ddc9941c3bb5ea259d005efec67db7adc))
+* parity coverage-regression gate, baseline, and README badge (P5-T6) ([b02eebe](https://github.com/oaslananka/kicad-mcp/commit/b02eebe0400c7457de1d49a633114dd934cd21bf))
+* PDN + thermal solver-adapter seams with honest method labeling (P3-T2/T4 seams) ([8d3af87](https://github.com/oaslananka/kicad-mcp/commit/8d3af879ee02197c6d87f952d7caf7b449502a9c))
+* rate-limit the bridge daemon against floods and pairing brute force (P5-T5, K8) ([1fecc9d](https://github.com/oaslananka/kicad-mcp/commit/1fecc9d5ebb009db87091daf6828cba82fca3624))
+* real DigiKey Product Information (v4) client (P4-T3) ([b9b36d4](https://github.com/oaslananka/kicad-mcp/commit/b9b36d43880ddacd2691ab3c655b1ee401c9c8ae))
+* real Nexar Supply client + .env credential loading (P4-T3) ([d797759](https://github.com/oaslananka/kicad-mcp/commit/d797759413c1de9a43c5fc2e306a9ca2d4edac4b))
+* real PASS/WARN/FAIL verdicts for SI gates (P1-T3, K2) ([915c752](https://github.com/oaslananka/kicad-mcp/commit/915c752dd900c2388750f6c53924829d826d0ada))
+* real task cancellation + execution timeout in the Tasks layer (P5-T5) ([c1f96cb](https://github.com/oaslananka/kicad-mcp/commit/c1f96cbcabeb879007b37dd5e186a54f76064e13))
+* round-trip-safe schematic edit primitive with corruption guard (P2-T1/T2, K5/K6) ([2e1dbf6](https://github.com/oaslananka/kicad-mcp/commit/2e1dbf66f44e2e687743ea5075d43e531eeffd70))
+* structural IPC error classification + restart cache invalidation (P5-T5) ([bdb7cb4](https://github.com/oaslananka/kicad-mcp/commit/bdb7cb4d87727f879b9367c3520c3e8b6e70943f))
+* structured verdict payloads for high-traffic gate tools (P1-T4) ([ee3c21a](https://github.com/oaslananka/kicad-mcp/commit/ee3c21a6b2b27f6954a7530b26635330169351ac))
+
+
+### Bug Fixes
+
+* align main ruleset with real CI check names + guard (P5-T4) ([f23ac33](https://github.com/oaslananka/kicad-mcp/commit/f23ac3328f6b58a5013d59d1ad097f74ca48aac2))
+* bump compatibility.yaml version from 3.9.1 to 3.9.2 ([a9ef4ff](https://github.com/oaslananka/kicad-mcp/commit/a9ef4ff2d85b0862b69f77812910a81450d88426))
+* bump hardcoded version refs from 3.9.1 to 3.9.2 in tests, dashboard, compatibility, README ([40a080b](https://github.com/oaslananka/kicad-mcp/commit/40a080b1b3251d0fce46e621be5a4808731fc18e))
+* bump playwright e2e test version assertion v3.9.1 -&gt; v3.9.2 ([28ffa0a](https://github.com/oaslananka/kicad-mcp/commit/28ffa0a49453848cc1d68945fe1941f2fe540a05))
+* **chatgpt-app:** add path-traversal guards, XSS escaping, and rate limiting ([0084de5](https://github.com/oaslananka/kicad-mcp/commit/0084de587e8639a50caebde230e2ac35c165bcaa))
+* **ci:** repair container build hash-pinning and patch starlette CVE-2026-54283 ([023ee30](https://github.com/oaslananka/kicad-mcp/commit/023ee30dc25dc4c015f8f981a3baa4a0b89f5c3d))
+* resolve 15 pre-existing schematic integration test failures ([f298b5a](https://github.com/oaslananka/kicad-mcp/commit/f298b5a2580f12f19f16442c2bd7fc3818d5d133))
+* surface partially-unresolved nets in sch_build_circuit result (P2-T4) ([b046f86](https://github.com/oaslananka/kicad-mcp/commit/b046f866ac55f16fe682920b1e84e9df38755f75))
+
+
+### Documentation
+
+* add root ARCHITECTURE.md and link from README (P0-T1) ([0b231f6](https://github.com/oaslananka/kicad-mcp/commit/0b231f60bc13db4ae8afa851ba85662c6e795724))
+* add synced error-code catalog and consolidate install docs (P1-T8) ([d2497a8](https://github.com/oaslananka/kicad-mcp/commit/d2497a87bbe15ae4aff25bd5d4c9025dda667a2e))
+* bus-factor governance — succession, continuity, tool on-ramp (P5-T1) ([a2e243c](https://github.com/oaslananka/kicad-mcp/commit/a2e243cce78ce59bd94d43eeb05a3b73b43fbada))
+* doc-code honesty pass for footprints, sourcing, and analysis (P1-T6, K10/K4) ([4e1a5e9](https://github.com/oaslananka/kicad-mcp/commit/4e1a5e9a4057f1864f6f1425f3cc6cde799e570a))
+* document SERVER_INITIALIZING in the error catalog (fix sync test) ([847e7e6](https://github.com/oaslananka/kicad-mcp/commit/847e7e6b819b85702e6c4e5d67c895fad31d5314))
+* regenerate tool catalog (311-&gt;314) for schematic label tools ([b887175](https://github.com/oaslananka/kicad-mcp/commit/b88717569a32c63f5db665e345e708ab183bdaa1))
+* regenerate tool catalog for P1-T7 routing summary changes ([6e5d910](https://github.com/oaslananka/kicad-mcp/commit/6e5d910c329e028f9730c1a793dad478982d9ff2))
+* **security:** rigorous threat model with verified CLI-injection/path controls (P5-T2, K8) ([b075b44](https://github.com/oaslananka/kicad-mcp/commit/b075b446ef2eb8d561aaee3e3f1b4fd07ade1e13))
+* turn manufacturing-export skeleton into a real sourcing-to-signoff guide ([daba9e3](https://github.com/oaslananka/kicad-mcp/commit/daba9e3372e601a0c5d19de3b6f1e6c43840b24c))
+
 ## [Unreleased]
 
 ### Added

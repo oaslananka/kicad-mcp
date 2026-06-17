@@ -10,6 +10,13 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.10.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-npm-v3.9.2...mcp-npm-v3.10.0) (2026-06-17)
+
+
+### Bug Fixes
+
+* bump hardcoded version refs from 3.9.1 to 3.9.2 in tests, dashboard, compatibility, README ([40a080b](https://github.com/oaslananka/kicad-mcp/commit/40a080b1b3251d0fce46e621be5a4808731fc18e))
+
 ## [3.9.1](https://github.com/oaslananka/kicad-mcp/compare/mcp-npm-v3.9.0...mcp-npm-v3.9.1) (2026-06-10)
 
 
