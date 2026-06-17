@@ -5,6 +5,8 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Final
 
+from . import __version__
+
 MCP_PROTOCOL_VERSION: Final = "2025-11-25"
 MCP_TOOL_SCHEMA_VERSION: Final = "1.0"
 PRIMARY_KICAD_VERSION: Final = "10.0.x"
@@ -30,7 +32,7 @@ COMPATIBILITY_MATRIX: Final[dict[str, object]] = {
             },
         },
         "kicad-mcp-pro": {
-            "version": "3.9.2",
+            "version": __version__,
             "compatibleExtension": {
                 "required": ">=1.0.0 <2.0.0",
                 "testedAgainst": "1.0.0",

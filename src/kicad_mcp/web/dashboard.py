@@ -8,6 +8,8 @@ Single-file single-page application with hash-routed views:
 - #setup-wizard - 4-step setup wizard
 """
 
+from .. import __version__
+
 DASHBOARD_HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1114,5 +1116,5 @@ connectSSE();
 </body>
 </html>"""
 
-# Replace version template on import
-DASHBOARD_HTML = DASHBOARD_HTML.replace("{{version}}", "3.9.2")
+# Replace version template on import (derived from the package version, not hardcoded)
+DASHBOARD_HTML = DASHBOARD_HTML.replace("{{version}}", __version__)
