@@ -4,6 +4,7 @@ import io
 
 import pytest
 
+from kicad_mcp import utils
 from kicad_mcp.utils.component_search import (
     DEFAULT_USER_AGENT,
     ComponentRecord,
@@ -16,6 +17,13 @@ from kicad_mcp.utils.component_search import (
     _request_json,
     normalize_lcsc_code,
 )
+
+
+def test_public_utils_exports_all_live_component_clients() -> None:
+    assert utils.JLCSearchClient is JLCSearchClient
+    assert utils.NexarClient is NexarClient
+    assert utils.DigiKeyClient is DigiKeyClient
+    assert utils.MouserClient is MouserClient
 
 
 def test_normalize_lcsc_code_accepts_bare_digits() -> None:
