@@ -4135,6 +4135,24 @@
     "experimental": false,
     "headless": true,
     "idempotent": false,
+    "name": "route_apply_ses",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "full",
+      "high_speed",
+      "pcb",
+      "pcb_only"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
     "name": "route_apply_tuning_profile",
     "open_world": false,
     "profiles": [
