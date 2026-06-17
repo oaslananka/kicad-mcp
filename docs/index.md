@@ -31,6 +31,7 @@ The docs are ordered from first setup to operations and maintenance.
 - [Maintenance Policy](maintenance-policy.md)
 - [Capability Verification Levels](status/capability-levels.md)
 - [Runtime Matrix](status/runtime-matrix.md)
+- [Work-Order Audit](status/work-order-audit-2026-06-17.md)
 
 ### Install, packaging, and distribution
 

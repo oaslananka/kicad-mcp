@@ -13,11 +13,11 @@ from typing import Any
 _RAW = r"""
 {
   "schemaVersion": 1,
-  "updated": "2026-06-16",
+  "updated": "2026-06-17",
   "kicad_baseline": "10.0.x",
   "status_vocabulary": {
     "covered": "A registered MCP tool fully drives this capability.",
-    "partial": "Some MCP support exists but with a tracked limitation (heuristic estimate, stubbed dependency, hidden/orphaned tool, or a manual KiCad step).",
+    "partial": "Some MCP support exists but with a tracked limitation (heuristic estimate, optional/auth-gated dependency, hidden/orphaned tool, or a manual KiCad step).",
     "gap": "KiCad exposes this programmatically (cli/ipc/file) but no MCP tool drives it yet.",
     "gui-only-no-api": "KiCad only offers this interactively; no cli/ipc/file path exists. Excluded from the coverage denominator (a KiCad API limit, not ours)."
   },
@@ -234,7 +234,7 @@ _RAW = r"""
           "mcp_tool": "pcb_auto_place_by_schematic",
           "status": "partial",
           "kicad_version_introduced": "10.0.x",
-          "notes": "Force-directed placement (pcb_auto_place_force_directed) is non-deterministic under a wall-clock cap (work order K7); deterministic placement is Phase 4 (P4-T2)."
+          "notes": "Force-directed placement now stops by deterministic convergence and disables the wall-clock safety valve by default (K7); remaining P4-T2 work is deeper electrical/thermal/return-path scoring beyond net-weighted placement."
         },
         {
           "capability": "Run DRC and inspect violations",
@@ -319,7 +319,7 @@ _RAW = r"""
           "mcp_tool": "route_autoroute_freerouting",
           "status": "partial",
           "kicad_version_introduced": "10.0.x",
-          "notes": "Routes headlessly (Docker/JAR); applying the routed SES is a manual KiCad GUI step (no headless SES import) surfaced via human_gate_required (P1-T7). Full headless flow is Phase 4 (P4-T1)."
+          "notes": "Routes headlessly (Docker/JAR); the routed SES is now applied headlessly by route_apply_ses (utils/router_core writes segments/vias into the .kicad_pcb), closing the former GUI step (P4-T1). Status stays partial: FreeRouting's own determinism is bounded and the SES coordinate transform assumes KiCad's standard Specctra export convention (verified end-to-end only in the KiCad CI job)."
         },
         {
           "capability": "Export Specctra DSN / import routed SES",
@@ -327,7 +327,7 @@ _RAW = r"""
           "mcp_tool": "route_export_dsn",
           "status": "partial",
           "kicad_version_introduced": "10.0.x",
-          "notes": "route_export_dsn attempts headless kicad-cli specctra export, else returns a clear human-gated manual-step result; route_import_ses stages and surfaces the GUI import step (P1-T7, K1)."
+          "notes": "route_export_dsn attempts headless kicad-cli specctra export, else a clear human-gated manual step; the routed SES is applied fully headlessly by route_apply_ses (deterministic, idempotent, round-trip-safe via utils/router_core, P4-T1) -- no GUI import. Export side stays partial when kicad-cli lacks headless specctra export."
         },
         {
           "capability": "Set per-net-class routing rules",
@@ -396,7 +396,7 @@ _RAW = r"""
           "mcp_tool": "lib_search_components",
           "status": "partial",
           "kicad_version_introduced": "10.0.x",
-          "notes": "Distributor clients (Nexar/DigiKey) are stubs requiring authenticated deployment (work order K10); real APIs land in Phase 4 (P4-T3)."
+          "notes": "Live JLCPCB, Nexar, DigiKey, and Mouser sourcing clients are implemented; Nexar/DigiKey/Mouser are opt-in and auth-gated. Remaining P4-T3 work is full AVL/lifecycle policy enforcement and datasheet-grounded footprint/3D hard gates."
         },
         {
           "capability": "Recommend / bind a part to a symbol",

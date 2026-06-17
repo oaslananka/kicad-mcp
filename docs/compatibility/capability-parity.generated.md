@@ -2,7 +2,7 @@
 
 Machine-generated from `docs/compatibility/capability-parity-matrix.yaml`. Refresh with `uv run python scripts/build_parity_matrix.py`.
 
-KiCad baseline: `10.0.x` · Updated: 2026-06-16
+KiCad baseline: `10.0.x` · Updated: 2026-06-17
 
 **Overall: 57 / 76 programmatically-reachable capabilities driven = 75.0%** (17 partial, 2 gap; 4 GUI-only with no KiCad API, excluded from the denominator).
 
@@ -37,10 +37,10 @@ KiCad baseline: `10.0.x` · Updated: 2026-06-16
 | `analysis` | Thermal via / copper-pour sizing | `partial` | `file` | `thermal_calculate_via_count` | thermal_check_copper_pour; first-order theta_JA / via-count rule of thumb labeled honestly via the solver seam (utils/solver_seams.thermal_method); for distributed spreading use thermal_simulate_plane_spreading. |
 | `library` | Generate an IPC-7351 footprint | `partial` | `file` | `lib_generate_footprint_ipc7351` | Footprint family coverage is limited (work order K10: SOT-23 implemented, SOT-223/SOT-89 not yet); datasheet/IPC validation hard-gate is Phase 4 (P4-T3). |
 | `library` | Recommend / bind a part to a symbol | `partial` | `file` | `lib_recommend_part` | lib_bind_part_to_symbol; depends on the same sourcing backends as above. |
-| `library` | Source live component data (price/stock/lifecycle) | `partial` | `file` | `lib_search_components` | Distributor clients (Nexar/DigiKey) are stubs requiring authenticated deployment (work order K10); real APIs land in Phase 4 (P4-T3). |
-| `pcb_edit` | Auto-place footprints from schematic | `partial` | `ipc` | `pcb_auto_place_by_schematic` | Force-directed placement (pcb_auto_place_force_directed) is non-deterministic under a wall-clock cap (work order K7); deterministic placement is Phase 4 (P4-T2). |
-| `routing` | Export Specctra DSN / import routed SES | `partial` | `cli` | `route_export_dsn` | route_export_dsn attempts headless kicad-cli specctra export, else returns a clear human-gated manual-step result; route_import_ses stages and surfaces the GUI import step (P1-T7, K1). |
-| `routing` | Full autoroute (FreeRouting orchestration) | `partial` | `cli` | `route_autoroute_freerouting` | Routes headlessly (Docker/JAR); applying the routed SES is a manual KiCad GUI step (no headless SES import) surfaced via human_gate_required (P1-T7). Full headless flow is Phase 4 (P4-T1). |
+| `library` | Source live component data (price/stock/lifecycle) | `partial` | `file` | `lib_search_components` | Live JLCPCB, Nexar, DigiKey, and Mouser sourcing clients are implemented; Nexar/DigiKey/Mouser are opt-in and auth-gated. Remaining P4-T3 work is full AVL/lifecycle policy enforcement and datasheet-grounded footprint/3D hard gates. |
+| `pcb_edit` | Auto-place footprints from schematic | `partial` | `ipc` | `pcb_auto_place_by_schematic` | Force-directed placement now stops by deterministic convergence and disables the wall-clock safety valve by default (K7); remaining P4-T2 work is deeper electrical/thermal/return-path scoring beyond net-weighted placement. |
+| `routing` | Export Specctra DSN / import routed SES | `partial` | `cli` | `route_export_dsn` | route_export_dsn attempts headless kicad-cli specctra export, else a clear human-gated manual step; the routed SES is applied fully headlessly by route_apply_ses (deterministic, idempotent, round-trip-safe via utils/router_core, P4-T1) -- no GUI import. Export side stays partial when kicad-cli lacks headless specctra export. |
+| `routing` | Full autoroute (FreeRouting orchestration) | `partial` | `cli` | `route_autoroute_freerouting` | Routes headlessly (Docker/JAR); the routed SES is now applied headlessly by route_apply_ses (utils/router_core writes segments/vias into the .kicad_pcb), closing the former GUI step (P4-T1). Status stays partial: FreeRouting's own determinism is bounded and the SES coordinate transform assumes KiCad's standard Specctra export convention (verified end-to-end only in the KiCad CI job). |
 | `schematic_edit` | Modify a symbol property by reference | `partial` | `ipc` | `sch_modify_property` | Round-trip-safe edit primitive (utils/schematic_roundtrip) with a corruption guard exists (P2-T1); testing showed kicad-sch-api 0.5.x drops global_label on save, so writes refuse+restore rather than silently corrupt (K5). Migrating each regex write path through the guarded primitive is incremental. |
 | `schematic_edit` | Swap pins / gates | `partial` | `file` | `sch_swap_pins` | Experimental; sch_swap_gates is also experimental and profile-gated. |
 
@@ -83,7 +83,7 @@ Footprint place/move, track/via/zone/stackup/rules/groups/teardrops/fanout on .k
 | Add teardrops | `ipc` | `pcb_add_teardrops` | `covered` | 10.0.x |  |
 | BGA / fine-pitch fanout | `ipc` | `pcb_bga_fanout` | `covered` | 10.0.x |  |
 | Set the board outline | `ipc` | `pcb_set_board_outline` | `covered` | 10.0.x |  |
-| Auto-place footprints from schematic | `ipc` | `pcb_auto_place_by_schematic` | `partial` | 10.0.x | Force-directed placement (pcb_auto_place_force_directed) is non-deterministic under a wall-clock cap (work order K7); deterministic placement is Phase 4 (P4-T2). |
+| Auto-place footprints from schematic | `ipc` | `pcb_auto_place_by_schematic` | `partial` | 10.0.x | Force-directed placement now stops by deterministic convergence and disables the wall-clock safety valve by default (K7); remaining P4-T2 work is deeper electrical/thermal/return-path scoring beyond net-weighted placement. |
 | Run DRC and inspect violations | `cli` | `run_drc` | `covered` | 10.0.x | drc_add_exclusion / drc_validate_exclusions manage waivers. |
 | Manage design blocks / reusable groups | `file` | `pcb_block_create_from_selection` | `covered` | 10.0.x | pcb_block_list, pcb_block_place. |
 | Read / set board groups | `ipc` | `pcb_get_groups` | `covered` | 10.0.x | pcb_get_groups for inspection; pcb_group_by_function and pcb_block_* for grouping. |
@@ -100,8 +100,8 @@ Autoroute, length/skew tuning, diff-pair, and interactive routing.
 | Route a single track / pad-to-pad | `ipc` | `route_single_track` | `covered` | 10.0.x | route_from_pad_to_pad. |
 | Route a differential pair | `ipc` | `route_differential_pair` | `covered` | 10.0.x |  |
 | Tune track / diff-pair length | `file` | `route_tune_length` | `covered` | 10.0.x | tune_diff_pair_length, route_tune_time_domain, tuning-profile tools. |
-| Full autoroute (FreeRouting orchestration) | `cli` | `route_autoroute_freerouting` | `partial` | 10.0.x | Routes headlessly (Docker/JAR); applying the routed SES is a manual KiCad GUI step (no headless SES import) surfaced via human_gate_required (P1-T7). Full headless flow is Phase 4 (P4-T1). |
-| Export Specctra DSN / import routed SES | `cli` | `route_export_dsn` | `partial` | 10.0.x | route_export_dsn attempts headless kicad-cli specctra export, else returns a clear human-gated manual-step result; route_import_ses stages and surfaces the GUI import step (P1-T7, K1). |
+| Full autoroute (FreeRouting orchestration) | `cli` | `route_autoroute_freerouting` | `partial` | 10.0.x | Routes headlessly (Docker/JAR); the routed SES is now applied headlessly by route_apply_ses (utils/router_core writes segments/vias into the .kicad_pcb), closing the former GUI step (P4-T1). Status stays partial: FreeRouting's own determinism is bounded and the SES coordinate transform assumes KiCad's standard Specctra export convention (verified end-to-end only in the KiCad CI job). |
+| Export Specctra DSN / import routed SES | `cli` | `route_export_dsn` | `partial` | 10.0.x | route_export_dsn attempts headless kicad-cli specctra export, else a clear human-gated manual step; the routed SES is applied fully headlessly by route_apply_ses (deterministic, idempotent, round-trip-safe via utils/router_core, P4-T1) -- no GUI import. Export side stays partial when kicad-cli lacks headless specctra export. |
 | Set per-net-class routing rules | `file` | `route_set_net_class_rules` | `covered` | 10.0.x |  |
 | Interactive length tuning / meander drawing | `gui-only` | — | `gui-only-no-api` | 10.0.x | Interactive trace tuning UX is GUI-only; programmatic tuning is modeled by route_tune_length. |
 
@@ -116,7 +116,7 @@ Symbol/footprint/3D generation + assignment + part sourcing.
 | Create a custom symbol | `file` | `lib_create_custom_symbol` | `covered` | 10.0.x | lib_generate_symbol_from_pintable for pin-table-driven generation. |
 | Generate an IPC-7351 footprint | `file` | `lib_generate_footprint_ipc7351` | `partial` | 10.0.x | Footprint family coverage is limited (work order K10: SOT-23 implemented, SOT-223/SOT-89 not yet); datasheet/IPC validation hard-gate is Phase 4 (P4-T3). |
 | Assign / manage 3D models | `file` | `lib_set_3d_model_path` | `covered` | 10.0.x | lib_bulk_assign_3d_models, lib_search_3d_models, lib_remove_3d_model. |
-| Source live component data (price/stock/lifecycle) | `file` | `lib_search_components` | `partial` | 10.0.x | Distributor clients (Nexar/DigiKey) are stubs requiring authenticated deployment (work order K10); real APIs land in Phase 4 (P4-T3). |
+| Source live component data (price/stock/lifecycle) | `file` | `lib_search_components` | `partial` | 10.0.x | Live JLCPCB, Nexar, DigiKey, and Mouser sourcing clients are implemented; Nexar/DigiKey/Mouser are opt-in and auth-gated. Remaining P4-T3 work is full AVL/lifecycle policy enforcement and datasheet-grounded footprint/3D hard gates. |
 | Recommend / bind a part to a symbol | `file` | `lib_recommend_part` | `partial` | 10.0.x | lib_bind_part_to_symbol; depends on the same sourcing backends as above. |
 
 ### `analysis`
