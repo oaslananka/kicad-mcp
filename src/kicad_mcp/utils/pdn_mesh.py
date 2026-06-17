@@ -7,6 +7,36 @@ from dataclasses import dataclass, field
 
 COPPER_RESISTIVITY_OHM_M = 1.724e-8
 OZ_TO_THICKNESS_MM = 0.0348
+_MM_TO_MILS = 1.0 / 0.0254
+# IPC-2221 conductor temperature-rise constants: I = k * dT^0.44 * A_mils2^0.725.
+_IPC2221_K_EXTERNAL = 0.048
+_IPC2221_K_INTERNAL = 0.024
+
+
+def ipc2221_temperature_rise_c(
+    current_a: float,
+    width_mm: float,
+    copper_weight_oz: float = 1.0,
+    *,
+    internal: bool = False,
+) -> float:
+    """Return the IPC-2221 conductor temperature rise (degrees C) for a DC current.
+
+    Inverts the IPC-2221 ampacity curve ``I = k * dT^0.44 * A^0.725`` (A is the copper
+    cross-section in mils^2; k is 0.048 for external layers, 0.024 for internal) to solve
+    for ``dT`` given the current. This is the standard closed-form trace-fusing /
+    self-heating estimate, named to its source.
+    """
+    if width_mm <= 0 or copper_weight_oz <= 0:
+        raise ValueError("width_mm and copper_weight_oz must be positive.")
+    if current_a <= 0:
+        return 0.0
+    width_mils = width_mm * _MM_TO_MILS
+    thickness_mils = copper_weight_oz * OZ_TO_THICKNESS_MM * _MM_TO_MILS
+    area_mils2 = width_mils * thickness_mils
+    k = _IPC2221_K_INTERNAL if internal else _IPC2221_K_EXTERNAL
+    # dT = (I / (k * A^0.725)) ^ (1 / 0.44)
+    return float((current_a / (k * area_mils2**0.725)) ** (1.0 / 0.44))
 
 
 @dataclass(frozen=True)

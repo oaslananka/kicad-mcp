@@ -444,12 +444,20 @@ _RAW = r"""
           "notes": "si_generate_stackup, si_bind_interfaces_to_net_classes, si_list_dielectric_materials."
         },
         {
+          "capability": "High-speed channel insertion-loss / eye analysis",
+          "kicad_channel": "file",
+          "mcp_tool": "si_analyze_high_speed_channel",
+          "status": "partial",
+          "kicad_version_introduced": "10.0.x",
+          "notes": "Closed-form lossy-line insertion loss (conductor skin-effect + dielectric loss) with a loss-limited eye and PASS/WARN/FAIL verdict; when an ngspice CLI is present the insertion loss is measured from an RLGC-ladder AC sweep (utils/channel + solver seam). Full S-parameter / IBIS-AMI channel simulation remains a future upgrade."
+        },
+        {
           "capability": "DC IR-drop / voltage-drop analysis",
           "kicad_channel": "file",
           "mcp_tool": "pdn_calculate_voltage_drop",
           "status": "partial",
           "kicad_version_introduced": "10.0.x",
-          "notes": "First-order estimate; distributed IR-drop / current-density solver is Phase 3 (P3-T2)."
+          "notes": "pdn_calculate_voltage_drop is a first-order single-trace lumped estimate, now with an IPC-2221 current-density fusing / temperature-rise PASS/WARN/FAIL verdict; check_power_integrity runs a genuine distributed multi-load resistive PDN mesh (DC drop + frequency-domain Z(f)), labeled solver-grade via the seam (utils/solver_seams.pdn_mesh_method). Remaining P3-T2 upgrade: a 2-D copper-plane field solve."
         },
         {
           "capability": "Decoupling recommendation / power-plane generation",
@@ -457,7 +465,7 @@ _RAW = r"""
           "mcp_tool": "pdn_recommend_decoupling_caps",
           "status": "partial",
           "kicad_version_introduced": "10.0.x",
-          "notes": "pdn_generate_power_plane covered; frequency-domain PDN target-Z synthesis is Phase 3 (P3-T2)."
+          "notes": "pdn_generate_power_plane covered; frequency-domain PDN target-Z checking now delivered via check_power_integrity (pdn_mesh Z(f) vs target_impedance_ohm with violations); a full plane-capacitance field model remains a future upgrade."
         },
         {
           "capability": "Thermal via / copper-pour sizing",
@@ -465,7 +473,15 @@ _RAW = r"""
           "mcp_tool": "thermal_calculate_via_count",
           "status": "partial",
           "kicad_version_introduced": "10.0.x",
-          "notes": "thermal_check_copper_pour; proximity heuristic, real thermal network/FEA is Phase 3 (P3-T4)."
+          "notes": "thermal_check_copper_pour; first-order theta_JA / via-count rule of thumb labeled honestly via the solver seam (utils/solver_seams.thermal_method); for distributed spreading use thermal_simulate_plane_spreading."
+        },
+        {
+          "capability": "Copper-plane thermal spreading (2-D FD solve)",
+          "kicad_channel": "file",
+          "mcp_tool": "thermal_simulate_plane_spreading",
+          "status": "partial",
+          "kicad_version_introduced": "10.0.x",
+          "notes": "Genuine 2-D finite-difference steady-state heat-spreading solve over the copper plane (utils/thermal_solver + solver_seams.thermal_fd_method) with peak/average temperature rise and a PASS/WARN/FAIL verdict; not a 3-D FEA with airflow / board-stack conduction (full FEA remains a future upgrade)."
         },
         {
           "capability": "EMC layout compliance checks",

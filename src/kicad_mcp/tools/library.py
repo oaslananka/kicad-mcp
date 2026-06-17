@@ -16,6 +16,7 @@ from ..utils.component_search import (
     ComponentSearchClient,
     DigiKeyClient,
     JLCSearchClient,
+    MouserClient,
     NexarClient,
     normalize_lcsc_code,
 )
@@ -101,7 +102,9 @@ def _component_search_client(source: str) -> ComponentSearchClient:
         return NexarClient()
     if normalized == "digikey":
         return DigiKeyClient()
-    raise ValueError("Unknown component source. Use 'jlcsearch', 'nexar', or 'digikey'.")
+    if normalized == "mouser":
+        return MouserClient()
+    raise ValueError("Unknown component source. Use 'jlcsearch', 'nexar', 'digikey', or 'mouser'.")
 
 
 def _sort_component_results(
@@ -140,9 +143,14 @@ def _format_component_lines(
         basic = "basic" if item.is_basic else "extended"
         preferred = " preferred" if item.is_preferred else ""
         description = f" - {item.description}" if item.description else ""
+        sourcing = ""
+        if item.lifecycle:
+            sourcing += f" | lifecycle {item.lifecycle}"
+        if item.rohs:
+            sourcing += f" | RoHS {item.rohs}"
         lines.append(
             f"- {item.lcsc_code} | {item.mpn} | {item.package or '(no package)'} | "
-            f"stock {stock} | {price} | {basic}{preferred}{description}"
+            f"stock {stock} | {price} | {basic}{preferred}{sourcing}{description}"
         )
     if len(results) > limit:
         lines.append(f"... and {len(results) - limit} more matches")
@@ -557,9 +565,10 @@ def register(mcp: FastMCP) -> None:
         """Search live component sources for purchasable parts.
 
         ``source``: ``jlcsearch`` (JLCPCB public catalog, no credentials; default),
-        ``nexar`` (requires NEXAR_CLIENT_ID/NEXAR_CLIENT_SECRET), or ``digikey``
-        (requires DIGIKEY_CLIENT_ID/DIGIKEY_CLIENT_SECRET). Nexar and DigiKey are
-        inactive until those credentials are configured in the deployment environment.
+        ``nexar`` (requires NEXAR_CLIENT_ID/NEXAR_CLIENT_SECRET), ``digikey``
+        (requires DIGIKEY_CLIENT_ID/DIGIKEY_CLIENT_SECRET), or ``mouser`` (requires
+        MOUSER_API_KEY). The authenticated sources are inactive until their
+        credentials are configured (loaded from ``.env`` at server startup).
         """
         try:
             client = _component_search_client(source)
@@ -824,6 +833,81 @@ def register(mcp: FastMCP) -> None:
             + (f", {pin_count} pins" if pin_count else "")
             + (f", {pitch_mm:.2f}mm pitch" if pitch_mm else "")
         )
+
+    @mcp.tool()
+    @headless_compatible
+    def lib_validate_footprint_ipc7351(
+        footprint_path: str,
+        size_code: str,
+        density: str = "B",
+        tolerance_mm: float = 0.12,
+    ) -> str:
+        """Validate a two-terminal chip footprint against its IPC-7351B nominal (hard gate).
+
+        Reads the .kicad_mod at ``footprint_path`` (relative to the project), parses its
+        SMD pads, and compares pad width/height/pitch to the IPC-7351B nominal for the
+        given chip ``size_code`` and ``density``. Gross deviation is a blocking FAIL,
+        minor deviation WARNs, a match PASSes. Scope: chip passives (0201–2512) against
+        the IPC-7351B *standard* nominal — not a datasheet-specific land-pattern check.
+        """
+        from ..utils.footprint_validate import parse_smd_pads, validate_chip_footprint
+
+        if density not in ("A", "B", "C"):
+            return f"Invalid density '{density}'. Must be A, B, or C."
+        cfg = get_config()
+        try:
+            path = cfg.resolve_within_project(footprint_path)
+        except Exception as exc:  # noqa: BLE001 - surface any path-safety rejection
+            return f"Invalid footprint path: {exc}"
+        if not path.exists():
+            return f"Footprint file not found: {path}"
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        pads = parse_smd_pads(text)
+        try:
+            result = validate_chip_footprint(
+                size_code,
+                pads,
+                density=density,  # type: ignore[arg-type]
+                tol_mm=tolerance_mm,
+            )
+        except ValueError as exc:
+            return f"Validation failed: {exc}"
+        lines = [f"Footprint IPC-7351B validation: {result.verdict}", f"- {result.summary}"]
+        lines.extend(f"  - {finding}" for finding in result.findings)
+        return "\n".join(lines)
+
+    @mcp.tool()
+    @headless_compatible
+    def lib_check_derating(
+        kind: str,
+        parameter: str,
+        rated_value: float,
+        operating_value: float,
+        manufacturer: str = "",
+        approved_vendors: list[str] | None = None,
+    ) -> str:
+        """Check a part choice for reliability derating and approved-vendor (AVL) compliance.
+
+        Verifies the operating value stays within the derating limit for the
+        component ``kind``/``parameter`` (e.g. capacitor/voltage <= 80% of rated),
+        and — when ``approved_vendors`` is given — that ``manufacturer`` is on the
+        approved-vendor list. Returns one PASS/WARN/FAIL verdict. Derating factors
+        are conservative general-practice values, not a specific MIL/IPC mandate.
+        """
+        from ..utils.derating import _worst, avl_check, derating_check
+
+        try:
+            derating = derating_check(kind, parameter, rated_value, operating_value)
+        except ValueError as exc:
+            return f"Derating check failed: {exc}"
+        avl_verdict, avl_summary = avl_check(manufacturer, approved_vendors or [])
+        overall = _worst(derating.verdict, avl_verdict)
+        lines = [
+            f"Part sourcing compliance: {overall}",
+            f"- Derating [{derating.verdict}]: {derating.summary}",
+            f"- AVL [{avl_verdict}]: {avl_summary}",
+        ]
+        return "\n".join(lines)
 
     @mcp.tool()
     @headless_compatible

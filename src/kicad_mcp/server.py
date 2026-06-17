@@ -2960,6 +2960,13 @@ def inspect_command(
 
 def main() -> None:
     """CLI entrypoint used by the package script."""
+    # Load .env into os.environ at startup so unprefixed third-party credentials
+    # (e.g. NEXAR_CLIENT_ID, DIGIKEY_CLIENT_ID) read via os.getenv are available.
+    # Real environment variables take precedence (override=False). Done only on
+    # the CLI path, so unit tests stay hermetic.
+    from dotenv import load_dotenv
+
+    load_dotenv(override=False)
     app()
 
 

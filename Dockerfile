@@ -58,9 +58,14 @@ RUN apk upgrade --no-cache \
   && adduser -S -G kicadmcp -h /app -s /sbin/nologin kicadmcp
 COPY --from=builder /dist/ /tmp/dist/
 COPY docker-entrypoint.sh /usr/local/bin/kicad-mcp-pro-entrypoint
+# Install hash-pinned dependencies first (uv export emits hashes, so pip runs in
+# --require-hashes mode), then the first-party wheel separately with --no-deps. A local
+# wheel has no hash, so installing it on the same command line as the hashed requirements
+# fails hash-mode validation; splitting the steps keeps the supply-chain pinning intact.
 RUN python -m pip install --no-cache-dir --disable-pip-version-check --root-user-action=ignore \
-    --requirement /tmp/dist/requirements.txt \
-    /tmp/dist/*.whl \
+    --require-hashes --requirement /tmp/dist/requirements.txt \
+  && python -m pip install --no-cache-dir --disable-pip-version-check --root-user-action=ignore \
+    --no-deps /tmp/dist/*.whl \
   && rm -rf /tmp/dist \
   && chmod 0755 /usr/local/bin/kicad-mcp-pro-entrypoint
 USER kicadmcp

@@ -1,6 +1,6 @@
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 329.
+Total public tools: 334.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -87,6 +87,7 @@ Total public tools: 329.
 | `lib_assign_lcsc_to_symbol` | agent_full, builder, full, schematic, schematic_only, simulation | no | no | no | no | yes | no | Assign an LCSC part code to a schematic symbol property. |
 | `lib_bind_part_to_symbol` | agent_full, builder, full, schematic, schematic_only, simulation | no | no | no | no | yes | no | Assign a live part (LCSC/MPN) to a schematic symbol and optionally its footprint. |
 | `lib_bulk_assign_3d_models` | agent_full, builder, full, schematic, schematic_only, simulation | no | no | no | no | yes | no | Bulk-assign a 3D model to multiple footprints matching a pattern. |
+| `lib_check_derating` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | yes | no | Check a part choice for reliability derating and approved-vendor (AVL) compliance. |
 | `lib_check_stock_availability` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | yes | no | Check live stock availability for the requested schematic references. This KiCad MCP Pro tool supports production EDA... |
 | `lib_create_custom_symbol` | agent_full, builder, full, schematic, schematic_only, simulation | no | no | no | no | yes | no | Create a simple custom symbol in the active project directory. |
 | `lib_find_alternative_parts` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | yes | no | Find nearby alternative parts for the supplied LCSC code. This KiCad MCP Pro tool supports production EDA automation... |
@@ -108,6 +109,7 @@ Total public tools: 329.
 | `lib_search_footprints` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | yes | no | Search footprint libraries by footprint name. |
 | `lib_search_symbols` | agent_full, builder, full, schematic, schematic_only, simulation | yes | no | no | yes | yes | no | Search symbol libraries by name, description, or keywords. |
 | `lib_set_3d_model_path` | agent_full, builder, full, schematic, schematic_only, simulation | no | yes | no | yes | yes | no | Set or replace the 3D model path on a footprint. |
+| `lib_validate_footprint_ipc7351` | agent_full, builder, full, schematic, schematic_only, simulation | no | no | no | no | yes | no | Validate a two-terminal chip footprint against its IPC-7351B nominal (hard gate). |
 | `manufacturing_quality_gate` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | yes | no | no | yes | yes | no | Evaluate manufacturing readiness against the active or requested DFM profile. |
 | `mfg_check_import_support` | agent_full, full, manufacturing | yes | no | yes | yes | yes | no | Report whether the detected KiCad CLI advertises a given board-import format. |
 | `mfg_correct_cpl_rotations` | agent_full, full, manufacturing | no | no | no | no | yes | no | Apply JLCPCB CPL rotation corrections to a KiCad-exported pick-and-place CSV. |
@@ -198,10 +200,11 @@ Total public tools: 329.
 | `pcb_sync_from_schematic` | agent_full, builder, full, high_speed, pcb, pcb_only, power | no | no | no | no | yes | no | Sync missing PCB footprints from schematic footprint assignments. |
 | `pcb_transfer_quality_gate` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | yes | no | no | yes | yes | no | Evaluate whether named schematic pad nets transferred cleanly onto PCB pads. |
 | `pcb_upgrade` | agent_full, full, manufacturing | no | no | no | yes | yes | no | Upgrade a PCB file to the current KiCad file format. |
-| `pdn_calculate_voltage_drop` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Estimate DC voltage drop and trace resistance. This KiCad MCP Pro tool supports production EDA automation workflows f... |
+| `pdn_calculate_voltage_drop` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Estimate DC voltage drop, trace resistance, and IPC-2221 current-density fusing. |
 | `pdn_check_copper_weight` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Check whether the routed copper for a net looks sufficient for the load current. |
 | `pdn_generate_power_plane` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Generate a rectangular copper plane on the requested copper layer. |
 | `pdn_recommend_decoupling_caps` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Recommend local and bulk decoupling from a simple PDN heuristic. |
+| `project_assess_edit_impact` | all | no | no | no | no | yes | no | Scope re-validation after an edit: semantic-diff the design intent and report |
 | `project_auto_fix_loop` | all | no | yes | no | no | yes | no | Run the project quality gate and automatically apply server-side fixes. |
 | `project_design_report` | all | no | no | no | no | yes | no | Generate a comprehensive design-status report. |
 | `project_embed_file` | all | no | no | no | no | yes | no | Embed an external file into the KiCad project as project metadata. |
@@ -286,6 +289,7 @@ Total public tools: 329.
 | `sch_upgrade` | agent_full, full, manufacturing | no | no | no | yes | yes | no | Upgrade a schematic file to the current KiCad file format. |
 | `schematic_connectivity_gate` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | no | no | no | no | yes | no | Evaluate whether schematic structure and hierarchy look electrically meaningful. This KiCad MCP Pro tool supports pro... |
 | `schematic_quality_gate` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | yes | no | no | yes | yes | no | Evaluate whether the schematic is clean enough to proceed. This KiCad MCP Pro tool supports production EDA automation... |
+| `si_analyze_high_speed_channel` | agent_full, analysis, critic, full, high_speed | no | no | no | no | no | no | Estimate high-speed channel insertion loss and eye opening for a lossy trace. |
 | `si_bind_interfaces_to_net_classes` | agent_full, analysis, critic, full, high_speed | no | no | no | no | no | no | Map interface specs from the project design intent to KiCad net classes. |
 | `si_calculate_decoupling_placement` | agent_full, analysis, critic, full, high_speed | no | no | no | no | no | no | Estimate decoupling placement quality around an IC power pin. This KiCad MCP Pro tool supports production EDA automat... |
 | `si_calculate_trace_impedance` | agent_full, analysis, critic, full, high_speed | no | no | no | no | no | no | Estimate PCB trace impedance using quasi-static interconnect formulas. This KiCad MCP Pro tool supports production ED... |
@@ -313,6 +317,7 @@ Total public tools: 329.
 | `sym_upgrade` | agent_full, full, manufacturing | no | no | no | yes | yes | no | Upgrade a KiCad symbol library file to the current file format. |
 | `thermal_calculate_via_count` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Estimate thermal via count from package heat and board thermal resistance. |
 | `thermal_check_copper_pour` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Check whether the board already has copper pour support for the net. |
+| `thermal_simulate_plane_spreading` | agent_full, analysis, critic, full, power | no | no | no | no | no | no | Solve copper-plane heat spreading with a 2-D finite-difference thermal solver. |
 | `tune_diff_pair_length` | agent_full, builder, full, high_speed, pcb, pcb_only | no | no | no | no | yes | no | Write matched-length rules for both nets in a differential pair. |
 | `validate_design` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | yes | no | no | yes | yes | no | Run DRC and ERC and summarize readiness. This KiCad MCP Pro tool supports production EDA automation workflows for MCP... |
 | `validate_footprints_vs_schematic` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | yes | no | no | yes | yes | no | Compare PCB footprint references against the schematic symbol references. This KiCad MCP Pro tool supports production... |
@@ -419,6 +424,7 @@ Total public tools: 329.
 - `lib_assign_lcsc_to_symbol`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `lib_bind_part_to_symbol`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `lib_bulk_assign_3d_models`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
+- `lib_check_derating`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `lib_check_stock_availability`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `lib_create_custom_symbol`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `lib_find_alternative_parts`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
@@ -440,6 +446,7 @@ Total public tools: 329.
 - `lib_search_footprints`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `lib_search_symbols`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `lib_set_3d_model_path`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
+- `lib_validate_footprint_ipc7351`: profiles=agent_full, builder, full, schematic, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `manufacturing_quality_gate`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `mfg_check_import_support`: profiles=agent_full, full, manufacturing; readOnly=yes; destructive=no; openWorld=yes; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `mfg_correct_cpl_rotations`: profiles=agent_full, full, manufacturing; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
@@ -534,6 +541,7 @@ Total public tools: 329.
 - `pdn_check_copper_weight`: profiles=agent_full, analysis, critic, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `pdn_generate_power_plane`: profiles=agent_full, analysis, critic, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `pdn_recommend_decoupling_caps`: profiles=agent_full, analysis, critic, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
+- `project_assess_edit_impact`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_auto_fix_loop`: profiles=all; readOnly=no; destructive=yes; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_design_report`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_embed_file`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
@@ -618,6 +626,7 @@ Total public tools: 329.
 - `sch_upgrade`: profiles=agent_full, full, manufacturing; readOnly=no; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `schematic_connectivity_gate`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `schematic_quality_gate`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
+- `si_analyze_high_speed_channel`: profiles=agent_full, analysis, critic, full, high_speed; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `si_bind_interfaces_to_net_classes`: profiles=agent_full, analysis, critic, full, high_speed; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `si_calculate_decoupling_placement`: profiles=agent_full, analysis, critic, full, high_speed; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `si_calculate_trace_impedance`: profiles=agent_full, analysis, critic, full, high_speed; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
@@ -645,6 +654,7 @@ Total public tools: 329.
 - `sym_upgrade`: profiles=agent_full, full, manufacturing; readOnly=no; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `thermal_calculate_via_count`: profiles=agent_full, analysis, critic, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `thermal_check_copper_pour`: profiles=agent_full, analysis, critic, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
+- `thermal_simulate_plane_spreading`: profiles=agent_full, analysis, critic, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `tune_diff_pair_length`: profiles=agent_full, builder, full, high_speed, pcb, pcb_only; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `validate_design`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `validate_footprints_vs_schematic`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.

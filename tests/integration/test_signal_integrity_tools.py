@@ -241,3 +241,37 @@ async def test_signal_integrity_stackup_synthesis_and_net_class_binding(
     assert written
     assert written[0][0] == "USB3"
     assert "No high-speed interfaces" in no_plan
+
+
+@pytest.mark.anyio
+async def test_si_high_speed_channel_reports_il_eye_and_verdict(sample_project) -> None:
+    """si_analyze_high_speed_channel returns insertion loss, eye, and a PASS/FAIL verdict
+    with an honest method label (work order P3-T3)."""
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    short = await call_tool_text(
+        server,
+        "si_analyze_high_speed_channel",
+        {"length_mm": 40.0, "data_rate_gbps": 5.0, "max_insertion_loss_db": 10.0},
+    )
+    assert "High-speed channel analysis" in short
+    assert "Insertion loss at Nyquist" in short
+    assert "Eye height" in short
+    assert "-3 dB bandwidth" in short
+    assert "(PASS;" in short
+    # ngspice is not present in CI, so the honest closed-form label and note must appear.
+    assert "- Method: closed-form lossy-line" in short
+    assert "not a measured" in short.lower()
+
+    lossy = await call_tool_text(
+        server,
+        "si_analyze_high_speed_channel",
+        {
+            "length_mm": 600.0,
+            "data_rate_gbps": 25.0,
+            "loss_tangent": 0.025,
+            "max_insertion_loss_db": 10.0,
+        },
+    )
+    assert "(FAIL;" in lossy

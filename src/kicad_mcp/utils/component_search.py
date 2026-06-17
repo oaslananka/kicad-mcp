@@ -9,10 +9,15 @@ import time
 import urllib.parse
 import urllib.request
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
 from html import unescape
 from html.parser import HTMLParser
 from typing import Any, Protocol, cast
+
+# Transport seam: (url, body, headers) -> decoded JSON. Injectable so the live
+# distributor clients can be unit-tested without touching the network.
+HttpPostJson = Callable[[str, bytes, dict[str, str]], dict[str, Any]]
 
 DEFAULT_USER_AGENT = "kicad-mcp-pro/1.0 (+https://github.com/oaslananka/kicad-mcp)"
 
@@ -30,6 +35,9 @@ class ComponentRecord:
     price: float | None
     is_basic: bool
     is_preferred: bool
+    # Sourcing/compliance metadata (populated when the provider reports it).
+    lifecycle: str = ""
+    rohs: str = ""
 
 
 class ComponentSearchClient(Protocol):
@@ -281,15 +289,128 @@ def _record_from_jlcpcb_detail_page(html: str, lcsc_code: str) -> ComponentRecor
     )
 
 
+def _https_post_json(url: str, body: bytes, headers: dict[str, str]) -> dict[str, Any]:
+    """POST ``body`` to an https URL and decode the JSON response."""
+    if urllib.parse.urlparse(url).scheme != "https":
+        raise ValueError("Only https distributor endpoints are permitted.")
+    merged = {"User-Agent": DEFAULT_USER_AGENT, **headers}
+    request = urllib.request.Request(url, data=body, headers=merged, method="POST")  # noqa: S310
+    with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310  # nosec B310
+        return cast(dict[str, Any], json.load(response))
+
+
+_NEXAR_SEARCH_QUERY = (
+    "query KicadMcpSearch($q: String!, $limit: Int!) {"
+    "  supSearchMpn(q: $q, limit: $limit) {"
+    "    results {"
+    "      part {"
+    "        mpn"
+    "        manufacturer { name }"
+    "        shortDescription"
+    "        totalAvail"
+    "        medianPrice1000 { price }"
+    "        specs { attribute { name } displayValue }"
+    "      }"
+    "    }"
+    "  }"
+    "}"
+)
+
+_nexar_limiter = RateLimiter(max_calls=5, period_seconds=1.0)
+
+
+def _record_from_nexar(part: dict[str, Any]) -> ComponentRecord:
+    manufacturer = str((part.get("manufacturer") or {}).get("name", ""))
+    price: float | None = None
+    median = part.get("medianPrice1000")
+    if isinstance(median, dict) and median.get("price") is not None:
+        price = float(median["price"])
+    package = ""
+    lifecycle = ""
+    rohs = ""
+    for spec in part.get("specs") or []:
+        attribute = str((spec.get("attribute") or {}).get("name", "")).casefold()
+        value = str(spec.get("displayValue", ""))
+        if not package and attribute in ("case/package", "package", "case / package"):
+            package = value
+        elif not lifecycle and "lifecycle" in attribute:
+            lifecycle = value
+        elif not rohs and ("rohs" in attribute or "reach" in attribute):
+            rohs = value
+    description = str(part.get("shortDescription") or "").strip() or manufacturer
+    return ComponentRecord(
+        source="nexar",
+        lcsc_code="",
+        mpn=str(part.get("mpn", "")),
+        package=package,
+        description=description,
+        stock=int(part.get("totalAvail", 0) or 0),
+        price=price,
+        is_basic=False,
+        is_preferred=False,
+        lifecycle=lifecycle,
+        rohs=rohs,
+    )
+
+
 class NexarClient:
-    """Optional Nexar GraphQL client."""
+    """Live Nexar Supply (Octopart) GraphQL client.
+
+    Authenticates with the OAuth2 ``client_credentials`` grant against
+    ``identity.nexar.com`` and queries ``supSearchMpn`` on the Supply API. Requires
+    ``NEXAR_CLIENT_ID`` / ``NEXAR_CLIENT_SECRET`` (loaded from ``.env`` at server
+    startup) and an app subscribed to the Supply API. ``transport`` is injectable
+    so the OAuth + GraphQL flow is unit-testable without the network.
+    """
 
     ENDPOINT = "https://api.nexar.com/graphql"
     TOKEN_URL = "https://identity.nexar.com/connect/token"  # noqa: S105
 
-    def __init__(self) -> None:
-        self._client_id = os.getenv("NEXAR_CLIENT_ID")
-        self._client_secret = os.getenv("NEXAR_CLIENT_SECRET")
+    def __init__(
+        self,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        *,
+        transport: HttpPostJson | None = None,
+    ) -> None:
+        self._client_id = client_id if client_id is not None else os.getenv("NEXAR_CLIENT_ID")
+        self._client_secret = (
+            client_secret if client_secret is not None else os.getenv("NEXAR_CLIENT_SECRET")
+        )
+        self._transport = transport or _https_post_json
+        self._token: str | None = None
+        self._token_expiry = 0.0
+
+    def _require_credentials(self) -> tuple[str, str]:
+        if not self._client_id or not self._client_secret:
+            raise RuntimeError("Nexar search requires NEXAR_CLIENT_ID and NEXAR_CLIENT_SECRET.")
+        return self._client_id, self._client_secret
+
+    def _access_token(self) -> str:
+        now = time.monotonic()
+        if self._token is not None and now < self._token_expiry:
+            return self._token
+        client_id, client_secret = self._require_credentials()
+        _nexar_limiter.acquire()
+        body = urllib.parse.urlencode(
+            {
+                "grant_type": "client_credentials",
+                "client_id": client_id,
+                "client_secret": client_secret,
+            }
+        ).encode("utf-8")
+        response = self._transport(
+            self.TOKEN_URL,
+            body,
+            {"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        token = response.get("access_token")
+        if not token:
+            raise RuntimeError("Nexar token endpoint did not return an access_token.")
+        self._token = str(token)
+        # Refresh a minute early to avoid using a token that expires mid-request.
+        self._token_expiry = now + float(response.get("expires_in", 3600)) - 60.0
+        return self._token
 
     def search(
         self,
@@ -299,44 +420,268 @@ class NexarClient:
         only_basic: bool = True,
         limit: int = 20,
     ) -> list[ComponentRecord]:
-        _ = (package, only_basic, limit)
-        if not self._client_id or not self._client_secret:
-            raise RuntimeError("Nexar search requires NEXAR_CLIENT_ID and NEXAR_CLIENT_SECRET.")
-        raise RuntimeError(
-            "Nexar live search is reserved for authenticated deployments. "
-            f"Use the zero-auth 'jlcsearch' source for local usage. Query was: {keyword}"
+        _ = only_basic
+        self._require_credentials()
+        token = self._access_token()
+        _nexar_limiter.acquire()
+        capped = max(1, min(limit, 20))
+        body = json.dumps(
+            {"query": _NEXAR_SEARCH_QUERY, "variables": {"q": keyword, "limit": capped}}
+        ).encode("utf-8")
+        response = self._transport(
+            self.ENDPOINT,
+            body,
+            {"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
         )
+        errors = response.get("errors")
+        if errors:
+            if isinstance(errors, list) and errors:
+                message = errors[0].get("message", "unknown error")
+            else:
+                message = str(errors)
+            lowered = message.casefold()
+            if "part limit" in lowered or "upgrade your plan" in lowered:
+                raise RuntimeError(
+                    f"Nexar part-lookup quota reached: {message} Use source='jlcsearch' "
+                    "(zero-auth) for local work, or upgrade/await reset of the Nexar plan."
+                )
+            raise RuntimeError(f"Nexar GraphQL error: {message}")
+        results = ((response.get("data") or {}).get("supSearchMpn") or {}).get("results") or []
+        records = [_record_from_nexar(entry.get("part") or {}) for entry in results]
+        if package:
+            needle = package.casefold()
+            records = [record for record in records if needle in record.package.casefold()]
+        return records[:limit]
 
     def get_part(self, lcsc_code_or_mpn: str) -> ComponentRecord | None:
-        _ = lcsc_code_or_mpn
-        raise RuntimeError("Nexar component detail lookups require authenticated deployment.")
+        self._require_credentials()
+        results = self.search(lcsc_code_or_mpn, limit=5)
+        needle = lcsc_code_or_mpn.strip().casefold()
+        for record in results:
+            if record.mpn.casefold() == needle:
+                return record
+        return results[0] if results else None
+
+
+_digikey_limiter = RateLimiter(max_calls=5, period_seconds=1.0)
+
+
+def _record_from_digikey(product: dict[str, Any]) -> ComponentRecord:
+    mpn = str(product.get("ManufacturerProductNumber", ""))
+    manufacturer = str((product.get("Manufacturer") or {}).get("Name", ""))
+    description = (
+        str((product.get("Description") or {}).get("ProductDescription", "")).strip()
+        or manufacturer
+    )
+    price_raw = product.get("UnitPrice")
+    price = float(price_raw) if isinstance(price_raw, (int, float)) else None
+    package = ""
+    for param in product.get("Parameters") or []:
+        text = str(param.get("ParameterText", "")).casefold()
+        if text in ("package / case", "supplier device package", "package"):
+            package = str(param.get("ValueText", ""))
+            break
+    return ComponentRecord(
+        source="digikey",
+        lcsc_code="",
+        mpn=mpn,
+        package=package,
+        description=description,
+        stock=int(product.get("QuantityAvailable", 0) or 0),
+        price=price,
+        is_basic=False,
+        is_preferred=False,
+    )
 
 
 class DigiKeyClient:
-    """Optional DigiKey client placeholder."""
+    """Live DigiKey Product Information (v4) client.
 
-    def __init__(self) -> None:
-        self._client_id = os.getenv("DIGIKEY_CLIENT_ID")
-        self._client_secret = os.getenv("DIGIKEY_CLIENT_SECRET")
+    Authenticates with the OAuth2 ``client_credentials`` grant and queries the v4
+    keyword-search endpoint. Requires ``DIGIKEY_CLIENT_ID`` / ``DIGIKEY_CLIENT_SECRET``
+    (loaded from ``.env`` at server startup) for an app subscribed to the Product
+    Information API. ``transport`` is injectable so the OAuth + search flow is
+    unit-tested without the network. The response schema follows DigiKey API v4; run
+    a live smoke test to confirm field mapping against the production response.
+    """
 
-    def search(
+    TOKEN_URL = "https://api.digikey.com/v1/oauth2/token"  # noqa: S105
+    SEARCH_URL = "https://api.digikey.com/products/v4/search/keyword"
+
+    def __init__(
         self,
-        keyword: str,
+        client_id: str | None = None,
+        client_secret: str | None = None,
         *,
-        package: str | None = None,
-        only_basic: bool = True,
-        limit: int = 20,
-    ) -> list[ComponentRecord]:
-        _ = (package, only_basic, limit)
+        transport: HttpPostJson | None = None,
+    ) -> None:
+        self._client_id = client_id if client_id is not None else os.getenv("DIGIKEY_CLIENT_ID")
+        self._client_secret = (
+            client_secret if client_secret is not None else os.getenv("DIGIKEY_CLIENT_SECRET")
+        )
+        self._transport = transport or _https_post_json
+        self._token: str | None = None
+        self._token_expiry = 0.0
+
+    def _require_credentials(self) -> tuple[str, str]:
         if not self._client_id or not self._client_secret:
             raise RuntimeError(
                 "DigiKey search requires DIGIKEY_CLIENT_ID and DIGIKEY_CLIENT_SECRET."
             )
-        raise RuntimeError(
-            "DigiKey live search wiring is not enabled in the default zero-auth profile. "
-            f"Query was: {keyword}"
+        return self._client_id, self._client_secret
+
+    def _access_token(self) -> str:
+        now = time.monotonic()
+        if self._token is not None and now < self._token_expiry:
+            return self._token
+        client_id, client_secret = self._require_credentials()
+        _digikey_limiter.acquire()
+        body = urllib.parse.urlencode(
+            {
+                "grant_type": "client_credentials",
+                "client_id": client_id,
+                "client_secret": client_secret,
+            }
+        ).encode("utf-8")
+        response = self._transport(
+            self.TOKEN_URL,
+            body,
+            {"Content-Type": "application/x-www-form-urlencoded"},
         )
+        token = response.get("access_token")
+        if not token:
+            raise RuntimeError("DigiKey token endpoint did not return an access_token.")
+        self._token = str(token)
+        self._token_expiry = now + float(response.get("expires_in", 600)) - 60.0
+        return self._token
+
+    def search(
+        self,
+        keyword: str,
+        *,
+        package: str | None = None,
+        only_basic: bool = True,
+        limit: int = 20,
+    ) -> list[ComponentRecord]:
+        _ = only_basic
+        client_id, _secret = self._require_credentials()
+        token = self._access_token()
+        _digikey_limiter.acquire()
+        capped = max(1, min(limit, 50))
+        body = json.dumps({"Keywords": keyword, "Limit": capped, "Offset": 0}).encode("utf-8")
+        response = self._transport(
+            self.SEARCH_URL,
+            body,
+            {
+                "Authorization": f"Bearer {token}",
+                "X-DIGIKEY-Client-Id": client_id,
+                "Content-Type": "application/json",
+            },
+        )
+        products = response.get("Products") or []
+        records = [_record_from_digikey(product) for product in products]
+        if package:
+            needle = package.casefold()
+            records = [record for record in records if needle in record.package.casefold()]
+        return records[:limit]
 
     def get_part(self, lcsc_code_or_mpn: str) -> ComponentRecord | None:
-        _ = lcsc_code_or_mpn
-        raise RuntimeError("DigiKey component detail lookups require authenticated deployment.")
+        self._require_credentials()
+        results = self.search(lcsc_code_or_mpn, limit=5)
+        needle = lcsc_code_or_mpn.strip().casefold()
+        for record in results:
+            if record.mpn.casefold() == needle:
+                return record
+        return results[0] if results else None
+
+
+_mouser_limiter = RateLimiter(max_calls=5, period_seconds=1.0)
+
+
+def _parse_mouser_price(price_breaks: list[dict[str, Any]]) -> float | None:
+    if not price_breaks:
+        return None
+    raw = str(price_breaks[0].get("Price", "")).replace("$", "").replace(",", "").strip()
+    try:
+        return float(raw) if raw else None
+    except ValueError:
+        return None
+
+
+def _record_from_mouser(part: dict[str, Any]) -> ComponentRecord:
+    manufacturer = str(part.get("Manufacturer", ""))
+    stock_digits = "".join(ch for ch in str(part.get("AvailabilityInStock", "")) if ch.isdigit())
+    return ComponentRecord(
+        source="mouser",
+        lcsc_code="",
+        mpn=str(part.get("ManufacturerPartNumber", "")),
+        package="",
+        description=str(part.get("Description", "")).strip() or manufacturer,
+        stock=int(stock_digits or 0),
+        price=_parse_mouser_price(part.get("PriceBreaks") or []),
+        is_basic=False,
+        is_preferred=False,
+        lifecycle=str(part.get("LifecycleStatus", "")),
+        rohs=str(part.get("ROHSStatus", "")),
+    )
+
+
+class MouserClient:
+    """Live Mouser keyword-search client.
+
+    Mouser authenticates with an API key (``MOUSER_API_KEY``, loaded from ``.env``
+    at server startup) passed as a query parameter, not OAuth. ``transport`` is
+    injectable so the search flow is unit-tested without the network.
+    """
+
+    SEARCH_URL = "https://api.mouser.com/api/v1/search/keyword"
+
+    def __init__(
+        self, api_key: str | None = None, *, transport: HttpPostJson | None = None
+    ) -> None:
+        self._api_key = api_key if api_key is not None else os.getenv("MOUSER_API_KEY")
+        self._transport = transport or _https_post_json
+
+    def _require_key(self) -> str:
+        if not self._api_key:
+            raise RuntimeError("Mouser search requires MOUSER_API_KEY.")
+        return self._api_key
+
+    def search(
+        self,
+        keyword: str,
+        *,
+        package: str | None = None,
+        only_basic: bool = True,
+        limit: int = 20,
+    ) -> list[ComponentRecord]:
+        _ = only_basic
+        api_key = self._require_key()
+        _mouser_limiter.acquire()
+        url = f"{self.SEARCH_URL}?apiKey={urllib.parse.quote(api_key)}"
+        body = json.dumps(
+            {"SearchByKeywordRequest": {"keyword": keyword, "records": max(1, min(limit, 50))}}
+        ).encode("utf-8")
+        response = self._transport(url, body, {"Content-Type": "application/json"})
+        errors = response.get("Errors")
+        if errors:
+            if isinstance(errors, list) and errors:
+                message = errors[0].get("Message", "unknown error")
+            else:
+                message = str(errors)
+            raise RuntimeError(f"Mouser API error: {message}")
+        parts = ((response.get("SearchResults") or {}).get("Parts")) or []
+        records = [_record_from_mouser(part) for part in parts]
+        if package:
+            needle = package.casefold()
+            records = [record for record in records if needle in record.description.casefold()]
+        return records[:limit]
+
+    def get_part(self, lcsc_code_or_mpn: str) -> ComponentRecord | None:
+        self._require_key()
+        results = self.search(lcsc_code_or_mpn, limit=5)
+        needle = lcsc_code_or_mpn.strip().casefold()
+        for record in results:
+            if record.mpn.casefold() == needle:
+                return record
+        return results[0] if results else None

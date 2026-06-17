@@ -1542,6 +1542,24 @@
     "experimental": false,
     "headless": true,
     "idempotent": true,
+    "name": "lib_check_derating",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "full",
+      "schematic",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": true,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": true,
     "name": "lib_check_stock_availability",
     "open_world": false,
     "profiles": [
@@ -1903,6 +1921,24 @@
     "headless": true,
     "idempotent": true,
     "name": "lib_set_3d_model_path",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "full",
+      "schematic",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "lib_validate_footprint_ipc7351",
     "open_world": false,
     "profiles": [
       "agent_full",
@@ -3805,6 +3841,19 @@
     "requires_kicad_running": false
   },
   {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "project_assess_edit_impact",
+    "open_world": false,
+    "profiles": [
+      "all"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
     "destructive": true,
     "experimental": false,
     "headless": true,
@@ -5425,6 +5474,23 @@
     "experimental": false,
     "headless": false,
     "idempotent": false,
+    "name": "si_analyze_high_speed_channel",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "analysis",
+      "critic",
+      "full",
+      "high_speed"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": false,
+    "idempotent": false,
     "name": "si_bind_interfaces_to_net_classes",
     "open_world": false,
     "profiles": [
@@ -5847,6 +5913,23 @@
     "headless": false,
     "idempotent": false,
     "name": "thermal_check_copper_pour",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "analysis",
+      "critic",
+      "full",
+      "power"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": false,
+    "idempotent": false,
+    "name": "thermal_simulate_plane_spreading",
     "open_world": false,
     "profiles": [
       "agent_full",

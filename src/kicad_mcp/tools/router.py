@@ -53,6 +53,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "project_get_design_intent",
             "project_get_design_spec",
             "project_infer_design_spec",
+            "project_assess_edit_impact",
             "project_validate_design_spec",
             "project_generate_design_prompt",
             "project_get_next_action",
@@ -252,6 +253,8 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "lib_get_datasheet_url",
             # v2.2.0 — generative library tools
             "lib_generate_footprint_ipc7351",
+            "lib_validate_footprint_ipc7351",
+            "lib_check_derating",
             "lib_generate_symbol_from_pintable",
             "lib_recommend_part",
             "lib_bind_part_to_symbol",
@@ -417,6 +420,8 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "si_list_dielectric_materials",
             "si_synthesize_stackup_for_interfaces",
             "si_bind_interfaces_to_net_classes",
+            # P3-T3 — high-speed channel insertion-loss / eye analysis
+            "si_analyze_high_speed_channel",
         ],
     },
     "power_integrity": {
@@ -432,6 +437,8 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "pdn_generate_power_plane",
             "thermal_calculate_via_count",
             "thermal_check_copper_pour",
+            # P3-T4 — 2-D finite-difference copper-plane thermal spreading solver
+            "thermal_simulate_plane_spreading",
         ],
     },
     "emc": {

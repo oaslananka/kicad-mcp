@@ -9,6 +9,7 @@ from kicad_mcp.utils.component_search import (
     ComponentRecord,
     DigiKeyClient,
     JLCSearchClient,
+    MouserClient,
     NexarClient,
     RateLimiter,
     _plain_text_lines,
@@ -218,15 +219,218 @@ def test_optional_search_clients_raise_clear_messages(monkeypatch) -> None:
     monkeypatch.delenv("NEXAR_CLIENT_SECRET", raising=False)
     with pytest.raises(RuntimeError, match="NEXAR_CLIENT_ID"):
         NexarClient().search("accelerometer")
-    with pytest.raises(RuntimeError, match="detail lookups require authenticated deployment"):
+    with pytest.raises(RuntimeError, match="NEXAR_CLIENT_ID"):
         NexarClient().get_part("C12345")
 
     monkeypatch.delenv("DIGIKEY_CLIENT_ID", raising=False)
     monkeypatch.delenv("DIGIKEY_CLIENT_SECRET", raising=False)
     with pytest.raises(RuntimeError, match="DIGIKEY_CLIENT_ID"):
         DigiKeyClient().search("buzzer")
-    with pytest.raises(RuntimeError, match="detail lookups require authenticated deployment"):
+    with pytest.raises(RuntimeError, match="DIGIKEY_CLIENT_ID"):
         DigiKeyClient().get_part("C12345")
+
+
+def test_digikey_search_parses_records_with_injected_transport() -> None:
+    calls: list[str] = []
+
+    def transport(url: str, body: bytes, headers: dict[str, str]) -> dict[str, object]:
+        calls.append(url)
+        if url.endswith("/oauth2/token"):
+            assert b"client_credentials" in body
+            return {"access_token": "dk-tok", "expires_in": 600}
+        assert headers.get("X-DIGIKEY-Client-Id") == "id"
+        assert headers.get("Authorization") == "Bearer dk-tok"
+        return {
+            "Products": [
+                {
+                    "ManufacturerProductNumber": "LM358DR",
+                    "Manufacturer": {"Name": "Texas Instruments"},
+                    "Description": {"ProductDescription": "Op-amp dual"},
+                    "QuantityAvailable": 125000,
+                    "UnitPrice": 0.123,
+                    "Parameters": [
+                        {"ParameterText": "Package / Case", "ValueText": "8-SOIC"},
+                    ],
+                }
+            ]
+        }
+
+    client = DigiKeyClient(client_id="id", client_secret="secret", transport=transport)  # noqa: S106
+    records = client.search("LM358", limit=5)
+
+    assert len(records) == 1
+    record = records[0]
+    assert record.source == "digikey"
+    assert record.mpn == "LM358DR"
+    assert record.package == "8-SOIC"
+    assert record.stock == 125000
+    assert record.price == 0.123
+    assert calls[0].endswith("/oauth2/token")
+    assert calls[1].endswith("/search/keyword")
+
+
+def test_mouser_requires_api_key(monkeypatch) -> None:
+    monkeypatch.delenv("MOUSER_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="MOUSER_API_KEY"):
+        MouserClient().search("resistor")
+
+
+def test_mouser_search_parses_records_with_injected_transport() -> None:
+    seen_urls: list[str] = []
+
+    def transport(url: str, body: bytes, headers: dict[str, str]) -> dict[str, object]:
+        seen_urls.append(url)
+        return {
+            "SearchResults": {
+                "Parts": [
+                    {
+                        "ManufacturerPartNumber": "GRM188R71H104KA93D",
+                        "Manufacturer": "Murata",
+                        "Description": "CAP CER 0.1UF 50V X7R 0603",
+                        "AvailabilityInStock": "125,000",
+                        "PriceBreaks": [{"Price": "$0.018"}],
+                        "LifecycleStatus": "Active",
+                        "ROHSStatus": "RoHS Compliant",
+                    }
+                ]
+            }
+        }
+
+    client = MouserClient(api_key="mk-123", transport=transport)
+    records = client.search("0.1uF 0603", limit=5)
+
+    assert len(records) == 1
+    record = records[0]
+    assert record.source == "mouser"
+    assert record.mpn == "GRM188R71H104KA93D"
+    assert record.stock == 125000  # comma-separated availability parsed
+    assert record.price == 0.018
+    assert record.lifecycle == "Active"
+    # The API key is sent as a query parameter, not a header.
+    assert "apiKey=mk-123" in seen_urls[0]
+
+
+def test_mouser_api_error_surfaces() -> None:
+    def transport(url: str, body: bytes, headers: dict[str, str]) -> dict[str, object]:
+        return {"Errors": [{"Message": "Invalid API key"}]}
+
+    with pytest.raises(RuntimeError, match="Mouser API error: Invalid API key"):
+        MouserClient(api_key="bad", transport=transport).search("x")
+
+
+def test_digikey_token_is_cached_across_searches() -> None:
+    calls: list[str] = []
+
+    def transport(url: str, body: bytes, headers: dict[str, str]) -> dict[str, object]:
+        calls.append(url)
+        if url.endswith("/oauth2/token"):
+            return {"access_token": "dk", "expires_in": 600}
+        return {"Products": []}
+
+    client = DigiKeyClient(client_id="id", client_secret="secret", transport=transport)  # noqa: S106
+    client.search("a")
+    client.search("b")
+    assert calls.count("https://api.digikey.com/v1/oauth2/token") == 1
+    assert calls.count("https://api.digikey.com/products/v4/search/keyword") == 2
+
+
+class _FakeNexarTransport:
+    """Scripted OAuth + GraphQL transport for hermetic NexarClient tests."""
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def __call__(self, url: str, body: bytes, headers: dict[str, str]) -> dict[str, object]:
+        self.calls.append(url)
+        if url.endswith("/connect/token"):
+            assert b"client_credentials" in body
+            return {"access_token": "tok-123", "expires_in": 3600}
+        assert headers.get("Authorization") == "Bearer tok-123"
+        return {
+            "data": {
+                "supSearchMpn": {
+                    "results": [
+                        {
+                            "part": {
+                                "mpn": "STM32F103C8T6",
+                                "manufacturer": {"name": "STMicroelectronics"},
+                                "shortDescription": "ARM Cortex-M3 MCU",
+                                "totalAvail": 4200,
+                                "medianPrice1000": {"price": 1.83},
+                                "specs": [
+                                    {
+                                        "attribute": {"name": "Case/Package"},
+                                        "displayValue": "LQFP-48",
+                                    },
+                                    {
+                                        "attribute": {"name": "Lifecycle Status"},
+                                        "displayValue": "Active",
+                                    },
+                                    {
+                                        "attribute": {"name": "RoHS Status"},
+                                        "displayValue": "Compliant",
+                                    },
+                                ],
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+
+
+def test_nexar_search_parses_records_with_injected_transport() -> None:
+    transport = _FakeNexarTransport()
+    client = NexarClient(client_id="id", client_secret="secret", transport=transport)  # noqa: S106
+    records = client.search("STM32F103", limit=5)
+
+    assert len(records) == 1
+    record = records[0]
+    assert record.source == "nexar"
+    assert record.mpn == "STM32F103C8T6"
+    assert record.package == "LQFP-48"
+    assert record.stock == 4200
+    assert record.price == 1.83
+    # Sourcing/compliance metadata is parsed from the part specs.
+    assert record.lifecycle == "Active"
+    assert record.rohs == "Compliant"
+    # OAuth token fetched, then the GraphQL query issued.
+    assert transport.calls[0].endswith("/connect/token")
+    assert transport.calls[1].endswith("/graphql")
+
+
+def test_nexar_token_is_cached_across_searches() -> None:
+    transport = _FakeNexarTransport()
+    client = NexarClient(client_id="id", client_secret="secret", transport=transport)  # noqa: S106
+    client.search("a")
+    client.search("b")
+    # One token call, two graphql calls — the token is reused, not re-fetched.
+    assert transport.calls.count("https://identity.nexar.com/connect/token") == 1
+    assert transport.calls.count("https://api.nexar.com/graphql") == 2
+
+
+def test_nexar_graphql_errors_surface_as_runtime_error() -> None:
+    def transport(url: str, body: bytes, headers: dict[str, str]) -> dict[str, object]:
+        if url.endswith("/connect/token"):
+            return {"access_token": "t", "expires_in": 3600}
+        return {"errors": [{"message": "rate limit exceeded"}]}
+
+    client = NexarClient(client_id="id", client_secret="secret", transport=transport)  # noqa: S106
+    with pytest.raises(RuntimeError, match="Nexar GraphQL error: rate limit exceeded"):
+        client.search("anything")
+
+
+def test_nexar_quota_limit_gives_actionable_error() -> None:
+    def transport(url: str, body: bytes, headers: dict[str, str]) -> dict[str, object]:
+        if url.endswith("/connect/token"):
+            return {"access_token": "t", "expires_in": 3600}
+        return {"errors": [{"message": "You have exceeded your part limit of 10."}]}
+
+    client = NexarClient(client_id="id", client_secret="secret", transport=transport)  # noqa: S106
+    with pytest.raises(RuntimeError, match="quota reached") as exc_info:
+        client.search("anything")
+    # Steers the caller to the zero-auth fallback rather than a bare GraphQL error.
+    assert "jlcsearch" in str(exc_info.value)
 
 
 def test_rate_limiter_waits_when_window_is_full(monkeypatch) -> None:

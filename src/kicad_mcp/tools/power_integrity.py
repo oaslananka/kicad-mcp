@@ -23,14 +23,28 @@ from ..models.power_integrity import (
     CopperWeightCheckInput,
     DecouplingRecommendationInput,
     PowerPlaneInput,
+    ThermalPlaneSpreadInput,
     ThermalPourInput,
     ThermalViaInput,
     VoltageDropInput,
 )
 from ..utils.impedance import copper_thickness_mm, recommended_decoupling_distance_mm
 from ..utils.layers import resolve_layer
-from ..utils.pdn_mesh import PdnDecouplingCap, PdnLoad, PdnMesh
+from ..utils.pdn_mesh import (
+    PdnDecouplingCap,
+    PdnLoad,
+    PdnMesh,
+    ipc2221_temperature_rise_c,
+)
+from ..utils.solver_seams import (
+    ir_drop_method,
+    pdn_mesh_method,
+    thermal_fd_method,
+    thermal_method,
+)
+from ..utils.thermal_solver import ThermalPlaneSpec, solve_plane_temperature
 from ..utils.units import _coord_nm, mm_to_mil, mm_to_nm, nm_to_mm
+from ..verdicts import three_level_verdict, warn_max_from
 
 _COPPER_RESISTIVITY_OHM_M = 1.724e-8
 _TEMPERATURE_COEFFICIENT = 0.0039
@@ -222,8 +236,15 @@ def register(mcp: FastMCP) -> None:
         trace_width_mm: float,
         trace_length_mm: float,
         copper_oz: float = 1.0,
+        max_temp_rise_c: float = 10.0,
+        internal_layer: bool = False,
     ) -> str:
-        """Estimate DC voltage drop and trace resistance."""
+        """Estimate DC voltage drop, trace resistance, and IPC-2221 current-density fusing.
+
+        ``max_temp_rise_c`` is the temperature-rise budget; the verdict is PASS within it,
+        WARN up to 2x, FAIL beyond. Set ``internal_layer=True`` for a buried trace (lower
+        ampacity).
+        """
         payload = VoltageDropInput(
             current_a=current_a,
             trace_width_mm=trace_width_mm,
@@ -239,18 +260,36 @@ def register(mcp: FastMCP) -> None:
         current_density_a_per_mm2 = payload.current_a / (
             payload.trace_width_mm * copper_thickness_mm(payload.copper_oz)
         )
-        return "\n".join(
-            [
-                "PDN voltage-drop estimate:",
-                f"- Current: {payload.current_a:.3f} A",
-                f"- Trace width: {payload.trace_width_mm:.3f} mm",
-                f"- Trace length: {payload.trace_length_mm:.3f} mm",
-                f"- Copper: {payload.copper_oz:.2f} oz",
-                f"- Estimated resistance: {resistance_ohm:.5f} ohm",
-                f"- Estimated voltage drop: {drop_v * 1_000.0:.2f} mV",
-                f"- Estimated current density: {current_density_a_per_mm2:.2f} A/mm^2",
-            ]
+        # IPC-2221 self-heating / fusing temperature rise for this current density.
+        temp_rise_c = ipc2221_temperature_rise_c(
+            payload.current_a,
+            payload.trace_width_mm,
+            payload.copper_oz,
+            internal=internal_layer,
         )
+        fail_temp_c = warn_max_from(max_temp_rise_c)
+        fusing_verdict = three_level_verdict(
+            temp_rise_c, pass_max=max_temp_rise_c, warn_max=fail_temp_c
+        )
+        lines = [
+            "PDN voltage-drop estimate:",
+            f"- Current: {payload.current_a:.3f} A",
+            f"- Trace width: {payload.trace_width_mm:.3f} mm",
+            f"- Trace length: {payload.trace_length_mm:.3f} mm",
+            f"- Copper: {payload.copper_oz:.2f} oz "
+            f"({'internal' if internal_layer else 'external'} layer)",
+            f"- Estimated resistance: {resistance_ohm:.5f} ohm",
+            f"- Estimated voltage drop: {drop_v * 1_000.0:.2f} mV",
+            f"- Estimated current density: {current_density_a_per_mm2:.2f} A/mm^2",
+            f"- IPC-2221 temperature rise: {temp_rise_c:.1f} C ({fusing_verdict}; "
+            f"PASS <= {max_temp_rise_c:.1f} C, WARN <= {fail_temp_c:.1f} C, "
+            f"FAIL > {fail_temp_c:.1f} C)",
+        ]
+        method = ir_drop_method()
+        lines.append(f"- Method: {method['method']} — {method['accuracy']}")
+        if not method["solver_grade"]:
+            lines.append(f"- Note: {method['note']}")
+        return "\n".join(lines)
 
     @mcp.tool()
     def check_power_integrity(
@@ -311,6 +350,8 @@ def register(mcp: FastMCP) -> None:
                 lines.append(f"- Z({frequency_hz:.0f} Hz): {impedance:.4f} ohm")
         lines.extend(f"- IMPEDANCE FAIL: {item}" for item in result.impedance_violations)
         lines.extend(f"- Recommendation: {item}" for item in result.recommendations)
+        mesh_method = pdn_mesh_method()
+        lines.append(f"- Method: {mesh_method['method']} — {mesh_method['accuracy']}")
         return "\n".join(lines)
 
     @mcp.tool()
@@ -501,24 +542,27 @@ def register(mcp: FastMCP) -> None:
         via_count = max(1, math.ceil(single_via_theta / required_via_network_theta))
         delta_temp_c = effective_power_w * required_via_network_theta
 
-        return "\n".join(
-            [
-                "Thermal via estimate:",
-                f"- Power to spread: {effective_power_w:.3f} W",
-                (
-                    f"- Ambient / max junction: {payload.ambient_c:.1f} C / "
-                    f"{payload.max_junction_c:.1f} C"
-                ),
-                f"- Package theta JA: {payload.theta_ja_deg_c_w:.2f} C/W",
-                f"- Via diameter: {payload.via_diameter_mm:.3f} mm",
-                f"- Board thickness used: {_board_thickness_mm():.3f} mm",
-                "- Single-via rule of thumb: 0.3 mm, 1 oz copper is approximately 100 C/W",
-                f"- Single-via thermal resistance estimate: {single_via_theta:.2f} C/W",
-                f"- Required via-network resistance: {required_via_network_theta:.2f} C/W",
-                f"- Required via count: {via_count}",
-                f"- Target temperature rise at the interface: {delta_temp_c:.2f} C",
-            ]
-        )
+        lines = [
+            "Thermal via estimate:",
+            f"- Power to spread: {effective_power_w:.3f} W",
+            (
+                f"- Ambient / max junction: {payload.ambient_c:.1f} C / "
+                f"{payload.max_junction_c:.1f} C"
+            ),
+            f"- Package theta JA: {payload.theta_ja_deg_c_w:.2f} C/W",
+            f"- Via diameter: {payload.via_diameter_mm:.3f} mm",
+            f"- Board thickness used: {_board_thickness_mm():.3f} mm",
+            "- Single-via rule of thumb: 0.3 mm, 1 oz copper is approximately 100 C/W",
+            f"- Single-via thermal resistance estimate: {single_via_theta:.2f} C/W",
+            f"- Required via-network resistance: {required_via_network_theta:.2f} C/W",
+            f"- Required via count: {via_count}",
+            f"- Target temperature rise at the interface: {delta_temp_c:.2f} C",
+        ]
+        method = thermal_method()
+        lines.append(f"- Method: {method['method']} — {method['accuracy']}")
+        if not method["solver_grade"]:
+            lines.append(f"- Note: {method['note']}")
+        return "\n".join(lines)
 
     @mcp.tool()
     def thermal_check_copper_pour(
@@ -554,4 +598,70 @@ def register(mcp: FastMCP) -> None:
             lines.append(f"- {zone.name or '(unnamed)'} on {zone_layers or '(unknown layers)'}")
         if verdict == "WARN":
             lines.append("- Consider a wider pour, more copper area, and stitched thermal vias.")
+        return "\n".join(lines)
+
+    @mcp.tool()
+    def thermal_simulate_plane_spreading(
+        power_w: float,
+        plane_width_mm: float,
+        plane_height_mm: float,
+        source_width_mm: float = 5.0,
+        source_height_mm: float = 5.0,
+        copper_oz: float = 1.0,
+        ambient_c: float = 25.0,
+        film_coefficient_w_per_m2_k: float = 20.0,
+        max_temp_rise_c: float = 40.0,
+    ) -> str:
+        """Solve copper-plane heat spreading with a 2-D finite-difference thermal solver.
+
+        Models a hot source dissipating ``power_w`` into a copper plane that loses heat to
+        ambient through both faces (``film_coefficient_w_per_m2_k`` is the combined
+        top+bottom film coefficient). Returns the peak and average temperature rise from a
+        genuine distributed steady-state solve, with a PASS/WARN/FAIL verdict against
+        ``max_temp_rise_c``. This is a 2-D spreading solve, not a 3-D FEA with airflow.
+        """
+        payload = ThermalPlaneSpreadInput(
+            power_w=power_w,
+            plane_width_mm=plane_width_mm,
+            plane_height_mm=plane_height_mm,
+            source_width_mm=source_width_mm,
+            source_height_mm=source_height_mm,
+            copper_oz=copper_oz,
+            ambient_c=ambient_c,
+            film_coefficient_w_per_m2_k=film_coefficient_w_per_m2_k,
+            max_temp_rise_c=max_temp_rise_c,
+        )
+        spec = ThermalPlaneSpec(
+            power_w=payload.power_w,
+            plane_width_mm=payload.plane_width_mm,
+            plane_height_mm=payload.plane_height_mm,
+            source_width_mm=min(payload.source_width_mm, payload.plane_width_mm),
+            source_height_mm=min(payload.source_height_mm, payload.plane_height_mm),
+            copper_weight_oz=payload.copper_oz,
+            ambient_c=payload.ambient_c,
+            film_coefficient_w_per_m2_k=payload.film_coefficient_w_per_m2_k,
+        )
+        result = solve_plane_temperature(spec)
+        fail_rise_c = warn_max_from(payload.max_temp_rise_c)
+        verdict = three_level_verdict(
+            result.peak_rise_c, pass_max=payload.max_temp_rise_c, warn_max=fail_rise_c
+        )
+        lines = [
+            "Thermal plane-spreading analysis:",
+            f"- Source power: {payload.power_w:.3f} W",
+            f"- Copper plane: {payload.plane_width_mm:.1f} x {payload.plane_height_mm:.1f} mm "
+            f"@ {payload.copper_oz:.2f} oz",
+            f"- Grid: {result.grid_rows} x {result.grid_cols} "
+            f"({'converged' if result.converged else 'iteration-capped'} "
+            f"in {result.iterations} iters)",
+            f"- Lateral spreading length: {result.spreading_length_mm:.1f} mm",
+            f"- Peak temperature rise: {result.peak_rise_c:.1f} C "
+            f"({verdict}; PASS <= {payload.max_temp_rise_c:.1f} C, "
+            f"WARN <= {fail_rise_c:.1f} C, FAIL > {fail_rise_c:.1f} C)",
+            f"- Average temperature rise: {result.average_rise_c:.1f} C",
+            f"- Peak junction temperature: {result.peak_temp_c:.1f} C "
+            f"(ambient {payload.ambient_c:.1f} C)",
+        ]
+        method = thermal_fd_method()
+        lines.append(f"- Method: {method['method']} — {method['accuracy']}")
         return "\n".join(lines)

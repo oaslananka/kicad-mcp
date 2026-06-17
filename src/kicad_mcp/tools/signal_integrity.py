@@ -9,6 +9,7 @@ a fast first-pass review; accuracy is typically ~5-10%. A field-solver mode is p
 from __future__ import annotations
 
 import math
+from pathlib import Path
 from typing import Protocol, cast
 
 from kipy.proto.board.board_types_pb2 import ViaType
@@ -20,11 +21,18 @@ from ..models.common import _FootprintLike, _PadLike
 from ..models.signal_integrity import (
     DecouplingPlacementInput,
     DifferentialPairSkewInput,
+    HighSpeedChannelInput,
     LengthMatchingInput,
     StackupInput,
     TraceImpedanceInput,
     TraceWidthForImpedanceInput,
     ViaStubInput,
+)
+from ..utils.channel import (
+    ChannelMetrics,
+    ChannelSpec,
+    closed_form_channel_metrics,
+    simulate_channel_insertion_loss,
 )
 from ..utils.field_solver import impedance_method
 from ..utils.impedance import (
@@ -42,6 +50,8 @@ from ..utils.impedance import (
     via_stub_resonance_ghz,
     via_stub_risk_level,
 )
+from ..utils.ngspice import NgspiceRunner
+from ..utils.solver_seams import channel_method
 from ..utils.units import _coord_nm, nm_to_mm
 from ..verdicts import three_level_verdict, warn_max_from
 from .design_intent_state import resolve_design_intent
@@ -321,6 +331,37 @@ def _format_impedance_result(
         lines.append(f"- Estimated differential impedance: {differential_ohm:.2f} ohm")
     method = impedance_method()
     lines.append(f"- Method: {method['method']} — {method['accuracy']}")
+    if not method["solver_grade"]:
+        lines.append(f"- Note: {method['note']}")
+    return "\n".join(lines)
+
+
+def _channel_output_dir() -> Path:
+    return get_config().ensure_output_dir("channel")
+
+
+def _ghz(freq_hz: float) -> str:
+    return f"{freq_hz / 1e9:.3f} GHz"
+
+
+def _format_channel_result(metrics: ChannelMetrics, max_insertion_loss_db: float) -> str:
+    fail_il_db = warn_max_from(max_insertion_loss_db)
+    verdict = three_level_verdict(
+        metrics.insertion_loss_nyquist_db, pass_max=max_insertion_loss_db, warn_max=fail_il_db
+    )
+    lines = [
+        "High-speed channel analysis:",
+        f"- Nyquist frequency: {_ghz(metrics.nyquist_hz)}",
+        f"- Insertion loss at Nyquist: {metrics.insertion_loss_nyquist_db:.2f} dB "
+        f"({verdict}; PASS <= {max_insertion_loss_db:.1f} dB, WARN <= {fail_il_db:.1f} dB, "
+        f"FAIL > {fail_il_db:.1f} dB)",
+        f"- -3 dB bandwidth: {_ghz(metrics.bandwidth_3db_hz)}",
+        f"- Eye height: {metrics.eye_height_v:.4f} V "
+        f"({metrics.eye_height_ratio * 100.0:.1f}% of drive amplitude)",
+    ]
+    method = channel_method(metrics.source == "ngspice")
+    lines.append(f"- Method: {method['method']} — {method['accuracy']}")
+    lines.extend(f"- {note}" for note in metrics.notes)
     if not method["solver_grade"]:
         lines.append(f"- Note: {method['note']}")
     return "\n".join(lines)
@@ -636,6 +677,56 @@ def register(mcp: FastMCP) -> None:
                 f"longest {longest_net}={longest_mm:.3f} mm, spread={spread_mm:.3f} mm"
             )
         return "\n".join(lines)
+
+    @mcp.tool()
+    def si_analyze_high_speed_channel(
+        length_mm: float,
+        data_rate_gbps: float,
+        z0_ohm: float = 50.0,
+        eps_eff: float = 3.8,
+        loss_tangent: float = 0.02,
+        trace_width_mm: float = 0.2,
+        amplitude_v: float = 1.0,
+        max_insertion_loss_db: float = 10.0,
+    ) -> str:
+        """Estimate high-speed channel insertion loss and eye opening for a lossy trace.
+
+        Sums conductor skin-effect and dielectric (tan-delta) loss to get insertion loss
+        at the Nyquist rate, then a first-order loss-limited eye height, with a
+        PASS/WARN/FAIL verdict against ``max_insertion_loss_db``. When an ngspice CLI is
+        available the insertion loss is measured from an RLGC-ladder AC sweep; otherwise a
+        closed-form estimate is used. The method label states which path produced the
+        numbers.
+        """
+        payload = HighSpeedChannelInput(
+            length_mm=length_mm,
+            z0_ohm=z0_ohm,
+            data_rate_gbps=data_rate_gbps,
+            eps_eff=eps_eff,
+            loss_tangent=loss_tangent,
+            trace_width_mm=trace_width_mm,
+            amplitude_v=amplitude_v,
+            max_insertion_loss_db=max_insertion_loss_db,
+        )
+        spec = ChannelSpec(
+            length_mm=payload.length_mm,
+            z0_ohm=payload.z0_ohm,
+            data_rate_gbps=payload.data_rate_gbps,
+            eps_eff=payload.eps_eff,
+            loss_tangent=payload.loss_tangent,
+            trace_width_mm=payload.trace_width_mm,
+            amplitude_v=payload.amplitude_v,
+        )
+        metrics = closed_form_channel_metrics(spec)
+        cfg = get_config()
+        measured = simulate_channel_insertion_loss(
+            spec,
+            NgspiceRunner(cfg.ngspice_cli, cfg.cli_timeout),
+            _channel_output_dir(),
+        )
+        if measured is not None:
+            metrics = measured
+        return _format_channel_result(metrics, payload.max_insertion_loss_db)
 
     @mcp.tool()
     def si_generate_stackup(

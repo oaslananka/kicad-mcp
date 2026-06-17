@@ -30,6 +30,19 @@ class TraceImpedanceInput(BaseModel):
     )
 
 
+class HighSpeedChannelInput(BaseModel):
+    """High-speed channel insertion-loss / eye analysis request."""
+
+    length_mm: float = Field(gt=0.0, le=2000.0)
+    z0_ohm: float = Field(default=50.0, gt=1.0, le=200.0)
+    data_rate_gbps: float = Field(gt=0.0, le=200.0)
+    eps_eff: float = Field(default=3.8, ge=1.0, le=20.0)
+    loss_tangent: float = Field(default=0.02, ge=0.0, le=1.0)
+    trace_width_mm: float = Field(default=0.2, gt=0.0, le=25.0)
+    amplitude_v: float = Field(default=1.0, gt=0.0, le=10.0)
+    max_insertion_loss_db: float = Field(default=10.0, gt=0.0, le=100.0)
+
+
 class TraceWidthForImpedanceInput(BaseModel):
     """Width synthesis request for a target impedance."""
 
