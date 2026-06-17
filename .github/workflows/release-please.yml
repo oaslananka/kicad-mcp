@@ -18,12 +18,17 @@ jobs:
     if: github.repository_owner == 'oaslananka' || github.repository_owner == 'oaslananka-ops'
     runs-on: ubuntu-24.04
     steps:
+      # A PAT (RELEASE_PLEASE_TOKEN) is used so that the release PR and the follow-up
+      # metadata-sync commit trigger CI -- commits/PRs created with the default
+      # GITHUB_TOKEN do not start new workflow runs. Falls back to GITHUB_TOKEN when the
+      # PAT is not configured (the release PR is still created, but its checks must be
+      # re-triggered manually).
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7
         id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
       # release-please bumps the bare version fields, but server.json / mcp.json embed
       # the version inside the OCI image identifier (ghcr.io/...:X.Y.Z), which its JSON
@@ -34,7 +39,7 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           ref: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
       - if: ${{ steps.release.outputs.pr }}
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
       - if: ${{ steps.release.outputs.pr }}

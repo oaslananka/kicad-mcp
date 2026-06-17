@@ -46,6 +46,15 @@
           "type": "json",
           "path": "package.json",
           "jsonpath": "$.version"
+        },
+        {
+          "type": "yaml",
+          "path": "compatibility.yaml",
+          "jsonpath": "$.products.kicad-mcp-pro.version"
+        },
+        {
+          "type": "generic",
+          "path": "README.md"
         }
       ]
     },

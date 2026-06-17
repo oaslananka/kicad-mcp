@@ -50,7 +50,7 @@ KiCad's programmatic surface the server drives is tracked openly in the
 | PyPI package | [`kicad-mcp-pro`](https://pypi.org/project/kicad-mcp-pro/) |
 | npm wrapper | [`kicad-mcp-pro`](https://www.npmjs.com/package/kicad-mcp-pro) |
 | MCP Registry name | `io.github.oaslananka/kicad-mcp-pro` |
-| Version | `3.9.2` |
+| Version | `3.9.2` | <!-- x-release-please-version -->
 
 ## Quick Start
 
