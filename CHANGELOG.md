@@ -10,6 +10,20 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.11.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.10.0...mcp-server-v3.11.0) (2026-06-17)
+
+
+### Features
+
+* apply routed Specctra SES to the board headlessly (P4-T1) ([#91](https://github.com/oaslananka/kicad-mcp/issues/91)) ([0563efc](https://github.com/oaslananka/kicad-mcp/commit/0563efce3d5f54aa413cddde9f325d010f974a78))
+* selective re-validation after edit completes first-class edit mode (P4-T4) ([#88](https://github.com/oaslananka/kicad-mcp/issues/88)) ([d827523](https://github.com/oaslananka/kicad-mcp/commit/d82752362b9924b54868a778a457f1ceed803a4e))
+
+
+### Bug Fixes
+
+* correct Specctra SES coordinate scale (1 mm = 1000 units, not 10000) ([#92](https://github.com/oaslananka/kicad-mcp/issues/92)) ([565a020](https://github.com/oaslananka/kicad-mcp/commit/565a02030d68cdb2b0bcddd325f5f5a1014ef66f))
+* discover symbol/footprint libraries via sym-/fp-lib-table ([#78](https://github.com/oaslananka/kicad-mcp/issues/78)) ([#90](https://github.com/oaslananka/kicad-mcp/issues/90)) ([72fce79](https://github.com/oaslananka/kicad-mcp/commit/72fce791eaf87e48255807799a19595923c34d8a))
+
 ## [3.10.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.9.2...mcp-server-v3.10.0) (2026-06-17)
 
 
