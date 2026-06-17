@@ -1,6 +1,6 @@
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 335.
+Total public tools: 336.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -224,6 +224,7 @@ Total public tools: 335.
 | `project_set_design_intent` | all | no | yes | no | yes | yes | no | Call this FIRST to store design intent for placement, routing, and gates. |
 | `project_signoff_report` | agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic | no | no | no | no | yes | no | Produce the single manufacturing sign-off report. |
 | `project_validate_design_spec` | all | no | no | no | no | yes | no | Validate the resolved design spec against the active project PCB. |
+| `route_apply_ses` | agent_full, builder, full, high_speed, pcb, pcb_only | no | no | no | no | yes | no | Apply a routed Specctra SES to the active board headlessly -- no GUI step. |
 | `route_apply_tuning_profile` | agent_full, builder, full, high_speed, pcb, pcb_only | no | no | no | no | yes | no | Assign a named tuning profile to a net or wildcard net group. |
 | `route_autoroute_freerouting` | agent_full, builder, full, high_speed, pcb, pcb_only | no | yes | no | no | yes | no | Run FreeRouting after placement, then surface the KiCad import step. |
 | `route_create_tuning_profile` | agent_full, builder, full, high_speed, pcb, pcb_only | no | no | no | no | yes | no | Create or update a KiCad 10-style time-domain tuning profile. |
@@ -562,6 +563,7 @@ Total public tools: 335.
 - `project_set_design_intent`: profiles=all; readOnly=no; destructive=yes; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `project_signoff_report`: profiles=agent_full, analysis, builder, critic, full, high_speed, manufacturing, pcb, power, release_manager, schematic; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_validate_design_spec`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
+- `route_apply_ses`: profiles=agent_full, builder, full, high_speed, pcb, pcb_only; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `route_apply_tuning_profile`: profiles=agent_full, builder, full, high_speed, pcb, pcb_only; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `route_autoroute_freerouting`: profiles=agent_full, builder, full, high_speed, pcb, pcb_only; readOnly=no; destructive=yes; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `route_create_tuning_profile`: profiles=agent_full, builder, full, high_speed, pcb, pcb_only; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.

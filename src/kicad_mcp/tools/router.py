@@ -393,6 +393,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "route_from_pad_to_pad",
             "route_export_dsn",
             "route_import_ses",
+            "route_apply_ses",
             "route_autoroute_freerouting",
             "route_set_net_class_rules",
             "route_differential_pair",

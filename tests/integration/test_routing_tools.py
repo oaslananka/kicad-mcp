@@ -184,3 +184,58 @@ async def test_routing_rule_tools_write_state_and_dru_files(
     assert "was not found" in missing_profile
     assert "Time-domain tuning rule" in time_domain
     assert "A.NetName =~ 'DATA.*'" in dru_text
+
+
+@pytest.mark.anyio
+async def test_route_apply_ses_applies_routing_headlessly(sample_project: Path) -> None:
+    """route_apply_ses writes the routed SES into the board with no GUI step (P4-T1)."""
+    pcb = sample_project / "demo.kicad_pcb"
+    pcb.write_text(
+        '(kicad_pcb\n\t(version 20250216)\n\t(net 0 "")\n\t(net 1 "GND")\n)\n',
+        encoding="utf-8",
+    )
+    ses = sample_project / "output" / "routing" / "board.ses"
+    ses.parent.mkdir(parents=True, exist_ok=True)
+    ses.write_text(
+        "(session t.dsn (routes (resolution um 10) (network_out "
+        '(net "GND" (wire (path F.Cu 250 100000 50000 110000 50000)) '
+        '(via "Via[0-1]_600:300_um" 110000 50000)))))',
+        encoding="utf-8",
+    )
+    server = build_server("pcb")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    payload = await call_tool_payload(
+        server, "route_apply_ses", {"ses_path": "output/routing/board.ses"}
+    )
+
+    # Applied headlessly: changed, never a human gate.
+    assert payload["changed"] is True
+    assert not payload.get("human_gate_required")
+    assert "headlessly" in payload["state_delta"]["summary"]
+
+    # The routed segment + via are now in the board, mapped to net 1 (GND).
+    text = pcb.read_text(encoding="utf-8")
+    assert '(layer "F.Cu") (net 1)' in text
+    assert "(via (at 11 -5)" in text
+    # The original net table is preserved (round-trip safe).
+    assert '(net 1 "GND")' in text and "(version 20250216)" in text
+
+
+@pytest.mark.anyio
+async def test_route_apply_ses_reports_empty_session(sample_project: Path) -> None:
+    """An SES with no routing fails cleanly rather than claiming a change."""
+    (sample_project / "demo.kicad_pcb").write_text(
+        '(kicad_pcb\n\t(net 1 "GND")\n)\n', encoding="utf-8"
+    )
+    ses = sample_project / "output" / "routing" / "board.ses"
+    ses.parent.mkdir(parents=True, exist_ok=True)
+    ses.write_text("(session t.dsn (routes (resolution um 10) (network_out)))", encoding="utf-8")
+    server = build_server("pcb")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    payload = await call_tool_payload(
+        server, "route_apply_ses", {"ses_path": "output/routing/board.ses"}
+    )
+    assert payload["ok"] is False
+    assert any("no routed segments" in error.lower() for error in payload["errors"])

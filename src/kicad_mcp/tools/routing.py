@@ -20,6 +20,7 @@ from ..models.pcb import AddTrackInput
 from ..models.tool_result import ArtifactRef, StateDelta, ToolResult
 from ..utils.freerouting import FreeRoutingRunner
 from ..utils.layers import resolve_layer
+from ..utils.router_core import apply_ses_to_pcb
 from ..utils.sexpr import _sexpr_string
 from ..utils.units import _coord_nm, mm_to_nm, nm_to_mm
 from .export_support import _get_pcb_file
@@ -417,6 +418,64 @@ def register(mcp: FastMCP) -> None:
         )
         result.human_gate_required = True
         return result
+
+    @mcp.tool()
+    @headless_compatible
+    def route_apply_ses(ses_path: str = "output/routing/board.ses") -> ToolResult:
+        """Apply a routed Specctra SES to the active board headlessly -- no GUI step.
+
+        KiCad has no headless SES import, so this parses the routed session and writes its
+        segments and vias directly into the .kicad_pcb via the round-trip-safe S-expression
+        layer; the rest of the board file is untouched. Re-applying the same session is
+        deterministic and idempotent (it replaces, not duplicates, the routing). This closes
+        the manual File > Import > Specctra Session step. Run run_drc() afterwards to verify.
+        """
+        cfg = get_config()
+        pcb_file = _get_pcb_file()
+        try:
+            resolved_ses = cfg.resolve_within_project(Path(ses_path))
+        except (ValueError, OSError) as exc:
+            return ToolResult.failure("route_apply_ses", f"Invalid SES path: {exc}")
+        if not resolved_ses.exists():
+            return ToolResult.failure(
+                "route_apply_ses", f"Routed SES not found: {_relative_project_path(resolved_ses)}"
+            )
+        try:
+            ses_text = resolved_ses.read_text(encoding="utf-8", errors="ignore")
+            pcb_text = pcb_file.read_text(encoding="utf-8", errors="ignore")
+            updated, route = apply_ses_to_pcb(pcb_text, ses_text)
+        except (ValueError, OSError) as exc:
+            return ToolResult.failure("route_apply_ses", f"Could not apply the SES: {exc}")
+
+        if not route.segments and not route.vias:
+            return ToolResult.failure(
+                "route_apply_ses",
+                f"The session at {_relative_project_path(resolved_ses)} contained no routed "
+                "segments or vias.",
+            )
+        if updated == pcb_text:
+            return ToolResult.success(
+                "route_apply_ses",
+                changed=False,
+                state_delta=StateDelta(
+                    summary="Routing already applied; the board is unchanged (idempotent)."
+                ),
+            )
+        pcb_file.write_text(updated, encoding="utf-8")
+        return ToolResult.success(
+            "route_apply_ses",
+            changed=True,
+            artifacts=[ArtifactRef(path=str(pcb_file), kind="pcb")],
+            state_delta=StateDelta(
+                summary=(
+                    f"Applied {len(route.segments)} segment(s) and {len(route.vias)} via(s) "
+                    f"across {len(route.net_names)} net(s) to "
+                    f"{_relative_project_path(pcb_file)} headlessly. "
+                    "Run run_drc() to verify the routed board is clean."
+                ),
+                changed_files=[str(pcb_file)],
+            ),
+        )
 
     @mcp.tool()
     @headless_compatible
