@@ -19,7 +19,31 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7
+        id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # release-please bumps the bare version fields, but server.json / mcp.json embed
+      # the version inside the OCI image identifier (ghcr.io/...:X.Y.Z), which its JSON
+      # updater cannot bump (it replaces whole values, not substrings). Regenerate the
+      # version-derived metadata from the bumped pyproject and push it onto the release
+      # PR branch so the metadata-sync gate passes.
+      - if: ${{ steps.release.outputs.pr }}
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          ref: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - if: ${{ steps.release.outputs.pr }}
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+      - if: ${{ steps.release.outputs.pr }}
+        name: Sync version-derived MCP metadata onto the release PR
+        run: |
+          uv run --all-extras python scripts/sync_mcp_metadata.py --write
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "chore: sync version-derived MCP metadata"
+            git push
+          fi
