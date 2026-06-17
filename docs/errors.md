@@ -16,7 +16,8 @@ This page is the authoritative catalog of those codes. It is kept in sync with
 - **retry_after_ms** — suggested backoff before retrying a transient error.
 
 See the `error_recovery` workflow prompt for the agent retry rule, and
-[`ARCHITECTURE.md`](../ARCHITECTURE.md) for where errors are defined.
+[`ARCHITECTURE.md`](https://github.com/oaslananka/kicad-mcp/blob/main/ARCHITECTURE.md)
+for where errors are defined.
 
 ## Codes
 
