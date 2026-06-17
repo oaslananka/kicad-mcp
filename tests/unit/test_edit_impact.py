@@ -68,3 +68,15 @@ def test_render_impact_report_is_human_readable() -> None:
     assert "Edit-impact analysis:" in text
     assert "Gates to re-run:" in text
     assert "Gates preserved:" in text
+
+
+def test_project_gate_categories_map_cleanly_to_edit_impact_gates() -> None:
+    """The selective-re-run mapping stays consistent (work order P4-T4): the bundled
+    project gate covers a subset of the edit-impact categories, and the remainder is
+    exactly the analysis-only set handled by separate tools."""
+    from kicad_mcp.tools.edit_impact import ALL_GATES
+    from kicad_mcp.tools.validation import PROJECT_GATE_CATEGORIES
+
+    assert set(PROJECT_GATE_CATEGORIES) <= set(ALL_GATES)
+    analysis_only = set(ALL_GATES) - set(PROJECT_GATE_CATEGORIES)
+    assert analysis_only == {"signal_integrity", "power", "thermal", "emc"}

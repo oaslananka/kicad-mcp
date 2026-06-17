@@ -4069,6 +4069,19 @@
     "requires_kicad_running": false
   },
   {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "project_revalidate_after_edit",
+    "open_world": false,
+    "profiles": [
+      "all"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
     "destructive": true,
     "experimental": false,
     "headless": true,
