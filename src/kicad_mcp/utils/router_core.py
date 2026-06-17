@@ -67,9 +67,17 @@ class SesRoute:
 
 
 def _units_per_mm(unit: str, factor: float) -> float:
-    """Convert a Specctra ``(resolution unit factor)`` to resolution units per millimetre."""
+    """Resolution units per millimetre for a Specctra ``(resolution unit factor)``.
+
+    KiCad's Specctra export writes coordinates in the base ``unit`` itself (verified: with
+    ``(resolution um 10)`` a part at 2.5 mm exports as ``2500`` -> micrometres, 1 mm = 1000
+    units). The ``factor`` is KiCad's resolution-grid declaration, not a coordinate
+    multiplier, so it is not applied to the magnitude. FreeRouting echoes the same
+    convention in the .ses it returns.
+    """
+    _ = factor
     per_unit = {"um": 1000.0, "mm": 1.0, "inch": 1.0 / 25.4, "mil": 1000.0 / 25.4}
-    return factor * per_unit.get(unit.lower(), 1000.0)
+    return per_unit.get(unit.lower(), 1000.0)
 
 
 def _to_mm(value: float, units_per_mm: float, *, flip: bool = False) -> float:

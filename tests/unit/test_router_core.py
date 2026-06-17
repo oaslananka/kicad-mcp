@@ -9,17 +9,19 @@ from kicad_mcp.utils.router_core import (
     render_pcb_items,
 )
 
+# KiCad's Specctra convention: 1 mm = 1000 units (um), board Y is negated in the session
+# (board y=5 mm -> -5000). The applier scales by 1000 and un-flips Y back to board mm.
 _SES = """(session test.dsn
   (routes
     (resolution um 10)
     (network_out
       (net "GND"
-        (wire (path F.Cu 250 100000 50000 110000 50000) (type protect))
-        (wire (path B.Cu 250 110000 50000 110000 60000))
-        (via "Via[0-1]_600:300_um" 110000 50000)
+        (wire (path F.Cu 250 2500 -5000 11000 -5000) (type protect))
+        (wire (path B.Cu 250 11000 -5000 11000 -6000))
+        (via "Via[0-1]_600:300_um" 11000 -5000)
       )
       (net "VCC"
-        (wire (path "F.Cu" 200 200000 200000 250000 200000))
+        (wire (path "F.Cu" 200 20000 -20000 25000 -20000))
       )
     )
   )
@@ -30,18 +32,18 @@ _PCB = '(kicad_pcb\n\t(version 20250216)\n\t(net 0 "")\n\t(net 1 "GND")\n\t(net 
 
 def test_parse_ses_scales_and_unflips_coordinates() -> None:
     route = parse_ses(_SES)
-    assert route.units_per_mm == 10000.0  # (resolution um 10) -> 10 * 1000
+    assert route.units_per_mm == 1000.0  # (resolution um 10) -> coords are micrometres
     assert len(route.segments) == 3
     assert len(route.vias) == 1
 
     gnd_f = next(s for s in route.segments if s.net_name == "GND" and s.layer == "F.Cu")
-    # 100000 units / 10000 = 10 mm; Specctra Y is up, KiCad Y is down -> 50000 -> -5 mm.
-    assert gnd_f.start == (10.0, -5.0)
-    assert gnd_f.end == (11.0, -5.0)
-    assert gnd_f.width_mm == 0.025  # 250 units / 10000
+    # 2500 units / 1000 = 2.5 mm; session Y is negated, so -5000 -> +5.0 mm board Y.
+    assert gnd_f.start == (2.5, 5.0)
+    assert gnd_f.end == (11.0, 5.0)
+    assert gnd_f.width_mm == 0.25  # 250 units / 1000
 
     via = route.vias[0]
-    assert via.at == (11.0, -5.0)
+    assert via.at == (11.0, 5.0)
     # Padstack Via[0-1]_600:300_um -> 0.6 mm size, 0.3 mm drill.
     assert via.size_mm == 0.6
     assert via.drill_mm == 0.3
@@ -67,7 +69,7 @@ def test_apply_ses_is_deterministic_and_round_trip_safe() -> None:
     # Net names are mapped to numbers; GND -> 1, VCC -> 2.
     assert '(layer "F.Cu") (net 1)' in out_a  # GND segment
     assert '(layer "F.Cu") (net 2)' in out_a  # VCC segment
-    assert '(via (at 11 -5) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1)' in out_a
+    assert '(via (at 11 5) (size 0.6) (drill 0.3) (layers "F.Cu" "B.Cu") (net 1)' in out_a
     # Three segments + one via were added.
     assert out_a.count("(segment ") == 3
     assert out_a.count("(via ") == 1

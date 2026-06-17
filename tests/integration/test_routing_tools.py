@@ -198,8 +198,8 @@ async def test_route_apply_ses_applies_routing_headlessly(sample_project: Path) 
     ses.parent.mkdir(parents=True, exist_ok=True)
     ses.write_text(
         "(session t.dsn (routes (resolution um 10) (network_out "
-        '(net "GND" (wire (path F.Cu 250 100000 50000 110000 50000)) '
-        '(via "Via[0-1]_600:300_um" 110000 50000)))))',
+        '(net "GND" (wire (path F.Cu 250 2500 -5000 11000 -5000)) '
+        '(via "Via[0-1]_600:300_um" 11000 -5000)))))',
         encoding="utf-8",
     )
     server = build_server("pcb")
@@ -217,7 +217,7 @@ async def test_route_apply_ses_applies_routing_headlessly(sample_project: Path) 
     # The routed segment + via are now in the board, mapped to net 1 (GND).
     text = pcb.read_text(encoding="utf-8")
     assert '(layer "F.Cu") (net 1)' in text
-    assert "(via (at 11 -5)" in text
+    assert "(via (at 11 5)" in text
     # The original net table is preserved (round-trip safe).
     assert '(net 1 "GND")' in text and "(version 20250216)" in text
 
