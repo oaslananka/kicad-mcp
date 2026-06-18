@@ -55,16 +55,19 @@ def _save_test_points(state: dict[str, Any]) -> Path:
 
 def _collect_board_nets() -> list[dict[str, Any]]:
     """Collect net names and codes from the board (IPC or file fallback)."""
+    live_nets: list[dict[str, Any]] = []
     try:
         board = get_board()
         nets = board.get_nets()
-        return [
+        live_nets = [
             {
                 "code": getattr(n, "code", 0),
                 "name": getattr(n, "name", ""),
             }
             for n in nets
         ]
+        if any(net["name"] for net in live_nets):
+            return live_nets
     except (KiCadConnectionError, AttributeError, OSError):
         pass
 
@@ -79,9 +82,9 @@ def _collect_board_nets() -> list[dict[str, Any]]:
             if code not in seen_codes:
                 seen_codes.add(code)
                 fallback_nets.append({"code": code, "name": name})
-        return fallback_nets
+        return fallback_nets or live_nets
     except (OSError, ValueError):
-        return []
+        return live_nets
 
 
 def register(mcp: FastMCP) -> None:

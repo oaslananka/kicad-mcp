@@ -37,9 +37,9 @@ automated sign-off authority. ERC/DRC and the export pipeline drive KiCad's own
 engines. The signal-integrity, power-integrity, EMC, and thermal tools are
 **first-order, closed-form estimates** (typically ~5–10% accuracy) — fast first-pass
 review, **not** a substitute for a 2D/3D field solver, EM/FEA simulation, or formal
-sign-off. Live component sourcing uses the JLCPCB public catalog by default; Nexar and
-DigiKey are available only when their API credentials are configured. What fraction of
-KiCad's programmatic surface the server drives is tracked openly in the
+sign-off. Live component sourcing uses the JLCPCB public catalog by default; Nexar,
+DigiKey, and Mouser are available only when their API credentials are configured. What
+fraction of KiCad's programmatic surface the server drives is tracked openly in the
 [capability-parity matrix](docs/compatibility/capability-parity.generated.md).
 
 ## Project identity
@@ -90,9 +90,10 @@ The documentation is organized from setup to operation:
 7. [Security and privacy](docs/security/threat-model.md)
 8. [KiCad capability parity](docs/compatibility/capability-parity.generated.md) — how much of KiCad's programmatic surface this server drives
 9. [Error code catalog](docs/errors.md) — stable error codes, retry classes, and recovery
+10. [Work-order audit](docs/status/work-order-audit-2026-06-17.md) — current status of the hardening work order
 
 The `kicad_capability_parity()` tool reports, per workflow domain, what fraction of
-KiCad's programmatically reachable surface this server can drive (currently **77%**),
+KiCad's programmatically reachable surface this server can drive (currently **75.0%**),
 keeping genuine `gap`s distinct from `gui-only-no-api` items that KiCad exposes no
 headless API for.
 

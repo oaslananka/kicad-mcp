@@ -1,6 +1,12 @@
 """Utility helpers for KiCad MCP Pro."""
 
-from .component_search import ComponentRecord, DigiKeyClient, JLCSearchClient, NexarClient
+from .component_search import (
+    ComponentRecord,
+    DigiKeyClient,
+    JLCSearchClient,
+    MouserClient,
+    NexarClient,
+)
 from .freerouting import FreeRoutingResult, FreeRoutingRunner
 from .impedance import (
     copper_thickness_mm,
@@ -25,6 +31,7 @@ __all__ = [
     "FreeRoutingResult",
     "FreeRoutingRunner",
     "JLCSearchClient",
+    "MouserClient",
     "NgspiceRunner",
     "NexarClient",
     "SimulationResult",
