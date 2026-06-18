@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kicad-mcp-pro"
-version = "3.11.0"
+version = "3.12.0"
 description = "Production-grade MCP server for KiCad EDA\u2014PCB design, DRC, simulation, BOM, DFM, and manufacturing."
 readme = "README.md"
 license = { text = "MIT" }
