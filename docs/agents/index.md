@@ -16,6 +16,10 @@ kiCad-mcp-pro is an MCP server that exposes KiCad PCB design capabilities as too
 | [Claude.ai Web](claude-ai.md) | ❌ No | ✅ Supported | — | Limited |
 | [ChatGPT Web](chatgpt-app.md) | ❌ No | ✅ Supported | — | ✅ Apps SDK |
 | [Antigravity](antigravity.md) | ⚠️ Verify | ✅ Supported | — | — |
+| [Cline](cline.md) | ✅ Supported | ✅ Supported | ✅ Reusable | — |
+| [Windsurf](windsurf.md) | ✅ Supported | ✅ Supported | — | — |
+| [Continue](continue.md) | ✅ Supported | ✅ Supported | — | — |
+| [Zed](zed.md) | ✅ Supported | ✅ Supported | — | — |
 
 ## Quick Start
 
