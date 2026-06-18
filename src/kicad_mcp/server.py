@@ -33,7 +33,7 @@ import typer
 try:
     from typer._click.globals import get_current_context as _get_click_context
 except ModuleNotFoundError:  # Typer < 0.26 uses the top-level Click package
-    from click import get_current_context as _get_click_context
+    from click import get_current_context as _get_click_context  # type: ignore[no-redef]
 
 try:
     import watchfiles
