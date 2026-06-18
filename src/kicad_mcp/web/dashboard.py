@@ -67,6 +67,12 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     background: var(--surface-2); color: var(--accent);
     border-left-color: var(--accent); font-weight: 500;
   }
+  a.nav-item { display: block; text-decoration: none; }
+  .nav-sep { height: 1px; background: var(--surface-2); margin: 8px 14px; }
+  .nav-label {
+    padding: 6px 16px 2px; font-size: 10px; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text-muted); opacity: 0.7;
+  }
 
   /* Main content */
   .main { flex: 1; padding: 24px; overflow-y: auto; max-height: 100vh; }
@@ -273,6 +279,10 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   <div class="nav-item" data-view="tools-catalog">&#9881; Tools</div>
   <div class="nav-item" data-view="settings">&#9878; Settings</div>
   <div class="nav-item" data-view="setup-wizard">&#9889; Setup</div>
+  <div class="nav-sep"></div>
+  <div class="nav-label">AI Agents</div>
+  <a class="nav-item" href="https://oaslananka.github.io/kicad-mcp/agents/" target="_blank" rel="noopener noreferrer">&#129302; Agent Setup &#8599;</a>
+  <a class="nav-item" href="https://oaslananka.github.io/kicad-mcp/agents/prompts/" target="_blank" rel="noopener noreferrer">&#128172; Prompt Library &#8599;</a>
 </nav>
 
 <!-- Main content -->
