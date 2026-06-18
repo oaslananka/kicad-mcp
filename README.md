@@ -27,6 +27,12 @@
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://oaslananka.github.io/kicad-mcp/)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/oaslananka/kicad-mcp)
 
+<br/>
+
+**Drive KiCad schematic, PCB, DRC/ERC, DFM, and manufacturing review from any MCP-capable AI agent.**
+
+[Documentation](https://oaslananka.github.io/kicad-mcp/) · [Installation](docs/installation.md) · [Quick Start](#quick-start) · [Tool Reference](docs/tools-reference.generated.md) · [AI Agent Setup](https://oaslananka.github.io/kicad-mcp/agents/)
+
 </div>
 
 <!-- mcp-name: io.github.oaslananka/kicad-mcp-pro -->
