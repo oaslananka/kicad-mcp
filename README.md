@@ -1,13 +1,17 @@
 # KiCad MCP Pro
 
-<!-- Badges: releases and package distribution -->
+<!-- Badges: release & distribution -->
 [![GUI Release](https://img.shields.io/github/v/release/oaslananka/kicad-mcp?filter=kicad-mcp-gui-v*&label=gui%20release)](https://github.com/oaslananka/kicad-mcp/releases)
-[![PyPI - Version](https://img.shields.io/pypi/v/kicad-mcp-pro)](https://pypi.org/project/kicad-mcp-pro/)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/kicad-mcp-pro)](https://pypi.org/project/kicad-mcp-pro/)
-[![npm - Version](https://img.shields.io/npm/v/kicad-mcp-pro)](https://www.npmjs.com/package/kicad-mcp-pro)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PyPI - Version](https://img.shields.io/pypi/v/kicad-mcp-pro?label=pypi)](https://pypi.org/project/kicad-mcp-pro/)
+[![npm - Version](https://img.shields.io/npm/v/kicad-mcp-pro?label=npm)](https://www.npmjs.com/package/kicad-mcp-pro)
+[![Python Version](https://img.shields.io/pypi/pyversions/kicad-mcp-pro?label=python)](https://pypi.org/project/kicad-mcp-pro/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-<!-- Badges: quality, CI, and security -->
+<!-- Badges: adoption -->
+[![PyPI downloads](https://static.pepy.tech/badge/kicad-mcp-pro/month)](https://pepy.tech/project/kicad-mcp-pro)
+[![npm downloads](https://img.shields.io/npm/dm/kicad-mcp-pro?label=npm%20downloads)](https://www.npmjs.com/package/kicad-mcp-pro)
+
+<!-- Badges: CI, quality & security -->
 [![CI](https://github.com/oaslananka/kicad-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/ci.yml)
 [![GUI CI](https://github.com/oaslananka/kicad-mcp/actions/workflows/gui-ci.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/gui-ci.yml)
 [![Docs](https://github.com/oaslananka/kicad-mcp/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/docs.yml)
@@ -17,7 +21,7 @@
 [![KiCad programmatic parity](https://img.shields.io/badge/KiCad_programmatic_parity-75.0%25-green)](docs/compatibility/capability-parity.generated.md)
 <!-- parity-coverage-badge:end -->
 
-<!-- Badges: documentation and knowledge base -->
+<!-- Badges: documentation & knowledge base -->
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://oaslananka.github.io/kicad-mcp/)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/oaslananka/kicad-mcp)
 
