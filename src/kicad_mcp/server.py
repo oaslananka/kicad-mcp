@@ -23,7 +23,17 @@ from typing import Any, TextIO, cast
 import anyio
 import structlog
 import typer
-from typer._click.globals import get_current_context as _get_click_context
+
+# Typer >= 0.26 vendors Click as ``typer._click`` and drives its commands through
+# it, so the active command context lives in that vendored Click's globals. Older
+# Typer (< 0.26) has no ``typer._click`` and uses the top-level ``click`` package
+# instead. Import from whichever the installed Typer actually uses so the CLI
+# loads on any supported Typer version (regression: a pip install that resolved
+# Typer 0.25 crashed with ModuleNotFoundError: No module named 'typer._click').
+try:
+    from typer._click.globals import get_current_context as _get_click_context
+except ModuleNotFoundError:  # Typer < 0.26 uses the top-level Click package
+    from click import get_current_context as _get_click_context
 
 try:
     import watchfiles
