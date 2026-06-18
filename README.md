@@ -1,5 +1,7 @@
 # KiCad MCP Pro
 
+<div align="center">
+
 <!-- Badges: release & distribution -->
 [![GUI Release](https://img.shields.io/github/v/release/oaslananka/kicad-mcp?filter=kicad-mcp-gui-v*&label=gui%20release)](https://github.com/oaslananka/kicad-mcp/releases)
 [![PyPI - Version](https://img.shields.io/pypi/v/kicad-mcp-pro?label=pypi)](https://pypi.org/project/kicad-mcp-pro/)
@@ -7,9 +9,9 @@
 [![Python Version](https://img.shields.io/pypi/pyversions/kicad-mcp-pro?label=python)](https://pypi.org/project/kicad-mcp-pro/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-<!-- Badges: adoption -->
-[![PyPI downloads](https://static.pepy.tech/badge/kicad-mcp-pro/month)](https://pepy.tech/project/kicad-mcp-pro)
-[![npm downloads](https://img.shields.io/npm/dm/kicad-mcp-pro?label=npm%20downloads)](https://www.npmjs.com/package/kicad-mcp-pro)
+<!-- Badges: downloads -->
+[![PyPI total downloads](https://static.pepy.tech/badge/kicad-mcp-pro)](https://pepy.tech/project/kicad-mcp-pro)
+[![npm total downloads](https://img.shields.io/npm/dt/kicad-mcp-pro?label=npm%20downloads)](https://www.npmjs.com/package/kicad-mcp-pro)
 
 <!-- Badges: CI, quality & security -->
 [![CI](https://github.com/oaslananka/kicad-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/ci.yml)
@@ -24,6 +26,8 @@
 <!-- Badges: documentation & knowledge base -->
 [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://oaslananka.github.io/kicad-mcp/)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/oaslananka/kicad-mcp)
+
+</div>
 
 <!-- mcp-name: io.github.oaslananka/kicad-mcp-pro -->
 
