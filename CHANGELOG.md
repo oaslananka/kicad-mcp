@@ -10,6 +10,22 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.12.1](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.12.0...mcp-server-v3.12.1) (2026-06-18)
+
+
+### Bug Fixes
+
+* load CLI on Typer versions without the vendored _click module ([#105](https://github.com/oaslananka/kicad-mcp/issues/105)) ([5dc2b9f](https://github.com/oaslananka/kicad-mcp/commit/5dc2b9f9669b98875a6a448c40ef6d96fae023b3))
+* silence mypy no-redef on the typer/click fallback import ([#106](https://github.com/oaslananka/kicad-mcp/issues/106)) ([6e51411](https://github.com/oaslananka/kicad-mcp/commit/6e514112c1484a865836fdf7c0a49afc422dc1dd))
+* sync tauri.conf.json version to 3.12.0 ([#102](https://github.com/oaslananka/kicad-mcp/issues/102)) ([90add7a](https://github.com/oaslananka/kicad-mcp/commit/90add7a47e30fa83ac6a984332573a657d5511e1))
+
+
+### Documentation
+
+* add centered hero tagline and quick links to README ([#104](https://github.com/oaslananka/kicad-mcp/issues/104)) ([9b680b5](https://github.com/oaslananka/kicad-mcp/commit/9b680b53ae037797ffa5f8434048fa2577d08cdd))
+* center README badges and show total downloads ([#103](https://github.com/oaslananka/kicad-mcp/issues/103)) ([b7eeb7e](https://github.com/oaslananka/kicad-mcp/commit/b7eeb7e5b4833c8a200012385560dd89b9ac8990))
+* tidy README badges and add PyPI/npm download badges ([#100](https://github.com/oaslananka/kicad-mcp/issues/100)) ([29ab016](https://github.com/oaslananka/kicad-mcp/commit/29ab0164b8fcab2ab1dd669073e905df10c29768))
+
 ## [3.12.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.11.0...mcp-server-v3.12.0) (2026-06-18)
 
 

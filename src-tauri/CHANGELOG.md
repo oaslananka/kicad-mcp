@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.12.1](https://github.com/oaslananka/kicad-mcp/compare/kicad-mcp-gui-v3.12.0...kicad-mcp-gui-v3.12.1) (2026-06-18)
+
+
+### Bug Fixes
+
+* sync tauri.conf.json version to 3.12.0 ([#102](https://github.com/oaslananka/kicad-mcp/issues/102)) ([90add7a](https://github.com/oaslananka/kicad-mcp/commit/90add7a47e30fa83ac6a984332573a657d5511e1))
+
 ## [3.12.0](https://github.com/oaslananka/kicad-mcp/compare/kicad-mcp-gui-v3.11.0...kicad-mcp-gui-v3.12.0) (2026-06-18)
 
 
