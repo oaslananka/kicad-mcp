@@ -10,6 +10,25 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.12.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.11.0...mcp-server-v3.12.0) (2026-06-18)
+
+
+### Features
+
+* **dashboard:** surface AI agent setup and prompt links in the sidebar ([#99](https://github.com/oaslananka/kicad-mcp/issues/99)) ([db56aa8](https://github.com/oaslananka/kicad-mcp/commit/db56aa83a7230beab0ae72ef832d9ea4be2cd356))
+
+
+### Bug Fixes
+
+* **gui:** pin a working backend version and stop the startup timeout from failing on cold installs ([#97](https://github.com/oaslananka/kicad-mcp/issues/97)) ([8d15056](https://github.com/oaslananka/kicad-mcp/commit/8d15056d032484cd9683f2d9b244758cb907075d))
+* sync GUI app version in tauri.conf.json and auto-bump it on release ([#98](https://github.com/oaslananka/kicad-mcp/issues/98)) ([5c0b6b5](https://github.com/oaslananka/kicad-mcp/commit/5c0b6b563bc3c97fd77676dec1f6c9984e6a1ff8))
+
+
+### Documentation
+
+* add MCP client guides for Cline, Windsurf, Continue, and Zed ([#96](https://github.com/oaslananka/kicad-mcp/issues/96)) ([102f662](https://github.com/oaslananka/kicad-mcp/commit/102f662f1d43393a0be0524c96d16c48482676ba))
+* unpin version from README install/transport examples ([#94](https://github.com/oaslananka/kicad-mcp/issues/94)) ([d4d6955](https://github.com/oaslananka/kicad-mcp/commit/d4d6955f8968a3c7c785c929dd91d2d4f8e38bb8))
+
 ## [3.11.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.10.0...mcp-server-v3.11.0) (2026-06-17)
 
 
