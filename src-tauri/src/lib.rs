@@ -14,6 +14,20 @@ use std::os::windows::process::CommandExt;
 
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 
+/// Minimum kicad-mcp-pro version the GUI will launch via `uvx --from`.
+/// Bump this when the GUI requires a newer backend. The floor must stay at or
+/// above the first release whose `dashboard` command binds the HTTP transport
+/// (3.11.0); earlier cached builds started the stdio transport instead.
+const MIN_BACKEND_SPEC: &str = "kicad-mcp-pro>=3.11.0";
+
+/// How long to wait for the backend to bind and answer /api/health before
+/// giving up. First runs download the package and its dependencies via uvx,
+/// which can take well over a minute on a cold cache or slow network, so this
+/// must be generous — and must not be shorter than the frontend's own poll
+/// window, or a still-installing child would be killed prematurely.
+const HEALTH_WAIT: Duration = Duration::from_secs(120);
+const HEALTH_POLL_INTERVAL: Duration = Duration::from_millis(500);
+
 #[derive(Clone, serde::Serialize)]
 pub struct ServerStatus {
     pub running: bool,
@@ -151,9 +165,17 @@ fn start_server_inner(process: &ServerProcess, port: u16) -> Result<String, Stri
     let log_file = std::fs::File::create(&log_path)
         .map_err(|e| format!("Failed to create server log {log_path:?}: {e}"))?;
 
+    // Pin a minimum backend version with `--from` so uvx cannot serve a stale
+    // cached build. Older cached versions (e.g. 3.9.0) shipped a `dashboard`
+    // command that fell back to the stdio transport and never bound the HTTP
+    // port, which surfaced in the GUI as "Server failed to start". `>=` lets
+    // uvx reuse a satisfying cached environment (fast, works offline) while
+    // refusing anything below the known-good floor.
     let mut cmd = Command::new(&uvx);
     cmd.current_dir(&cwd)
         .args([
+            "--from",
+            MIN_BACKEND_SPEC,
             "kicad-mcp-pro",
             "dashboard",
             "--host",
@@ -179,8 +201,12 @@ fn start_server_inner(process: &ServerProcess, port: u16) -> Result<String, Stri
     *guard = Some(child);
     drop(guard);
 
-    // Wait up to 60s for server to become healthy (500ms intervals)
-    for _ in 0..120 {
+    // Wait for the server to become healthy. The first launch downloads the
+    // package via uvx, so allow a generous window (HEALTH_WAIT) before giving
+    // up — killing the child early would abort an install that is still in
+    // progress.
+    let deadline = std::time::Instant::now() + HEALTH_WAIT;
+    while std::time::Instant::now() < deadline {
         if check_health(port) {
             return Ok("started".to_string());
         }
@@ -192,21 +218,22 @@ fn start_server_inner(process: &ServerProcess, port: u16) -> Result<String, Stri
                     drop(guard);
                     return Err(format!(
                         "Python server process exited unexpectedly (code: {}) before binding to port {}.\n\
-                         Run manually to debug: uvx kicad-mcp-pro dashboard --host 127.0.0.1 --port {port}",
+                         Run manually to debug: uvx kicad-mcp-pro@latest dashboard --host 127.0.0.1 --port {port}",
                         status.code().map(|c| c.to_string()).unwrap_or_else(|| "signal".to_string()),
                         port,
                     ));
                 }
             }
         }
-        thread::sleep(Duration::from_millis(500));
+        thread::sleep(HEALTH_POLL_INTERVAL);
     }
 
     let _ = stop_server_inner(process);
     Err(format!(
-        "Python server at http://{}/api/health did not respond within 60 seconds.\n\
-         This may mean kicad-mcp-pro is not installed. Run: uvx kicad-mcp-pro dashboard --host 127.0.0.1 --port {port}",
-        server_addr(port)
+        "Python server at http://{}/api/health did not respond within {} seconds.\n\
+         First runs download the backend and can be slow. Run manually to debug: uvx kicad-mcp-pro@latest dashboard --host 127.0.0.1 --port {port}",
+        server_addr(port),
+        HEALTH_WAIT.as_secs(),
     ))
 }
 
@@ -389,20 +416,24 @@ pub fn run() {
             }
             let _ = tray.build(app)?;
 
-            let state = app.state::<ServerProcess>();
-            match start_server_inner(state.inner(), 3334) {
-                Ok(status) => {
-                    eprintln!("[kicad-mcp-pro] Server started: {status}");
-                    if let Some(window) = app.get_webview_window("main") {
-                        let _ = window.set_focus();
+            // Launch the backend on a background thread so the first-run
+            // download (which can take up to HEALTH_WAIT) never blocks the UI
+            // or the tray. The frontend polls /api/health and server_status
+            // independently and redirects as soon as the server is ready.
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                let state = handle.state::<ServerProcess>();
+                match start_server_inner(state.inner(), 3334) {
+                    Ok(status) => {
+                        eprintln!("[kicad-mcp-pro] Server started: {status}");
+                        let _ = state.error.lock().map(|mut e| *e = None);
                     }
-                    let _ = state.error.lock().map(|mut e| *e = None);
+                    Err(error) => {
+                        eprintln!("[kicad-mcp-pro] ERROR: {error}");
+                        let _ = state.error.lock().map(|mut e| *e = Some(error));
+                    }
                 }
-                Err(error) => {
-                    eprintln!("[kicad-mcp-pro] ERROR: {error}");
-                    let _ = state.error.lock().map(|mut e| *e = Some(error.clone()));
-                }
-            }
+            });
             Ok(())
         })
         .run(tauri::generate_context!())

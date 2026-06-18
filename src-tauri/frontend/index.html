@@ -117,11 +117,11 @@
         <p style="margin-top:16px;font-size:13px;">
           Try running this command manually in a terminal to see the error:
         </p>
-        <code>uvx kicad-mcp-pro dashboard --host 127.0.0.1 --port 3334</code>
+        <code>uvx kicad-mcp-pro@latest dashboard --host 127.0.0.1 --port 3334</code>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
           <a class="btn secondary" href="http://127.0.0.1:3334/ui" target="_blank">Try opening dashboard</a>
           <button class="btn secondary" onclick="handleRestartServer()">Restart Server</button>
-          <button class="btn" onclick="location.reload()">Retry</button>
+          <button class="btn" onclick="handleRestartServer()">Retry</button>
         </div>
       </div>
     </div>
@@ -130,7 +130,10 @@
       const DASHBOARD_URL = 'http://127.0.0.1:3334/ui';
       const HEALTH_URL = 'http://127.0.0.1:3334/api/health';
 
-      const MAX_RETRIES = 30;
+      // Must be at least as long as the Rust backend's health-wait window
+      // (120s). The first launch downloads the backend via uvx, which can take
+      // over a minute on a cold cache, so give it room before showing an error.
+      const MAX_RETRIES = 120;
       const RETRY_INTERVAL_MS = 1000;
       let retries = 0;
       let healthOk = false;
@@ -163,13 +166,8 @@
 
       /** Restart the Python server (stop + start). */
       async function handleRestartServer() {
-        const result = await tauriInvoke('restart_server', { port: 3334 });
-        if (result === null) {
-          // IPC not available — fall back to page reload
-          location.reload();
-          return;
-        }
-        // Reset UI state and start polling again
+        // Show feedback immediately so the button never looks dead — the
+        // restart can take a while on a cold first-run download.
         retries = 0;
         healthOk = false;
         spinnerEl.style.display = 'block';
@@ -177,7 +175,16 @@
         statusEl.className = 'status';
         detailsEl.classList.remove('visible');
         if (errorDetailEl) errorDetailEl.style.display = 'none';
-        setTimeout(checkServer, 1000);
+
+        const result = await tauriInvoke('restart_server', { port: 3334 });
+        if (result === null) {
+          // IPC not available (e.g. opened in a plain browser) — just re-poll.
+          setTimeout(checkServer, 1000);
+          return;
+        }
+        // restart_server returned (ready or failed); let the poller redirect
+        // on success or surface the backend error.
+        setTimeout(checkServer, 500);
       }
 
       function setStep(name, state) {
@@ -267,7 +274,10 @@
           return;
         }
 
-        statusEl.textContent = `Starting server… (${retries}/${MAX_RETRIES})`;
+        statusEl.textContent =
+          retries < 8
+            ? 'Starting server…'
+            : `Starting server… first run downloads the backend, this can take a minute (${retries}s)`;
         setTimeout(checkServer, RETRY_INTERVAL_MS);
       }
 
