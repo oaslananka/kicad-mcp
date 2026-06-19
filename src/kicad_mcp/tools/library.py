@@ -370,7 +370,7 @@ def _lookup_component(
 
 
 def _group_bom_rows(symbol_rows: list[dict[str, str]]) -> list[dict[str, Any]]:
-    grouped: dict[tuple[str, str, str], dict[str, Any]] = {}
+    grouped: dict[tuple[str, str, str, str, str, str], dict[str, Any]] = {}
     for row in symbol_rows:
         key = (
             row.get("lcsc", ""),
