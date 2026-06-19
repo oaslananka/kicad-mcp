@@ -1989,6 +1989,7 @@ async def test_schematic_write_tools_can_target_child_sheet(sample_project, mock
     )
     assert "escapes workspace root" in traversal_error
 
+
 @pytest.mark.anyio
 async def test_schematic_set_native_dnp_flag(sample_project, mock_kicad) -> None:
     server = build_server("schematic")
@@ -2022,4 +2023,3 @@ async def test_schematic_set_native_dnp_flag(sample_project, mock_kicad) -> None
     assert "native population state to Populate" in disabled
     assert "(dnp no)" in schematic
     assert "(dnp yes)" not in schematic
-

@@ -525,9 +525,7 @@ async def test_connectivity_gate_joins_same_named_labels(sample_project: Path, m
                 {"name": "3V3_DIG", "x_mm": 53.34, "y_mm": 50.8},
                 {"name": "3V3_DIG", "x_mm": 101.6, "y_mm": 101.6},
             ],
-            "wires": [
-                {"x1_mm": 101.6, "y1_mm": 101.6, "x2_mm": 104.14, "y2_mm": 101.6}
-            ],
+            "wires": [{"x1_mm": 101.6, "y1_mm": 101.6, "x2_mm": 104.14, "y2_mm": 101.6}],
         },
     )
 

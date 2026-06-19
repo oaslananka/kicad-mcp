@@ -727,9 +727,7 @@ def _evaluate_schematic_gate() -> GateOutcome:
     ignored_violation_count = len(raw_violations) - len(violations)
     details = [f"ERC violations: {len(violations)}"]
     if ignored_violation_count:
-        details.append(
-            f"Ignored empty child-sheet ERC violations: {ignored_violation_count}"
-        )
+        details.append(f"Ignored empty child-sheet ERC violations: {ignored_violation_count}")
     if cfg.sch_file is not None:
         try:
             data = parse_schematic_file(cfg.sch_file)

@@ -3009,9 +3009,7 @@ def _prepare_build_circuit_inputs(
             validated_powers.extend(
                 PowerSymbolInput.model_validate(item) for item in generated_powers
             )
-            validated_labels.extend(
-                AddLabelInput.model_validate(item) for item in generated_labels
-            )
+            validated_labels.extend(AddLabelInput.model_validate(item) for item in generated_labels)
         else:
             generated_wires, unresolved_nets, resolution_stats = _plan_netlist_wires(
                 validated_symbols,
@@ -3529,9 +3527,7 @@ def _next_reference(prefix: str) -> str:
     return f"{prefix}{highest + 1}"
 
 
-def _transactional_write_to_schematic_file(
-    sch_file: Path, mutator: Callable[[str], str]
-) -> str:
+def _transactional_write_to_schematic_file(sch_file: Path, mutator: Callable[[str], str]) -> str:
     """Read, mutate, validate, and atomically rewrite a schematic file.
 
     File-backed schematic tools are often invoked in batches.  Keep the full
@@ -3543,9 +3539,7 @@ def _transactional_write_to_schematic_file(
         current = sch_file.read_text(encoding="utf-8")
         updated = _normalize_schematic_wire_connectivity(mutator(current))
         _validate_schematic_text(updated)
-        with NamedTemporaryFile(
-            "w", encoding="utf-8", delete=False, dir=sch_file.parent
-        ) as handle:
+        with NamedTemporaryFile("w", encoding="utf-8", delete=False, dir=sch_file.parent) as handle:
             handle.write(updated)
             temp_path = Path(handle.name)
         temp_path.replace(sch_file)
@@ -4016,9 +4010,7 @@ def register(mcp: FastMCP) -> None:
             target.path,
         )
         result = _reload_schematic()
-        return "\n".join(
-            p for p in [result, _format_target_detail(target), snap_note] if p
-        )
+        return "\n".join(p for p in [result, _format_target_detail(target), snap_note] if p)
 
     @mcp.tool()
     def sch_add_label(
@@ -4053,9 +4045,7 @@ def register(mcp: FastMCP) -> None:
             target.path,
         )
         result = _reload_schematic()
-        return "\n".join(
-            p for p in [result, _format_target_detail(target), snap_note] if p
-        )
+        return "\n".join(p for p in [result, _format_target_detail(target), snap_note] if p)
 
     @mcp.tool()
     def sch_add_pin_labels(
@@ -4133,8 +4123,7 @@ def register(mcp: FastMCP) -> None:
         transactional_write(mutator, target.path)
         return (
             f"{_reload_schematic()}\n{_format_target_detail(target)}\n"
-            f"Added {len(blocks) // 2} pin label(s) with stubs:\n"
-            + "\n".join(results)
+            f"Added {len(blocks) // 2} pin label(s) with stubs:\n" + "\n".join(results)
         )
 
     @mcp.tool()
@@ -4202,9 +4191,7 @@ def register(mcp: FastMCP) -> None:
             target.path,
         )
         result = _reload_schematic()
-        return "\n".join(
-            p for p in [result, _format_target_detail(target), snap_note] if p
-        )
+        return "\n".join(p for p in [result, _format_target_detail(target), snap_note] if p)
 
     @mcp.tool()
     def sch_add_bus_wire_entry(
@@ -4233,9 +4220,7 @@ def register(mcp: FastMCP) -> None:
             target.path,
         )
         result = _reload_schematic()
-        return "\n".join(
-            p for p in [result, _format_target_detail(target), snap_note] if p
-        )
+        return "\n".join(p for p in [result, _format_target_detail(target), snap_note] if p)
 
     @mcp.tool()
     def sch_add_no_connect(
@@ -4258,9 +4243,7 @@ def register(mcp: FastMCP) -> None:
             target.path,
         )
         result = _reload_schematic()
-        return "\n".join(
-            p for p in [result, _format_target_detail(target), snap_note] if p
-        )
+        return "\n".join(p for p in [result, _format_target_detail(target), snap_note] if p)
 
     @mcp.tool()
     @headless_compatible
@@ -5156,9 +5139,7 @@ def register(mcp: FastMCP) -> None:
             target.path,
         )
         result = _reload_schematic()
-        return "\n".join(
-            p for p in [result, _format_target_detail(target), snap_note] if p
-        )
+        return "\n".join(p for p in [result, _format_target_detail(target), snap_note] if p)
 
     @mcp.tool()
     def sch_add_global_label(
@@ -5202,9 +5183,7 @@ def register(mcp: FastMCP) -> None:
             target.path,
         )
         result = _reload_schematic()
-        return "\n".join(
-            p for p in [result, _format_target_detail(target), snap_note] if p
-        )
+        return "\n".join(p for p in [result, _format_target_detail(target), snap_note] if p)
 
     @mcp.tool()
     def sch_list_sheets() -> str:
