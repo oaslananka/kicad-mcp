@@ -48,6 +48,14 @@ class ProjectDesignIntent(BaseModel):
     analog_refs: list[str] = Field(default_factory=list)
     digital_refs: list[str] = Field(default_factory=list)
     sensor_cluster_refs: list[str] = Field(default_factory=list)
+    required_sheets: list[str] = Field(
+        default_factory=list,
+        description="Child schematic sheet names that must be present and implemented.",
+    )
+    optional_sheets: list[str] = Field(
+        default_factory=list,
+        description="Child schematic sheet names that may remain empty without failing gates.",
+    )
     rf_keepout_regions: list[RFKeepoutIntent] = Field(default_factory=list)
     manufacturer: str = Field(default="")
     manufacturer_tier: str = Field(default="")
