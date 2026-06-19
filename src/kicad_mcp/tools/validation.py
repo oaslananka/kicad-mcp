@@ -220,7 +220,7 @@ def _report_entry_finding(
     severity = _normalize_report_severity(entry.get("severity", default_severity))
     location = _entry_location(entry, source)
 
-    metadata = {}
+    metadata: dict[str, object] = {}
     if sheet_path := entry.get("sheet_path"):
         metadata["sheet_path"] = str(sheet_path)
 
