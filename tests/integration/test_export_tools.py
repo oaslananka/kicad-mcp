@@ -395,8 +395,48 @@ async def test_low_level_exports_include_debug_notice(sample_project, monkeypatc
 
 @pytest.mark.anyio
 async def test_export_bom_consolidates_flat_schematic_siblings(sample_project, monkeypatch) -> None:
+    (sample_project / "demo.kicad_sch").write_text(
+        """(kicad_sch
+  (version 20250316)
+  (symbol
+    (lib_id "Device:R")
+    (at 25.4 25.4 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp no)
+    (property "Reference" "R1" (at 0 0 0))
+    (property "Value" "10k" (at 0 0 0))
+    (property "Footprint" "Resistor_SMD:R_0805" (at 0 0 0))
+    (property "LCSC" "C25804" (at 0 0 0))
+    (property "MPN" "RC0805FR-0710KL" (at 0 0 0))
+    (property "Manufacturer" "YAGEO" (at 0 0 0))
+  )
+)
+""",
+        encoding="utf-8",
+    )
     (sample_project / "second.kicad_sch").write_text(
-        (sample_project / "demo.kicad_sch").read_text(encoding="utf-8"),
+        """(kicad_sch
+  (version 20250316)
+  (symbol
+    (lib_id "Device:C")
+    (at 50.8 25.4 0)
+    (unit 1)
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (dnp yes)
+    (property "Reference" "C1" (at 0 0 0))
+    (property "Value" "100n" (at 0 0 0))
+    (property "Footprint" "Capacitor_SMD:C_0805" (at 0 0 0))
+    (property "LCSC" "C49678" (at 0 0 0))
+    (property "MPN" "CL21B104KBCNNNC" (at 0 0 0))
+    (property "Manufacturer" "Samsung" (at 0 0 0))
+  )
+)
+""",
         encoding="utf-8",
     )
 
@@ -426,6 +466,14 @@ async def test_export_bom_consolidates_flat_schematic_siblings(sample_project, m
     assert "Consolidated 2 reference(s) from 2 schematic files" in bom
     assert "R1" in bom
     assert "C1" in bom
+    assert "mpn" in bom
+    assert "manufacturer" in bom
+    assert "populate" in bom
+    assert "RC0805FR-0710KL" in bom
+    assert "CL21B104KBCNNNC" in bom
+    assert "YAGEO" in bom
+    assert "Samsung" in bom
+    assert "DNP" in bom
 
 
 @pytest.mark.anyio

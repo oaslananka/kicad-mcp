@@ -4455,7 +4455,7 @@
   {
     "destructive": true,
     "experimental": false,
-    "headless": false,
+    "headless": true,
     "idempotent": false,
     "name": "sch_add_component",
     "open_world": false,
@@ -4471,7 +4471,7 @@
       "simulation"
     ],
     "read_only": false,
-    "requires_kicad_running": true
+    "requires_kicad_running": false
   },
   {
     "destructive": true,
@@ -4518,7 +4518,7 @@
   {
     "destructive": true,
     "experimental": true,
-    "headless": false,
+    "headless": true,
     "idempotent": false,
     "name": "sch_add_jumper",
     "open_world": false,
@@ -4644,7 +4644,7 @@
   {
     "destructive": true,
     "experimental": false,
-    "headless": false,
+    "headless": true,
     "idempotent": false,
     "name": "sch_add_symbol",
     "open_world": false,
@@ -5211,7 +5211,7 @@
   {
     "destructive": true,
     "experimental": false,
-    "headless": false,
+    "headless": true,
     "idempotent": false,
     "name": "sch_modify_property",
     "open_world": false,
@@ -5227,7 +5227,7 @@
       "simulation"
     ],
     "read_only": false,
-    "requires_kicad_running": true
+    "requires_kicad_running": false
   },
   {
     "destructive": true,
@@ -5253,7 +5253,7 @@
   {
     "destructive": true,
     "experimental": false,
-    "headless": false,
+    "headless": true,
     "idempotent": false,
     "name": "sch_move_symbol",
     "open_world": false,
@@ -5421,7 +5421,7 @@
   {
     "destructive": true,
     "experimental": false,
-    "headless": false,
+    "headless": true,
     "idempotent": false,
     "name": "sch_update_properties",
     "open_world": false,

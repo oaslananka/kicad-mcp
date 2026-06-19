@@ -307,6 +307,9 @@ def _schematic_component_rows() -> list[dict[str, str]]:
                     "footprint": str(symbol.get("footprint", "")),
                     "lib_id": str(symbol.get("lib_id", "")),
                     "lcsc": "",
+                    "mpn": "",
+                    "manufacturer": "",
+                    "populate": "",
                 },
             )
 
@@ -325,6 +328,32 @@ def _schematic_component_rows() -> list[dict[str, str]]:
             lcsc_code = _symbol_property(block, "LCSC") or _symbol_property(block, "LCSC Part")
             if lcsc_code:
                 rows_by_reference[reference]["lcsc"] = normalize_lcsc_code(lcsc_code)
+
+            mpn = _symbol_property(block, "MPN") or _symbol_property(
+                block,
+                "Manufacturer Part Number",
+            )
+            if mpn:
+                rows_by_reference[reference]["mpn"] = mpn
+
+            manufacturer = _symbol_property(block, "Manufacturer") or _symbol_property(block, "MFR")
+            if manufacturer:
+                rows_by_reference[reference]["manufacturer"] = manufacturer
+
+            dnp = _symbol_property(block, "DNP") or _symbol_property(block, "Do Not Populate")
+            native_dnp = re.search(r"\(dnp\s+yes\)", block) is not None
+            exclude_from_bom = _symbol_property(block, "Exclude from BOM")
+            populate_value = _symbol_property(block, "Populate")
+            if populate_value:
+                rows_by_reference[reference]["populate"] = populate_value
+            elif native_dnp or dnp.lower() in {"1", "true", "yes", "y", "dnp"}:
+                rows_by_reference[reference]["populate"] = "DNP"
+            elif exclude_from_bom.lower() in {"1", "true", "yes", "y"}:
+                rows_by_reference[reference]["populate"] = "DNP"
+            else:
+                rows_by_reference[reference]["populate"] = (
+                    rows_by_reference[reference].get("populate", "Populate") or "Populate"
+                )
     return list(rows_by_reference.values())
 
 
@@ -341,13 +370,23 @@ def _lookup_component(
 
 
 def _group_bom_rows(symbol_rows: list[dict[str, str]]) -> list[dict[str, Any]]:
-    grouped: dict[tuple[str, str, str], dict[str, Any]] = {}
+    grouped: dict[tuple[str, str, str, str, str, str], dict[str, Any]] = {}
     for row in symbol_rows:
-        key = (row["lcsc"], row["value"], row["footprint"])
+        key = (
+            row.get("lcsc", ""),
+            row.get("mpn", ""),
+            row.get("manufacturer", ""),
+            row.get("populate", ""),
+            row["value"],
+            row["footprint"],
+        )
         entry = grouped.setdefault(
             key,
             {
-                "lcsc": row["lcsc"],
+                "lcsc": row.get("lcsc", ""),
+                "mpn": row.get("mpn", ""),
+                "manufacturer": row.get("manufacturer", ""),
+                "populate": row.get("populate", ""),
                 "value": row["value"],
                 "footprint": row["footprint"],
                 "references": [],

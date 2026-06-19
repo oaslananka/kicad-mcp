@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import threading
 import uuid
 from collections.abc import Callable, Iterable
 from copy import deepcopy
@@ -40,6 +41,7 @@ from ..models.schematic import (
     TraceNetInput,
     UpdatePropertiesInput,
 )
+from ..path_safety import resolve_under
 from ..utils.cache import clear_ttl_cache, ttl_cache
 from ..utils.schematic_router import RouterBBox, SchematicRouter
 from ..utils.sexpr import (
@@ -48,7 +50,7 @@ from ..utils.sexpr import (
     _sexpr_string,
     _unescape_sexpr_string,
 )
-from .metadata import headless_compatible, requires_kicad_running
+from .metadata import headless_compatible
 
 SCHEMATIC_GRID_MM = 2.54
 SNAP_TOLERANCE_MM = 1e-6
@@ -59,6 +61,8 @@ AUTO_LAYOUT_ROW_SPACING_MM = 17.78
 AUTO_LAYOUT_COLUMNS = 4
 DEFAULT_SHEET_WIDTH_MM = 30.48
 DEFAULT_SHEET_HEIGHT_MM = 20.32
+
+_SCHEMATIC_WRITE_LOCK = threading.RLock()
 
 # KiCad paper sizes (landscape, mm).  Used for sheet-boundary clamping.
 PAPER_SIZES_MM: dict[str, tuple[float, float]] = {
@@ -95,6 +99,13 @@ POWER_NET_NAMES = {
     "+12V",
     "-5V",
     "-12V",
+    "VBUS_5V",
+    "VPOE_5V",
+    "VBAT",
+    "5V_SYS",
+    "3V3_DIG",
+    "3V3_ANA",
+    "VRTC",
 }
 logger = structlog.get_logger(__name__)
 _SCHEMATIC_STATE_DIRNAME = ".kicad-mcp"
@@ -604,6 +615,68 @@ _DEFAULT_SCHEMATIC_BACKEND = "kicad_sch_api"
 def get_schematic_backend() -> _SchematicBackendAdapter:
     """Return the currently active schematic backend adapter."""
     return _SCHEMATIC_BACKENDS[_DEFAULT_SCHEMATIC_BACKEND]
+
+
+@dataclass(frozen=True)
+class _SchematicTarget:
+    path: Path
+    is_root: bool
+    description: str
+
+
+def _format_target_detail(target: _SchematicTarget) -> str:
+    kind = "root" if target.is_root else "child"
+    return f"Target schematic ({kind}): {target.path}"
+
+
+def _available_sheet_names(root_schematic: Path) -> list[str]:
+    return [name for name, _ in _iter_child_sheet_paths(root_schematic)]
+
+
+def _resolve_schematic_target(
+    sheet: str | None = None,
+    sheet_file: str | None = None,
+) -> _SchematicTarget:
+    """Resolve an optional child-sheet target for file-backed write tools."""
+    if sheet and sheet_file:
+        raise ValueError("Use only one of sheet or sheet_file.")
+
+    root = _get_schematic_file().resolve()
+    cfg = get_config()
+    project_root = (cfg.project_dir or root.parent).resolve()
+
+    if sheet_file:
+        target = resolve_under(project_root, sheet_file).resolve()
+        if target.suffix != ".kicad_sch":
+            raise ValueError("sheet_file must point to a .kicad_sch file.")
+        if not target.exists():
+            raise ValueError(f"Target schematic file does not exist: {target}")
+        return _SchematicTarget(
+            path=target,
+            is_root=target == root,
+            description="root" if target == root else "child",
+        )
+
+    if sheet:
+        discovered = _iter_child_sheet_paths(root)
+        matches = [
+            (name, path.resolve())
+            for name, path in discovered
+            if name == sheet or name.rsplit("/", 1)[-1] == sheet
+        ]
+        if not matches:
+            available = ", ".join(_available_sheet_names(root)) or "(none)"
+            raise ValueError(f"Sheet '{sheet}' was not found. Available sheets: {available}")
+        if len(matches) > 1:
+            available = ", ".join(name for name, _ in matches)
+            raise ValueError(f"Sheet '{sheet}' is ambiguous. Matching sheets: {available}")
+        name, target = matches[0]
+        if not target.exists():
+            raise ValueError(f"Sheet '{name}' points to missing file: {target}")
+        resolve_under(project_root, target)
+        return _SchematicTarget(path=target, is_root=target == root, description=name)
+
+    return _SchematicTarget(path=root, is_root=True, description="root")
 
 
 def new_uuid() -> str:
@@ -1171,7 +1244,15 @@ def _net_name(net: dict[str, Any]) -> str:
 
 def _is_power_net(name: str) -> bool:
     upper_name = name.upper()
-    return upper_name in POWER_NET_NAMES or upper_name.startswith(("+", "-"))
+    if upper_name in POWER_NET_NAMES or upper_name.startswith(("+", "-")):
+        return True
+    if re.match(r"^\d+(?:V\d*)?(?:_[A-Z0-9]+)?$", upper_name):
+        return "V" in upper_name
+    if upper_name.startswith(("V", "VBUS", "VBAT", "VPOE")) and any(
+        char.isdigit() for char in upper_name
+    ):
+        return True
+    return False
 
 
 def _normalize_net_endpoint(endpoint: object) -> dict[str, Any]:
@@ -1322,8 +1403,6 @@ def _apply_netlist_auto_layout(
     laid_out_symbols = [dict(item) for item in symbols]
     laid_out_powers = [dict(item) for item in power_symbols]
     laid_out_labels = [dict(item) for item in labels]
-    _ensure_netlist_terminals(laid_out_powers, laid_out_labels, nets)
-
     refs = [str(symbol["reference"]) for symbol in laid_out_symbols if symbol.get("reference")]
     ordered_refs = _order_refs_by_connectivity(refs, nets)
 
@@ -2116,6 +2195,52 @@ def get_pin_positions(
     return pins
 
 
+def _pin_label_stub_direction(
+    pin_point: tuple[float, float],
+    symbol_origin: tuple[float, float],
+    all_pin_points: Iterable[tuple[float, float]],
+) -> tuple[float, float]:
+    """Return an outward unit vector for a pin-label stub.
+
+    Dense/tall symbols such as MCU modules often have side pins whose
+    vertical distance from the symbol origin is larger than their horizontal
+    distance.  Using the origin as a dominant-axis proxy makes those side pins
+    stub vertically, which can overlap adjacent side-pin stubs and short nets.
+
+    Prefer the actual outer pin extents: pins on the left/right edge stub
+    horizontally, pins on the top/bottom edge stub vertically.  Fall back to
+    the historical origin-based dominant axis only for interior pins or
+    degenerate one-dimensional symbols.
+    """
+    px, py = pin_point
+    ox, oy = symbol_origin
+    points = list(all_pin_points)
+    if points:
+        xs = [x for x, _ in points]
+        ys = [y for _, y in points]
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+        # Pin coordinates are rounded to 1e-4 mm by get_pin_positions().  Use a
+        # small tolerance so grid/rotation floating point noise cannot flip a
+        # true edge pin into the origin fallback.
+        edge_tol = 1e-3
+        if (max_x - min_x) > edge_tol:
+            if abs(px - min_x) <= edge_tol:
+                return (-1.0, 0.0)
+            if abs(px - max_x) <= edge_tol:
+                return (1.0, 0.0)
+        if (max_y - min_y) > edge_tol:
+            if abs(py - min_y) <= edge_tol:
+                return (0.0, -1.0)
+            if abs(py - max_y) <= edge_tol:
+                return (0.0, 1.0)
+
+    dx, dy = px - ox, py - oy
+    if abs(dx) >= abs(dy):
+        return ((1.0 if dx >= 0 else -1.0), 0.0)
+    return (0.0, (1.0 if dy >= 0 else -1.0))
+
+
 def get_pin_alias_positions(
     library: str,
     symbol_name: str,
@@ -2500,6 +2625,203 @@ def _describe_net_endpoint(endpoint: dict[str, Any]) -> str:
     return "<unresolved-endpoint>"
 
 
+def _terminal_rotation_from_vector(ux: float, uy: float) -> int:
+    return 0 if ux > 0 else 180 if ux < 0 else 90 if uy < 0 else 270
+
+
+def _plan_netlist_pin_terminals(
+    symbols: list[AddSymbolInput],
+    powers: list[PowerSymbolInput],
+    labels: list[AddLabelInput],
+    nets: list[dict[str, Any]],
+    snap_to_grid: bool,
+) -> tuple[
+    list[dict[str, float | bool]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    dict[str, int],
+]:
+    """Plan collision-safe per-pin net terminals for netlist auto-layout.
+
+    Netlist-aware auto-layout must not draw long routed wires between arbitrary
+    pins.  A routed Manhattan star can cross unrelated pins or labels and KiCad
+    will merge by geometry.  Instead, each pin endpoint gets a short outward stub
+    plus a same-named terminal.  Signal nets use global labels; power nets use
+    conventional power symbols.  Same-named terminals connect by name rather than
+    by accidental wire geometry.
+    """
+    symbol_points: dict[str, dict[str, tuple[float, float]]] = {}
+    symbol_pin_aliases: dict[str, dict[str, tuple[float, float]]] = {}
+    symbol_centers: dict[str, tuple[float, float]] = {}
+    for symbol in symbols:
+        x, y = _snap_point(symbol.x_mm, symbol.y_mm, snap_to_grid and symbol.snap_to_grid)
+        symbol_centers[symbol.reference] = (x, y)
+        symbol_points[symbol.reference] = get_pin_positions(
+            symbol.library,
+            symbol.symbol_name,
+            x,
+            y,
+            symbol.rotation,
+            symbol.unit,
+        )
+        symbol_pin_aliases[symbol.reference] = get_pin_alias_positions(
+            symbol.library,
+            symbol.symbol_name,
+            x,
+            y,
+            symbol.rotation,
+            symbol.unit,
+        )
+
+    power_points: dict[str, tuple[float, float]] = {}
+    for power in powers:
+        x, y = _snap_point(power.x_mm, power.y_mm, snap_to_grid and power.snap_to_grid)
+        power_points.setdefault(power.name.upper(), (x, y))
+
+    label_points: dict[str, tuple[float, float]] = {}
+    for label in labels:
+        x, y = _snap_point(label.x_mm, label.y_mm, snap_to_grid and label.snap_to_grid)
+        label_points.setdefault(label.name, (x, y))
+
+    terminal_wires: list[dict[str, float | bool]] = []
+    terminal_labels: list[dict[str, Any]] = []
+    terminal_powers: list[dict[str, Any]] = []
+    unresolved_nets: list[dict[str, Any]] = []
+    terminal_points: dict[tuple[float, float], str] = {}
+    pin_points_seen: dict[tuple[float, float], str] = {}
+    resolution_stats = {
+        "resolved_endpoints": 0,
+        "unresolved_endpoints": 0,
+        "pin_alias_resolutions": 0,
+        "symbol_center_resolutions": 0,
+    }
+
+    for net in nets:
+        net_name = _net_name(net)
+        endpoints = _net_endpoints(net)
+        unresolved_endpoints: list[str] = []
+        unresolved_details: list[str] = []
+        generated_terminal_count = 0
+        for endpoint in endpoints:
+            reference = _endpoint_reference(endpoint)
+            if reference is None:
+                point, reason, resolution_kind = _resolve_net_endpoint(
+                    endpoint,
+                    net_name,
+                    symbol_points,
+                    symbol_pin_aliases,
+                    symbol_centers,
+                    power_points,
+                    label_points,
+                )
+                if point is None:
+                    endpoint_text = _describe_net_endpoint(endpoint)
+                    unresolved_endpoints.append(endpoint_text)
+                    unresolved_details.append(f"{endpoint_text}: {reason or 'unresolved endpoint'}")
+                    resolution_stats["unresolved_endpoints"] += 1
+                else:
+                    resolution_stats["resolved_endpoints"] += 1
+                    if resolution_kind == "pin_alias":
+                        resolution_stats["pin_alias_resolutions"] += 1
+                    elif resolution_kind == "symbol_center":
+                        resolution_stats["symbol_center_resolutions"] += 1
+                continue
+
+            point, reason, resolution_kind = _resolve_net_endpoint(
+                endpoint,
+                net_name,
+                symbol_points,
+                symbol_pin_aliases,
+                symbol_centers,
+                power_points,
+                label_points,
+            )
+            endpoint_text = _describe_net_endpoint(endpoint)
+            if point is None:
+                unresolved_endpoints.append(endpoint_text)
+                unresolved_details.append(f"{endpoint_text}: {reason or 'unresolved endpoint'}")
+                resolution_stats["unresolved_endpoints"] += 1
+                continue
+            if resolution_kind == "symbol_center":
+                unresolved_endpoints.append(endpoint_text)
+                unresolved_details.append(
+                    f"{endpoint_text}: pin is required for collision-safe auto-layout terminals"
+                )
+                resolution_stats["unresolved_endpoints"] += 1
+                continue
+
+            pin_key = _point_key(*point)
+            existing_pin_net = pin_points_seen.get(pin_key)
+            if existing_pin_net is not None and existing_pin_net != net_name:
+                unresolved_endpoints.append(endpoint_text)
+                unresolved_details.append(
+                    f"{endpoint_text}: pin point already assigned to net '{existing_pin_net}'"
+                )
+                resolution_stats["unresolved_endpoints"] += 1
+                continue
+            pin_points_seen[pin_key] = net_name
+
+            all_points = symbol_points.get(reference, {}).values()
+            ux, uy = _pin_label_stub_direction(point, symbol_centers[reference], all_points)
+            ex = round(point[0] + ux * 5.08, 4)
+            ey = round(point[1] + uy * 5.08, 4)
+            end_key = _point_key(ex, ey)
+            existing_terminal_net = terminal_points.get(end_key)
+            if existing_terminal_net is not None and existing_terminal_net != net_name:
+                unresolved_endpoints.append(endpoint_text)
+                unresolved_details.append(
+                    f"{endpoint_text}: terminal coordinate collides with net "
+                    f"'{existing_terminal_net}'"
+                )
+                resolution_stats["unresolved_endpoints"] += 1
+                continue
+            terminal_points[end_key] = net_name
+
+            terminal_wires.append(
+                {
+                    "x1_mm": point[0],
+                    "y1_mm": point[1],
+                    "x2_mm": ex,
+                    "y2_mm": ey,
+                    "snap_to_grid": False,
+                }
+            )
+            rotation = _terminal_rotation_from_vector(ux, uy)
+            if _is_power_net(net_name):
+                terminal_powers.append(
+                    {"name": net_name, "x_mm": ex, "y_mm": ey, "rotation": 0, "snap_to_grid": False}
+                )
+            else:
+                terminal_labels.append(
+                    {
+                        "name": net_name,
+                        "x_mm": ex,
+                        "y_mm": ey,
+                        "rotation": rotation,
+                        "snap_to_grid": False,
+                        "global_label": True,
+                        "shape": "bidirectional",
+                    }
+                )
+            generated_terminal_count += 1
+            resolution_stats["resolved_endpoints"] += 1
+            if resolution_kind == "pin_alias":
+                resolution_stats["pin_alias_resolutions"] += 1
+
+        if generated_terminal_count == 0 or unresolved_endpoints:
+            unresolved_nets.append(
+                {
+                    "name": net_name or "<unnamed>",
+                    "endpoint_count": len(endpoints),
+                    "resolved_count": generated_terminal_count,
+                    "unresolved_endpoints": unresolved_endpoints,
+                    "unresolved_details": unresolved_details,
+                }
+            )
+    return terminal_wires, terminal_powers, terminal_labels, unresolved_nets, resolution_stats
+
+
 def _plan_netlist_wires(
     symbols: list[AddSymbolInput],
     powers: list[PowerSymbolInput],
@@ -2668,13 +2990,34 @@ def _prepare_build_circuit_inputs(
         "symbol_center_resolutions": 0,
     }
     if raw_nets:
-        generated_wires, unresolved_nets, resolution_stats = _plan_netlist_wires(
-            validated_symbols,
-            validated_powers,
-            validated_labels,
-            raw_nets,
-            snap_to_grid,
-        )
+        if auto_layout:
+            generated_powers: list[dict[str, Any]]
+            generated_labels: list[dict[str, Any]]
+            (
+                generated_wires,
+                generated_powers,
+                generated_labels,
+                unresolved_nets,
+                resolution_stats,
+            ) = _plan_netlist_pin_terminals(
+                validated_symbols,
+                validated_powers,
+                validated_labels,
+                raw_nets,
+                snap_to_grid,
+            )
+            validated_powers.extend(
+                PowerSymbolInput.model_validate(item) for item in generated_powers
+            )
+            validated_labels.extend(AddLabelInput.model_validate(item) for item in generated_labels)
+        else:
+            generated_wires, unresolved_nets, resolution_stats = _plan_netlist_wires(
+                validated_symbols,
+                validated_powers,
+                validated_labels,
+                raw_nets,
+                snap_to_grid,
+            )
         validated_wires.extend(AddWireInput.model_validate(item) for item in generated_wires)
 
     return (
@@ -2711,7 +3054,10 @@ def _render_net_compilation_report(
             f"- Nets requested: {len(nets)}",
             f"- Routable nets: {len(nets) - len(unresolved_nets)}",
             f"- Unresolved nets: {len(unresolved_nets)}",
-            f"- Generated wire segments: {len(generated_wires)}",
+            (
+                f"- Generated {'terminal stubs' if auto_layout and nets else 'wire segments'}: "
+                f"{len(generated_wires)}"
+            ),
             f"- Resolved endpoints: {resolution_stats['resolved_endpoints']}",
             f"- Unresolved endpoints: {resolution_stats['unresolved_endpoints']}",
             f"- Pin alias matches: {resolution_stats['pin_alias_resolutions']}",
@@ -2846,8 +3192,33 @@ def _build_connectivity_groups(sch_file: Path) -> list[dict[str, Any]]:
                 }
             )
 
+    name_roots: dict[str, tuple[float, float]] = {}
+    for root, group in list(groups.items()):
+        for name in {*group["labels"], *group["power"]}:
+            if name in name_roots:
+                union(name_roots[name], root)
+            else:
+                name_roots[name] = root
+
+    collapsed_groups: dict[tuple[float, float], dict[str, Any]] = {}
+    for root, group in groups.items():
+        collapsed_root = find(root)
+        merged = collapsed_groups.setdefault(
+            collapsed_root,
+            {
+                "points": set(),
+                "labels": set(),
+                "power": set(),
+                "pins": [],
+            },
+        )
+        merged["points"].update(group["points"])
+        merged["labels"].update(group["labels"])
+        merged["power"].update(group["power"])
+        merged["pins"].extend(group["pins"])
+
     normalized_groups: list[dict[str, Any]] = []
-    for group in groups.values():
+    for group in collapsed_groups.values():
         names = sorted({*group["labels"], *group["power"]})
         normalized_groups.append(
             {
@@ -3156,22 +3527,35 @@ def _next_reference(prefix: str) -> str:
     return f"{prefix}{highest + 1}"
 
 
+def _transactional_write_to_schematic_file(sch_file: Path, mutator: Callable[[str], str]) -> str:
+    """Read, mutate, validate, and atomically rewrite a schematic file.
+
+    File-backed schematic tools are often invoked in batches.  Keep the full
+    read-mutate-validate-replace critical section serialized so concurrent
+    calls cannot read the same baseline and lose each other's edits.
+    """
+    with _SCHEMATIC_WRITE_LOCK:
+        sch_file = sch_file.resolve()
+        current = sch_file.read_text(encoding="utf-8")
+        updated = _normalize_schematic_wire_connectivity(mutator(current))
+        _validate_schematic_text(updated)
+        with NamedTemporaryFile("w", encoding="utf-8", delete=False, dir=sch_file.parent) as handle:
+            handle.write(updated)
+            temp_path = Path(handle.name)
+        temp_path.replace(sch_file)
+        clear_ttl_cache()
+        return str(sch_file)
+
+
 def _transactional_write_to_schematic(mutator: Callable[[str], str]) -> str:
     """Read, mutate, validate, and atomically rewrite the active schematic."""
-    sch_file = _get_schematic_file()
-    current = sch_file.read_text(encoding="utf-8")
-    updated = _normalize_schematic_wire_connectivity(mutator(current))
-    _validate_schematic_text(updated)
-    with NamedTemporaryFile("w", encoding="utf-8", delete=False, dir=sch_file.parent) as handle:
-        handle.write(updated)
-        temp_path = Path(handle.name)
-    temp_path.replace(sch_file)
-    clear_ttl_cache()
-    return str(sch_file)
+    return _transactional_write_to_schematic_file(_get_schematic_file(), mutator)
 
 
-def transactional_write(mutator: Callable[[str], str]) -> str:
-    """Read, mutate, validate, and atomically rewrite the active schematic."""
+def transactional_write(mutator: Callable[[str], str], sch_file: Path | None = None) -> str:
+    """Read, mutate, validate, and atomically rewrite a schematic file."""
+    if sch_file is not None:
+        return _transactional_write_to_schematic_file(sch_file, mutator)
     return get_schematic_backend().transactional_write(mutator)
 
 
@@ -3230,6 +3614,57 @@ def _update_symbol_property_text_fallback(reference: str, field: str, value: str
 def update_symbol_property(reference: str, field: str, value: str) -> str:
     """Update a symbol property through the active backend adapter."""
     return get_schematic_backend().update_symbol_property(reference, field, value)
+
+
+def _set_symbol_dnp_text_fallback(reference: str, enabled: bool) -> str:
+    """Set KiCad's native placed-symbol DNP flag in the active schematic."""
+    native_value = "yes" if enabled else "no"
+    updated_count = 0
+
+    def _update_block(block: str) -> str:
+        dnp_pattern = re.compile(r"(\n\s*\(dnp\s+)(yes|no)(\)?)")
+        if dnp_pattern.search(block):
+            return dnp_pattern.sub(
+                lambda match: f"{match.group(1)}{native_value}{match.group(3)}",
+                block,
+                count=1,
+            )
+
+        insert_match = re.search(r"\n\s*\(on_board\s+(?:yes|no)\)", block)
+        if insert_match is not None:
+            return (
+                block[: insert_match.end()]
+                + f"\n\t\t(dnp {native_value})"
+                + block[insert_match.end() :]
+            )
+
+        insert_point = block.rfind("\t\t(instances")
+        if insert_point == -1:
+            insert_point = block.rfind("\n\t)")
+        if insert_point == -1:
+            raise ValueError(f"Could not update native DNP on '{reference}' in the schematic.")
+        return block[:insert_point] + f"\t\t(dnp {native_value})\n" + block[insert_point:]
+
+    def mutator(current: str) -> str:
+        nonlocal updated_count
+        matches = _find_placed_symbol_blocks(current, reference)
+        if not matches:
+            raise ValueError(f"Reference '{reference}' was not found in the schematic.")
+        updated_count = len(matches)
+        updated = current
+        for block, start, end, _parsed in reversed(matches):
+            new_block = _update_block(block)
+            updated = updated[:start] + new_block + updated[end:]
+        return updated
+
+    _transactional_write_to_schematic(mutator)
+    state = "DNP" if enabled else "Populate"
+    return f"Set {reference} native population state to {state} on {updated_count} instance(s)."
+
+
+def set_symbol_dnp(reference: str, enabled: bool) -> str:
+    """Set KiCad's native DNP flag on a placed schematic symbol."""
+    return _set_symbol_dnp_text_fallback(reference, enabled)
 
 
 def _parse_wire_block(block: str) -> dict[str, Any] | None:
@@ -3414,6 +3849,7 @@ def register(mcp: FastMCP) -> None:
         return "Named nets:\n" + "\n".join(f"- {name}" for name in names)
 
     @mcp.tool()
+    @headless_compatible
     def sch_add_symbol(
         library: str,
         symbol_name: str,
@@ -3425,6 +3861,8 @@ def register(mcp: FastMCP) -> None:
         rotation: int = 0,
         snap_to_grid: bool = True,
         unit: int = 1,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a schematic symbol at an absolute coordinate.
 
@@ -3455,7 +3893,8 @@ def register(mcp: FastMCP) -> None:
                 f"{payload.unit}. Available units: {_format_available_units(available_units)}."
             )
 
-        sch_file = _get_schematic_file()
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
+        sch_file = target.path
         sch_data = parse_schematic_file(sch_file)
         root_uuid = sch_data["uuid"] or new_uuid()
         cfg = get_config()
@@ -3489,14 +3928,18 @@ def register(mcp: FastMCP) -> None:
             )
             return _append_before_sheet_instances(updated, block)
 
-        transactional_write(mutator)
+        transactional_write(mutator, sch_file)
         result = _reload_schematic()
         fp_warning = _validate_footprint(payload.footprint or "")
-        parts = [p for p in [result, snap_note, overlap_warning, fp_warning] if p]
+        parts = [
+            p
+            for p in [result, _format_target_detail(target), snap_note, overlap_warning, fp_warning]
+            if p
+        ]
         return "\n".join(parts)
 
     @mcp.tool()
-    @requires_kicad_running
+    @headless_compatible
     def sch_add_component(
         library: str,
         symbol_name: str,
@@ -3508,6 +3951,8 @@ def register(mcp: FastMCP) -> None:
         rotation: int = 0,
         snap_to_grid: bool = True,
         unit: int = 1,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a schematic component through the hybrid IPC reload path."""
         return str(
@@ -3522,6 +3967,8 @@ def register(mcp: FastMCP) -> None:
                 rotation=rotation,
                 snap_to_grid=snap_to_grid,
                 unit=unit,
+                sheet=sheet,
+                sheet_file=sheet_file,
             )
         )
 
@@ -3532,6 +3979,8 @@ def register(mcp: FastMCP) -> None:
         x2_mm: float,
         y2_mm: float,
         snap_to_grid: bool = True,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a schematic wire, snapping endpoints to the 2.54 mm grid by default."""
         payload = AddWireInput(
@@ -3541,6 +3990,7 @@ def register(mcp: FastMCP) -> None:
             y2_mm=y2_mm,
             snap_to_grid=snap_to_grid,
         )
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         wire_coords = _snap_line(
             payload.x1_mm,
             payload.y1_mm,
@@ -3556,10 +4006,11 @@ def register(mcp: FastMCP) -> None:
             lambda current: _append_before_sheet_instances(
                 current,
                 wire_block(*wire_coords),
-            )
+            ),
+            target.path,
         )
         result = _reload_schematic()
-        return f"{result}\n{snap_note}" if snap_note else result
+        return "\n".join(p for p in [result, _format_target_detail(target), snap_note] if p)
 
     @mcp.tool()
     def sch_add_label(
@@ -3569,6 +4020,8 @@ def register(mcp: FastMCP) -> None:
         rotation: int = 0,
         snap_to_grid: bool = True,
         text: str | None = None,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a schematic label, snapping its anchor to the 2.54 mm grid by default."""
         label_text = name or text
@@ -3581,34 +4034,39 @@ def register(mcp: FastMCP) -> None:
             rotation=rotation,
             snap_to_grid=snap_to_grid,
         )
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         label_x, label_y = _snap_point(payload.x_mm, payload.y_mm, payload.snap_to_grid)
         snap_note = _snap_notice((payload.x_mm, payload.y_mm), (label_x, label_y))
         transactional_write(
             lambda current: _append_before_sheet_instances(
                 current,
                 label_block(payload.name, label_x, label_y, payload.rotation),
-            )
+            ),
+            target.path,
         )
         result = _reload_schematic()
-        return f"{result}\n{snap_note}" if snap_note else result
+        return "\n".join(p for p in [result, _format_target_detail(target), snap_note] if p)
 
     @mcp.tool()
     def sch_add_pin_labels(
         connections: list[dict[str, Any]],
         stub_mm: float = 5.08,
         global_labels: bool = True,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Connect placed-symbol pins to nets with a short outward wire stub plus a
         label placed clear of the symbol body (avoids label-on-pin overlap).
 
         Each connection is ``{"reference": "U3", "pin": "VIN" | "5", "net":
         "5V_SYS"}``; the pin may be a number or a name. The stub direction is
-        derived from the pin position relative to the symbol origin (dominant
-        axis), so the label lands outside the symbol and reads outward. Pins that
+        derived from the symbol edge the pin sits on, so the label lands outside
+        the symbol and reads outward. Pins that
         share a ``net`` are joined by their common label name. This is the clean
         alternative to placing bare labels directly on pins.
         """
-        data = parse_schematic_file(_get_schematic_file())
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
+        data = parse_schematic_file(target.path)
         placed: dict[str, dict[str, Any]] = {}
         for sym in data.get("symbols", []):
             ref = str(sym.get("reference", ""))
@@ -3645,11 +4103,8 @@ def register(mcp: FastMCP) -> None:
                 results.append(f"{ref}.{pin}: pin not found")
                 continue
             px, py = point
-            dx, dy = px - ox, py - oy
-            if abs(dx) >= abs(dy):
-                ux, uy = (1.0 if dx >= 0 else -1.0), 0.0
-            else:
-                ux, uy = 0.0, (1.0 if dy >= 0 else -1.0)
+            pin_positions = get_pin_positions(library, symbol_name, ox, oy, rot, unit)
+            ux, uy = _pin_label_stub_direction(point, (ox, oy), pin_positions.values())
             ex = round(px + ux * stub_mm, 4)
             ey = round(py + uy * stub_mm, 4)
             rotation = 0 if ux > 0 else 180 if ux < 0 else 90 if uy < 0 else 270
@@ -3665,10 +4120,10 @@ def register(mcp: FastMCP) -> None:
                 current = _append_before_sheet_instances(current, block)
             return current
 
-        transactional_write(mutator)
+        transactional_write(mutator, target.path)
         return (
-            f"{_reload_schematic()}\nAdded {len(blocks) // 2} pin label(s) with stubs:\n"
-            + "\n".join(results)
+            f"{_reload_schematic()}\n{_format_target_detail(target)}\n"
+            f"Added {len(blocks) // 2} pin label(s) with stubs:\n" + "\n".join(results)
         )
 
     @mcp.tool()
@@ -3678,19 +4133,23 @@ def register(mcp: FastMCP) -> None:
         y_mm: float,
         rotation: int = 0,
         snap_to_grid: bool = True,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a power symbol, snapping its anchor to the 2.54 mm grid by default."""
         return str(
             sch_add_symbol(
-                "power",
-                name,
-                x_mm,
-                y_mm,
-                f"#PWR{new_uuid()[:4]}",
-                name,
-                "",
-                rotation,
-                snap_to_grid,
+                library="power",
+                symbol_name=name,
+                x_mm=x_mm,
+                y_mm=y_mm,
+                reference=f"#PWR{new_uuid()[:4]}",
+                value=name,
+                footprint="",
+                rotation=rotation,
+                snap_to_grid=snap_to_grid,
+                sheet=sheet,
+                sheet_file=sheet_file,
             )
         )
 
@@ -3701,6 +4160,8 @@ def register(mcp: FastMCP) -> None:
         x2_mm: float,
         y2_mm: float,
         snap_to_grid: bool = True,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a schematic bus, snapping endpoints to the 2.54 mm grid by default."""
         payload = AddBusInput(
@@ -3710,6 +4171,7 @@ def register(mcp: FastMCP) -> None:
             y2_mm=y2_mm,
             snap_to_grid=snap_to_grid,
         )
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         bus_coords = _snap_line(
             payload.x1_mm,
             payload.y1_mm,
@@ -3725,10 +4187,11 @@ def register(mcp: FastMCP) -> None:
             lambda current: _append_before_sheet_instances(
                 current,
                 wire_block(*bus_coords, "bus"),
-            )
+            ),
+            target.path,
         )
         result = _reload_schematic()
-        return f"{result}\n{snap_note}" if snap_note else result
+        return "\n".join(p for p in [result, _format_target_detail(target), snap_note] if p)
 
     @mcp.tool()
     def sch_add_bus_wire_entry(
@@ -3736,6 +4199,8 @@ def register(mcp: FastMCP) -> None:
         y_mm: float,
         direction: str = "up_right",
         snap_to_grid: bool = True,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a bus wire entry marker, snapping its anchor to the 2.54 mm grid by default."""
         payload = AddBusWireEntryInput(
@@ -3744,31 +4209,41 @@ def register(mcp: FastMCP) -> None:
             direction=direction,
             snap_to_grid=snap_to_grid,
         )
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         entry_x, entry_y = _snap_point(payload.x_mm, payload.y_mm, payload.snap_to_grid)
         snap_note = _snap_notice((payload.x_mm, payload.y_mm), (entry_x, entry_y))
         transactional_write(
             lambda current: _append_before_sheet_instances(
                 current,
                 bus_entry_block(entry_x, entry_y, payload.direction),
-            )
+            ),
+            target.path,
         )
         result = _reload_schematic()
-        return f"{result}\n{snap_note}" if snap_note else result
+        return "\n".join(p for p in [result, _format_target_detail(target), snap_note] if p)
 
     @mcp.tool()
-    def sch_add_no_connect(x_mm: float, y_mm: float, snap_to_grid: bool = True) -> str:
+    def sch_add_no_connect(
+        x_mm: float,
+        y_mm: float,
+        snap_to_grid: bool = True,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
+    ) -> str:
         """Add a no-connect marker, snapping it to the 2.54 mm grid by default."""
         payload = AddNoConnectInput(x_mm=x_mm, y_mm=y_mm, snap_to_grid=snap_to_grid)
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         marker_x, marker_y = _snap_point(payload.x_mm, payload.y_mm, payload.snap_to_grid)
         snap_note = _snap_notice((payload.x_mm, payload.y_mm), (marker_x, marker_y))
         transactional_write(
             lambda current: _append_before_sheet_instances(
                 current,
                 no_connect_block(marker_x, marker_y),
-            )
+            ),
+            target.path,
         )
         result = _reload_schematic()
-        return f"{result}\n{snap_note}" if snap_note else result
+        return "\n".join(p for p in [result, _format_target_detail(target), snap_note] if p)
 
     @mcp.tool()
     @headless_compatible
@@ -3884,6 +4359,7 @@ def register(mcp: FastMCP) -> None:
         return f"Recorded gate swap {component_ref}:{gate_a}<->{gate_b} in {path}."
 
     @mcp.tool()
+    @headless_compatible
     def sch_add_jumper(
         x_mm: float,
         y_mm: float,
@@ -3916,18 +4392,27 @@ def register(mcp: FastMCP) -> None:
         return f"{detail}\n{result}\n{snap_note}" if snap_note else f"{detail}\n{result}"
 
     @mcp.tool()
+    @headless_compatible
     def sch_update_properties(reference: str, field: str, value: str) -> str:
         """Update a property on a placed symbol."""
         result = update_symbol_property(reference, field, value)
         return f"{result}\n{_reload_schematic()}"
 
     @mcp.tool()
-    @requires_kicad_running
+    @headless_compatible
+    def sch_set_dnp(reference: str, enabled: bool = True) -> str:
+        """Set KiCad's native Do Not Populate flag on a placed symbol."""
+        result = set_symbol_dnp(reference, enabled)
+        return f"{result}\n{_reload_schematic()}"
+
+    @mcp.tool()
+    @headless_compatible
     def sch_modify_property(reference: str, field: str, value: str) -> str:
         """Modify a schematic symbol property by reference."""
         return str(sch_update_properties(reference, field, value))
 
     @mcp.tool()
+    @headless_compatible
     def sch_move_symbol(
         reference: str,
         x_mm: float,
@@ -4322,8 +4807,8 @@ def register(mcp: FastMCP) -> None:
                 for item in unresolved_nets[:5]
             )
             raise ValueError(
-                "Netlist-aware auto-layout could not generate any wire segments. "
-                "The provided nets did not resolve to at least two routable endpoints. "
+                "Netlist-aware auto-layout could not generate any safe terminal stubs. "
+                "The provided nets did not resolve to collision-safe pin endpoints. "
                 "Use `sch_analyze_net_compilation()` to inspect unresolved nets, or "
                 "provide explicit reference+pin endpoints / explicit wires. "
                 f"Examples: {examples or 'no endpoints were routable'}. "
@@ -4414,7 +4899,16 @@ def register(mcp: FastMCP) -> None:
                 lbl.y_mm,
                 snap_to_grid and lbl.snap_to_grid,
             )
-            elements.append(label_block(lbl.name, label_x, label_y, lbl.rotation))
+            elements.append(
+                label_block(
+                    lbl.name,
+                    label_x,
+                    label_y,
+                    lbl.rotation,
+                    global_label=lbl.global_label,
+                    shape=lbl.shape,
+                )
+            )
 
         lib_section = "\t(lib_symbols\n"
         for lib_symbol in lib_symbols_content:
@@ -4445,7 +4939,7 @@ def register(mcp: FastMCP) -> None:
         if auto_layout and raw_nets:
             summary = (
                 f"{result}\nApplied netlist-aware auto-layout and generated "
-                f"{len(generated_wires)} wire segment(s)."
+                f"{len(generated_wires)} collision-safe terminal stub(s)."
             )
             # Never drop a connection silently: if some nets did not resolve to two
             # routable endpoints, surface them in the result, not just the server log.
@@ -4453,7 +4947,8 @@ def register(mcp: FastMCP) -> None:
                 names = ", ".join(str(item["name"]) for item in unresolved_nets[:8])
                 more = " …" if len(unresolved_nets) > 8 else ""
                 summary += (
-                    f"\nWARNING: {len(unresolved_nets)} net(s) could not be auto-routed and "
+                    f"\nWARNING: {len(unresolved_nets)} net(s) could not be "
+                    "terminalized safely and "
                     f"were left unconnected: {names}{more}. "
                     "Use sch_analyze_net_compilation() for per-endpoint details."
                 )
@@ -4611,6 +5106,8 @@ def register(mcp: FastMCP) -> None:
         rotation: int = 0,
         snap_to_grid: bool = True,
         name: str | None = None,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a hierarchical label, preserving the requested shape and rotation."""
         label_text = text or name
@@ -4624,6 +5121,7 @@ def register(mcp: FastMCP) -> None:
             rotation=rotation,
             snap_to_grid=snap_to_grid,
         )
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         label_x, label_y = _snap_point(payload.x_mm, payload.y_mm, payload.snap_to_grid)
         snap_note = _snap_notice((payload.x_mm, payload.y_mm), (label_x, label_y))
         transactional_write(
@@ -4637,10 +5135,11 @@ def register(mcp: FastMCP) -> None:
                     kind="hierarchical_label",
                     shape=payload.shape,
                 ),
-            )
+            ),
+            target.path,
         )
         result = _reload_schematic()
-        return f"{result}\n{snap_note}" if snap_note else result
+        return "\n".join(p for p in [result, _format_target_detail(target), snap_note] if p)
 
     @mcp.tool()
     def sch_add_global_label(
@@ -4651,6 +5150,8 @@ def register(mcp: FastMCP) -> None:
         rotation: int = 0,
         snap_to_grid: bool = True,
         name: str | None = None,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a global label, preserving the requested shape and rotation."""
         label_text = text or name
@@ -4664,6 +5165,7 @@ def register(mcp: FastMCP) -> None:
             rotation=rotation,
             snap_to_grid=snap_to_grid,
         )
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         label_x, label_y = _snap_point(payload.x_mm, payload.y_mm, payload.snap_to_grid)
         snap_note = _snap_notice((payload.x_mm, payload.y_mm), (label_x, label_y))
         transactional_write(
@@ -4677,10 +5179,11 @@ def register(mcp: FastMCP) -> None:
                     kind="global_label",
                     shape=payload.shape,
                 ),
-            )
+            ),
+            target.path,
         )
         result = _reload_schematic()
-        return f"{result}\n{snap_note}" if snap_note else result
+        return "\n".join(p for p in [result, _format_target_detail(target), snap_note] if p)
 
     @mcp.tool()
     def sch_list_sheets() -> str:

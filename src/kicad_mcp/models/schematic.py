@@ -45,6 +45,8 @@ class AddLabelInput(BaseModel):
     y_mm: CoordMM
     rotation: Literal[0, 90, 180, 270] = 0
     snap_to_grid: bool = True
+    global_label: bool = False
+    shape: Literal["input", "output", "bidirectional", "tri_state", "passive"] | None = None
 
 
 class AddBusInput(BaseModel):

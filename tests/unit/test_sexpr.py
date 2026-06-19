@@ -220,13 +220,15 @@ def test_schematic_netlist_helpers_layout_missing_terminals() -> None:
 
     symbols, laid_powers, laid_labels = _apply_netlist_auto_layout(
         [{"reference": "U1"}, {"reference": "R1"}],
-        [],
-        [],
+        [{"name": "GND"}],
+        [{"name": "OUT"}],
         [{"name": "GND", "endpoints": ["U1.1", "R1.1"]}, {"name": "OUT", "endpoints": ["R1.2"]}],
     )
     assert all(_has_point(symbol) for symbol in symbols)
     assert laid_powers[0]["name"] == "GND"
+    assert _has_point(laid_powers[0])
     assert laid_labels[0]["name"] == "OUT"
+    assert _has_point(laid_labels[0])
     basic_symbols, basic_powers, basic_labels = _apply_basic_auto_layout(
         [{"reference": "R1"}],
         [{"name": "GND"}, {"name": "+5V"}],

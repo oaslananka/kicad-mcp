@@ -409,6 +409,55 @@ async def test_schematic_quality_gate_pass(sample_project: Path, monkeypatch) ->
 
 
 @pytest.mark.anyio
+async def test_schematic_quality_gate_ignores_empty_child_sheet_erc(
+    sample_project: Path,
+    monkeypatch,
+) -> None:
+    """Empty child-sheet placeholders should not hard-fail schematic quality."""
+
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+    await call_tool_text(
+        server,
+        "sch_create_sheet",
+        {
+            "name": "Future IO",
+            "filename": "future_io.kicad_sch",
+            "x_mm": 50.8,
+            "y_mm": 50.8,
+        },
+    )
+
+    def fake_run_erc(report_name: str) -> tuple[Path, dict | None, str | None]:
+        report_path = sample_project / "output" / report_name
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report = {
+            "sheets": [
+                {
+                    "path": "Future IO",
+                    "violations": [
+                        {
+                            "severity": "error",
+                            "type": "pin_not_connected",
+                            "description": "Placeholder child sheet has no real circuit yet",
+                        }
+                    ],
+                }
+            ]
+        }
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        return report_path, report, None
+
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_erc_report", fake_run_erc)
+
+    result = await call_tool_text(server, "schematic_quality_gate", {})
+
+    assert "Schematic quality gate: PASS" in result
+    assert "ERC violations: 0" in result
+    assert "Ignored empty child-sheet ERC violations: 1" in result
+
+
+@pytest.mark.anyio
 async def test_schematic_quality_gate_fail(sample_project: Path, monkeypatch) -> None:
     """schematic_quality_gate should report FAIL for schematic with violations."""
 
@@ -439,6 +488,51 @@ async def test_schematic_quality_gate_fail(sample_project: Path, monkeypatch) ->
     result = await call_tool_text(server, "schematic_quality_gate", {})
     assert "Schematic quality gate: FAIL" in result
     assert "ERC violations: 1" in result
+
+
+@pytest.mark.anyio
+async def test_connectivity_gate_joins_same_named_labels(sample_project: Path, monkeypatch) -> None:
+    """Same-named labels represent one net even when drawn at separate points."""
+
+    def fake_run_erc(report_name: str) -> tuple[Path, dict | None, str | None]:
+        report_path = sample_project / "output" / report_name
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report = {"sheets": [{"path": "/", "violations": []}]}
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        return report_path, report, None
+
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_erc_report", fake_run_erc)
+
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+    await call_tool_text(
+        server,
+        "sch_build_circuit",
+        {
+            "symbols": [
+                {
+                    "library": "Device",
+                    "symbol_name": "R",
+                    "reference": "R1",
+                    "value": "10k",
+                    "footprint": "Resistor_SMD:R_0805",
+                    "x_mm": 50.8,
+                    "y_mm": 50.8,
+                }
+            ],
+            "labels": [
+                {"name": "GND", "x_mm": 48.26, "y_mm": 50.8},
+                {"name": "3V3_DIG", "x_mm": 53.34, "y_mm": 50.8},
+                {"name": "3V3_DIG", "x_mm": 101.6, "y_mm": 101.6},
+            ],
+            "wires": [{"x1_mm": 101.6, "y1_mm": 101.6, "x2_mm": 104.14, "y2_mm": 101.6}],
+        },
+    )
+
+    result = await call_tool_text(server, "schematic_connectivity_gate", {})
+
+    assert "Schematic connectivity quality gate: PASS" in result
+    assert "Dangling label groups: 0" in result
 
 
 @pytest.mark.anyio
