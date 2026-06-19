@@ -96,6 +96,38 @@ async def test_project_next_action_includes_verdict_and_finding(
 
 
 @pytest.mark.anyio
+async def test_project_next_action_prefers_required_sheet_failure_over_gate_metrics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "kicad_mcp.tools.validation._evaluate_project_gate",
+        lambda: [
+            GateOutcome(
+                name="Schematic connectivity",
+                status="FAIL",
+                summary="Connectivity smells suggest the schematic is not ready.",
+                details=[
+                    "Pages analysed: 3",
+                    "Power: 0 symbol(s), 0 label(s), 0 wire(s)",
+                    "Required empty sheets: 1",
+                    "FAIL: Sheet 'Power' is required by design intent but contains "
+                    "no symbols, labels, or wires.",
+                ],
+            )
+        ],
+    )
+    server = build_server("full")
+
+    payload = await call_tool_payload(server, "project_get_next_action", {})
+
+    assert isinstance(payload, dict)
+    assert payload["status"] == "FAIL"
+    assert payload["gate"] == "Schematic connectivity"
+    assert payload["reason"].startswith("Sheet 'Power' is required by design intent")
+    assert payload["suggested_tool"] == "schematic_connectivity_gate()"
+
+
+@pytest.mark.anyio
 async def test_pcb_board_summary_returns_verdict_report(mock_board: object) -> None:
     server = build_server("pcb")
 

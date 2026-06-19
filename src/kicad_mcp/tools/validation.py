@@ -951,6 +951,46 @@ def _sheet_contracts(sch_file: Path) -> list[dict[str, object]]:
     return contracts
 
 
+def _sheet_match_key(value: object) -> str:
+    raw = str(value or "").strip().replace("\\", "/")
+    if not raw:
+        return ""
+    candidate = Path(raw).stem if raw.lower().endswith(".kicad_sch") else raw
+    return re.sub(r"[^a-z0-9]+", "", candidate.casefold())
+
+
+def _sheet_contract_keys(contract: dict[str, object]) -> set[str]:
+    filename = str(contract.get("filename", ""))
+    keys = {
+        _sheet_match_key(contract.get("name", "")),
+        _sheet_match_key(filename),
+        _sheet_match_key(Path(filename).stem if filename else ""),
+    }
+    return {key for key in keys if key}
+
+
+def _sheet_intent_contract() -> tuple[bool, list[str], set[str], set[str]]:
+    try:
+        from .design_intent_state import resolve_design_intent
+
+        resolution = resolve_design_intent()
+    except Exception:
+        return False, [], set(), set()
+
+    if resolution.source == "none":
+        return False, [], set(), set()
+    intent = resolution.resolved
+    required = list(intent.required_sheets)
+    optional = list(intent.optional_sheets)
+    has_contract = bool(required or optional)
+    return (
+        has_contract,
+        required,
+        {_sheet_match_key(sheet) for sheet in required if _sheet_match_key(sheet)},
+        {_sheet_match_key(sheet) for sheet in optional if _sheet_match_key(sheet)},
+    )
+
+
 def _hierarchical_labels(sch_file: Path) -> set[str]:
     from ..utils.sexpr import _unescape_sexpr_string
 
@@ -986,8 +1026,16 @@ def _evaluate_schematic_connectivity_gate() -> GateOutcome:
             summary=f"Top-level sheet contract data was unavailable ({exc}).",
         )
 
+    has_sheet_contract, required_sheets, required_sheet_keys, optional_sheet_keys = (
+        _sheet_intent_contract()
+    )
+    sheet_keys_by_path: dict[Path, set[str]] = {}
+    available_sheet_keys: set[str] = set()
     for contract in contracts:
         child_path = top_file.parent / str(contract["filename"])
+        sheet_keys = _sheet_contract_keys(contract)
+        sheet_keys_by_path[child_path] = sheet_keys
+        available_sheet_keys.update(sheet_keys)
         pages.append((str(contract["name"]), child_path))
         if not child_path.exists():
             blocked.append(f"Child sheet '{contract['name']}' is missing: {child_path.name}.")
@@ -1011,12 +1059,25 @@ def _evaluate_schematic_connectivity_gate() -> GateOutcome:
                 mismatch.append("child missing " + ", ".join(missing_in_child[:12]))
             failures.append("; ".join(mismatch))
 
+    required_missing_sheets = 0
+    if has_sheet_contract:
+        for sheet in required_sheets:
+            key = _sheet_match_key(sheet)
+            if key and key not in available_sheet_keys:
+                required_missing_sheets += 1
+                failures.append(
+                    f"Required sheet '{sheet}' is not present in the schematic hierarchy."
+                )
+
     dangling_labels = 0
     zero_wire_pages = 0
     unnamed_single_pin_groups = 0
     isolated_footprint_symbols = 0
     matched_component_contracts = 0
     contract_violations = 0
+    required_empty_sheets = 0
+    optional_empty_sheets = 0
+    placeholder_empty_sheets = 0
 
     for page_name, page_path in pages:
         if not page_path.exists():
@@ -1034,6 +1095,21 @@ def _evaluate_schematic_connectivity_gate() -> GateOutcome:
         page_summaries.append(
             f"{page_name}: {symbol_count} symbol(s), {label_count} label(s), {wire_count} wire(s)"
         )
+
+        page_keys = sheet_keys_by_path.get(page_path, set())
+        is_child_sheet = page_name != "Top level"
+        is_empty_sheet = symbol_count == 0 and label_count == 0 and wire_count == 0
+        if has_sheet_contract and is_child_sheet and is_empty_sheet:
+            if page_keys & required_sheet_keys:
+                required_empty_sheets += 1
+                failures.append(
+                    f"Sheet '{page_name}' is required by design intent but contains no "
+                    "symbols, labels, or wires."
+                )
+            elif page_keys & optional_sheet_keys:
+                optional_empty_sheets += 1
+            else:
+                placeholder_empty_sheets += 1
 
         if wire_count == 0 and (symbol_count >= 2 or label_count >= 3):
             zero_wire_pages += 1
@@ -1139,6 +1215,15 @@ def _evaluate_schematic_connectivity_gate() -> GateOutcome:
             f"Component contract violations: {contract_violations}",
         ]
     )
+    if has_sheet_contract:
+        details.extend(
+            [
+                f"Required missing sheets: {required_missing_sheets}",
+                f"Required empty sheets: {required_empty_sheets}",
+                f"Optional empty sheets: {optional_empty_sheets}",
+                f"Placeholder empty sheets: {placeholder_empty_sheets}",
+            ]
+        )
     if blocked:
         details.extend(f"BLOCKED: {item}" for item in blocked[:12])
         return GateOutcome(

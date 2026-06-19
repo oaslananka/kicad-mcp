@@ -224,6 +224,65 @@ async def test_schematic_connectivity_gate_fails_hierarchy_contract_mismatch(
 
 
 @pytest.mark.anyio
+async def test_schematic_connectivity_gate_fails_required_empty_sheet_from_design_intent(
+    sample_project: Path,
+    mock_kicad,
+) -> None:
+    _ = mock_kicad
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+    await call_tool_text(
+        server,
+        "sch_create_sheet",
+        {"name": "Power", "filename": "power.kicad_sch", "x_mm": 40.64, "y_mm": 50.8},
+    )
+    await call_tool_text(
+        server,
+        "sch_create_sheet",
+        {
+            "name": "Telemetry",
+            "filename": "telemetry.kicad_sch",
+            "x_mm": 100.0,
+            "y_mm": 50.8,
+        },
+    )
+    await call_tool_text(
+        server,
+        "project_set_design_intent",
+        {"required_sheets": ["Power"], "optional_sheets": ["Telemetry"]},
+    )
+
+    text = await call_tool_text(server, "schematic_connectivity_gate", {})
+
+    assert "Schematic connectivity quality gate: FAIL" in text
+    assert "Required empty sheets: 1" in text
+    assert "Optional empty sheets: 1" in text
+    assert "Sheet 'Power' is required by design intent" in text
+    assert "Sheet 'Telemetry' is required by design intent" not in text
+
+
+@pytest.mark.anyio
+async def test_schematic_connectivity_gate_fails_required_missing_sheet_from_design_intent(
+    sample_project: Path,
+    mock_kicad,
+) -> None:
+    _ = mock_kicad
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+    await call_tool_text(
+        server,
+        "project_set_design_intent",
+        {"required_sheets": ["Sensor_ADXL355"]},
+    )
+
+    text = await call_tool_text(server, "schematic_connectivity_gate", {})
+
+    assert "Schematic connectivity quality gate: FAIL" in text
+    assert "Required missing sheets: 1" in text
+    assert "Required sheet 'Sensor_ADXL355' is not present" in text
+
+
+@pytest.mark.anyio
 async def test_project_quality_gate_includes_connectivity_failures(
     sample_project: Path,
     mock_kicad,

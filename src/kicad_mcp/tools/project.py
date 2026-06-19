@@ -227,6 +227,8 @@ def _normalize_design_intent(intent: ProjectDesignIntent) -> ProjectDesignIntent
             "analog_refs": _normalized_unique(intent.analog_refs),
             "digital_refs": _normalized_unique(intent.digital_refs),
             "sensor_cluster_refs": _normalized_unique(intent.sensor_cluster_refs),
+            "required_sheets": _normalized_unique(intent.required_sheets),
+            "optional_sheets": _normalized_unique(intent.optional_sheets),
             "rf_keepout_regions": [region.model_dump() for region in intent.rf_keepout_regions],
             "manufacturer": intent.manufacturer.strip(),
             "manufacturer_tier": intent.manufacturer_tier.strip(),
@@ -326,6 +328,14 @@ def _render_design_intent(intent: ProjectDesignIntent) -> str:
     lines.append(
         "- Sensor cluster refs: "
         + (", ".join(intent.sensor_cluster_refs) if intent.sensor_cluster_refs else "(none)")
+    )
+    lines.append(
+        "- Required sheets: "
+        + (", ".join(intent.required_sheets) if intent.required_sheets else "(none)")
+    )
+    lines.append(
+        "- Optional sheets: "
+        + (", ".join(intent.optional_sheets) if intent.optional_sheets else "(none)")
     )
     lines.append(
         "- Manufacturer: "
@@ -573,6 +583,8 @@ def _merge_design_intent(
             analog_refs=explicit.analog_refs or inferred.analog_refs,
             digital_refs=explicit.digital_refs or inferred.digital_refs,
             sensor_cluster_refs=explicit.sensor_cluster_refs or inferred.sensor_cluster_refs,
+            required_sheets=explicit.required_sheets,
+            optional_sheets=explicit.optional_sheets,
             rf_keepout_regions=explicit.rf_keepout_regions or inferred.rf_keepout_regions,
             manufacturer=explicit.manufacturer or inferred.manufacturer,
             manufacturer_tier=explicit.manufacturer_tier or inferred.manufacturer_tier,
@@ -612,20 +624,26 @@ def validate_design_intent(intent: ProjectDesignIntent | None = None) -> list[st
     """Validate explicit or resolved design-spec references against the active board."""
     from .board_file import _normalize_board_content, _parse_board_footprint_blocks
 
+    candidate = intent or resolve_design_intent().resolved
+    issues: list[str] = []
+    required_sheet_keys = {sheet.strip().casefold() for sheet in candidate.required_sheets if sheet}
+    optional_sheet_keys = {sheet.strip().casefold() for sheet in candidate.optional_sheets if sheet}
+    for sheet in sorted(required_sheet_keys & optional_sheet_keys):
+        issues.append(f"Sheet '{sheet}' is marked both required and optional.")
+
     cfg = get_config()
     if cfg.pcb_file is None or not cfg.pcb_file.exists():
-        return []
+        return issues
 
     try:
         board_text = _normalize_board_content(
             cfg.pcb_file.read_text(encoding="utf-8", errors="ignore")
         )
     except OSError as exc:
-        return [f"PCB file could not be read while validating the design spec ({exc})."]
+        issues.append(f"PCB file could not be read while validating the design spec ({exc}).")
+        return issues
 
     references = set(_parse_board_footprint_blocks(board_text))
-    candidate = intent or resolve_design_intent().resolved
-    issues: list[str] = []
     for reference in candidate.connector_refs:
         if reference not in references:
             issues.append(f"Connector ref '{reference}' is not present on the PCB.")
@@ -690,10 +708,24 @@ def _queue_reason_from_details(details: list[str], summary: str) -> str:
         "Digital refs checked:",
         "Sensor-cluster refs checked:",
         "Placement score:",
+        "Pages analysed:",
+        "Dangling label groups:",
+        "Zero-wire pages:",
+        "Unnamed single-pin groups:",
+        "Isolated footprint symbols:",
+        "Hierarchy contract mismatches:",
+        "Matched component contracts:",
+        "Component contract violations:",
+        "Required missing sheets:",
+        "Required empty sheets:",
+        "Optional empty sheets:",
+        "Placeholder empty sheets:",
     )
     for detail in details:
         cleaned = detail.strip()
         if not cleaned or cleaned.startswith(ignored_prefixes):
+            continue
+        if " symbol(s), " in cleaned and " label(s), " in cleaned and " wire(s)" in cleaned:
             continue
         if cleaned.startswith("FAIL: "):
             return cleaned[6:]
@@ -872,6 +904,8 @@ def register(mcp: FastMCP) -> None:
         analog_refs: list[str] | None = None,
         digital_refs: list[str] | None = None,
         sensor_cluster_refs: list[str] | None = None,
+        required_sheets: list[str] | None = None,
+        optional_sheets: list[str] | None = None,
         rf_keepout_regions: list[dict[str, Any]] | None = None,
         manufacturer: str = "",
         manufacturer_tier: str = "",
@@ -890,7 +924,7 @@ def register(mcp: FastMCP) -> None:
 
         v1 parameters (all boards): connector_refs, decoupling_pairs, critical_nets,
         power_tree_refs, analog_refs, digital_refs, sensor_cluster_refs, rf_keepout_regions,
-        manufacturer, manufacturer_tier.
+        required_sheets, optional_sheets, manufacturer, manufacturer_tier.
 
         v2 parameters (professional projects): power_rails (list of PowerRailSpec dicts),
         interfaces (list of InterfaceSpec dicts), mechanical (MechanicalConstraint dict),
@@ -911,6 +945,12 @@ def register(mcp: FastMCP) -> None:
             digital_refs=existing.digital_refs if digital_refs is None else digital_refs,
             sensor_cluster_refs=(
                 existing.sensor_cluster_refs if sensor_cluster_refs is None else sensor_cluster_refs
+            ),
+            required_sheets=(
+                existing.required_sheets if required_sheets is None else required_sheets
+            ),
+            optional_sheets=(
+                existing.optional_sheets if optional_sheets is None else optional_sheets
             ),
             rf_keepout_regions=(
                 existing.rf_keepout_regions if rf_keepout_regions is None else rf_keepout_regions
@@ -1730,7 +1770,7 @@ def register(mcp: FastMCP) -> None:
             kicad = get_kicad()
             lines.append(f"IPC version: {kicad.get_version()}")
 
-            def _count_open_documents(doc_type: int) -> str:
+            def _count_open_documents(doc_type: DocumentType.ValueType) -> str:
                 # Probe each document type independently: when the matching
                 # editor is not open (e.g. no board while only eeschema runs),
                 # KiCad replies with an ApiError ("no handler available ...").
