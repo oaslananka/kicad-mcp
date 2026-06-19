@@ -491,6 +491,53 @@ async def test_schematic_quality_gate_fail(sample_project: Path, monkeypatch) ->
 
 
 @pytest.mark.anyio
+async def test_connectivity_gate_joins_same_named_labels(sample_project: Path, monkeypatch) -> None:
+    """Same-named labels represent one net even when drawn at separate points."""
+
+    def fake_run_erc(report_name: str) -> tuple[Path, dict | None, str | None]:
+        report_path = sample_project / "output" / report_name
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report = {"sheets": [{"path": "/", "violations": []}]}
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        return report_path, report, None
+
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_erc_report", fake_run_erc)
+
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+    await call_tool_text(
+        server,
+        "sch_build_circuit",
+        {
+            "symbols": [
+                {
+                    "library": "Device",
+                    "symbol_name": "R",
+                    "reference": "R1",
+                    "value": "10k",
+                    "footprint": "Resistor_SMD:R_0805",
+                    "x_mm": 50.8,
+                    "y_mm": 50.8,
+                }
+            ],
+            "labels": [
+                {"name": "GND", "x_mm": 48.26, "y_mm": 50.8},
+                {"name": "3V3_DIG", "x_mm": 53.34, "y_mm": 50.8},
+                {"name": "3V3_DIG", "x_mm": 101.6, "y_mm": 101.6},
+            ],
+            "wires": [
+                {"x1_mm": 101.6, "y1_mm": 101.6, "x2_mm": 104.14, "y2_mm": 101.6}
+            ],
+        },
+    )
+
+    result = await call_tool_text(server, "schematic_connectivity_gate", {})
+
+    assert "Schematic connectivity quality gate: PASS" in result
+    assert "Dangling label groups: 0" in result
+
+
+@pytest.mark.anyio
 async def test_pcb_quality_gate_pass(sample_project: Path, monkeypatch) -> None:
     """pcb_quality_gate should report PASS for clean PCB."""
 

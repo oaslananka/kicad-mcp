@@ -3194,8 +3194,33 @@ def _build_connectivity_groups(sch_file: Path) -> list[dict[str, Any]]:
                 }
             )
 
+    name_roots: dict[str, tuple[float, float]] = {}
+    for root, group in list(groups.items()):
+        for name in {*group["labels"], *group["power"]}:
+            if name in name_roots:
+                union(name_roots[name], root)
+            else:
+                name_roots[name] = root
+
+    collapsed_groups: dict[tuple[float, float], dict[str, Any]] = {}
+    for root, group in groups.items():
+        collapsed_root = find(root)
+        merged = collapsed_groups.setdefault(
+            collapsed_root,
+            {
+                "points": set(),
+                "labels": set(),
+                "power": set(),
+                "pins": [],
+            },
+        )
+        merged["points"].update(group["points"])
+        merged["labels"].update(group["labels"])
+        merged["power"].update(group["power"])
+        merged["pins"].extend(group["pins"])
+
     normalized_groups: list[dict[str, Any]] = []
-    for group in groups.values():
+    for group in collapsed_groups.values():
         names = sorted({*group["labels"], *group["power"]})
         normalized_groups.append(
             {
