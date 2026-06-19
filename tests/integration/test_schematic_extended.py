@@ -1115,8 +1115,8 @@ async def test_schematic_add_pin_labels_uses_symbol_edges_for_tall_side_pins(
     )
 
     assert "U1.1 -> TOP_LEFT @ (79.68, 79.68)" in result
-    assert "U1.3 -> VCC (power) @ (100.0, 69.52)" in result
-    assert "U1.4 -> GND (power) @ (100.0, 130.48)" in result
+    assert "U1.3 -> VCC (power) @ (100.0, 64.44)" in result
+    assert "U1.4 -> GND (power) @ (100.0, 135.56)" in result
 
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
     assert '(lib_id "power:VCC")' in schematic
@@ -1172,6 +1172,54 @@ async def test_schematic_add_pin_labels_staggers_neighbouring_terminals(
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
     assert '(global_label "SIG_A"' in schematic
     assert '(global_label "SIG_B"' in schematic
+
+
+@pytest.mark.anyio
+async def test_schematic_add_pin_labels_clears_vertical_symbol_value_text(
+    sample_project, mock_kicad
+) -> None:
+    """Downward terminals should clear the host symbol's Value field."""
+    symbols_dir = sample_project.parent / "symbols"
+    (symbols_dir / "Custom.kicad_sym").write_text(
+        (
+            "(kicad_symbol_lib (version 20250316) (generator pytest)\n"
+            '  (symbol "BottomPinPart"\n'
+            '    (property "Reference" "R" (id 0) (at 0 -3.81 0))\n'
+            '    (property "Value" "10k" (id 1) (at 0 3.81 0))\n'
+            '    (symbol "BottomPinPart_1_1"\n'
+            '      (pin passive line (at 0 -7.62 90) (length 2.54) (name "BOT") (number "2"))\n'
+            "    )\n"
+            "  )\n"
+            ")\n"
+        ),
+        encoding="utf-8",
+    )
+    server = build_server("schematic")
+    await call_tool_text(
+        server,
+        "sch_add_symbol",
+        {
+            "library": "Custom",
+            "symbol_name": "BottomPinPart",
+            "x_mm": 50.8,
+            "y_mm": 50.8,
+            "reference": "R5",
+            "value": "10k",
+            "snap_to_grid": False,
+        },
+    )
+
+    result = await call_tool_text(
+        server,
+        "sch_add_pin_labels",
+        {"connections": [{"reference": "R5", "pin": "2", "net": "WDT_RST"}]},
+    )
+
+    assert "R5.2 -> WDT_RST @ (50.8, 68.58)" in result
+    schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+    assert '(global_label "WDT_RST"' in schematic
+    assert "(at 50.8 68.58 270)" in schematic
+    assert "(at 50.8 63.5 270)" not in schematic
 
 
 @pytest.mark.anyio
