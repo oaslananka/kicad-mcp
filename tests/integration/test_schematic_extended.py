@@ -783,6 +783,30 @@ async def test_schematic_add_power_symbol_rotated(sample_project, mock_kicad) ->
 
 
 @pytest.mark.anyio
+async def test_schematic_add_power_symbol_preserves_unsnapped_coordinate(
+    sample_project, mock_kicad
+) -> None:
+    """snap_to_grid=False should preserve the exact requested power-symbol origin."""
+    server = build_server("schematic")
+    result = await call_tool_text(
+        server,
+        "sch_add_power_symbol",
+        {
+            "name": "GND",
+            "x_mm": 340.13,
+            "y_mm": 70.37,
+            "snap_to_grid": False,
+        },
+    )
+
+    schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+    assert "Power symbol GND placed at (340.13, 70.37)" in result
+    assert '(lib_id "power:GND")' in schematic
+    assert "\t\t(at 340.13 70.37 0)" in schematic
+    assert "233.68" not in schematic
+
+
+@pytest.mark.anyio
 async def test_schematic_add_symbol_with_unit(sample_project, mock_kicad) -> None:
     """sch_add_symbol should support unit parameter for multi-unit symbols."""
     server = build_server("schematic")
