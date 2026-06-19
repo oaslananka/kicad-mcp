@@ -409,6 +409,55 @@ async def test_schematic_quality_gate_pass(sample_project: Path, monkeypatch) ->
 
 
 @pytest.mark.anyio
+async def test_schematic_quality_gate_ignores_empty_child_sheet_erc(
+    sample_project: Path,
+    monkeypatch,
+) -> None:
+    """Empty child-sheet placeholders should not hard-fail schematic quality."""
+
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+    await call_tool_text(
+        server,
+        "sch_create_sheet",
+        {
+            "name": "Future IO",
+            "filename": "future_io.kicad_sch",
+            "x_mm": 50.8,
+            "y_mm": 50.8,
+        },
+    )
+
+    def fake_run_erc(report_name: str) -> tuple[Path, dict | None, str | None]:
+        report_path = sample_project / "output" / report_name
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report = {
+            "sheets": [
+                {
+                    "path": "Future IO",
+                    "violations": [
+                        {
+                            "severity": "error",
+                            "type": "pin_not_connected",
+                            "description": "Placeholder child sheet has no real circuit yet",
+                        }
+                    ],
+                }
+            ]
+        }
+        report_path.write_text(json.dumps(report), encoding="utf-8")
+        return report_path, report, None
+
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_erc_report", fake_run_erc)
+
+    result = await call_tool_text(server, "schematic_quality_gate", {})
+
+    assert "Schematic quality gate: PASS" in result
+    assert "ERC violations: 0" in result
+    assert "Ignored empty child-sheet ERC violations: 1" in result
+
+
+@pytest.mark.anyio
 async def test_schematic_quality_gate_fail(sample_project: Path, monkeypatch) -> None:
     """schematic_quality_gate should report FAIL for schematic with violations."""
 

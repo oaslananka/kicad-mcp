@@ -132,9 +132,32 @@ def _entries(report: dict[str, object], key: str) -> list[dict[str, object]]:
     return cast(list[dict[str, object]], report.get(key, []))
 
 
-def _erc_violations(report: dict[str, object]) -> list[dict[str, object]]:
+def _normalize_erc_sheet_id(value: object) -> str:
+    return str(value or "").strip().strip("/").replace("\\", "/")
+
+
+def _erc_sheet_matches_any(sheet: dict[str, object], ignored_sheet_ids: set[str]) -> bool:
+    if not ignored_sheet_ids:
+        return False
+    candidates = {
+        _normalize_erc_sheet_id(sheet.get("path")),
+        _normalize_erc_sheet_id(sheet.get("sheet")),
+        _normalize_erc_sheet_id(sheet.get("name")),
+        _normalize_erc_sheet_id(sheet.get("file")),
+        _normalize_erc_sheet_id(sheet.get("filename")),
+    }
+    return any(candidate and candidate in ignored_sheet_ids for candidate in candidates)
+
+
+def _erc_violations(
+    report: dict[str, object],
+    ignored_sheet_ids: set[str] | None = None,
+) -> list[dict[str, object]]:
+    ignored = ignored_sheet_ids or set()
     violations = list(_entries(report, "violations"))
     for sheet in cast(list[dict[str, object]], report.get("sheets", [])):
+        if _erc_sheet_matches_any(sheet, ignored):
+            continue
         violations.extend(cast(list[dict[str, object]], sheet.get("violations", [])))
     return violations
 
@@ -695,9 +718,18 @@ def _evaluate_schematic_gate() -> GateOutcome:
             summary=f"ERC report was unavailable ({error or 'unknown error'}).",
         )
 
-    violations = _erc_violations(report)
     cfg = get_config()
+    ignored_empty_sheets: set[str] = set()
+    if cfg.sch_file is not None:
+        ignored_empty_sheets = _empty_child_sheet_ids(cfg.sch_file)
+    raw_violations = _erc_violations(report)
+    violations = _erc_violations(report, ignored_empty_sheets)
+    ignored_violation_count = len(raw_violations) - len(violations)
     details = [f"ERC violations: {len(violations)}"]
+    if ignored_violation_count:
+        details.append(
+            f"Ignored empty child-sheet ERC violations: {ignored_violation_count}"
+        )
     if cfg.sch_file is not None:
         try:
             data = parse_schematic_file(cfg.sch_file)
@@ -769,6 +801,42 @@ def _hierarchical_labels(sch_file: Path) -> set[str]:
         _unescape_sexpr_string(match.group(1))
         for match in re.finditer(r'\(hierarchical_label\s+"((?:\\.|[^"\\])*)"', content)
     }
+
+
+def _empty_child_sheet_ids(top_file: Path) -> set[str]:
+    from .schematic import parse_schematic_file
+
+    ignored: set[str] = set()
+    try:
+        contracts = _sheet_contracts(top_file)
+    except OSError:
+        return ignored
+
+    for contract in contracts:
+        filename = str(contract.get("filename", ""))
+        if not filename:
+            continue
+        child_path = top_file.parent / filename
+        if not child_path.exists():
+            continue
+        try:
+            data = parse_schematic_file(child_path)
+        except (OSError, RuntimeError, ValueError):
+            continue
+        item_count = (
+            len(cast(list[object], data.get("symbols", [])))
+            + len(cast(list[object], data.get("power_symbols", [])))
+            + len(cast(list[object], data.get("wires", [])))
+            + len(cast(list[object], data.get("labels", [])))
+        )
+        if item_count != 0:
+            continue
+        name = str(contract.get("name", ""))
+        for candidate in {name, filename, child_path.name, child_path.stem}:
+            normalized = _normalize_erc_sheet_id(candidate)
+            if normalized:
+                ignored.add(normalized)
+    return ignored
 
 
 def _evaluate_schematic_connectivity_gate() -> GateOutcome:
