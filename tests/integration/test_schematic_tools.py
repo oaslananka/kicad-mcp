@@ -1817,6 +1817,57 @@ async def test_schematic_auto_place_functional_applies_design_intent_spacing(
 
 
 @pytest.mark.anyio
+async def test_build_circuit_preserves_existing_sheet_paper(sample_project, mock_kicad) -> None:
+    """sch_build_circuit should not reset an enlarged sheet back to A4."""
+    server = build_server("schematic")
+    await call_tool_text(server, "sch_set_sheet_size", {"paper": "A3"})
+
+    await call_tool_text(
+        server,
+        "sch_build_circuit",
+        {
+            "symbols": [
+                {
+                    "library": "Device",
+                    "symbol_name": "R",
+                    "x_mm": 10.16,
+                    "y_mm": 10.16,
+                    "reference": "R1",
+                    "value": "10k",
+                }
+            ]
+        },
+    )
+
+    schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+    assert '(paper "A3")' in schematic
+    assert '(paper "A4")' not in schematic
+
+
+@pytest.mark.anyio
+async def test_build_circuit_preserves_user_sheet_paper_dimensions(
+    sample_project, mock_kicad
+) -> None:
+    """sch_build_circuit should preserve custom User paper dimensions."""
+    sch_file = sample_project / "demo.kicad_sch"
+    text = sch_file.read_text(encoding="utf-8")
+    sch_file.write_text(
+        re.sub(r'\(paper\s+"[^"]+"\)', '(paper "User" 298.45 217.3224)', text, count=1),
+        encoding="utf-8",
+    )
+    server = build_server("schematic")
+
+    await call_tool_text(
+        server,
+        "sch_build_circuit",
+        {"symbols": [], "wires": [], "labels": [], "power_symbols": []},
+    )
+
+    schematic = sch_file.read_text(encoding="utf-8")
+    assert '(paper "User" 298.45 217.3224)' in schematic
+
+
+@pytest.mark.anyio
 async def test_build_circuit_empty(sample_project, mock_kicad) -> None:
     """sch_build_circuit with all empty lists must not raise."""
     server = build_server("schematic")

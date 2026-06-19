@@ -1043,6 +1043,18 @@ def _read_sheet_paper(sch_file: Path) -> str:
     return "A4"
 
 
+def _read_sheet_paper_declaration(sch_file: Path) -> str:
+    """Read the full paper declaration from a schematic, including User dimensions."""
+    try:
+        text = sch_file.read_text(encoding="utf-8", errors="replace")
+        match = re.search(r'\(paper\s+"[^"]+"(?:\s+[\d.]+\s+[\d.]+)?\)', text)
+        if match:
+            return match.group(0)
+    except Exception as exc:
+        logger.debug("sheet_paper_declaration_parse_failed", error=str(exc))
+    return '(paper "A4")'
+
+
 def _symbol_bbox_bounds(symbol: dict[str, Any]) -> tuple[float, float, float, float]:
     """Estimate a symbol bounding box and widen it to include routed pin tips."""
     x = float(symbol.get("x", symbol.get("x_mm", 0.0)) or 0.0)
@@ -4922,6 +4934,8 @@ def register(mcp: FastMCP) -> None:
                 f"Alias matches: {resolution_stats['pin_alias_resolutions']}."
             )
 
+        sch_file = _get_schematic_file()
+        paper_declaration = _read_sheet_paper_declaration(sch_file)
         root_uuid = new_uuid()
         cfg = get_config()
         project_name = cfg.project_file.stem if cfg.project_file is not None else "KiCadMCP"
@@ -5026,7 +5040,7 @@ def register(mcp: FastMCP) -> None:
             "\t(version 20250316)\n"
             '\t(generator "kicad-mcp-pro")\n'
             f'\t(uuid "{root_uuid}")\n'
-            '\t(paper "A4")\n'
+            f"\t{paper_declaration}\n"
             f"{lib_section}\n"
             + "\n".join(elements)
             + (
@@ -5041,7 +5055,7 @@ def register(mcp: FastMCP) -> None:
         )
         content = _normalize_schematic_wire_connectivity(content)
         _validate_schematic_text(content)
-        _get_schematic_file().write_text(content, encoding="utf-8")
+        sch_file.write_text(content, encoding="utf-8")
         result = _reload_schematic()
         if auto_layout and raw_nets:
             summary = (
