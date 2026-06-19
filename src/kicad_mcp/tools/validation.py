@@ -228,13 +228,20 @@ def _finding_for_gate_detail(outcome: GateOutcome, detail: str) -> Finding:
 
 
 def _gate_findings(outcome: GateOutcome) -> list[Finding]:
-    actionable = [
+    # Only explicitly tagged lines describe an actionable problem. Plain detail
+    # lines are informational metrics (counts, totals, even healthy zero-counts)
+    # and must never be promoted to error findings just because the gate failed.
+    tagged = [
         detail
         for detail in outcome.details
-        if outcome.status != "PASS" or detail.strip().startswith(("FAIL: ", "WARN: ", "BLOCKED: "))
+        if detail.strip().startswith(("FAIL: ", "WARN: ", "BLOCKED: "))
     ]
-    if outcome.status != "PASS" and not actionable:
-        actionable = [outcome.summary]
+    if outcome.status == "PASS":
+        return [_finding_for_gate_detail(outcome, detail) for detail in tagged]
+    # A non-passing gate surfaces its tagged failure lines. Some gates carry the
+    # failure only in the summary plus untagged metrics; for those, fall back to
+    # a single finding built from the summary rather than flooding the list.
+    actionable = tagged or [outcome.summary]
     return [_finding_for_gate_detail(outcome, detail) for detail in actionable]
 
 
@@ -707,6 +714,7 @@ def _evaluate_schematic_gate() -> GateOutcome:
                 for group in groups
                 if len(cast(list[dict[str, object]], group["pins"])) == 1
                 and not cast(list[str], group["names"])
+                and not group.get("no_connect")
             ]
             details.extend(
                 [
@@ -864,7 +872,11 @@ def _evaluate_schematic_connectivity_gate() -> GateOutcome:
             )
 
         unnamed_groups = [
-            group for group in groups if not group["names"] and len(group["pins"]) == 1
+            group
+            for group in groups
+            if not group["names"]
+            and len(group["pins"]) == 1
+            and not group.get("no_connect")
         ]
         unnamed_single_pin_groups += len(unnamed_groups)
         for group in unnamed_groups[:8]:
