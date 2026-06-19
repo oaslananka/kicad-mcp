@@ -17,6 +17,22 @@ def test_find_component_contract_matches_footprint_pattern() -> None:
     assert contract.key == "usb_c_power_entry"
 
 
+def test_find_component_contract_matches_ap2112k_exact_lib_id() -> None:
+    contract = find_component_contract(lib_id="Regulator_Linear:AP2112K-3.3")
+
+    assert contract is not None
+    assert contract.key == "ap2112k_3v3"
+
+
+def test_find_component_contract_does_not_match_generic_regulator_footprint() -> None:
+    contract = find_component_contract(
+        lib_id="Regulator_Linear:TPS7A20xxxDBV",
+        footprint="Package_TO_SOT_SMD:SOT-23-5",
+    )
+
+    assert contract is None
+
+
 def test_find_component_contract_returns_none_for_unknown_component() -> None:
     assert find_component_contract(lib_id="Device:R", footprint="Resistor_SMD:R_0805") is None
 
