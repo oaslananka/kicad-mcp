@@ -4159,7 +4159,12 @@ def register(mcp: FastMCP) -> None:
             px, py = point
             pin_positions = get_pin_positions(library, symbol_name, ox, oy, rot, unit)
             ux, uy = _pin_label_stub_direction(point, (ox, oy), pin_positions.values())
-            length = stub_mm
+            # KiCad places a symbol's Reference/Value text close to its vertical
+            # body extents.  A 5.08 mm up/down stub can land the generated
+            # terminal on top of that field text (notably vertical R/C symbols),
+            # so vertical terminals get a longer minimum clearance while keeping
+            # horizontal side-pin behavior unchanged.
+            length = max(stub_mm, 10.16) if uy else stub_mm
             ex = round(px + ux * length, 4)
             ey = round(py + uy * length, 4)
             stagger_steps = 0
