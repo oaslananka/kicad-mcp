@@ -355,12 +355,156 @@ async def test_build_circuit_netlist_auto_layout_generates_wires(
 
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
     assert "Applied netlist-aware auto-layout" in result
-    assert "generated 7 wire segment" in result
-    assert '(label "VIN"' in schematic
-    assert '(label "MID"' in schematic
+    assert "generated 4 collision-safe terminal stub" in result
+    assert '(global_label "VIN"' in schematic
+    assert schematic.count('(global_label "MID"') == 2
     assert '(lib_id "power:GND")' in schematic
-    assert "(pts (xy 53.34 50.8) (xy 86.36 50.8))" in schematic
-    assert "(pts (xy 88.9 50.8) (xy 88.9 68.58))" in schematic
+    # Netlist auto-layout should no longer route long star-shaped wires between
+    # symbols; it emits one short local stub per pin endpoint and lets named
+    # terminals carry connectivity.
+    assert "(pts (xy 53.34 50.8) (xy 86.36 50.8))" not in schematic
+    assert "(pts (xy 88.9 50.8) (xy 88.9 68.58))" not in schematic
+
+
+@pytest.mark.anyio
+async def test_build_circuit_netlist_auto_layout_uses_safe_usb_terminals(
+    sample_project, mock_kicad
+) -> None:
+    """SismoSmart-like USB front end nets must not collapse onto shared labels."""
+    symbols_dir = sample_project.parent / "symbols"
+    (symbols_dir / "USBFixture.kicad_sym").write_text(
+        (
+            "(kicad_symbol_lib (version 20250316) (generator pytest)\n"
+            '  (symbol "UsbPort"\n'
+            '    (property "Reference" "J" (id 0) (at 0 -15.24 0))\n'
+            '    (property "Value" "UsbPort" (id 1) (at 0 -17.78 0))\n'
+            '    (pin passive line (at -5.08 -7.62 0) (length 2.54) (name "VBUS") (number "1"))\n'
+            '    (pin passive line (at -5.08 -2.54 0) (length 2.54) (name "DP") (number "2"))\n'
+            '    (pin passive line (at -5.08 2.54 0) (length 2.54) (name "DM") (number "3"))\n'
+            '    (pin passive line (at -5.08 7.62 0) (length 2.54) (name "GND") (number "4"))\n'
+            '    (pin passive line (at -5.08 12.7 0) (length 2.54) (name "CC1") (number "5"))\n'
+            '    (pin passive line (at -5.08 17.78 0) (length 2.54) (name "CC2") (number "6"))\n'
+            "  )\n"
+            '  (symbol "UsbEsd"\n'
+            '    (property "Reference" "U" (id 0) (at 0 -12.7 0))\n'
+            '    (property "Value" "UsbEsd" (id 1) (at 0 -15.24 0))\n'
+            '    (pin passive line (at 5.08 -7.62 180) (length 2.54) (name "VBUS") (number "1"))\n'
+            '    (pin passive line (at 5.08 -2.54 180) (length 2.54) (name "DP") (number "2"))\n'
+            '    (pin passive line (at 5.08 2.54 180) (length 2.54) (name "DM") (number "3"))\n'
+            '    (pin passive line (at 5.08 7.62 180) (length 2.54) (name "GND") (number "4"))\n'
+            "  )\n"
+            ")\n"
+        ),
+        encoding="utf-8",
+    )
+
+    server = build_server("schematic")
+    result = await call_tool_text(
+        server,
+        "sch_build_circuit",
+        {
+            "auto_layout": True,
+            "symbols": [
+                {
+                    "library": "USBFixture",
+                    "symbol_name": "UsbPort",
+                    "reference": "J1",
+                    "value": "USB-C",
+                    "footprint": "Connector_USB:USB_C_Receptacle_USB2.0_16P",
+                },
+                {
+                    "library": "USBFixture",
+                    "symbol_name": "UsbEsd",
+                    "reference": "U6",
+                    "value": "USBLC6",
+                    "footprint": "Package_TO_SOT_SMD:SOT-23-6",
+                },
+                {
+                    "library": "Device",
+                    "symbol_name": "R",
+                    "reference": "R1",
+                    "value": "5.1k",
+                    "footprint": "Resistor_SMD:R_0402",
+                },
+                {
+                    "library": "Device",
+                    "symbol_name": "R",
+                    "reference": "R2",
+                    "value": "5.1k",
+                    "footprint": "Resistor_SMD:R_0402",
+                },
+            ],
+            "nets": [
+                {
+                    "name": "VBUS_5V",
+                    "endpoints": [
+                        {"reference": "J1", "pin_name": "VBUS"},
+                        {"reference": "U6", "pin_name": "VBUS"},
+                    ],
+                },
+                {
+                    "name": "USB_DP",
+                    "endpoints": [
+                        {"reference": "J1", "pin_name": "DP"},
+                        {"reference": "U6", "pin_name": "DP"},
+                    ],
+                },
+                {
+                    "name": "USB_DM",
+                    "endpoints": [
+                        {"reference": "J1", "pin_name": "DM"},
+                        {"reference": "U6", "pin_name": "DM"},
+                    ],
+                },
+                {
+                    "name": "GND",
+                    "endpoints": [
+                        {"reference": "J1", "pin_name": "GND"},
+                        {"reference": "U6", "pin_name": "GND"},
+                        {"reference": "R1", "pin": "2"},
+                        {"reference": "R2", "pin": "2"},
+                    ],
+                },
+                {
+                    "name": "CC1",
+                    "endpoints": [
+                        {"reference": "J1", "pin_name": "CC1"},
+                        {"reference": "R1", "pin": "1"},
+                    ],
+                },
+                {
+                    "name": "CC2",
+                    "endpoints": [
+                        {"reference": "J1", "pin_name": "CC2"},
+                        {"reference": "R2", "pin": "1"},
+                    ],
+                },
+            ],
+        },
+    )
+
+    schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+    assert "generated 14 collision-safe terminal stub" in result
+    assert '(lib_id "power:VBUS_5V")' in schematic
+    assert '(lib_id "power:GND")' in schematic
+    assert '(global_label "USB_DP"' in schematic
+    assert '(global_label "USB_DM"' in schematic
+    assert '(global_label "CC1"' in schematic
+    assert '(global_label "CC2"' in schematic
+
+    label_matches = re.findall(
+        r'\(global_label "([^"]+)".*?\(at ([\d.-]+) ([\d.-]+) ',
+        schematic,
+        flags=re.S,
+    )
+    by_coord: dict[tuple[str, str], str] = {}
+    for name, x, y in label_matches:
+        if name not in {"USB_DP", "USB_DM", "CC1", "CC2"}:
+            continue
+        coord = (x, y)
+        assert coord not in by_coord or by_coord[coord] == name
+        by_coord[coord] = name
+    assert set(by_coord.values()) == {"USB_DP", "USB_DM", "CC1", "CC2"}
 
 
 @pytest.mark.anyio
@@ -409,7 +553,7 @@ async def test_analyze_net_compilation_reports_routable_nets(
     assert "- Nets requested: 3" in result
     assert "- Routable nets: 3" in result
     assert "- Unresolved nets: 0" in result
-    assert "- Generated wire segments: 7" in result
+    assert "- Generated terminal stubs: 4" in result
 
 
 @pytest.mark.anyio
@@ -502,7 +646,7 @@ async def test_build_circuit_surfaces_partial_unresolved_nets(
         },
     )
 
-    assert "could not be auto-routed" in result
+    assert "could not be terminalized safely" in result
     assert "1 net(s)" in result
     assert "BROKEN_NET" in result
 
@@ -540,7 +684,7 @@ async def test_build_circuit_netlist_auto_layout_raises_when_no_wires_resolve(
         },
     )
 
-    assert "could not generate any wire segments" in error_text
+    assert "could not generate any safe terminal stubs" in error_text
     assert "BROKEN_NET" in error_text
     assert "U9.1" in error_text
     assert "U10.2" in error_text
@@ -823,8 +967,8 @@ async def test_build_circuit_netlist_auto_layout_uses_symbol_unit_for_routing(
     # Unit-2 pins (OUTB/-B) are present, confirming the requested unit was embedded.
     assert '(name "OUTB")' in schematic
     assert '(name "-B")' in schematic
-    assert '(label "OUT2"' in schematic
-    assert '(label "FB2"' in schematic
+    assert '(global_label "OUT2"' in schematic
+    assert '(global_label "FB2"' in schematic
     assert schematic.count("(wire") >= 3
 
 
@@ -878,8 +1022,8 @@ async def test_build_circuit_netlist_auto_layout_resolves_pin_names_and_aliases(
 
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
     assert "Applied netlist-aware auto-layout" in result
-    assert '(label "OUT_ALIAS"' in schematic
-    assert '(label "INPUT_ALIAS"' in schematic
+    assert '(global_label "OUT_ALIAS"' in schematic
+    assert '(global_label "INPUT_ALIAS"' in schematic
     assert schematic.count("(wire") >= 3
 
 

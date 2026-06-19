@@ -99,6 +99,13 @@ POWER_NET_NAMES = {
     "+12V",
     "-5V",
     "-12V",
+    "VBUS_5V",
+    "VPOE_5V",
+    "VBAT",
+    "5V_SYS",
+    "3V3_DIG",
+    "3V3_ANA",
+    "VRTC",
 }
 logger = structlog.get_logger(__name__)
 _SCHEMATIC_STATE_DIRNAME = ".kicad-mcp"
@@ -1237,7 +1244,15 @@ def _net_name(net: dict[str, Any]) -> str:
 
 def _is_power_net(name: str) -> bool:
     upper_name = name.upper()
-    return upper_name in POWER_NET_NAMES or upper_name.startswith(("+", "-"))
+    if upper_name in POWER_NET_NAMES or upper_name.startswith(("+", "-")):
+        return True
+    if re.match(r"^\d+(?:V\d*)?(?:_[A-Z0-9]+)?$", upper_name):
+        return "V" in upper_name
+    if upper_name.startswith(("V", "VBUS", "VBAT", "VPOE")) and any(
+        char.isdigit() for char in upper_name
+    ):
+        return True
+    return False
 
 
 def _normalize_net_endpoint(endpoint: object) -> dict[str, Any]:
@@ -1388,8 +1403,6 @@ def _apply_netlist_auto_layout(
     laid_out_symbols = [dict(item) for item in symbols]
     laid_out_powers = [dict(item) for item in power_symbols]
     laid_out_labels = [dict(item) for item in labels]
-    _ensure_netlist_terminals(laid_out_powers, laid_out_labels, nets)
-
     refs = [str(symbol["reference"]) for symbol in laid_out_symbols if symbol.get("reference")]
     ordered_refs = _order_refs_by_connectivity(refs, nets)
 
@@ -2612,6 +2625,203 @@ def _describe_net_endpoint(endpoint: dict[str, Any]) -> str:
     return "<unresolved-endpoint>"
 
 
+def _terminal_rotation_from_vector(ux: float, uy: float) -> int:
+    return 0 if ux > 0 else 180 if ux < 0 else 90 if uy < 0 else 270
+
+
+def _plan_netlist_pin_terminals(
+    symbols: list[AddSymbolInput],
+    powers: list[PowerSymbolInput],
+    labels: list[AddLabelInput],
+    nets: list[dict[str, Any]],
+    snap_to_grid: bool,
+) -> tuple[
+    list[dict[str, float | bool]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    dict[str, int],
+]:
+    """Plan collision-safe per-pin net terminals for netlist auto-layout.
+
+    Netlist-aware auto-layout must not draw long routed wires between arbitrary
+    pins.  A routed Manhattan star can cross unrelated pins or labels and KiCad
+    will merge by geometry.  Instead, each pin endpoint gets a short outward stub
+    plus a same-named terminal.  Signal nets use global labels; power nets use
+    conventional power symbols.  Same-named terminals connect by name rather than
+    by accidental wire geometry.
+    """
+    symbol_points: dict[str, dict[str, tuple[float, float]]] = {}
+    symbol_pin_aliases: dict[str, dict[str, tuple[float, float]]] = {}
+    symbol_centers: dict[str, tuple[float, float]] = {}
+    for symbol in symbols:
+        x, y = _snap_point(symbol.x_mm, symbol.y_mm, snap_to_grid and symbol.snap_to_grid)
+        symbol_centers[symbol.reference] = (x, y)
+        symbol_points[symbol.reference] = get_pin_positions(
+            symbol.library,
+            symbol.symbol_name,
+            x,
+            y,
+            symbol.rotation,
+            symbol.unit,
+        )
+        symbol_pin_aliases[symbol.reference] = get_pin_alias_positions(
+            symbol.library,
+            symbol.symbol_name,
+            x,
+            y,
+            symbol.rotation,
+            symbol.unit,
+        )
+
+    power_points: dict[str, tuple[float, float]] = {}
+    for power in powers:
+        x, y = _snap_point(power.x_mm, power.y_mm, snap_to_grid and power.snap_to_grid)
+        power_points.setdefault(power.name.upper(), (x, y))
+
+    label_points: dict[str, tuple[float, float]] = {}
+    for label in labels:
+        x, y = _snap_point(label.x_mm, label.y_mm, snap_to_grid and label.snap_to_grid)
+        label_points.setdefault(label.name, (x, y))
+
+    terminal_wires: list[dict[str, float | bool]] = []
+    terminal_labels: list[dict[str, Any]] = []
+    terminal_powers: list[dict[str, Any]] = []
+    unresolved_nets: list[dict[str, Any]] = []
+    terminal_points: dict[tuple[float, float], str] = {}
+    pin_points_seen: dict[tuple[float, float], str] = {}
+    resolution_stats = {
+        "resolved_endpoints": 0,
+        "unresolved_endpoints": 0,
+        "pin_alias_resolutions": 0,
+        "symbol_center_resolutions": 0,
+    }
+
+    for net in nets:
+        net_name = _net_name(net)
+        endpoints = _net_endpoints(net)
+        unresolved_endpoints: list[str] = []
+        unresolved_details: list[str] = []
+        generated_terminal_count = 0
+        for endpoint in endpoints:
+            reference = _endpoint_reference(endpoint)
+            if reference is None:
+                point, reason, resolution_kind = _resolve_net_endpoint(
+                    endpoint,
+                    net_name,
+                    symbol_points,
+                    symbol_pin_aliases,
+                    symbol_centers,
+                    power_points,
+                    label_points,
+                )
+                if point is None:
+                    endpoint_text = _describe_net_endpoint(endpoint)
+                    unresolved_endpoints.append(endpoint_text)
+                    unresolved_details.append(f"{endpoint_text}: {reason or 'unresolved endpoint'}")
+                    resolution_stats["unresolved_endpoints"] += 1
+                else:
+                    resolution_stats["resolved_endpoints"] += 1
+                    if resolution_kind == "pin_alias":
+                        resolution_stats["pin_alias_resolutions"] += 1
+                    elif resolution_kind == "symbol_center":
+                        resolution_stats["symbol_center_resolutions"] += 1
+                continue
+
+            point, reason, resolution_kind = _resolve_net_endpoint(
+                endpoint,
+                net_name,
+                symbol_points,
+                symbol_pin_aliases,
+                symbol_centers,
+                power_points,
+                label_points,
+            )
+            endpoint_text = _describe_net_endpoint(endpoint)
+            if point is None:
+                unresolved_endpoints.append(endpoint_text)
+                unresolved_details.append(f"{endpoint_text}: {reason or 'unresolved endpoint'}")
+                resolution_stats["unresolved_endpoints"] += 1
+                continue
+            if resolution_kind == "symbol_center":
+                unresolved_endpoints.append(endpoint_text)
+                unresolved_details.append(
+                    f"{endpoint_text}: pin is required for collision-safe auto-layout terminals"
+                )
+                resolution_stats["unresolved_endpoints"] += 1
+                continue
+
+            pin_key = _point_key(*point)
+            existing_pin_net = pin_points_seen.get(pin_key)
+            if existing_pin_net is not None and existing_pin_net != net_name:
+                unresolved_endpoints.append(endpoint_text)
+                unresolved_details.append(
+                    f"{endpoint_text}: pin point already assigned to net '{existing_pin_net}'"
+                )
+                resolution_stats["unresolved_endpoints"] += 1
+                continue
+            pin_points_seen[pin_key] = net_name
+
+            all_points = symbol_points.get(reference, {}).values()
+            ux, uy = _pin_label_stub_direction(point, symbol_centers[reference], all_points)
+            ex = round(point[0] + ux * 5.08, 4)
+            ey = round(point[1] + uy * 5.08, 4)
+            end_key = _point_key(ex, ey)
+            existing_terminal_net = terminal_points.get(end_key)
+            if existing_terminal_net is not None and existing_terminal_net != net_name:
+                unresolved_endpoints.append(endpoint_text)
+                unresolved_details.append(
+                    f"{endpoint_text}: terminal coordinate collides with net "
+                    f"'{existing_terminal_net}'"
+                )
+                resolution_stats["unresolved_endpoints"] += 1
+                continue
+            terminal_points[end_key] = net_name
+
+            terminal_wires.append(
+                {
+                    "x1_mm": point[0],
+                    "y1_mm": point[1],
+                    "x2_mm": ex,
+                    "y2_mm": ey,
+                    "snap_to_grid": False,
+                }
+            )
+            rotation = _terminal_rotation_from_vector(ux, uy)
+            if _is_power_net(net_name):
+                terminal_powers.append(
+                    {"name": net_name, "x_mm": ex, "y_mm": ey, "rotation": 0, "snap_to_grid": False}
+                )
+            else:
+                terminal_labels.append(
+                    {
+                        "name": net_name,
+                        "x_mm": ex,
+                        "y_mm": ey,
+                        "rotation": rotation,
+                        "snap_to_grid": False,
+                        "global_label": True,
+                        "shape": "bidirectional",
+                    }
+                )
+            generated_terminal_count += 1
+            resolution_stats["resolved_endpoints"] += 1
+            if resolution_kind == "pin_alias":
+                resolution_stats["pin_alias_resolutions"] += 1
+
+        if generated_terminal_count == 0 or unresolved_endpoints:
+            unresolved_nets.append(
+                {
+                    "name": net_name or "<unnamed>",
+                    "endpoint_count": len(endpoints),
+                    "resolved_count": generated_terminal_count,
+                    "unresolved_endpoints": unresolved_endpoints,
+                    "unresolved_details": unresolved_details,
+                }
+            )
+    return terminal_wires, terminal_powers, terminal_labels, unresolved_nets, resolution_stats
+
+
 def _plan_netlist_wires(
     symbols: list[AddSymbolInput],
     powers: list[PowerSymbolInput],
@@ -2780,13 +2990,36 @@ def _prepare_build_circuit_inputs(
         "symbol_center_resolutions": 0,
     }
     if raw_nets:
-        generated_wires, unresolved_nets, resolution_stats = _plan_netlist_wires(
-            validated_symbols,
-            validated_powers,
-            validated_labels,
-            raw_nets,
-            snap_to_grid,
-        )
+        if auto_layout:
+            generated_powers: list[dict[str, Any]]
+            generated_labels: list[dict[str, Any]]
+            (
+                generated_wires,
+                generated_powers,
+                generated_labels,
+                unresolved_nets,
+                resolution_stats,
+            ) = _plan_netlist_pin_terminals(
+                validated_symbols,
+                validated_powers,
+                validated_labels,
+                raw_nets,
+                snap_to_grid,
+            )
+            validated_powers.extend(
+                PowerSymbolInput.model_validate(item) for item in generated_powers
+            )
+            validated_labels.extend(
+                AddLabelInput.model_validate(item) for item in generated_labels
+            )
+        else:
+            generated_wires, unresolved_nets, resolution_stats = _plan_netlist_wires(
+                validated_symbols,
+                validated_powers,
+                validated_labels,
+                raw_nets,
+                snap_to_grid,
+            )
         validated_wires.extend(AddWireInput.model_validate(item) for item in generated_wires)
 
     return (
@@ -2823,7 +3056,10 @@ def _render_net_compilation_report(
             f"- Nets requested: {len(nets)}",
             f"- Routable nets: {len(nets) - len(unresolved_nets)}",
             f"- Unresolved nets: {len(unresolved_nets)}",
-            f"- Generated wire segments: {len(generated_wires)}",
+            (
+                f"- Generated {'terminal stubs' if auto_layout and nets else 'wire segments'}: "
+                f"{len(generated_wires)}"
+            ),
             f"- Resolved endpoints: {resolution_stats['resolved_endpoints']}",
             f"- Unresolved endpoints: {resolution_stats['unresolved_endpoints']}",
             f"- Pin alias matches: {resolution_stats['pin_alias_resolutions']}",
@@ -4501,8 +4737,8 @@ def register(mcp: FastMCP) -> None:
                 for item in unresolved_nets[:5]
             )
             raise ValueError(
-                "Netlist-aware auto-layout could not generate any wire segments. "
-                "The provided nets did not resolve to at least two routable endpoints. "
+                "Netlist-aware auto-layout could not generate any safe terminal stubs. "
+                "The provided nets did not resolve to collision-safe pin endpoints. "
                 "Use `sch_analyze_net_compilation()` to inspect unresolved nets, or "
                 "provide explicit reference+pin endpoints / explicit wires. "
                 f"Examples: {examples or 'no endpoints were routable'}. "
@@ -4593,7 +4829,16 @@ def register(mcp: FastMCP) -> None:
                 lbl.y_mm,
                 snap_to_grid and lbl.snap_to_grid,
             )
-            elements.append(label_block(lbl.name, label_x, label_y, lbl.rotation))
+            elements.append(
+                label_block(
+                    lbl.name,
+                    label_x,
+                    label_y,
+                    lbl.rotation,
+                    global_label=lbl.global_label,
+                    shape=lbl.shape,
+                )
+            )
 
         lib_section = "\t(lib_symbols\n"
         for lib_symbol in lib_symbols_content:
@@ -4624,7 +4869,7 @@ def register(mcp: FastMCP) -> None:
         if auto_layout and raw_nets:
             summary = (
                 f"{result}\nApplied netlist-aware auto-layout and generated "
-                f"{len(generated_wires)} wire segment(s)."
+                f"{len(generated_wires)} collision-safe terminal stub(s)."
             )
             # Never drop a connection silently: if some nets did not resolve to two
             # routable endpoints, surface them in the result, not just the server log.
@@ -4632,7 +4877,8 @@ def register(mcp: FastMCP) -> None:
                 names = ", ".join(str(item["name"]) for item in unresolved_nets[:8])
                 more = " …" if len(unresolved_nets) > 8 else ""
                 summary += (
-                    f"\nWARNING: {len(unresolved_nets)} net(s) could not be auto-routed and "
+                    f"\nWARNING: {len(unresolved_nets)} net(s) could not be "
+                    "terminalized safely and "
                     f"were left unconnected: {names}{more}. "
                     "Use sch_analyze_net_compilation() for per-endpoint details."
                 )
