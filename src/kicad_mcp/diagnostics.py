@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
 import platform
 import re
+import shutil
+import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any, ClassVar, Literal
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -46,6 +50,13 @@ class PackageDiagnostics(BaseModel):
 
     name: str = "kicad-mcp-pro"
     version: str = __version__
+    location: str | None = None
+    install_source: str = "installed_package"
+    repo_path: str | None = None
+    repo_version: str | None = None
+    git_branch: str | None = None
+    git_commit: str | None = None
+    version_drift: bool = False
 
 
 class PythonDiagnostics(BaseModel):
@@ -196,6 +207,122 @@ def _recent_errors(checks: list[CheckResult]) -> list[str]:
     ]
 
 
+def _pyproject_metadata(path: Path) -> tuple[str, str] | None:
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+    project = data.get("project")
+    if not isinstance(project, dict):
+        return None
+    name = project.get("name")
+    version = project.get("version")
+    if not isinstance(name, str) or not isinstance(version, str):
+        return None
+    return name, version
+
+
+def _find_checkout_root(start: Path) -> Path | None:
+    try:
+        current = start.expanduser().resolve()
+    except OSError:
+        return None
+    candidates = [current, *current.parents]
+    for candidate in candidates:
+        pyproject = candidate / "pyproject.toml"
+        metadata = _pyproject_metadata(pyproject)
+        if metadata is None:
+            continue
+        name, _version = metadata
+        if name == "kicad-mcp-pro":
+            return candidate
+    return None
+
+
+def _git_value(repo: Path, *args: str) -> str | None:
+    git_executable = shutil.which("git")
+    if git_executable is None:
+        return None
+    try:
+        result = subprocess.run(
+            [git_executable, "-C", str(repo), *args],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    value = result.stdout.strip()
+    return value or None
+
+
+def _checkout_candidates() -> list[Path]:
+    candidates: list[Path] = []
+    for env_name in ("KICAD_MCP_REPO_PATH", "KICAD_MCP_CHECKOUT_PATH"):
+        value = os.environ.get(env_name, "").strip()
+        if value:
+            candidates.append(Path(value))
+    candidates.append(Path.cwd())
+    candidates.append(Path(__file__).resolve())
+    return candidates
+
+
+def _package_diagnostics() -> tuple[PackageDiagnostics, list[CheckResult]]:
+    package_path = Path(__file__).resolve().parent
+    package_repo = _find_checkout_root(package_path)
+    checkout = next(
+        (
+            root
+            for candidate in _checkout_candidates()
+            if (root := _find_checkout_root(candidate)) is not None
+        ),
+        None,
+    )
+
+    install_source = "source_checkout" if package_repo is not None else "installed_package"
+    repo_version: str | None = None
+    git_branch: str | None = None
+    git_commit: str | None = None
+    checks: list[CheckResult] = []
+    if checkout is not None:
+        metadata = _pyproject_metadata(checkout / "pyproject.toml")
+        if metadata is not None:
+            _name, repo_version = metadata
+        git_branch = _git_value(checkout, "branch", "--show-current")
+        git_commit = _git_value(checkout, "rev-parse", "--short=12", "HEAD")
+
+    version_drift = bool(repo_version and repo_version != __version__)
+    diagnostics = PackageDiagnostics(
+        version=__version__,
+        location=str(package_path),
+        install_source=install_source,
+        repo_path=str(checkout) if checkout is not None else None,
+        repo_version=repo_version,
+        git_branch=git_branch,
+        git_commit=git_commit,
+        version_drift=version_drift,
+    )
+    if version_drift and checkout is not None:
+        checks.append(
+            CheckResult(
+                name="package_version_drift",
+                status="warn",
+                message=(
+                    f"Active server version {__version__} differs from checkout "
+                    f"{checkout} version {repo_version}."
+                ),
+                hint=(
+                    "Restart the MCP server from the checkout, reinstall the package in "
+                    "editable mode, or update the client MCP config to the intended entrypoint."
+                ),
+            )
+        )
+    return diagnostics, checks
+
+
 def _diagnostic_payload(report: DiagnosticReport) -> dict[str, Any]:
     payload = report.model_dump(mode="json", by_alias=True)
     DiagnosticReport.model_validate(payload)
@@ -308,6 +435,7 @@ def build_diagnostic_report(*, probe_cli: bool, probe_ipc: bool) -> DiagnosticRe
     """Build a diagnostics report without raising for non-fatal KiCad unavailability."""
     cfg = get_config()
     checks: list[CheckResult] = []
+    package_diagnostics, package_checks = _package_diagnostics()
 
     cli_found = _cli_found(cfg.kicad_cli)
     kicad_version: str | None = None
@@ -370,6 +498,9 @@ def build_diagnostic_report(*, probe_cli: bool, probe_ipc: bool) -> DiagnosticRe
             )
         )
 
+    if probe_cli:
+        checks.extend(package_checks)
+
     checks = [_redact_check(check) for check in checks]
 
     # Agent config checks (only in doctor mode, not health)
@@ -381,6 +512,7 @@ def build_diagnostic_report(*, probe_cli: bool, probe_ipc: bool) -> DiagnosticRe
     return DiagnosticReport(
         ok=ok,
         status=status,
+        package=package_diagnostics,
         python=PythonDiagnostics(executable=sys.executable),
         mcp=McpDiagnostics(
             transport_default=cfg.transport,
