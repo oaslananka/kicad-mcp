@@ -1729,10 +1729,30 @@ def register(mcp: FastMCP) -> None:
 
             kicad = get_kicad()
             lines.append(f"IPC version: {kicad.get_version()}")
-            pcb_docs = kicad.get_open_documents(DocumentType.DOCTYPE_PCB)
-            sch_docs = kicad.get_open_documents(DocumentType.DOCTYPE_SCHEMATIC)
-            lines.append(f"Open PCB documents: {len(pcb_docs)}")
-            lines.append(f"Open schematic documents: {len(sch_docs)}")
+
+            def _count_open_documents(doc_type: int) -> str:
+                # Probe each document type independently: when the matching
+                # editor is not open (e.g. no board while only eeschema runs),
+                # KiCad replies with an ApiError ("no handler available ...").
+                # That is not an IPC outage, so degrade gracefully instead of
+                # failing the whole version report.
+                try:
+                    return str(len(kicad.get_open_documents(doc_type)))
+                except Exception as exc:
+                    logger.debug(
+                        "kicad_version_doc_probe_failed",
+                        doc_type=doc_type,
+                        error=str(exc),
+                    )
+                    return "unavailable (editor not open)"
+
+            lines.append(
+                f"Open PCB documents: {_count_open_documents(DocumentType.DOCTYPE_PCB)}"
+            )
+            lines.append(
+                "Open schematic documents: "
+                f"{_count_open_documents(DocumentType.DOCTYPE_SCHEMATIC)}"
+            )
         except KiCadConnectionError as exc:
             lines.append(f"IPC connection: unavailable ({exc})")
         except Exception as exc:
