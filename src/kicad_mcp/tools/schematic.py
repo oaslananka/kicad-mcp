@@ -2116,6 +2116,52 @@ def get_pin_positions(
     return pins
 
 
+def _pin_label_stub_direction(
+    pin_point: tuple[float, float],
+    symbol_origin: tuple[float, float],
+    all_pin_points: Iterable[tuple[float, float]],
+) -> tuple[float, float]:
+    """Return an outward unit vector for a pin-label stub.
+
+    Dense/tall symbols such as MCU modules often have side pins whose
+    vertical distance from the symbol origin is larger than their horizontal
+    distance.  Using the origin as a dominant-axis proxy makes those side pins
+    stub vertically, which can overlap adjacent side-pin stubs and short nets.
+
+    Prefer the actual outer pin extents: pins on the left/right edge stub
+    horizontally, pins on the top/bottom edge stub vertically.  Fall back to
+    the historical origin-based dominant axis only for interior pins or
+    degenerate one-dimensional symbols.
+    """
+    px, py = pin_point
+    ox, oy = symbol_origin
+    points = list(all_pin_points)
+    if points:
+        xs = [x for x, _ in points]
+        ys = [y for _, y in points]
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+        # Pin coordinates are rounded to 1e-4 mm by get_pin_positions().  Use a
+        # small tolerance so grid/rotation floating point noise cannot flip a
+        # true edge pin into the origin fallback.
+        edge_tol = 1e-3
+        if (max_x - min_x) > edge_tol:
+            if abs(px - min_x) <= edge_tol:
+                return (-1.0, 0.0)
+            if abs(px - max_x) <= edge_tol:
+                return (1.0, 0.0)
+        if (max_y - min_y) > edge_tol:
+            if abs(py - min_y) <= edge_tol:
+                return (0.0, -1.0)
+            if abs(py - max_y) <= edge_tol:
+                return (0.0, 1.0)
+
+    dx, dy = px - ox, py - oy
+    if abs(dx) >= abs(dy):
+        return ((1.0 if dx >= 0 else -1.0), 0.0)
+    return (0.0, (1.0 if dy >= 0 else -1.0))
+
+
 def get_pin_alias_positions(
     library: str,
     symbol_name: str,
@@ -3603,8 +3649,8 @@ def register(mcp: FastMCP) -> None:
 
         Each connection is ``{"reference": "U3", "pin": "VIN" | "5", "net":
         "5V_SYS"}``; the pin may be a number or a name. The stub direction is
-        derived from the pin position relative to the symbol origin (dominant
-        axis), so the label lands outside the symbol and reads outward. Pins that
+        derived from the symbol edge the pin sits on, so the label lands outside
+        the symbol and reads outward. Pins that
         share a ``net`` are joined by their common label name. This is the clean
         alternative to placing bare labels directly on pins.
         """
@@ -3645,11 +3691,8 @@ def register(mcp: FastMCP) -> None:
                 results.append(f"{ref}.{pin}: pin not found")
                 continue
             px, py = point
-            dx, dy = px - ox, py - oy
-            if abs(dx) >= abs(dy):
-                ux, uy = (1.0 if dx >= 0 else -1.0), 0.0
-            else:
-                ux, uy = 0.0, (1.0 if dy >= 0 else -1.0)
+            pin_positions = get_pin_positions(library, symbol_name, ox, oy, rot, unit)
+            ux, uy = _pin_label_stub_direction(point, (ox, oy), pin_positions.values())
             ex = round(px + ux * stub_mm, 4)
             ey = round(py + uy * stub_mm, 4)
             rotation = 0 if ux > 0 else 180 if ux < 0 else 90 if uy < 0 else 270

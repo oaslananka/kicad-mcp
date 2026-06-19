@@ -1059,6 +1059,67 @@ async def test_schematic_add_pin_labels(sample_project, mock_kicad) -> None:
 
 
 @pytest.mark.anyio
+async def test_schematic_add_pin_labels_uses_symbol_edges_for_tall_side_pins(
+    sample_project, mock_kicad
+) -> None:
+    """Side pins on tall symbols should stub horizontally, not toward the origin."""
+    symbols_dir = sample_project.parent / "symbols"
+    (symbols_dir / "Custom.kicad_sym").write_text(
+        (
+            "(kicad_symbol_lib (version 20250316) (generator pytest)\n"
+            '  (symbol "TallIC"\n'
+            '    (property "Reference" "U" (id 0) (at 0 27.94 0))\n'
+            '    (property "Value" "TallIC" (id 1) (at 0 -27.94 0))\n'
+            '    (symbol "TallIC_1_1"\n'
+            "      (pin bidirectional line (at -15.24 20.32 0) "
+            '(length 2.54) (name "IO_TOP_LEFT") (number "1"))\\n'
+            "      (pin bidirectional line (at -15.24 -20.32 0) "
+            '(length 2.54) (name "IO_BOTTOM_LEFT") (number "2"))\\n'
+            '      (pin power_in line (at 0 25.4 270) (length 2.54) (name "VCC") (number "3"))\n'
+            '      (pin power_in line (at 0 -25.4 90) (length 2.54) (name "GND") (number "4"))\n'
+            "      (pin bidirectional line (at 15.24 0 180) "
+            '(length 2.54) (name "IO_RIGHT") (number "5"))\\n'
+            "    )\n"
+            "  )\n"
+            ")\n"
+        ),
+        encoding="utf-8",
+    )
+    server = build_server("schematic")
+    await call_tool_text(
+        server,
+        "sch_add_symbol",
+        {
+            "library": "Custom",
+            "symbol_name": "TallIC",
+            "x_mm": 100.0,
+            "y_mm": 100.0,
+            "reference": "U1",
+            "value": "TallIC",
+            "footprint": "",
+            "snap_to_grid": False,
+        },
+    )
+
+    result = await call_tool_text(
+        server,
+        "sch_add_pin_labels",
+        {
+            "connections": [
+                {"reference": "U1", "pin": "1", "net": "TOP_LEFT"},
+                {"reference": "U1", "pin": "3", "net": "VCC"},
+                {"reference": "U1", "pin": "4", "net": "GND"},
+            ],
+            "stub_mm": 5.08,
+        },
+    )
+
+    assert "U1.1 -> TOP_LEFT @ (79.68, 79.68)" in result
+    assert "U1.3 -> VCC @ (100.0, 69.52)" in result
+    assert "U1.4 -> GND @ (100.0, 130.48)" in result
+
+
+@pytest.mark.anyio
 async def test_schematic_delete_label(sample_project, mock_kicad) -> None:
     """sch_delete_label should remove a matching label from the schematic."""
     server = build_server("schematic")
