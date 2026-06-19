@@ -14,6 +14,7 @@ from kicad_mcp.diagnostics import (
     DiagnosticReport,
     KiCadDiagnostics,
     McpDiagnostics,
+    build_diagnostic_report,
 )
 from kicad_mcp.server import app
 
@@ -118,6 +119,33 @@ def test_cli_doctor_json_includes_schema_validated_setup_diagnostics(
     assert payload["live_context"]["available"] is False
     assert payload["recent_errors"]
     assert "super-secret" not in json.dumps(payload["recent_errors"])
+
+
+def test_doctor_reports_checkout_version_drift(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    checkout = tmp_path / "kicad-mcp"
+    checkout.mkdir()
+    (checkout / "pyproject.toml").write_text(
+        '[project]\nname = "kicad-mcp-pro"\nversion = "99.0.0"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("KICAD_MCP_REPO_PATH", str(checkout))
+    monkeypatch.setattr("kicad_mcp.diagnostics._agent_config_checks", lambda: [])
+
+    report = build_diagnostic_report(probe_cli=True, probe_ipc=False)
+
+    assert report.status == "degraded"
+    assert report.package.location
+    assert report.package.repo_path == str(checkout.resolve())
+    assert report.package.repo_version == "99.0.0"
+    assert report.package.version_drift is True
+    drift = [check for check in report.checks if check.name == "package_version_drift"]
+    assert len(drift) == 1
+    assert drift[0].status == "warn"
+    assert "Active server version" in drift[0].message
+    assert "Restart the MCP server" in drift[0].hint
 
 
 def test_cli_doctor_bundle_writes_redacted_debug_zip(
