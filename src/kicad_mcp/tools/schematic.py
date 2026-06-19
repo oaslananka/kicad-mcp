@@ -3110,8 +3110,23 @@ def _split_lib_id(lib_id: str) -> tuple[str, str]:
     return library, symbol_name
 
 
+def _extract_no_connects(content: str) -> set[tuple[float, float]]:
+    """Return schematic points carrying an explicit no-connect marker."""
+    points: set[tuple[float, float]] = set()
+    for match in re.finditer(
+        r"\(no_connect\s+\(at\s+([-\d.]+)\s+([-\d.]+)",
+        content,
+    ):
+        points.add(_point_key(float(match.group(1)), float(match.group(2))))
+    return points
+
+
 def _build_connectivity_groups(sch_file: Path) -> list[dict[str, Any]]:
     data = parse_schematic_file(sch_file)
+    try:
+        no_connect_points = _extract_no_connects(sch_file.read_text(encoding="utf-8"))
+    except OSError:
+        no_connect_points = set()
     parent: dict[tuple[float, float], tuple[float, float]] = {}
 
     def find(point: tuple[float, float]) -> tuple[float, float]:
@@ -3153,6 +3168,7 @@ def _build_connectivity_groups(sch_file: Path) -> list[dict[str, Any]]:
                 "labels": set(),
                 "power": set(),
                 "pins": [],
+                "no_connect": False,
             },
         )
 
@@ -3160,6 +3176,11 @@ def _build_connectivity_groups(sch_file: Path) -> list[dict[str, Any]]:
         group = ensure_group(_point_key(wire["x1"], wire["y1"]))
         group["points"].add(_point_key(wire["x1"], wire["y1"]))
         group["points"].add(_point_key(wire["x2"], wire["y2"]))
+
+    for point in no_connect_points:
+        group = ensure_group(point)
+        group["points"].add(point)
+        group["no_connect"] = True
 
     for label in data["labels"]:
         group = ensure_group((float(label["x"]), float(label["y"])))
@@ -3210,23 +3231,29 @@ def _build_connectivity_groups(sch_file: Path) -> list[dict[str, Any]]:
                 "labels": set(),
                 "power": set(),
                 "pins": [],
+                "no_connect": False,
             },
         )
         merged["points"].update(group["points"])
         merged["labels"].update(group["labels"])
         merged["power"].update(group["power"])
         merged["pins"].extend(group["pins"])
+        merged["no_connect"] = bool(merged["no_connect"] or group.get("no_connect"))
 
     normalized_groups: list[dict[str, Any]] = []
     for group in collapsed_groups.values():
         names = sorted({*group["labels"], *group["power"]})
+        points = sorted(group["points"])
         normalized_groups.append(
             {
                 "names": names,
-                "points": sorted(group["points"]),
+                "points": points,
                 "pins": sorted(
                     group["pins"],
                     key=lambda item: (item["reference"], item["pin"]),
+                ),
+                "no_connect": bool(
+                    group.get("no_connect") or any(point in no_connect_points for point in points)
                 ),
             }
         )
@@ -5356,7 +5383,12 @@ def register(mcp: FastMCP) -> None:
 
         lines = [f"Connectivity groups ({len(groups)} total):"]
         for index, group in enumerate(groups, start=1):
-            names = ", ".join(group["names"]) if group["names"] else "~unnamed"
+            if group["names"]:
+                names = ", ".join(group["names"])
+            elif group.get("no_connect"):
+                names = "~no-connect"
+            else:
+                names = "~unnamed"
             pins = (
                 ", ".join(f"{item['reference']}:{item['pin']}" for item in group["pins"]) or "none"
             )

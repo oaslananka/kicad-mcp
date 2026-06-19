@@ -971,7 +971,9 @@ def _evaluate_schematic_connectivity_gate() -> GateOutcome:
             )
 
         unnamed_groups = [
-            group for group in groups if not group["names"] and len(group["pins"]) == 1
+            group
+            for group in groups
+            if not group["names"] and len(group["pins"]) == 1 and not group.get("no_connect")
         ]
         unnamed_single_pin_groups += len(unnamed_groups)
         for group in unnamed_groups[:8]:
