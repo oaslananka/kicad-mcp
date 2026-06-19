@@ -4,7 +4,6 @@ import pytest
 
 from kicad_mcp.server import create_server
 from tests.conftest import call_tool_text
-from unittest.mock import patch, MagicMock
 
 
 @pytest.mark.anyio
