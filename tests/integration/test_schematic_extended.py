@@ -1175,6 +1175,71 @@ async def test_schematic_add_pin_labels_staggers_neighbouring_terminals(
 
 
 @pytest.mark.anyio
+async def test_schematic_add_pin_labels_dense_ic_preserves_pin_rows(
+    sample_project, mock_kicad
+) -> None:
+    """Large pin-label batches should not stagger every dense IC row."""
+    symbols_dir = sample_project.parent / "symbols"
+    pins = "\n".join(
+        f"      (pin bidirectional line (at -15.24 {-17.78 + (pin - 1) * 2.54:.2f} 0) "
+        f'(length 2.54) (name "P{pin}") (number "{pin}"))'
+        for pin in range(1, 17)
+    )
+    (symbols_dir / "Custom.kicad_sym").write_text(
+        (
+            "(kicad_symbol_lib (version 20250316) (generator pytest)\n"
+            '  (symbol "DenseIC"\n'
+            '    (property "Reference" "U" (id 0) (at 0 25.4 0))\n'
+            '    (property "Value" "DenseIC" (id 1) (at 0 -25.4 0))\n'
+            '    (symbol "DenseIC_1_1"\n'
+            f"{pins}\n"
+            "    )\n"
+            "  )\n"
+            ")\n"
+        ),
+        encoding="utf-8",
+    )
+    server = build_server("schematic")
+    await call_tool_text(
+        server,
+        "sch_add_symbol",
+        {
+            "library": "Custom",
+            "symbol_name": "DenseIC",
+            "x_mm": 100.0,
+            "y_mm": 100.0,
+            "reference": "U1",
+            "value": "DenseIC",
+            "snap_to_grid": False,
+        },
+    )
+
+    result = await call_tool_text(
+        server,
+        "sch_add_pin_labels",
+        {
+            "connections": [
+                {"reference": "U1", "pin": str(pin), "net": f"NET_{pin:02d}"}
+                for pin in range(1, 17)
+            ],
+        },
+    )
+
+    assert "dense terminal mode" in result
+    assert "; staggered" not in result
+    schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+    label_positions = re.findall(
+        r'\(global_label "NET_\d+".*?\(at ([\d.-]+) ([\d.-]+) ',
+        schematic,
+        re.DOTALL,
+    )
+    assert len(label_positions) == 16
+    assert len(set(label_positions)) == 16
+    graph = await call_tool_text(server, "sch_get_connectivity_graph", {})
+    assert graph.count("NET_") == 16
+
+
+@pytest.mark.anyio
 async def test_schematic_delete_label(sample_project, mock_kicad) -> None:
     """sch_delete_label should remove a matching label from the schematic."""
     server = build_server("schematic")
