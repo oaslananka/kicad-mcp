@@ -66,7 +66,6 @@ COMPONENT_CONTRACTS: tuple[ComponentContract, ...] = (
         key="ap2112k_3v3",
         category="regulator",
         lib_ids=("Regulator_Linear:AP2112K-3.3",),
-        footprint_patterns=("Package_TO_SOT_SMD:SOT-23-5*",),
         required_net_groups=(
             ("GND",),
             ("+5V", "VBUS"),
