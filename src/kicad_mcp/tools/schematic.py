@@ -2629,6 +2629,17 @@ def _terminal_rotation_from_vector(ux: float, uy: float) -> int:
     return 0 if ux > 0 else 180 if ux < 0 else 90 if uy < 0 else 270
 
 
+def _power_symbol_rotation_from_vector(ux: float, uy: float) -> int:
+    """Orient a power symbol outward from the connected pin stub."""
+    if uy > 0:
+        return 0
+    if uy < 0:
+        return 180
+    if ux > 0:
+        return 270
+    return 90
+
+
 def _plan_netlist_pin_terminals(
     symbols: list[AddSymbolInput],
     powers: list[PowerSymbolInput],
@@ -4083,14 +4094,15 @@ def register(mcp: FastMCP) -> None:
         sheet_file: str | None = None,
     ) -> str:
         """Connect placed-symbol pins to nets with a short outward wire stub plus a
-        label placed clear of the symbol body (avoids label-on-pin overlap).
+        terminal placed clear of the symbol body (avoids label-on-pin overlap).
 
         Each connection is ``{"reference": "U3", "pin": "VIN" | "5", "net":
         "5V_SYS"}``; the pin may be a number or a name. The stub direction is
-        derived from the symbol edge the pin sits on, so the label lands outside
-        the symbol and reads outward. Pins that
-        share a ``net`` are joined by their common label name. This is the clean
-        alternative to placing bare labels directly on pins.
+        derived from the symbol edge the pin sits on, so the terminal lands outside
+        the symbol and reads outward. Power nets get conventional power symbols;
+        other nets get labels. Pins that share a ``net`` are joined by their
+        common terminal name. This is the clean alternative to placing bare
+        labels directly on pins.
         """
         target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         data = parse_schematic_file(target.path)
@@ -4100,7 +4112,16 @@ def register(mcp: FastMCP) -> None:
             if ref:
                 placed[ref] = sym
 
-        blocks: list[str] = []
+        cfg = get_config()
+        project_name = cfg.project_file.stem if cfg.project_file is not None else "KiCadMCP"
+        root_uuid = str(data.get("uuid") or new_uuid())
+        wire_blocks: list[str] = []
+        terminal_blocks: list[str] = []
+        power_lib_defs: dict[str, str] = {}
+        occupied_terminals: list[tuple[float, float]] = []
+        terminal_clearance_mm = 6.0
+        stagger_step_mm = 2.54
+        max_stagger_steps = 5
         results: list[str] = []
         for conn in connections:
             ref = str(conn.get("reference", ""))
@@ -4132,25 +4153,73 @@ def register(mcp: FastMCP) -> None:
             px, py = point
             pin_positions = get_pin_positions(library, symbol_name, ox, oy, rot, unit)
             ux, uy = _pin_label_stub_direction(point, (ox, oy), pin_positions.values())
-            ex = round(px + ux * stub_mm, 4)
-            ey = round(py + uy * stub_mm, 4)
-            rotation = 0 if ux > 0 else 180 if ux < 0 else 90 if uy < 0 else 270
-            blocks.append(wire_block(px, py, ex, ey))
-            blocks.append(label_block(net, ex, ey, rotation, global_label=global_labels))
-            results.append(f"{ref}.{pin} -> {net} @ ({ex}, {ey})")
+            length = stub_mm
+            ex = round(px + ux * length, 4)
+            ey = round(py + uy * length, 4)
+            stagger_steps = 0
+            while stagger_steps < max_stagger_steps and any(
+                abs(ex - qx) < terminal_clearance_mm and abs(ey - qy) < terminal_clearance_mm
+                for qx, qy in occupied_terminals
+            ):
+                length += stagger_step_mm
+                ex = round(px + ux * length, 4)
+                ey = round(py + uy * length, 4)
+                stagger_steps += 1
+            occupied_terminals.append((ex, ey))
+            wire_blocks.append(wire_block(px, py, ex, ey))
+            suffix = f"; staggered {stagger_steps} step(s)" if stagger_steps else ""
+            if _is_power_net(net):
+                if net not in power_lib_defs:
+                    lib_def = load_lib_symbol("power", net)
+                    if lib_def is None:
+                        results.append(f"{ref}.{pin}: power symbol '{net}' was not found")
+                        wire_blocks.pop()
+                        occupied_terminals.pop()
+                        continue
+                    power_lib_defs[net] = lib_def
+                terminal_blocks.append(
+                    place_symbol_block(
+                        lib_id=f"power:{net}",
+                        x=ex,
+                        y=ey,
+                        reference=f"#PWR{new_uuid()[:4]}",
+                        value=net,
+                        rotation=_power_symbol_rotation_from_vector(ux, uy),
+                        project_name=project_name,
+                        root_uuid=root_uuid,
+                    )
+                )
+                results.append(f"{ref}.{pin} -> {net} (power) @ ({ex}, {ey}){suffix}")
+            else:
+                rotation = _terminal_rotation_from_vector(ux, uy)
+                terminal_blocks.append(
+                    label_block(net, ex, ey, rotation, global_label=global_labels)
+                )
+                results.append(f"{ref}.{pin} -> {net} @ ({ex}, {ey}){suffix}")
 
-        if not blocks:
+        if not (wire_blocks or terminal_blocks):
             return "No pin labels were added.\n" + "\n".join(results)
 
         def mutator(current: str) -> str:
-            for block in blocks:
-                current = _append_before_sheet_instances(current, block)
-            return current
+            updated = current
+            for net_name, lib_def in power_lib_defs.items():
+                lib_id = f"power:{net_name}"
+                if f'(symbol "{lib_id}"' in updated:
+                    continue
+                if "(lib_symbols)" in updated:
+                    updated = updated.replace("(lib_symbols)", f"(lib_symbols\n\t{lib_def}\n\t)", 1)
+                else:
+                    updated = updated.replace(
+                        "\t(lib_symbols\n", f"\t(lib_symbols\n\t{lib_def}\n", 1
+                    )
+            for block in (*wire_blocks, *terminal_blocks):
+                updated = _append_before_sheet_instances(updated, block)
+            return updated
 
         transactional_write(mutator, target.path)
         return (
             f"{_reload_schematic()}\n{_format_target_detail(target)}\n"
-            f"Added {len(blocks) // 2} pin label(s) with stubs:\n" + "\n".join(results)
+            f"Added {len(wire_blocks)} pin terminal(s) with stubs:\n" + "\n".join(results)
         )
 
     @mcp.tool()

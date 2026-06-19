@@ -1115,8 +1115,63 @@ async def test_schematic_add_pin_labels_uses_symbol_edges_for_tall_side_pins(
     )
 
     assert "U1.1 -> TOP_LEFT @ (79.68, 79.68)" in result
-    assert "U1.3 -> VCC @ (100.0, 69.52)" in result
-    assert "U1.4 -> GND @ (100.0, 130.48)" in result
+    assert "U1.3 -> VCC (power) @ (100.0, 69.52)" in result
+    assert "U1.4 -> GND (power) @ (100.0, 130.48)" in result
+
+    schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+    assert '(lib_id "power:VCC")' in schematic
+    assert '(lib_id "power:GND")' in schematic
+    assert '(global_label "VCC"' not in schematic
+    assert '(global_label "GND"' not in schematic
+
+
+@pytest.mark.anyio
+async def test_schematic_add_pin_labels_staggers_neighbouring_terminals(
+    sample_project, mock_kicad
+) -> None:
+    """Neighbouring pin-label terminals should not land at the same coordinate."""
+    server = build_server("schematic")
+    await call_tool_text(
+        server,
+        "sch_build_circuit",
+        {
+            "symbols": [
+                {
+                    "library": "Device",
+                    "symbol_name": "R",
+                    "x_mm": 10.16,
+                    "y_mm": 10.16,
+                    "reference": "R1",
+                    "value": "10k",
+                },
+                {
+                    "library": "Device",
+                    "symbol_name": "R",
+                    "x_mm": 15.24,
+                    "y_mm": 10.16,
+                    "reference": "R2",
+                    "value": "10k",
+                },
+            ],
+        },
+    )
+
+    result = await call_tool_text(
+        server,
+        "sch_add_pin_labels",
+        {
+            "connections": [
+                {"reference": "R1", "pin": "2", "net": "SIG_A"},
+                {"reference": "R2", "pin": "1", "net": "SIG_B"},
+            ],
+            "stub_mm": 2.54,
+        },
+    )
+
+    assert "staggered" in result
+    schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+    assert '(global_label "SIG_A"' in schematic
+    assert '(global_label "SIG_B"' in schematic
 
 
 @pytest.mark.anyio
