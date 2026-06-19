@@ -1729,10 +1729,19 @@ def register(mcp: FastMCP) -> None:
 
             kicad = get_kicad()
             lines.append(f"IPC version: {kicad.get_version()}")
-            pcb_docs = kicad.get_open_documents(DocumentType.DOCTYPE_PCB)
-            sch_docs = kicad.get_open_documents(DocumentType.DOCTYPE_SCHEMATIC)
-            lines.append(f"Open PCB documents: {len(pcb_docs)}")
-            lines.append(f"Open schematic documents: {len(sch_docs)}")
+
+            try:
+                pcb_docs = kicad.get_open_documents(DocumentType.DOCTYPE_PCB)
+                lines.append(f"Open PCB documents: {len(pcb_docs)}")
+            except Exception:
+                lines.append("Open PCB documents: unavailable")
+
+            try:
+                sch_docs = kicad.get_open_documents(DocumentType.DOCTYPE_SCHEMATIC)
+                lines.append(f"Open schematic documents: {len(sch_docs)}")
+            except Exception:
+                lines.append("Open schematic documents: unavailable")
+
         except KiCadConnectionError as exc:
             lines.append(f"IPC connection: unavailable ({exc})")
         except Exception as exc:
