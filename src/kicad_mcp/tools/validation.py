@@ -158,7 +158,18 @@ def _erc_violations(
     for sheet in cast(list[dict[str, object]], report.get("sheets", [])):
         if _erc_sheet_matches_any(sheet, ignored):
             continue
-        violations.extend(cast(list[dict[str, object]], sheet.get("violations", [])))
+
+        sheet_path = str(sheet.get("path") or sheet.get("name") or "")
+        sheet_violations = cast(list[dict[str, object]], sheet.get("violations", []))
+
+        if sheet_path:
+            for violation in sheet_violations:
+                copied = dict(violation)
+                copied["sheet_path"] = sheet_path
+                violations.append(copied)
+        else:
+            violations.extend(sheet_violations)
+
     return violations
 
 
@@ -208,12 +219,42 @@ def _report_entry_finding(
     description = str(entry.get("description") or entry.get("message") or issue_type)
     severity = _normalize_report_severity(entry.get("severity", default_severity))
     location = _entry_location(entry, source)
+
+    metadata = {}
+    if sheet_path := entry.get("sheet_path"):
+        metadata["sheet_path"] = str(sheet_path)
+
+    refs, pins, nets, uuids, positions = [], [], [], [], []
+    for item in cast(list[dict[str, object]], entry.get("items", [])):
+        if ref := item.get("ref"):
+            refs.append(str(ref))
+        if pin := item.get("pin"):
+            pins.append(str(pin))
+        if net := item.get("net"):
+            nets.append(str(net))
+        if uuid := item.get("uuid"):
+            uuids.append(str(uuid))
+        if position := item.get("position"):
+            positions.append(position)
+
+    if refs:
+        metadata["refs"] = refs
+    if pins:
+        metadata["pins"] = pins
+    if nets:
+        metadata["nets"] = nets
+    if uuids:
+        metadata["uuids"] = uuids
+    if positions:
+        metadata["positions"] = positions
+
     return Finding(
         id=stable_finding_id(source, issue_type, location, description),
         severity=severity,
         location=location,
         description=description,
         suggested_fix=SuggestedFix(tool=fix_tool, args={"save_report": True}),
+        metadata=metadata,
     )
 
 

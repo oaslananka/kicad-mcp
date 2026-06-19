@@ -50,6 +50,7 @@ class Finding(BaseModel):
     location: str = ""
     description: str = ""
     suggested_fix: SuggestedFix | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class VerdictReport(BaseModel):
