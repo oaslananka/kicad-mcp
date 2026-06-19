@@ -341,11 +341,12 @@ def _schematic_component_rows() -> list[dict[str, str]]:
                 rows_by_reference[reference]["manufacturer"] = manufacturer
 
             dnp = _symbol_property(block, "DNP") or _symbol_property(block, "Do Not Populate")
+            native_dnp = re.search(r"\(dnp\s+yes\)", block) is not None
             exclude_from_bom = _symbol_property(block, "Exclude from BOM")
             populate_value = _symbol_property(block, "Populate")
             if populate_value:
                 rows_by_reference[reference]["populate"] = populate_value
-            elif dnp.lower() in {"1", "true", "yes", "y", "dnp"}:
+            elif native_dnp or dnp.lower() in {"1", "true", "yes", "y", "dnp"}:
                 rows_by_reference[reference]["populate"] = "DNP"
             elif exclude_from_bom.lower() in {"1", "true", "yes", "y"}:
                 rows_by_reference[reference]["populate"] = "DNP"

@@ -3597,6 +3597,57 @@ def update_symbol_property(reference: str, field: str, value: str) -> str:
     return get_schematic_backend().update_symbol_property(reference, field, value)
 
 
+def _set_symbol_dnp_text_fallback(reference: str, enabled: bool) -> str:
+    """Set KiCad's native placed-symbol DNP flag in the active schematic."""
+    native_value = "yes" if enabled else "no"
+    updated_count = 0
+
+    def _update_block(block: str) -> str:
+        dnp_pattern = re.compile(r"(\n\s*\(dnp\s+)(yes|no)(\)?)")
+        if dnp_pattern.search(block):
+            return dnp_pattern.sub(
+                lambda match: f"{match.group(1)}{native_value}{match.group(3)}",
+                block,
+                count=1,
+            )
+
+        insert_match = re.search(r"\n\s*\(on_board\s+(?:yes|no)\)", block)
+        if insert_match is not None:
+            return (
+                block[: insert_match.end()]
+                + f"\n\t\t(dnp {native_value})"
+                + block[insert_match.end() :]
+            )
+
+        insert_point = block.rfind("\t\t(instances")
+        if insert_point == -1:
+            insert_point = block.rfind("\n\t)")
+        if insert_point == -1:
+            raise ValueError(f"Could not update native DNP on '{reference}' in the schematic.")
+        return block[:insert_point] + f"\t\t(dnp {native_value})\n" + block[insert_point:]
+
+    def mutator(current: str) -> str:
+        nonlocal updated_count
+        matches = _find_placed_symbol_blocks(current, reference)
+        if not matches:
+            raise ValueError(f"Reference '{reference}' was not found in the schematic.")
+        updated_count = len(matches)
+        updated = current
+        for block, start, end, _parsed in reversed(matches):
+            new_block = _update_block(block)
+            updated = updated[:start] + new_block + updated[end:]
+        return updated
+
+    _transactional_write_to_schematic(mutator)
+    state = "DNP" if enabled else "Populate"
+    return f"Set {reference} native population state to {state} on {updated_count} instance(s)."
+
+
+def set_symbol_dnp(reference: str, enabled: bool) -> str:
+    """Set KiCad's native DNP flag on a placed schematic symbol."""
+    return _set_symbol_dnp_text_fallback(reference, enabled)
+
+
 def _parse_wire_block(block: str) -> dict[str, Any] | None:
     pts_match = re.search(
         (r"\(pts\s+\(xy\s+([-\d.]+)\s+([-\d.]+)\)\s+" r"\(xy\s+([-\d.]+)\s+([-\d.]+)\)\s*\)"),
@@ -4334,6 +4385,12 @@ def register(mcp: FastMCP) -> None:
     def sch_update_properties(reference: str, field: str, value: str) -> str:
         """Update a property on a placed symbol."""
         result = update_symbol_property(reference, field, value)
+        return f"{result}\n{_reload_schematic()}"
+
+    @mcp.tool()
+    def sch_set_dnp(reference: str, enabled: bool = True) -> str:
+        """Set KiCad's native Do Not Populate flag on a placed symbol."""
+        result = set_symbol_dnp(reference, enabled)
         return f"{result}\n{_reload_schematic()}"
 
     @mcp.tool()

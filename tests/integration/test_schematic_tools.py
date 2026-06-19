@@ -1988,3 +1988,38 @@ async def test_schematic_write_tools_can_target_child_sheet(sample_project, mock
         {"name": "BAD", "x_mm": 10.16, "y_mm": 10.16, "sheet_file": "../bad.kicad_sch"},
     )
     assert "escapes workspace root" in traversal_error
+
+@pytest.mark.anyio
+async def test_schematic_set_native_dnp_flag(sample_project, mock_kicad) -> None:
+    server = build_server("schematic")
+    await call_tool_text(
+        server,
+        "sch_build_circuit",
+        {
+            "symbols": [
+                {
+                    "library": "Device",
+                    "symbol_name": "R",
+                    "reference": "R_DNP",
+                    "value": "10k",
+                    "footprint": "Resistor_SMD:R_0805",
+                    "x_mm": 50.8,
+                    "y_mm": 50.8,
+                }
+            ]
+        },
+    )
+
+    enabled = await call_tool_text(server, "sch_set_dnp", {"reference": "R_DNP", "enabled": True})
+    schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+
+    assert "native population state to DNP" in enabled
+    assert "(dnp yes)" in schematic
+
+    disabled = await call_tool_text(server, "sch_set_dnp", {"reference": "R_DNP", "enabled": False})
+    schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+
+    assert "native population state to Populate" in disabled
+    assert "(dnp no)" in schematic
+    assert "(dnp yes)" not in schematic
+

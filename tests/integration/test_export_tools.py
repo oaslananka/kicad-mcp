@@ -434,7 +434,6 @@ async def test_export_bom_consolidates_flat_schematic_siblings(sample_project, m
     (property "LCSC" "C49678" (at 0 0 0))
     (property "MPN" "CL21B104KBCNNNC" (at 0 0 0))
     (property "Manufacturer" "Samsung" (at 0 0 0))
-    (property "DNP" "yes" (at 0 0 0))
   )
 )
 """,
