@@ -284,7 +284,16 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
                     with out_file.open("w", newline="", encoding="utf-8") as handle:
                         writer = csv.DictWriter(
                             handle,
-                            fieldnames=["reference", "value", "footprint", "lib_id", "lcsc"],
+                            fieldnames=[
+                                "reference",
+                                "value",
+                                "footprint",
+                                "lib_id",
+                                "lcsc",
+                                "mpn",
+                                "manufacturer",
+                                "populate",
+                            ],
                         )
                         writer.writeheader()
                         writer.writerows(rows)
