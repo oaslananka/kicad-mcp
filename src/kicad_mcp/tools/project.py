@@ -678,30 +678,14 @@ def _render_project_spec_resolution(resolution: ProjectSpecResolution) -> str:
 
 
 def _queue_reason_from_details(details: list[str], summary: str) -> str:
-    ignored_prefixes = (
-        "Footprints analysed:",
-        "Board frame:",
-        "Density:",
-        "Connector checks:",
-        "Decoupling pair checks:",
-        "RF keepout checks:",
-        "Power-tree refs checked:",
-        "Analog refs checked:",
-        "Digital refs checked:",
-        "Sensor-cluster refs checked:",
-        "Placement score:",
-    )
     for detail in details:
         cleaned = detail.strip()
-        if not cleaned or cleaned.startswith(ignored_prefixes):
-            continue
         if cleaned.startswith("FAIL: "):
             return cleaned[6:]
         if cleaned.startswith("WARN: "):
             return cleaned[6:]
         if cleaned.startswith("BLOCKED: "):
             return cleaned[9:]
-        return cleaned
     return summary
 
 
