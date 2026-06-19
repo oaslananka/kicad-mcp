@@ -50,6 +50,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "kicad_set_project",
             "kicad_get_project_info",
             "project_set_design_intent",
+            "project_import_design_spec",
             "project_get_design_intent",
             "project_get_design_spec",
             "project_infer_design_spec",

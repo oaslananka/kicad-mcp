@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import uuid
 from collections.abc import Callable
 from pathlib import Path
@@ -92,6 +93,22 @@ class ProjectSpecValidationPayload(BaseModel):
     text: str
     valid: bool
     issues: list[str] = Field(default_factory=list)
+
+
+class ProjectImportDesignSpecPayload(BaseModel):
+    """Structured result for conservative design-spec import."""
+
+    text: str
+    valid: bool
+    dry_run: bool = True
+    wrote: bool = False
+    strict: bool = True
+    path: str = ""
+    missing: list[str] = Field(default_factory=list)
+    ambiguous: list[str] = Field(default_factory=list)
+    placeholders: list[str] = Field(default_factory=list)
+    extras: dict[str, Any] = Field(default_factory=dict)
+    parsed: ProjectDesignSpec = Field(default_factory=ProjectDesignSpec)
 
 
 class ProjectNextActionPayload(BaseModel):
@@ -209,6 +226,452 @@ def _normalized_unique(items: list[str]) -> list[str]:
     return ordered
 
 
+_IMPORT_SUPPORTED_KEYS = {
+    "connector_refs",
+    "decoupling_pairs",
+    "critical_nets",
+    "power_tree_refs",
+    "analog_refs",
+    "digital_refs",
+    "sensor_cluster_refs",
+    "required_sheets",
+    "optional_sheets",
+    "rf_keepout_regions",
+    "manufacturer",
+    "manufacturer_tier",
+    "functional_spacing_mm",
+    "thermal_hotspots",
+    "critical_frequencies_mhz",
+    "power_rails",
+    "interfaces",
+    "mechanical",
+    "compliance",
+    "cost",
+    "thermal",
+}
+_IMPORT_EXTRA_KEYS = {
+    "populate",
+    "populate_refs",
+    "dnp",
+    "dnp_refs",
+    "parts",
+    "mpn",
+    "lcsc",
+    "acceptance_criteria",
+    "missing_parameters",
+    "notes",
+}
+_PLACEHOLDER_RE = re.compile(
+    r"^\s*(?:\{\s*(?:\.\.\.|todo|tbd|unknown|[^{}]*)\s*\}|"
+    r"<\s*(?:\.\.\.|todo|tbd|unknown|[^<>]*)\s*>|"
+    r"\.\.\.|tbd|todo|unknown|verify|n/?a)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _strip_yaml_comment(line: str) -> str:
+    in_single = False
+    in_double = False
+    escaped = False
+    for index, char in enumerate(line):
+        if char == "\\" and in_double and not escaped:
+            escaped = True
+            continue
+        if char == "'" and not in_double and not escaped:
+            in_single = not in_single
+        elif char == '"' and not in_single and not escaped:
+            in_double = not in_double
+        elif char == "#" and not in_single and not in_double:
+            return line[:index].rstrip()
+        escaped = False
+    return line.rstrip()
+
+
+def _parse_import_scalar(value: str) -> object:
+    cleaned = value.strip()
+    if cleaned == "":
+        return ""
+    if cleaned in {"[]", "{}"}:
+        return [] if cleaned == "[]" else {}
+    if cleaned[0:1] in {"'", '"'} and cleaned[-1:] == cleaned[0]:
+        return cleaned[1:-1]
+    lowered = cleaned.casefold()
+    if lowered in {"true", "yes", "on"}:
+        return True
+    if lowered in {"false", "no", "off"}:
+        return False
+    if lowered in {"null", "none", "~"}:
+        return None
+    if cleaned.startswith("[") and cleaned.endswith("]"):
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            inner = cleaned[1:-1].strip()
+            if not inner:
+                return []
+            return [_parse_import_scalar(part) for part in inner.split(",")]
+    if cleaned.startswith("{") and cleaned.endswith("}"):
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            return cleaned
+    try:
+        if any(token in cleaned for token in (".", "e", "E")):
+            return float(cleaned)
+        return int(cleaned)
+    except ValueError:
+        return cleaned
+
+
+def _import_yaml_lines(text: str) -> list[tuple[int, str]]:
+    rows: list[tuple[int, str]] = []
+    for raw in text.splitlines():
+        line = _strip_yaml_comment(raw.rstrip("\n"))
+        if not line.strip():
+            continue
+        rows.append((len(line) - len(line.lstrip(" ")), line.strip()))
+    return rows
+
+
+def _parse_simple_yaml(text: str) -> object:
+    """Parse a conservative YAML subset used for machine-readable spec blocks."""
+
+    rows = _import_yaml_lines(text)
+    if not rows:
+        return {}
+
+    def parse_block(index: int, indent: int) -> tuple[Any, int]:
+        if index >= len(rows):
+            return {}, index
+        if rows[index][0] < indent:
+            return {}, index
+        if rows[index][1].startswith("- "):
+            return parse_list(index, rows[index][0])
+        return parse_dict(index, rows[index][0])
+
+    def parse_dict(index: int, indent: int) -> tuple[dict[str, Any], int]:
+        mapping: dict[str, Any] = {}
+        while index < len(rows):
+            current_indent, content = rows[index]
+            if current_indent < indent:
+                break
+            if current_indent > indent:
+                index += 1
+                continue
+            if content.startswith("- "):
+                break
+            if ":" not in content:
+                index += 1
+                continue
+            key, raw_value = content.split(":", 1)
+            key = key.strip()
+            raw_value = raw_value.strip()
+            index += 1
+            if raw_value:
+                mapping[key] = _parse_import_scalar(raw_value)
+            elif index < len(rows) and rows[index][0] > current_indent:
+                child, index = parse_block(index, rows[index][0])
+                mapping[key] = child
+            else:
+                mapping[key] = None
+        return mapping, index
+
+    def parse_list(index: int, indent: int) -> tuple[list[Any], int]:
+        values: list[Any] = []
+        while index < len(rows):
+            current_indent, content = rows[index]
+            if current_indent < indent:
+                break
+            if current_indent > indent or not content.startswith("- "):
+                break
+            item_text = content[2:].strip()
+            index += 1
+            if not item_text:
+                if index < len(rows) and rows[index][0] > current_indent:
+                    child, index = parse_block(index, rows[index][0])
+                    values.append(child)
+                else:
+                    values.append(None)
+                continue
+            if ":" in item_text and not item_text.startswith(("'", '"', "[", "{")):
+                key, raw_value = item_text.split(":", 1)
+                item: dict[str, Any] = {}
+                if raw_value.strip():
+                    item[key.strip()] = _parse_import_scalar(raw_value.strip())
+                elif index < len(rows) and rows[index][0] > current_indent:
+                    child, index = parse_block(index, rows[index][0])
+                    item[key.strip()] = child
+                else:
+                    item[key.strip()] = None
+                if index < len(rows) and rows[index][0] > current_indent:
+                    continuation, index = parse_dict(index, rows[index][0])
+                    item.update(continuation)
+                values.append(item)
+            else:
+                values.append(_parse_import_scalar(item_text))
+        return values, index
+
+    parsed, index = parse_block(0, rows[0][0])
+    if index < len(rows):
+        raise ValueError("Unsupported YAML layout in design-spec block.")
+    return parsed
+
+
+def _extract_structured_spec_block(markdown: str) -> tuple[dict[str, Any], str]:
+    stripped = markdown.strip()
+    if not stripped:
+        raise ValueError("No design-spec content was provided.")
+    try:
+        parsed = json.loads(stripped)
+    except json.JSONDecodeError:
+        parsed = None
+    if isinstance(parsed, dict):
+        return parsed, "json"
+
+    if stripped.startswith("---"):
+        lines = stripped.splitlines()
+        for index, line in enumerate(lines[1:], start=1):
+            if line.strip() == "---":
+                block = "\n".join(lines[1:index])
+                parsed_yaml = _parse_simple_yaml(block)
+                if isinstance(parsed_yaml, dict):
+                    return parsed_yaml, "frontmatter"
+                break
+
+    fence = re.search(r"```(?:json|ya?ml)\s*(.*?)```", markdown, re.IGNORECASE | re.DOTALL)
+    if fence is not None:
+        block = fence.group(1).strip()
+        try:
+            parsed_fence = json.loads(block)
+        except json.JSONDecodeError:
+            parsed_fence = _parse_simple_yaml(block)
+        if isinstance(parsed_fence, dict):
+            return parsed_fence, "fenced"
+
+    raise ValueError(
+        "No structured design spec found. Provide JSON or YAML frontmatter/fenced block."
+    )
+
+
+def _select_design_intent_payload(payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    for key in ("design_intent", "project_design_intent", "project_spec", "intent"):
+        value = payload.get(key)
+        if isinstance(value, dict):
+            extras = {k: v for k, v in payload.items() if k != key}
+            return value, extras
+    return payload, {}
+
+
+def _is_placeholder_value(value: object) -> bool:
+    return isinstance(value, str) and bool(_PLACEHOLDER_RE.match(value))
+
+
+def _walk_import_values(value: object, path: str = "") -> list[str]:
+    placeholders: list[str] = []
+    if _is_placeholder_value(value):
+        placeholders.append(path or "<root>")
+    elif isinstance(value, dict):
+        for key, child in value.items():
+            child_path = f"{path}.{key}" if path else str(key)
+            placeholders.extend(_walk_import_values(child, child_path))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            placeholders.extend(_walk_import_values(child, f"{path}[{index}]"))
+    return placeholders
+
+
+_IMPORT_OMIT = object()
+
+
+def _sanitize_import_placeholders(value: object) -> object:
+    if _is_placeholder_value(value):
+        return _IMPORT_OMIT
+    if isinstance(value, dict):
+        sanitized: dict[str, Any] = {}
+        for key, child in value.items():
+            new_value = _sanitize_import_placeholders(child)
+            if new_value is not _IMPORT_OMIT:
+                sanitized[key] = new_value
+        return sanitized
+    if isinstance(value, list):
+        values = []
+        for child in value:
+            new_value = _sanitize_import_placeholders(child)
+            if new_value is not _IMPORT_OMIT:
+                values.append(new_value)
+        return values
+    return value
+
+
+def _validation_safe_import_payload(intent_payload: dict[str, Any]) -> dict[str, Any]:
+    sanitized = _sanitize_import_placeholders(intent_payload)
+    if not isinstance(sanitized, dict):
+        return {}
+    safe = dict(sanitized)
+    power_rails = []
+    for rail in safe.get("power_rails") or []:
+        if not isinstance(rail, dict):
+            continue
+        if all(
+            rail.get(field) not in (None, "") for field in ("name", "voltage_v", "current_max_a")
+        ):
+            power_rails.append(rail)
+    if "power_rails" in safe:
+        safe["power_rails"] = power_rails
+    interfaces = []
+    for iface in safe.get("interfaces") or []:
+        if isinstance(iface, dict) and iface.get("kind"):
+            interfaces.append(iface)
+    if "interfaces" in safe:
+        safe["interfaces"] = interfaces
+    return safe
+
+
+def _import_spec_missing_fields(intent_payload: dict[str, Any]) -> list[str]:
+    missing: list[str] = []
+    if not intent_payload.get("required_sheets"):
+        missing.append("required_sheets")
+    mechanical = intent_payload.get("mechanical")
+    if not isinstance(mechanical, dict):
+        missing.extend(["mechanical.board_width_mm", "mechanical.board_height_mm"])
+    else:
+        for field in ("board_width_mm", "board_height_mm"):
+            if mechanical.get(field) in (None, "") or _is_placeholder_value(mechanical.get(field)):
+                missing.append(f"mechanical.{field}")
+    for index, rail in enumerate(intent_payload.get("power_rails") or []):
+        if not isinstance(rail, dict):
+            missing.append(f"power_rails[{index}]")
+            continue
+        for field in ("name", "voltage_v", "current_max_a"):
+            if rail.get(field) in (None, "") or _is_placeholder_value(rail.get(field)):
+                missing.append(f"power_rails[{index}].{field}")
+    return missing
+
+
+def _import_spec_extra_fields(
+    intent_payload: dict[str, Any], outer_extras: dict[str, Any]
+) -> dict[str, Any]:
+    extras = dict(outer_extras)
+    for key in list(intent_payload):
+        if key in _IMPORT_EXTRA_KEYS:
+            extras[key] = intent_payload[key]
+    unsupported = sorted(
+        key
+        for key in intent_payload
+        if key not in _IMPORT_SUPPORTED_KEYS and key not in _IMPORT_EXTRA_KEYS
+    )
+    if unsupported:
+        extras["unsupported_fields"] = unsupported
+    return extras
+
+
+def _read_design_spec_markdown(path: str | None, markdown: str | None) -> tuple[str, str]:
+    if markdown and markdown.strip():
+        return markdown, "inline"
+    if not path:
+        raise ValueError("Provide either markdown or path.")
+    cfg = get_config()
+    raw_path = Path(path)
+    if cfg.project_dir is not None and not raw_path.is_absolute():
+        raw_path = cfg.project_dir / raw_path
+    candidate = raw_path.expanduser().resolve()
+    if cfg.project_dir is not None:
+        assert_within(cfg.project_dir, candidate)
+    return candidate.read_text(encoding="utf-8"), str(candidate)
+
+
+def _render_import_result(
+    *,
+    source_kind: str,
+    wrote: bool,
+    strict: bool,
+    dry_run: bool,
+    missing: list[str],
+    placeholders: list[str],
+    ambiguous: list[str],
+    extras: dict[str, Any],
+    intent: ProjectDesignIntent,
+) -> str:
+    lines = ["Project design-spec import:"]
+    lines.append(f"- Source format: {source_kind}")
+    lines.append(f"- Mode: {'dry-run' if dry_run else 'write'}")
+    lines.append(f"- Strict: {strict}")
+    lines.append(f"- Wrote project spec: {wrote}")
+    lines.append(f"- Missing mandatory fields: {len(missing)}")
+    for item in missing[:20]:
+        lines.append(f"  - {item}")
+    lines.append(f"- Placeholder fields: {len(placeholders)}")
+    for item in placeholders[:20]:
+        lines.append(f"  - {item}")
+    lines.append(f"- Ambiguous/extra fields: {len(ambiguous)}")
+    for item in ambiguous[:20]:
+        lines.append(f"  - {item}")
+    if extras:
+        lines.append("- Extras retained in response only: " + ", ".join(sorted(extras)))
+    lines.append(_render_design_intent(intent))
+    return "\n".join(lines)
+
+
+def import_design_spec(
+    *,
+    path: str | None,
+    markdown: str | None,
+    strict: bool,
+    dry_run: bool,
+) -> ProjectImportDesignSpecPayload:
+    content, resolved_path = _read_design_spec_markdown(path, markdown)
+    parsed, source_kind = _extract_structured_spec_block(content)
+    raw_intent, outer_extras = _select_design_intent_payload(parsed)
+    intent_payload = {k: v for k, v in raw_intent.items() if k in _IMPORT_SUPPORTED_KEYS}
+    extras = _import_spec_extra_fields(raw_intent, outer_extras)
+    ambiguous = [
+        f"{field}: retained in import response but not persisted"
+        for field in sorted(extras.get("unsupported_fields", []))
+    ]
+    for field in sorted(set(extras) & _IMPORT_EXTRA_KEYS):
+        ambiguous.append(f"{field}: not part of ProjectDesignIntent; not persisted")
+    placeholders = _walk_import_values(intent_payload)
+    missing = _import_spec_missing_fields(intent_payload)
+    if strict and (missing or placeholders):
+        valid = False
+    else:
+        valid = True
+    safe_payload = _validation_safe_import_payload(intent_payload)
+    intent = _normalize_design_intent(ProjectDesignIntent.model_validate(safe_payload))
+    wrote = False
+    if not dry_run:
+        if not valid:
+            raise ValueError(
+                "Design spec import refused in strict mode: "
+                f"missing={missing or 'none'}, placeholders={placeholders or 'none'}."
+            )
+        save_design_intent(intent)
+        wrote = True
+    return ProjectImportDesignSpecPayload(
+        text=_render_import_result(
+            source_kind=source_kind,
+            wrote=wrote,
+            strict=strict,
+            dry_run=dry_run,
+            missing=missing,
+            placeholders=placeholders,
+            ambiguous=ambiguous,
+            extras=extras,
+            intent=intent,
+        ),
+        valid=valid,
+        dry_run=dry_run,
+        wrote=wrote,
+        strict=strict,
+        path=resolved_path,
+        missing=missing,
+        ambiguous=ambiguous,
+        placeholders=placeholders,
+        extras=extras,
+        parsed=intent,
+    )
+
+
 def _normalize_design_intent(intent: ProjectDesignIntent) -> ProjectDesignIntent:
     return ProjectDesignIntent.model_validate(
         {
@@ -227,6 +690,8 @@ def _normalize_design_intent(intent: ProjectDesignIntent) -> ProjectDesignIntent
             "analog_refs": _normalized_unique(intent.analog_refs),
             "digital_refs": _normalized_unique(intent.digital_refs),
             "sensor_cluster_refs": _normalized_unique(intent.sensor_cluster_refs),
+            "required_sheets": _normalized_unique(intent.required_sheets),
+            "optional_sheets": _normalized_unique(intent.optional_sheets),
             "rf_keepout_regions": [region.model_dump() for region in intent.rf_keepout_regions],
             "manufacturer": intent.manufacturer.strip(),
             "manufacturer_tier": intent.manufacturer_tier.strip(),
@@ -326,6 +791,14 @@ def _render_design_intent(intent: ProjectDesignIntent) -> str:
     lines.append(
         "- Sensor cluster refs: "
         + (", ".join(intent.sensor_cluster_refs) if intent.sensor_cluster_refs else "(none)")
+    )
+    lines.append(
+        "- Required sheets: "
+        + (", ".join(intent.required_sheets) if intent.required_sheets else "(none)")
+    )
+    lines.append(
+        "- Optional sheets: "
+        + (", ".join(intent.optional_sheets) if intent.optional_sheets else "(none)")
     )
     lines.append(
         "- Manufacturer: "
@@ -573,6 +1046,8 @@ def _merge_design_intent(
             analog_refs=explicit.analog_refs or inferred.analog_refs,
             digital_refs=explicit.digital_refs or inferred.digital_refs,
             sensor_cluster_refs=explicit.sensor_cluster_refs or inferred.sensor_cluster_refs,
+            required_sheets=explicit.required_sheets,
+            optional_sheets=explicit.optional_sheets,
             rf_keepout_regions=explicit.rf_keepout_regions or inferred.rf_keepout_regions,
             manufacturer=explicit.manufacturer or inferred.manufacturer,
             manufacturer_tier=explicit.manufacturer_tier or inferred.manufacturer_tier,
@@ -856,6 +1331,8 @@ def register(mcp: FastMCP) -> None:
         analog_refs: list[str] | None = None,
         digital_refs: list[str] | None = None,
         sensor_cluster_refs: list[str] | None = None,
+        required_sheets: list[str] | None = None,
+        optional_sheets: list[str] | None = None,
         rf_keepout_regions: list[dict[str, Any]] | None = None,
         manufacturer: str = "",
         manufacturer_tier: str = "",
@@ -873,8 +1350,8 @@ def register(mcp: FastMCP) -> None:
         """Call this FIRST to store design intent for placement, routing, and gates.
 
         v1 parameters (all boards): connector_refs, decoupling_pairs, critical_nets,
-        power_tree_refs, analog_refs, digital_refs, sensor_cluster_refs, rf_keepout_regions,
-        manufacturer, manufacturer_tier.
+        power_tree_refs, analog_refs, digital_refs, sensor_cluster_refs, required_sheets,
+        optional_sheets, rf_keepout_regions, manufacturer, manufacturer_tier.
 
         v2 parameters (professional projects): power_rails (list of PowerRailSpec dicts),
         interfaces (list of InterfaceSpec dicts), mechanical (MechanicalConstraint dict),
@@ -895,6 +1372,12 @@ def register(mcp: FastMCP) -> None:
             digital_refs=existing.digital_refs if digital_refs is None else digital_refs,
             sensor_cluster_refs=(
                 existing.sensor_cluster_refs if sensor_cluster_refs is None else sensor_cluster_refs
+            ),
+            required_sheets=(
+                existing.required_sheets if required_sheets is None else required_sheets
+            ),
+            optional_sheets=(
+                existing.optional_sheets if optional_sheets is None else optional_sheets
             ),
             rf_keepout_regions=(
                 existing.rf_keepout_regions if rf_keepout_regions is None else rf_keepout_regions
@@ -946,6 +1429,29 @@ def register(mcp: FastMCP) -> None:
         return (
             f"Stored project design spec at {path}.\n"
             f"{_render_design_intent(_normalize_design_intent(updated))}"
+        )
+
+    @mcp.tool()
+    @headless_compatible
+    def project_import_design_spec(
+        path: str | None = None,
+        markdown: str | None = None,
+        strict: bool = True,
+        dry_run: bool = True,
+    ) -> ProjectImportDesignSpecPayload:
+        """Import structured product/spec text into ProjectDesignIntent conservatively.
+
+        Accepts JSON or YAML frontmatter/fenced blocks. The importer only persists
+        explicit supported ProjectDesignIntent fields; it reports missing mandatory
+        decisions, placeholders, and extra fields such as MPN/LCSC/populate lists
+        without inventing values. Use ``dry_run=True`` first, then re-run with
+        ``dry_run=False`` after reviewing the parsed result.
+        """
+        return import_design_spec(
+            path=path,
+            markdown=markdown,
+            strict=strict,
+            dry_run=dry_run,
         )
 
     @mcp.tool()
