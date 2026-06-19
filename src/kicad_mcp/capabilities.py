@@ -170,12 +170,22 @@ _register_many(
         "sch_add_wire",
         "sch_add_label",
         "sch_update_properties",
+        "sch_set_component_population",
         "sch_build_circuit",
         "sch_annotate",
     ],
     profiles=_SCH_PROFILES,
     tier=AccessTier.WRITE,
     supports_dry_run=True,
+)
+
+_register_many(
+    [
+        "sch_get_population_status",
+    ],
+    profiles=_SCH_PROFILES,
+    tier=AccessTier.READ,
+    verification_level="verified",
 )
 
 _register_many(

@@ -60,6 +60,7 @@ AUTO_LAYOUT_ROW_SPACING_MM = 17.78
 AUTO_LAYOUT_COLUMNS = 4
 DEFAULT_SHEET_WIDTH_MM = 30.48
 DEFAULT_SHEET_HEIGHT_MM = 20.32
+DNP_REASON_PROPERTY = "DNP Reason"
 
 # KiCad paper sizes (landscape, mm).  Used for sheet-boundary clamping.
 PAPER_SIZES_MM: dict[str, tuple[float, float]] = {
@@ -1528,16 +1529,37 @@ def _parse_symbol_block(block: str) -> dict[str, Any] | None:
     ref_match = re.search(rf'\(property\s+"Reference"\s+{_STRING_PATTERN}', block)
     value_match = re.search(rf'\(property\s+"Value"\s+{_STRING_PATTERN}', block)
     footprint_match = re.search(rf'\(property\s+"Footprint"\s+{_STRING_PATTERN}', block)
+    properties = _symbol_property_values(block)
     return {
         "lib_id": _unescape_sexpr_string(lib_id_match.group(1)),
         "reference": _unescape_sexpr_string(ref_match.group(1)) if ref_match else "?",
         "value": _unescape_sexpr_string(value_match.group(1)) if value_match else "?",
         "footprint": _unescape_sexpr_string(footprint_match.group(1)) if footprint_match else "",
+        "properties": properties,
+        "dnp": _symbol_bool_flag(block, "dnp", default=False),
+        "in_bom": _symbol_bool_flag(block, "in_bom", default=True),
         "x": float(at_match.group(1)) if at_match else 0.0,
         "y": float(at_match.group(2)) if at_match else 0.0,
         "rotation": int(round(float(at_match.group(3)))) if at_match else 0,
         "unit": int(unit_match.group(1)) if unit_match else 1,
     }
+
+
+def _symbol_property_values(block: str) -> dict[str, str]:
+    return {
+        _unescape_sexpr_string(match.group(1)): _unescape_sexpr_string(match.group(2))
+        for match in re.finditer(
+            rf"\(property\s+{_STRING_PATTERN}\s+{_STRING_PATTERN}",
+            block,
+        )
+    }
+
+
+def _symbol_bool_flag(block: str, flag: str, *, default: bool) -> bool:
+    match = re.search(rf"\({re.escape(flag)}\s+(yes|no)\)", block)
+    if match is None:
+        return default
+    return match.group(1) == "yes"
 
 
 def _extract_buses(content: str) -> list[dict[str, float]]:
@@ -3399,10 +3421,12 @@ def _next_reference(prefix: str) -> str:
 _SCHEMATIC_WRITE_LOCK = threading.RLock()
 
 
-def _transactional_write_to_schematic(mutator: Callable[[str], str]) -> str:
-    """Read, mutate, validate, and atomically rewrite the active schematic."""
+def _transactional_write_to_schematic_file(
+    sch_file: Path,
+    mutator: Callable[[str], str],
+) -> str:
+    """Read, mutate, validate, and atomically rewrite one schematic file."""
     with _SCHEMATIC_WRITE_LOCK:
-        sch_file = _get_schematic_file()
         current = sch_file.read_text(encoding="utf-8")
         updated = _normalize_schematic_wire_connectivity(mutator(current))
         _validate_schematic_text(updated)
@@ -3416,43 +3440,55 @@ def _transactional_write_to_schematic(mutator: Callable[[str], str]) -> str:
         return str(sch_file)
 
 
+def _transactional_write_to_schematic(mutator: Callable[[str], str]) -> str:
+    """Read, mutate, validate, and atomically rewrite the active schematic."""
+    return _transactional_write_to_schematic_file(_get_schematic_file(), mutator)
+
+
 def transactional_write(mutator: Callable[[str], str]) -> str:
     """Read, mutate, validate, and atomically rewrite the active schematic."""
     return get_schematic_backend().transactional_write(mutator)
 
 
+def _update_symbol_property_block(
+    block: str,
+    parsed: dict[str, Any],
+    field: str,
+    value: str,
+) -> str:
+    pattern = re.compile(
+        rf'(\(property\s+"{re.escape(field)}"\s+")([^"]*)(")',
+        re.DOTALL,
+    )
+    if pattern.search(block):
+        escaped_value = _escape_sexpr_string(value)
+        return pattern.sub(
+            lambda match: f"{match.group(1)}{escaped_value}{match.group(3)}",
+            block,
+            count=1,
+        )
+
+    insert_point = block.rfind("\t\t(instances")
+    if insert_point == -1:
+        insert_point = block.rfind("\n\t)")
+    if insert_point == -1:
+        reference = str(parsed.get("reference", "?"))
+        raise ValueError(f"Could not update '{reference}' in the schematic.")
+    x = parsed["x"]
+    y = parsed["y"]
+    rotation = parsed["rotation"]
+    property_block = (
+        f"\t\t(property {_sexpr_string(field)} {_sexpr_string(value)}\n"
+        f"\t\t\t(at {_fmt_mm(x)} {_fmt_mm(y)} {rotation})\n"
+        "\t\t\t(effects (font (size 1.27 1.27)) (hide yes))\n"
+        "\t\t)\n"
+    )
+    return block[:insert_point] + property_block + block[insert_point:]
+
+
 def _update_symbol_property_text_fallback(reference: str, field: str, value: str) -> str:
     """Update a symbol property in the active schematic."""
     payload = UpdatePropertiesInput(reference=reference, field=field, value=value)
-
-    def _update_block(block: str, parsed: dict[str, Any]) -> str:
-        pattern = re.compile(
-            rf'(\(property\s+"{re.escape(payload.field)}"\s+")([^"]*)(")',
-            re.DOTALL,
-        )
-        if pattern.search(block):
-            escaped_value = _escape_sexpr_string(payload.value)
-            return pattern.sub(
-                lambda match: f"{match.group(1)}{escaped_value}{match.group(3)}",
-                block,
-                count=1,
-            )
-
-        insert_point = block.rfind("\t\t(instances")
-        if insert_point == -1:
-            insert_point = block.rfind("\n\t)")
-        if insert_point == -1:
-            raise ValueError(f"Could not update '{payload.reference}' in the schematic.")
-        x = parsed["x"]
-        y = parsed["y"]
-        rotation = parsed["rotation"]
-        property_block = (
-            f"\t\t(property {_sexpr_string(payload.field)} {_sexpr_string(payload.value)}\n"
-            f"\t\t\t(at {_fmt_mm(x)} {_fmt_mm(y)} {rotation})\n"
-            "\t\t\t(effects (font (size 1.27 1.27)) (hide yes))\n"
-            "\t\t)\n"
-        )
-        return block[:insert_point] + property_block + block[insert_point:]
 
     updated_count = 0
 
@@ -3465,7 +3501,12 @@ def _update_symbol_property_text_fallback(reference: str, field: str, value: str
 
         updated = current
         for block, start, end, parsed in reversed(matches):
-            new_block = _update_block(block, parsed)
+            new_block = _update_symbol_property_block(
+                block,
+                parsed,
+                payload.field,
+                payload.value,
+            )
             updated = updated[:start] + new_block + updated[end:]
         return updated
 
@@ -3476,6 +3517,159 @@ def _update_symbol_property_text_fallback(reference: str, field: str, value: str
 def update_symbol_property(reference: str, field: str, value: str) -> str:
     """Update a symbol property through the active backend adapter."""
     return get_schematic_backend().update_symbol_property(reference, field, value)
+
+
+def _set_symbol_bool_flag(block: str, flag: str, enabled: bool) -> str:
+    value = "yes" if enabled else "no"
+    pattern = re.compile(rf"(\n\t\t\({re.escape(flag)}\s+)(yes|no)(\))")
+    if pattern.search(block):
+        return pattern.sub(lambda match: f"{match.group(1)}{value}{match.group(3)}", block, count=1)
+
+    insert_point = block.find("\n\t\t(uuid ")
+    if insert_point == -1:
+        insert_point = block.find("\n\t\t(property ")
+    if insert_point == -1:
+        raise ValueError("Could not insert symbol population flag into the schematic.")
+    return block[:insert_point] + f"\n\t\t({flag} {value})" + block[insert_point:]
+
+
+def _population_record_from_symbol(
+    *,
+    sch_file: Path,
+    block: str,
+    parsed: dict[str, Any],
+) -> dict[str, Any]:
+    properties = _symbol_property_values(block)
+    dnp = _symbol_bool_flag(block, "dnp", default=bool(parsed.get("dnp", False)))
+    in_bom = _symbol_bool_flag(block, "in_bom", default=bool(parsed.get("in_bom", True)))
+    return {
+        "reference": str(parsed.get("reference", "")),
+        "value": str(parsed.get("value", "")),
+        "footprint": str(parsed.get("footprint", "")),
+        "sheet": sch_file.stem,
+        "sheet_file": str(sch_file),
+        "populated": not dnp,
+        "dnp": dnp,
+        "in_bom": in_bom,
+        "reason": properties.get(DNP_REASON_PROPERTY, ""),
+    }
+
+
+def _sheet_name_matches(path: Path, sheet: str | None) -> bool:
+    if sheet is None or not sheet.strip():
+        return True
+    requested = sheet.strip().casefold()
+    return requested in {path.name.casefold(), path.stem.casefold(), str(path).casefold()}
+
+
+def _population_records(
+    reference: str | None = None,
+    sheet: str | None = None,
+) -> list[dict[str, Any]]:
+    target_ref = reference.strip() if reference else ""
+    records: list[dict[str, Any]] = []
+    for sch_file in project_schematic_files():
+        if not _sheet_name_matches(sch_file, sheet):
+            continue
+        try:
+            content = sch_file.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        matches = (
+            _find_placed_symbol_blocks(content, target_ref)
+            if target_ref
+            else [
+                (block, start, end, parsed)
+                for block, start, end, parsed in _find_all_placed_symbol_blocks(content)
+                if not str(parsed.get("reference", "")).startswith("#")
+            ]
+        )
+        for block, _start, _end, parsed in matches:
+            reference_name = str(parsed.get("reference", ""))
+            if reference_name.startswith("#"):
+                continue
+            records.append(
+                _population_record_from_symbol(
+                    sch_file=sch_file,
+                    block=block,
+                    parsed=parsed,
+                )
+            )
+    return records
+
+
+def _find_all_placed_symbol_blocks(
+    content: str,
+) -> list[tuple[str, int, int, dict[str, Any]]]:
+    matches: list[tuple[str, int, int, dict[str, Any]]] = []
+    cursor = 0
+    while cursor < len(content):
+        if content[cursor:].startswith("(symbol"):
+            block, length = _extract_block(content, cursor)
+            if block:
+                parsed = _parse_symbol_block(block)
+                if parsed is not None:
+                    matches.append((block, cursor, cursor + length, parsed))
+                cursor += length
+                continue
+        cursor += 1
+    return matches
+
+
+def set_component_population(
+    reference: str,
+    *,
+    populated: bool,
+    reason: str | None = None,
+    sheet: str | None = None,
+) -> dict[str, Any]:
+    target_ref = reference.strip()
+    if not target_ref:
+        raise ValueError("Reference must not be empty.")
+
+    updated_records: list[dict[str, Any]] = []
+    touched_files: list[str] = []
+    for sch_file in project_schematic_files():
+        if not _sheet_name_matches(sch_file, sheet):
+            continue
+        try:
+            content = sch_file.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        if not _find_placed_symbol_blocks(content, target_ref):
+            continue
+
+        def mutator(current: str) -> str:
+            matches = _find_placed_symbol_blocks(current, target_ref)
+            updated = current
+            for block, start, end, parsed in reversed(matches):
+                new_block = _set_symbol_bool_flag(block, "dnp", not populated)
+                if reason is not None:
+                    new_block = _update_symbol_property_block(
+                        new_block,
+                        parsed,
+                        DNP_REASON_PROPERTY,
+                        reason,
+                    )
+                updated = updated[:start] + new_block + updated[end:]
+            return updated
+
+        _transactional_write_to_schematic_file(sch_file, mutator)
+        touched_files.append(str(sch_file))
+        after = _population_records(target_ref, sch_file.name)
+        updated_records.extend(after)
+
+    if not touched_files:
+        scope = f" in sheet '{sheet}'" if sheet else ""
+        raise ValueError(f"Reference '{target_ref}' was not found{scope}.")
+
+    return {
+        "reference": target_ref,
+        "populated": populated,
+        "dnp": not populated,
+        "updated_files": touched_files,
+        "components": updated_records,
+    }
 
 
 def _parse_wire_block(block: str) -> dict[str, Any] | None:
@@ -4234,6 +4428,48 @@ def register(mcp: FastMCP) -> None:
         """Update a property on a placed symbol."""
         result = update_symbol_property(reference, field, value)
         return f"{result}\n{_reload_schematic()}"
+
+    @mcp.tool()
+    @headless_compatible
+    def sch_set_component_population(
+        reference: str,
+        populated: bool = True,
+        reason: str | None = None,
+        sheet: str | None = None,
+    ) -> str:
+        """Set a schematic component's native KiCad Do Not Populate state."""
+        payload = set_component_population(
+            reference,
+            populated=populated,
+            reason=reason,
+            sheet=sheet,
+        )
+        state = "Populate" if populated else "DNP"
+        return (
+            f"{_reload_schematic()}\n"
+            f"Set {reference} population state to {state} "
+            f"on {len(payload['components'])} symbol instance(s).\n"
+            f"{json.dumps(payload, indent=2)}"
+        )
+
+    @mcp.tool()
+    @headless_compatible
+    def sch_get_population_status(
+        reference: str | None = None,
+        sheet: str | None = None,
+    ) -> str:
+        """Return native KiCad Populate/DNP status for schematic components."""
+        records = _population_records(reference, sheet)
+        if reference and not records:
+            scope = f" in sheet '{sheet}'" if sheet else ""
+            raise ValueError(f"Reference '{reference}' was not found{scope}.")
+        return json.dumps(
+            {
+                "count": len(records),
+                "components": records,
+            },
+            indent=2,
+        )
 
     @mcp.tool()
     @requires_kicad_running

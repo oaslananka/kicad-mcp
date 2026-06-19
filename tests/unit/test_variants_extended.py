@@ -5,17 +5,36 @@ variant_export_manufacturing_package, variant_export_schematic.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
-from kicad_mcp.server import create_server
+from kicad_mcp.server import build_server, create_server
 from kicad_mcp.tools.variants import (
     _load_state,
     _save_state,
     _variant_names,
 )
 from tests.conftest import call_tool_text
+
+
+async def _place_test_resistor(server: object) -> None:
+    result = await call_tool_text(
+        server,
+        "sch_add_symbol",
+        {
+            "library": "Device",
+            "symbol_name": "R",
+            "x_mm": 10.0,
+            "y_mm": 10.0,
+            "reference": "R1",
+            "value": "10k",
+            "footprint": "Resistor_SMD:R_0805",
+            "rotation": 0,
+        },
+    )
+    assert "Added symbol" in result
 
 
 @pytest.mark.anyio
@@ -101,3 +120,56 @@ async def test_variant_dnp_status(sample_project: Path) -> None:
         server, "variant_get_component_status", {"variant": "dnp_test", "reference": "R1"}
     )
     assert "false" in result.lower() or "dnp" in result.lower()
+
+
+@pytest.mark.anyio
+async def test_schematic_population_tools_write_native_dnp_state(
+    sample_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KICAD_MCP_OPERATING_MODE", "write")
+    server = build_server("schematic")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+    await _place_test_resistor(server)
+
+    result = await call_tool_text(
+        server,
+        "sch_set_component_population",
+        {"reference": "R1", "populated": False, "reason": "Prototype option"},
+    )
+    status = json.loads(
+        await call_tool_text(server, "sch_get_population_status", {"reference": "R1"})
+    )
+
+    assert "DNP" in result
+    assert status["count"] == 1
+    component = status["components"][0]
+    assert component["reference"] == "R1"
+    assert component["populated"] is False
+    assert component["dnp"] is True
+    assert component["reason"] == "Prototype option"
+    assert "(dnp yes)" in (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+
+
+@pytest.mark.anyio
+async def test_variant_bom_exports_population_columns_from_native_dnp(
+    sample_project: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("KICAD_MCP_OPERATING_MODE", "write")
+    server = build_server("schematic")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+    await _place_test_resistor(server)
+    await call_tool_text(
+        server,
+        "sch_set_component_population",
+        {"reference": "R1", "populated": False},
+    )
+
+    await call_tool_text(server, "variant_export_bom", {"variant": "default", "format": "csv"})
+
+    bom = sample_project / "output" / "variants" / "default_bom.csv"
+    text = bom.read_text(encoding="utf-8")
+    assert "reference,value,footprint,populated,dnp" in text
+    assert "R1," in text
+    assert "False,True" in text

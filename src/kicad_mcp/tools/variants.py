@@ -53,6 +53,9 @@ def _base_components() -> dict[str, dict[str, Any]]:
             "reference": reference,
             "value": str(symbol.get("value", "")),
             "footprint": str(symbol.get("footprint", "")),
+            "populated": not bool(symbol.get("dnp", False)),
+            "dnp": bool(symbol.get("dnp", False)),
+            "in_bom": bool(symbol.get("in_bom", True)),
             "enabled": True,
         }
     return components
@@ -163,9 +166,17 @@ def _render_variant_components(state: dict[str, Any], name: str) -> dict[str, di
                 "reference": reference,
                 "value": "",
                 "footprint": "",
+                "populated": True,
+                "dnp": False,
+                "in_bom": True,
                 "enabled": True,
             }
-        rendered[reference].update(override)
+        normalized_override = dict(override)
+        if "dnp" in normalized_override and "populated" not in normalized_override:
+            normalized_override["populated"] = not bool(normalized_override["dnp"])
+        if "populated" in normalized_override and "dnp" not in normalized_override:
+            normalized_override["dnp"] = not bool(normalized_override["populated"])
+        rendered[reference].update(normalized_override)
     return rendered
 
 
@@ -179,6 +190,8 @@ def _bom_rows(state: dict[str, Any], name: str) -> list[dict[str, Any]]:
                 "reference": reference,
                 "value": str(component.get("value", "")),
                 "footprint": str(component.get("footprint", "")),
+                "populated": bool(component.get("populated", True)),
+                "dnp": bool(component.get("dnp", False)),
             }
         )
     return rows
@@ -190,7 +203,10 @@ def _write_bom(path: Path, rows: list[dict[str, Any]], format_name: str) -> Path
         return path
 
     buffer = StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=["reference", "value", "footprint"])
+    writer = csv.DictWriter(
+        buffer,
+        fieldnames=["reference", "value", "footprint", "populated", "dnp"],
+    )
     writer.writeheader()
     writer.writerows(rows)
     path.write_text(buffer.getvalue(), encoding="utf-8")
