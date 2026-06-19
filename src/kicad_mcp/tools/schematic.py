@@ -4119,10 +4119,16 @@ def register(mcp: FastMCP) -> None:
         terminal_blocks: list[str] = []
         power_lib_defs: dict[str, str] = {}
         occupied_terminals: list[tuple[float, float]] = []
-        terminal_clearance_mm = 6.0
+        dense_terminal_mode = len(connections) >= 12
+        terminal_clearance_mm = SNAP_TOLERANCE_MM if dense_terminal_mode else 6.0
         stagger_step_mm = 2.54
-        max_stagger_steps = 5
+        max_stagger_steps = 12 if dense_terminal_mode else 5
         results: list[str] = []
+        if dense_terminal_mode:
+            results.append(
+                "dense terminal mode: preserving each pin's natural row/column; "
+                "only exact terminal-coordinate collisions are staggered"
+            )
         for conn in connections:
             ref = str(conn.get("reference", ""))
             pin = str(conn.get("pin", ""))
