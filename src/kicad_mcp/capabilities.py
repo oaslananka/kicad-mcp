@@ -156,17 +156,25 @@ _register_many(
 _register_many(
     [
         "sch_add_component",
+        "sch_modify_property",
+    ],
+    profiles=_SCH_PROFILES,
+    tier=AccessTier.WRITE,
+    runtime=RuntimeRequirement.KICAD_IPC,
+    supports_dry_run=True,
+)
+
+_register_many(
+    [
         "sch_add_symbol",
         "sch_add_wire",
         "sch_add_label",
-        "sch_modify_property",
         "sch_update_properties",
         "sch_build_circuit",
         "sch_annotate",
     ],
     profiles=_SCH_PROFILES,
     tier=AccessTier.WRITE,
-    runtime=RuntimeRequirement.KICAD_IPC,
     supports_dry_run=True,
 )
 

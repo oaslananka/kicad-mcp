@@ -17,8 +17,16 @@ REQUIRED_OASLANA_119_TOOLS = {
     "pcb_move_component",
     "pcb_delete_object",
     "sch_add_component",
-    "sch_add_wire",
     "sch_modify_property",
+}
+
+FILE_BACKED_SCHEMATIC_WRITE_TOOLS = {
+    "sch_add_symbol",
+    "sch_add_wire",
+    "sch_add_label",
+    "sch_update_properties",
+    "sch_build_circuit",
+    "sch_annotate",
 }
 
 
@@ -68,6 +76,16 @@ def test_oaslana_119_live_editing_tools_require_kicad_ipc() -> None:
     for tool_name in REQUIRED_OASLANA_119_TOOLS:
         record = records[tool_name]
         assert record.runtime is RuntimeRequirement.KICAD_IPC
+        assert record.tier is AccessTier.WRITE
+
+
+def test_file_backed_schematic_write_tools_do_not_require_kicad_ipc() -> None:
+    records = all_records()
+
+    assert FILE_BACKED_SCHEMATIC_WRITE_TOOLS.issubset(records)
+    for tool_name in FILE_BACKED_SCHEMATIC_WRITE_TOOLS:
+        record = records[tool_name]
+        assert record.runtime is RuntimeRequirement.NONE
         assert record.tier is AccessTier.WRITE
 
 
