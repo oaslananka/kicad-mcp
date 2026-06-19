@@ -2723,12 +2723,36 @@ def _plan_netlist_pin_terminals(
                 # Stacked pins at the same coordinate need only one terminal.
                 continue
             net_seen_points.add(point_key)
-            ox, oy = info["ox"], info["oy"]
-            dx, dy = px - ox, py - oy
-            if abs(dx) >= abs(dy):
-                ux, uy = (1.0 if dx >= 0 else -1.0), 0.0
+            # Derive the outward stub direction from which body EDGE the pin sits
+            # on, not from the pin's position relative to the symbol origin. On a
+            # tall part (e.g. a 41-pin module) a left/right pin near the top or
+            # bottom has |dy| > |dx| versus the origin, so the origin-based
+            # heuristic wrongly stubbed it vertically -- collinear vertical stubs
+            # then overlapped and shorted distinct nets while leaving the pin
+            # itself unconnected. Edge detection keeps side pins horizontal.
+            pin_points = list(info["pins"].values())
+            xs = [p[0] for p in pin_points]
+            ys = [p[1] for p in pin_points]
+            min_x, max_x, min_y, max_y = min(xs), max(xs), min(ys), max(ys)
+            edge_tol = 0.01
+            has_width = (max_x - min_x) > edge_tol
+            has_height = (max_y - min_y) > edge_tol
+            if has_width and abs(px - min_x) <= edge_tol:
+                ux, uy = -1.0, 0.0
+            elif has_width and abs(px - max_x) <= edge_tol:
+                ux, uy = 1.0, 0.0
+            elif has_height and abs(py - min_y) <= edge_tol:
+                ux, uy = 0.0, -1.0
+            elif has_height and abs(py - max_y) <= edge_tol:
+                ux, uy = 0.0, 1.0
             else:
-                ux, uy = 0.0, (1.0 if dy >= 0 else -1.0)
+                # Interior/ambiguous pin: fall back to the origin dominant axis.
+                ox, oy = info["ox"], info["oy"]
+                dx, dy = px - ox, py - oy
+                if abs(dx) >= abs(dy):
+                    ux, uy = (1.0 if dx >= 0 else -1.0), 0.0
+                else:
+                    ux, uy = 0.0, (1.0 if dy >= 0 else -1.0)
             ex = round(px + ux * stub_mm, 4)
             ey = round(py + uy * stub_mm, 4)
             rotation = 0 if ux > 0 else 180 if ux < 0 else 90 if uy < 0 else 270
