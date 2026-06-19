@@ -118,6 +118,43 @@ async def test_schematic_connectivity_gate_passes_for_connected_flat_net(
 
 
 @pytest.mark.anyio
+async def test_schematic_connectivity_gate_ignores_explicit_no_connect_pins(
+    sample_project: Path,
+    mock_kicad,
+) -> None:
+    _ = mock_kicad
+    server = build_server("schematic")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    await call_tool_text(
+        server,
+        "sch_build_circuit",
+        {
+            "symbols": [
+                {
+                    "library": "Device",
+                    "symbol_name": "R",
+                    "x_mm": 10.16,
+                    "y_mm": 10.16,
+                    "reference": "R1",
+                    "value": "10k",
+                },
+            ],
+        },
+    )
+    await call_tool_text(server, "sch_add_no_connect", {"x_mm": 7.62, "y_mm": 10.16})
+    await call_tool_text(server, "sch_add_no_connect", {"x_mm": 12.7, "y_mm": 10.16})
+
+    text = await call_tool_text(server, "schematic_connectivity_gate", {})
+
+    assert "Schematic connectivity quality gate: PASS" in text
+    assert "Unnamed single-pin groups: 0" in text
+    graph = await call_tool_text(server, "sch_get_connectivity_graph", {})
+    assert "~no-connect" in graph
+    assert "~unnamed" not in graph
+
+
+@pytest.mark.anyio
 async def test_schematic_connectivity_gate_fails_for_label_only_page(
     sample_project: Path,
     mock_kicad,
