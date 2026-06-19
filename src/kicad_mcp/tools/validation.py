@@ -132,11 +132,189 @@ def _entries(report: dict[str, object], key: str) -> list[dict[str, object]]:
     return cast(list[dict[str, object]], report.get(key, []))
 
 
+_ERC_SYMBOL_PIN_RE = re.compile(
+    r"\bSymbol\s+(?P<reference>\S+)\s+Pin\s+(?P<pin>\S+)\s+\[(?P<body>[^\]]+)\]"
+)
+_ERC_LABEL_RE = re.compile(
+    r"\b(?P<label_type>Global|Local|Hierarchical)\s+Label\s+'(?P<name>[^']+)'"
+)
+_ERC_POWER_SYMBOL_RE = re.compile(r"\bPower\s+Symbol\s+'(?P<name>[^']+)'")
+
+
+def _erc_sheet_path(sheet: dict[str, object]) -> str:
+    for key in ("path", "sheet", "name"):
+        value = sheet.get(key)
+        if value:
+            return str(value)
+    return ""
+
+
+def _erc_sheet_uuid_path(sheet: dict[str, object]) -> str:
+    for key in ("uuid_path", "uuidPath", "uuid"):
+        value = sheet.get(key)
+        if value:
+            return str(value)
+    return ""
+
+
+def _with_erc_sheet_context(
+    entry: dict[str, object],
+    *,
+    sheet_path: str,
+    sheet_uuid_path: str,
+) -> dict[str, object]:
+    enriched = dict(entry)
+    if sheet_path:
+        enriched.setdefault("sheet", sheet_path)
+        enriched["_sheet_path"] = sheet_path
+    if sheet_uuid_path:
+        enriched["_sheet_uuid_path"] = sheet_uuid_path
+    return enriched
+
+
 def _erc_violations(report: dict[str, object]) -> list[dict[str, object]]:
     violations = list(_entries(report, "violations"))
     for sheet in cast(list[dict[str, object]], report.get("sheets", [])):
-        violations.extend(cast(list[dict[str, object]], sheet.get("violations", [])))
+        sheet_path = _erc_sheet_path(sheet)
+        sheet_uuid_path = _erc_sheet_uuid_path(sheet)
+        violations.extend(
+            _with_erc_sheet_context(
+                entry,
+                sheet_path=sheet_path,
+                sheet_uuid_path=sheet_uuid_path,
+            )
+            for entry in cast(list[dict[str, object]], sheet.get("violations", []))
+        )
     return violations
+
+
+def _coerce_report_float(value: object) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _position_mm(value: object) -> dict[str, float] | None:
+    if not isinstance(value, dict):
+        return None
+    position = cast(dict[str, object], value)
+    x = _coerce_report_float(position.get("x"))
+    y = _coerce_report_float(position.get("y"))
+    if x is None or y is None:
+        return None
+    return {"x": x, "y": y}
+
+
+def _erc_items(entry: dict[str, object]) -> list[dict[str, object]]:
+    raw_items = entry.get("items")
+    if not isinstance(raw_items, list):
+        return []
+    return [cast(dict[str, object], item) for item in raw_items if isinstance(item, dict)]
+
+
+def _parse_erc_item_description(description: str) -> dict[str, object]:
+    symbol_pin = _ERC_SYMBOL_PIN_RE.search(description)
+    if symbol_pin is not None:
+        fields = [part.strip() for part in symbol_pin.group("body").split(",")]
+        parsed: dict[str, object] = {
+            "kind": "symbol_pin",
+            "reference": symbol_pin.group("reference"),
+            "pin": symbol_pin.group("pin"),
+        }
+        if fields and fields[0]:
+            parsed["pin_name"] = fields[0]
+        if len(fields) > 1 and fields[1]:
+            parsed["electrical_type"] = fields[1]
+        if len(fields) > 2 and fields[2]:
+            parsed["pin_shape"] = fields[2]
+        return parsed
+
+    label = _ERC_LABEL_RE.search(description)
+    if label is not None:
+        label_type = label.group("label_type").lower()
+        name = label.group("name")
+        return {"kind": f"{label_type}_label", "name": name, "net": name}
+
+    power_symbol = _ERC_POWER_SYMBOL_RE.search(description)
+    if power_symbol is not None:
+        name = power_symbol.group("name")
+        return {"kind": "power_symbol", "name": name, "net": name}
+
+    return {}
+
+
+def _structured_erc_item(item: dict[str, object]) -> dict[str, object]:
+    description = str(item.get("description") or item.get("message") or "")
+    structured: dict[str, object] = {"raw_description": description}
+
+    uuid = item.get("uuid")
+    if uuid:
+        structured["uuid"] = str(uuid)
+
+    position = _position_mm(item.get("pos") or item.get("position") or item.get("at"))
+    if position is not None:
+        structured["position_mm"] = position
+
+    structured.update(_parse_erc_item_description(description))
+    for source_key, target_key in (
+        ("reference", "reference"),
+        ("ref", "reference"),
+        ("pin", "pin"),
+        ("pin_name", "pin_name"),
+        ("net", "net"),
+        ("name", "name"),
+    ):
+        value = item.get(source_key)
+        if value and target_key not in structured:
+            structured[target_key] = str(value)
+    return structured
+
+
+def _structured_erc_violation(entry: dict[str, object], index: int) -> dict[str, object]:
+    issue_type = str(entry.get("type") or "erc")
+    description = str(entry.get("description") or entry.get("message") or issue_type)
+    sheet_path = str(entry.get("_sheet_path") or entry.get("sheet") or entry.get("path") or "")
+    sheet_uuid_path = str(entry.get("_sheet_uuid_path") or "")
+    items = [_structured_erc_item(item) for item in _erc_items(entry)]
+    item_uuids = [str(item["uuid"]) for item in items if item.get("uuid")]
+    references = sorted({str(item["reference"]) for item in items if item.get("reference")})
+    pins = [
+        ".".join(part for part in (str(item.get("reference", "")), str(item["pin"])) if part)
+        for item in items
+        if item.get("pin")
+    ]
+    nets = sorted({str(item["net"]) for item in items if item.get("net")})
+
+    structured: dict[str, object] = {
+        "id": stable_finding_id(
+            "erc",
+            issue_type,
+            sheet_path,
+            ",".join(item_uuids) if item_uuids else index,
+            description,
+        ),
+        "type": issue_type,
+        "severity": _normalize_report_severity(entry.get("severity", "error")),
+        "description": description,
+        "sheet_path": sheet_path,
+        "items": items,
+    }
+    if sheet_uuid_path:
+        structured["sheet_uuid_path"] = sheet_uuid_path
+    if references:
+        structured["references"] = references
+    if pins:
+        structured["pins"] = pins
+    if nets:
+        structured["nets"] = nets
+    return structured
 
 
 def _type_breakdown(entries: list[dict[str, object]]) -> str:
@@ -383,6 +561,9 @@ def _erc_report_payload(
         lines.append(_format_violations("Violations", violations))
     if save_report:
         lines.append(f"Saved report: {path}")
+    violation_details = [
+        _structured_erc_violation(entry, index) for index, entry in enumerate(violations)
+    ]
     findings = [_report_entry_finding("erc", entry, fix_tool="run_erc") for entry in violations]
     verdict = VerdictReport.verdict_for([finding.severity for finding in findings])
     return VerdictReport(
@@ -403,6 +584,7 @@ def _erc_report_payload(
             "report_path": str(path),
             "available": True,
             "violations": len(violations),
+            "violation_details": violation_details,
         },
     )
 
