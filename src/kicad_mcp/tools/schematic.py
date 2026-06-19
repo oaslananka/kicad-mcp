@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import threading
 import uuid
 from collections.abc import Callable, Iterable
 from copy import deepcopy
@@ -59,6 +60,8 @@ AUTO_LAYOUT_ROW_SPACING_MM = 17.78
 AUTO_LAYOUT_COLUMNS = 4
 DEFAULT_SHEET_WIDTH_MM = 30.48
 DEFAULT_SHEET_HEIGHT_MM = 20.32
+
+_SCHEMATIC_WRITE_LOCK = threading.RLock()
 
 # KiCad paper sizes (landscape, mm).  Used for sheet-boundary clamping.
 PAPER_SIZES_MM: dict[str, tuple[float, float]] = {
@@ -3203,17 +3206,25 @@ def _next_reference(prefix: str) -> str:
 
 
 def _transactional_write_to_schematic(mutator: Callable[[str], str]) -> str:
-    """Read, mutate, validate, and atomically rewrite the active schematic."""
-    sch_file = _get_schematic_file()
-    current = sch_file.read_text(encoding="utf-8")
-    updated = _normalize_schematic_wire_connectivity(mutator(current))
-    _validate_schematic_text(updated)
-    with NamedTemporaryFile("w", encoding="utf-8", delete=False, dir=sch_file.parent) as handle:
-        handle.write(updated)
-        temp_path = Path(handle.name)
-    temp_path.replace(sch_file)
-    clear_ttl_cache()
-    return str(sch_file)
+    """Read, mutate, validate, and atomically rewrite the active schematic.
+
+    File-backed schematic tools are often invoked in batches.  Keep the full
+    read-mutate-validate-replace critical section serialized so concurrent
+    calls cannot read the same baseline and lose each other's edits.
+    """
+    with _SCHEMATIC_WRITE_LOCK:
+        sch_file = _get_schematic_file()
+        current = sch_file.read_text(encoding="utf-8")
+        updated = _normalize_schematic_wire_connectivity(mutator(current))
+        _validate_schematic_text(updated)
+        with NamedTemporaryFile(
+            "w", encoding="utf-8", delete=False, dir=sch_file.parent
+        ) as handle:
+            handle.write(updated)
+            temp_path = Path(handle.name)
+        temp_path.replace(sch_file)
+        clear_ttl_cache()
+        return str(sch_file)
 
 
 def transactional_write(mutator: Callable[[str], str]) -> str:
