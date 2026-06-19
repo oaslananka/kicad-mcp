@@ -859,10 +859,24 @@ def _evaluate_schematic_connectivity_gate() -> GateOutcome:
                 f"{page_name}: has {symbol_count} symbol(s) and {label_count} label(s) but 0 wires."
             )
 
+        # A global/hierarchical label joins by name, not geometry, so a lone
+        # label group is only dangling when none of its names also backs a real
+        # (pinned or multi-point) net elsewhere on the page. This keeps genuine
+        # orphans flagged while not faulting legitimate power-injection points
+        # (e.g. a PWR_FLAG paired with a rail label that has pins elsewhere).
+        connected_names = {
+            name
+            for group in groups
+            if group["pins"] or len(group["points"]) > 1
+            for name in group["names"]
+        }
         label_only_groups = [
             group
             for group in groups
-            if group["names"] and not group["pins"] and len(group["points"]) == 1
+            if group["names"]
+            and not group["pins"]
+            and len(group["points"]) == 1
+            and not any(name in connected_names for name in group["names"])
         ]
         dangling_labels += len(label_only_groups)
         for group in label_only_groups[:8]:
