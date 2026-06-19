@@ -4256,7 +4256,8 @@ def register(mcp: FastMCP) -> None:
         sheet_file: str | None = None,
     ) -> str:
         """Add a power symbol, snapping its anchor to the 2.54 mm grid by default."""
-        return str(
+        placed_x, placed_y = _snap_point(x_mm, y_mm, snap_to_grid)
+        result = str(
             sch_add_symbol(
                 library="power",
                 symbol_name=name,
@@ -4271,6 +4272,9 @@ def register(mcp: FastMCP) -> None:
                 sheet_file=sheet_file,
             )
         )
+        if "was not found" in result:
+            return result
+        return f"{result}\nPower symbol {name} placed at ({_fmt_mm(placed_x)}, {_fmt_mm(placed_y)})"
 
     @mcp.tool()
     def sch_add_bus(
