@@ -1,9 +1,7 @@
-import pytest
 from kicad_mcp.tools.validation import _erc_violations, _report_entry_finding
-from kicad_mcp.models.verdict import Finding, SuggestedFix
 
 
-def test_finding_metadata_extraction():
+def test_finding_metadata_extraction() -> None:
     entry = {
         "type": "err_type",
         "description": "an error",
@@ -24,7 +22,7 @@ def test_finding_metadata_extraction():
     assert finding.metadata["positions"] == [[10.0, 20.0], [30.0, 40.0]]
 
 
-def test_erc_violations_preserves_sheet_path():
+def test_erc_violations_preserves_sheet_path() -> None:
     report = {
         "sheets": [
             {
