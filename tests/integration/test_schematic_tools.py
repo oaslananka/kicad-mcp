@@ -1776,3 +1776,71 @@ async def test_build_circuit_full_resistor(sample_project, mock_kicad) -> None:
     assert "Device:R" in content
     assert "R1" in content
     assert "NET_A" in content
+
+
+@pytest.mark.anyio
+async def test_schematic_write_tools_can_target_child_sheet(sample_project, mock_kicad) -> None:
+    server = build_server("schematic")
+
+    await call_tool_text(
+        server,
+        "sch_create_sheet",
+        {"name": "Power", "filename": "power.kicad_sch", "x_mm": 40.64, "y_mm": 50.8},
+    )
+
+    label_result = await call_tool_text(
+        server,
+        "sch_add_label",
+        {"name": "CHILD_NET", "x_mm": 10.16, "y_mm": 10.16, "sheet": "Power"},
+    )
+    assert "Target schematic (child)" in label_result
+
+    await call_tool_text(
+        server,
+        "sch_add_wire",
+        {
+            "x1_mm": 10.16,
+            "y1_mm": 10.16,
+            "x2_mm": 20.32,
+            "y2_mm": 10.16,
+            "sheet_file": "power.kicad_sch",
+        },
+    )
+    await call_tool_text(
+        server,
+        "sch_add_symbol",
+        {
+            "library": "Device",
+            "symbol_name": "R",
+            "x_mm": 25.4,
+            "y_mm": 10.16,
+            "reference": "R_CHILD",
+            "value": "10k",
+            "footprint": "Resistor_SMD:R_0805",
+            "sheet": "Power",
+        },
+    )
+    pin_label_result = await call_tool_text(
+        server,
+        "sch_add_pin_labels",
+        {
+            "connections": [{"reference": "R_CHILD", "pin": "1", "net": "R_CHILD_A"}],
+            "sheet": "Power",
+        },
+    )
+    assert "Target schematic (child)" in pin_label_result
+
+    root = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+    child = (sample_project / "power.kicad_sch").read_text(encoding="utf-8")
+    assert "CHILD_NET" not in root
+    assert "R_CHILD" not in root
+    assert "CHILD_NET" in child
+    assert "R_CHILD" in child
+    assert "R_CHILD_A" in child
+
+    traversal_error = await call_tool_text(
+        server,
+        "sch_add_label",
+        {"name": "BAD", "x_mm": 10.16, "y_mm": 10.16, "sheet_file": "../bad.kicad_sch"},
+    )
+    assert "escapes workspace root" in traversal_error

@@ -41,6 +41,7 @@ from ..models.schematic import (
     TraceNetInput,
     UpdatePropertiesInput,
 )
+from ..path_safety import resolve_under
 from ..utils.cache import clear_ttl_cache, ttl_cache
 from ..utils.schematic_router import RouterBBox, SchematicRouter
 from ..utils.sexpr import (
@@ -607,6 +608,68 @@ _DEFAULT_SCHEMATIC_BACKEND = "kicad_sch_api"
 def get_schematic_backend() -> _SchematicBackendAdapter:
     """Return the currently active schematic backend adapter."""
     return _SCHEMATIC_BACKENDS[_DEFAULT_SCHEMATIC_BACKEND]
+
+
+@dataclass(frozen=True)
+class _SchematicTarget:
+    path: Path
+    is_root: bool
+    description: str
+
+
+def _format_target_detail(target: _SchematicTarget) -> str:
+    kind = "root" if target.is_root else "child"
+    return f"Target schematic ({kind}): {target.path}"
+
+
+def _available_sheet_names(root_schematic: Path) -> list[str]:
+    return [name for name, _ in _iter_child_sheet_paths(root_schematic)]
+
+
+def _resolve_schematic_target(
+    sheet: str | None = None,
+    sheet_file: str | None = None,
+) -> _SchematicTarget:
+    """Resolve an optional child-sheet target for file-backed write tools."""
+    if sheet and sheet_file:
+        raise ValueError("Use only one of sheet or sheet_file.")
+
+    root = _get_schematic_file().resolve()
+    cfg = get_config()
+    project_root = (cfg.project_dir or root.parent).resolve()
+
+    if sheet_file:
+        target = resolve_under(project_root, sheet_file).resolve()
+        if target.suffix != ".kicad_sch":
+            raise ValueError("sheet_file must point to a .kicad_sch file.")
+        if not target.exists():
+            raise ValueError(f"Target schematic file does not exist: {target}")
+        return _SchematicTarget(
+            path=target,
+            is_root=target == root,
+            description="root" if target == root else "child",
+        )
+
+    if sheet:
+        discovered = _iter_child_sheet_paths(root)
+        matches = [
+            (name, path.resolve())
+            for name, path in discovered
+            if name == sheet or name.rsplit("/", 1)[-1] == sheet
+        ]
+        if not matches:
+            available = ", ".join(_available_sheet_names(root)) or "(none)"
+            raise ValueError(f"Sheet '{sheet}' was not found. Available sheets: {available}")
+        if len(matches) > 1:
+            available = ", ".join(name for name, _ in matches)
+            raise ValueError(f"Sheet '{sheet}' is ambiguous. Matching sheets: {available}")
+        name, target = matches[0]
+        if not target.exists():
+            raise ValueError(f"Sheet '{name}' points to missing file: {target}")
+        resolve_under(project_root, target)
+        return _SchematicTarget(path=target, is_root=target == root, description=name)
+
+    return _SchematicTarget(path=root, is_root=True, description="root")
 
 
 def new_uuid() -> str:
@@ -3205,15 +3268,17 @@ def _next_reference(prefix: str) -> str:
     return f"{prefix}{highest + 1}"
 
 
-def _transactional_write_to_schematic(mutator: Callable[[str], str]) -> str:
-    """Read, mutate, validate, and atomically rewrite the active schematic.
+def _transactional_write_to_schematic_file(
+    sch_file: Path, mutator: Callable[[str], str]
+) -> str:
+    """Read, mutate, validate, and atomically rewrite a schematic file.
 
     File-backed schematic tools are often invoked in batches.  Keep the full
     read-mutate-validate-replace critical section serialized so concurrent
     calls cannot read the same baseline and lose each other's edits.
     """
     with _SCHEMATIC_WRITE_LOCK:
-        sch_file = _get_schematic_file()
+        sch_file = sch_file.resolve()
         current = sch_file.read_text(encoding="utf-8")
         updated = _normalize_schematic_wire_connectivity(mutator(current))
         _validate_schematic_text(updated)
@@ -3227,8 +3292,15 @@ def _transactional_write_to_schematic(mutator: Callable[[str], str]) -> str:
         return str(sch_file)
 
 
-def transactional_write(mutator: Callable[[str], str]) -> str:
+def _transactional_write_to_schematic(mutator: Callable[[str], str]) -> str:
     """Read, mutate, validate, and atomically rewrite the active schematic."""
+    return _transactional_write_to_schematic_file(_get_schematic_file(), mutator)
+
+
+def transactional_write(mutator: Callable[[str], str], sch_file: Path | None = None) -> str:
+    """Read, mutate, validate, and atomically rewrite a schematic file."""
+    if sch_file is not None:
+        return _transactional_write_to_schematic_file(sch_file, mutator)
     return get_schematic_backend().transactional_write(mutator)
 
 
@@ -3482,6 +3554,8 @@ def register(mcp: FastMCP) -> None:
         rotation: int = 0,
         snap_to_grid: bool = True,
         unit: int = 1,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a schematic symbol at an absolute coordinate.
 
@@ -3512,7 +3586,8 @@ def register(mcp: FastMCP) -> None:
                 f"{payload.unit}. Available units: {_format_available_units(available_units)}."
             )
 
-        sch_file = _get_schematic_file()
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
+        sch_file = target.path
         sch_data = parse_schematic_file(sch_file)
         root_uuid = sch_data["uuid"] or new_uuid()
         cfg = get_config()
@@ -3546,10 +3621,14 @@ def register(mcp: FastMCP) -> None:
             )
             return _append_before_sheet_instances(updated, block)
 
-        transactional_write(mutator)
+        transactional_write(mutator, sch_file)
         result = _reload_schematic()
         fp_warning = _validate_footprint(payload.footprint or "")
-        parts = [p for p in [result, snap_note, overlap_warning, fp_warning] if p]
+        parts = [
+            p
+            for p in [result, _format_target_detail(target), snap_note, overlap_warning, fp_warning]
+            if p
+        ]
         return "\n".join(parts)
 
     @mcp.tool()
@@ -3565,6 +3644,8 @@ def register(mcp: FastMCP) -> None:
         rotation: int = 0,
         snap_to_grid: bool = True,
         unit: int = 1,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a schematic component through the hybrid IPC reload path."""
         return str(
@@ -3579,6 +3660,8 @@ def register(mcp: FastMCP) -> None:
                 rotation=rotation,
                 snap_to_grid=snap_to_grid,
                 unit=unit,
+                sheet=sheet,
+                sheet_file=sheet_file,
             )
         )
 
@@ -3589,6 +3672,8 @@ def register(mcp: FastMCP) -> None:
         x2_mm: float,
         y2_mm: float,
         snap_to_grid: bool = True,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a schematic wire, snapping endpoints to the 2.54 mm grid by default."""
         payload = AddWireInput(
@@ -3598,6 +3683,7 @@ def register(mcp: FastMCP) -> None:
             y2_mm=y2_mm,
             snap_to_grid=snap_to_grid,
         )
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         wire_coords = _snap_line(
             payload.x1_mm,
             payload.y1_mm,
@@ -3613,10 +3699,13 @@ def register(mcp: FastMCP) -> None:
             lambda current: _append_before_sheet_instances(
                 current,
                 wire_block(*wire_coords),
-            )
+            ),
+            target.path,
         )
         result = _reload_schematic()
-        return f"{result}\n{snap_note}" if snap_note else result
+        return "\n".join(
+            p for p in [result, _format_target_detail(target), snap_note] if p
+        )
 
     @mcp.tool()
     def sch_add_label(
@@ -3626,6 +3715,8 @@ def register(mcp: FastMCP) -> None:
         rotation: int = 0,
         snap_to_grid: bool = True,
         text: str | None = None,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a schematic label, snapping its anchor to the 2.54 mm grid by default."""
         label_text = name or text
@@ -3638,22 +3729,28 @@ def register(mcp: FastMCP) -> None:
             rotation=rotation,
             snap_to_grid=snap_to_grid,
         )
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         label_x, label_y = _snap_point(payload.x_mm, payload.y_mm, payload.snap_to_grid)
         snap_note = _snap_notice((payload.x_mm, payload.y_mm), (label_x, label_y))
         transactional_write(
             lambda current: _append_before_sheet_instances(
                 current,
                 label_block(payload.name, label_x, label_y, payload.rotation),
-            )
+            ),
+            target.path,
         )
         result = _reload_schematic()
-        return f"{result}\n{snap_note}" if snap_note else result
+        return "\n".join(
+            p for p in [result, _format_target_detail(target), snap_note] if p
+        )
 
     @mcp.tool()
     def sch_add_pin_labels(
         connections: list[dict[str, Any]],
         stub_mm: float = 5.08,
         global_labels: bool = True,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Connect placed-symbol pins to nets with a short outward wire stub plus a
         label placed clear of the symbol body (avoids label-on-pin overlap).
@@ -3665,7 +3762,8 @@ def register(mcp: FastMCP) -> None:
         share a ``net`` are joined by their common label name. This is the clean
         alternative to placing bare labels directly on pins.
         """
-        data = parse_schematic_file(_get_schematic_file())
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
+        data = parse_schematic_file(target.path)
         placed: dict[str, dict[str, Any]] = {}
         for sym in data.get("symbols", []):
             ref = str(sym.get("reference", ""))
@@ -3719,9 +3817,10 @@ def register(mcp: FastMCP) -> None:
                 current = _append_before_sheet_instances(current, block)
             return current
 
-        transactional_write(mutator)
+        transactional_write(mutator, target.path)
         return (
-            f"{_reload_schematic()}\nAdded {len(blocks) // 2} pin label(s) with stubs:\n"
+            f"{_reload_schematic()}\n{_format_target_detail(target)}\n"
+            f"Added {len(blocks) // 2} pin label(s) with stubs:\n"
             + "\n".join(results)
         )
 
@@ -3732,19 +3831,23 @@ def register(mcp: FastMCP) -> None:
         y_mm: float,
         rotation: int = 0,
         snap_to_grid: bool = True,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a power symbol, snapping its anchor to the 2.54 mm grid by default."""
         return str(
             sch_add_symbol(
-                "power",
-                name,
-                x_mm,
-                y_mm,
-                f"#PWR{new_uuid()[:4]}",
-                name,
-                "",
-                rotation,
-                snap_to_grid,
+                library="power",
+                symbol_name=name,
+                x_mm=x_mm,
+                y_mm=y_mm,
+                reference=f"#PWR{new_uuid()[:4]}",
+                value=name,
+                footprint="",
+                rotation=rotation,
+                snap_to_grid=snap_to_grid,
+                sheet=sheet,
+                sheet_file=sheet_file,
             )
         )
 
@@ -3755,6 +3858,8 @@ def register(mcp: FastMCP) -> None:
         x2_mm: float,
         y2_mm: float,
         snap_to_grid: bool = True,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a schematic bus, snapping endpoints to the 2.54 mm grid by default."""
         payload = AddBusInput(
@@ -3764,6 +3869,7 @@ def register(mcp: FastMCP) -> None:
             y2_mm=y2_mm,
             snap_to_grid=snap_to_grid,
         )
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         bus_coords = _snap_line(
             payload.x1_mm,
             payload.y1_mm,
@@ -3779,10 +3885,13 @@ def register(mcp: FastMCP) -> None:
             lambda current: _append_before_sheet_instances(
                 current,
                 wire_block(*bus_coords, "bus"),
-            )
+            ),
+            target.path,
         )
         result = _reload_schematic()
-        return f"{result}\n{snap_note}" if snap_note else result
+        return "\n".join(
+            p for p in [result, _format_target_detail(target), snap_note] if p
+        )
 
     @mcp.tool()
     def sch_add_bus_wire_entry(
@@ -3790,6 +3899,8 @@ def register(mcp: FastMCP) -> None:
         y_mm: float,
         direction: str = "up_right",
         snap_to_grid: bool = True,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a bus wire entry marker, snapping its anchor to the 2.54 mm grid by default."""
         payload = AddBusWireEntryInput(
@@ -3798,31 +3909,45 @@ def register(mcp: FastMCP) -> None:
             direction=direction,
             snap_to_grid=snap_to_grid,
         )
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         entry_x, entry_y = _snap_point(payload.x_mm, payload.y_mm, payload.snap_to_grid)
         snap_note = _snap_notice((payload.x_mm, payload.y_mm), (entry_x, entry_y))
         transactional_write(
             lambda current: _append_before_sheet_instances(
                 current,
                 bus_entry_block(entry_x, entry_y, payload.direction),
-            )
+            ),
+            target.path,
         )
         result = _reload_schematic()
-        return f"{result}\n{snap_note}" if snap_note else result
+        return "\n".join(
+            p for p in [result, _format_target_detail(target), snap_note] if p
+        )
 
     @mcp.tool()
-    def sch_add_no_connect(x_mm: float, y_mm: float, snap_to_grid: bool = True) -> str:
+    def sch_add_no_connect(
+        x_mm: float,
+        y_mm: float,
+        snap_to_grid: bool = True,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
+    ) -> str:
         """Add a no-connect marker, snapping it to the 2.54 mm grid by default."""
         payload = AddNoConnectInput(x_mm=x_mm, y_mm=y_mm, snap_to_grid=snap_to_grid)
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         marker_x, marker_y = _snap_point(payload.x_mm, payload.y_mm, payload.snap_to_grid)
         snap_note = _snap_notice((payload.x_mm, payload.y_mm), (marker_x, marker_y))
         transactional_write(
             lambda current: _append_before_sheet_instances(
                 current,
                 no_connect_block(marker_x, marker_y),
-            )
+            ),
+            target.path,
         )
         result = _reload_schematic()
-        return f"{result}\n{snap_note}" if snap_note else result
+        return "\n".join(
+            p for p in [result, _format_target_detail(target), snap_note] if p
+        )
 
     @mcp.tool()
     @headless_compatible
@@ -4665,6 +4790,8 @@ def register(mcp: FastMCP) -> None:
         rotation: int = 0,
         snap_to_grid: bool = True,
         name: str | None = None,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a hierarchical label, preserving the requested shape and rotation."""
         label_text = text or name
@@ -4678,6 +4805,7 @@ def register(mcp: FastMCP) -> None:
             rotation=rotation,
             snap_to_grid=snap_to_grid,
         )
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         label_x, label_y = _snap_point(payload.x_mm, payload.y_mm, payload.snap_to_grid)
         snap_note = _snap_notice((payload.x_mm, payload.y_mm), (label_x, label_y))
         transactional_write(
@@ -4691,10 +4819,13 @@ def register(mcp: FastMCP) -> None:
                     kind="hierarchical_label",
                     shape=payload.shape,
                 ),
-            )
+            ),
+            target.path,
         )
         result = _reload_schematic()
-        return f"{result}\n{snap_note}" if snap_note else result
+        return "\n".join(
+            p for p in [result, _format_target_detail(target), snap_note] if p
+        )
 
     @mcp.tool()
     def sch_add_global_label(
@@ -4705,6 +4836,8 @@ def register(mcp: FastMCP) -> None:
         rotation: int = 0,
         snap_to_grid: bool = True,
         name: str | None = None,
+        sheet: str | None = None,
+        sheet_file: str | None = None,
     ) -> str:
         """Add a global label, preserving the requested shape and rotation."""
         label_text = text or name
@@ -4718,6 +4851,7 @@ def register(mcp: FastMCP) -> None:
             rotation=rotation,
             snap_to_grid=snap_to_grid,
         )
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         label_x, label_y = _snap_point(payload.x_mm, payload.y_mm, payload.snap_to_grid)
         snap_note = _snap_notice((payload.x_mm, payload.y_mm), (label_x, label_y))
         transactional_write(
@@ -4731,10 +4865,13 @@ def register(mcp: FastMCP) -> None:
                     kind="global_label",
                     shape=payload.shape,
                 ),
-            )
+            ),
+            target.path,
         )
         result = _reload_schematic()
-        return f"{result}\n{snap_note}" if snap_note else result
+        return "\n".join(
+            p for p in [result, _format_target_detail(target), snap_note] if p
+        )
 
     @mcp.tool()
     def sch_list_sheets() -> str:
