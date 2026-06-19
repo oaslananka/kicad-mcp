@@ -50,7 +50,7 @@ from ..utils.sexpr import (
     _sexpr_string,
     _unescape_sexpr_string,
 )
-from .metadata import headless_compatible, requires_kicad_running
+from .metadata import headless_compatible
 
 SCHEMATIC_GRID_MM = 2.54
 SNAP_TOLERANCE_MM = 1e-6
@@ -3830,6 +3830,7 @@ def register(mcp: FastMCP) -> None:
         return "Named nets:\n" + "\n".join(f"- {name}" for name in names)
 
     @mcp.tool()
+    @headless_compatible
     def sch_add_symbol(
         library: str,
         symbol_name: str,
@@ -3919,7 +3920,7 @@ def register(mcp: FastMCP) -> None:
         return "\n".join(parts)
 
     @mcp.tool()
-    @requires_kicad_running
+    @headless_compatible
     def sch_add_component(
         library: str,
         symbol_name: str,
@@ -4350,6 +4351,7 @@ def register(mcp: FastMCP) -> None:
         return f"Recorded gate swap {component_ref}:{gate_a}<->{gate_b} in {path}."
 
     @mcp.tool()
+    @headless_compatible
     def sch_add_jumper(
         x_mm: float,
         y_mm: float,
@@ -4382,24 +4384,27 @@ def register(mcp: FastMCP) -> None:
         return f"{detail}\n{result}\n{snap_note}" if snap_note else f"{detail}\n{result}"
 
     @mcp.tool()
+    @headless_compatible
     def sch_update_properties(reference: str, field: str, value: str) -> str:
         """Update a property on a placed symbol."""
         result = update_symbol_property(reference, field, value)
         return f"{result}\n{_reload_schematic()}"
 
     @mcp.tool()
+    @headless_compatible
     def sch_set_dnp(reference: str, enabled: bool = True) -> str:
         """Set KiCad's native Do Not Populate flag on a placed symbol."""
         result = set_symbol_dnp(reference, enabled)
         return f"{result}\n{_reload_schematic()}"
 
     @mcp.tool()
-    @requires_kicad_running
+    @headless_compatible
     def sch_modify_property(reference: str, field: str, value: str) -> str:
         """Modify a schematic symbol property by reference."""
         return str(sch_update_properties(reference, field, value))
 
     @mcp.tool()
+    @headless_compatible
     def sch_move_symbol(
         reference: str,
         x_mm: float,
