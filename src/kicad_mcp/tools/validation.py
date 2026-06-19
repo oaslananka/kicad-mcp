@@ -292,13 +292,19 @@ def _finding_for_gate_detail(outcome: GateOutcome, detail: str) -> Finding:
 
 
 def _gate_findings(outcome: GateOutcome) -> list[Finding]:
-    actionable = [
+    # Detail lines are often informational metrics (counts, score, zero-count
+    # summaries). Only explicit FAIL/WARN/BLOCKED lines should become actionable
+    # findings. When a non-passing gate has no tagged detail, fall back to a
+    # single summary finding rather than promoting every metric line to errors.
+    tagged = [
         detail
         for detail in outcome.details
-        if outcome.status != "PASS" or detail.strip().startswith(("FAIL: ", "WARN: ", "BLOCKED: "))
+        if detail.strip().startswith(("FAIL: ", "WARN: ", "BLOCKED: "))
     ]
-    if outcome.status != "PASS" and not actionable:
-        actionable = [outcome.summary]
+    if outcome.status == "PASS":
+        actionable = tagged
+    else:
+        actionable = tagged or [outcome.summary]
     return [_finding_for_gate_detail(outcome, detail) for detail in actionable]
 
 

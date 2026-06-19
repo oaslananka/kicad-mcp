@@ -96,6 +96,87 @@ async def test_project_next_action_includes_verdict_and_finding(
 
 
 @pytest.mark.anyio
+async def test_gate_findings_ignore_informational_metric_lines(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "kicad_mcp.tools.validation._evaluate_schematic_gate",
+        lambda: GateOutcome(
+            name="Schematic",
+            status="FAIL",
+            summary="Schematic still has blocking issues.",
+            details=[
+                "Pages analysed: 4",
+                "Dangling label groups: 0",
+                "Zero-wire pages: 0",
+                "FAIL: U1 pin 3 is not connected.",
+            ],
+        ),
+    )
+    server = build_server("full")
+
+    payload = await call_tool_payload(server, "schematic_quality_gate", {})
+
+    assert isinstance(payload, dict)
+    assert payload["verdict"] == "FAIL"
+    descriptions = [finding["description"] for finding in payload["findings"]]
+    assert descriptions == ["U1 pin 3 is not connected."]
+
+
+@pytest.mark.anyio
+async def test_project_next_action_ignores_metric_details_for_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "kicad_mcp.tools.validation._evaluate_project_gate",
+        lambda: [
+            GateOutcome(
+                name="Schematic connectivity",
+                status="FAIL",
+                summary="Connectivity smells suggest the schematic is not ready.",
+                details=[
+                    "Pages analysed: 3",
+                    "Dangling label groups: 0",
+                    "Zero-wire pages: 0",
+                    "FAIL: Sheet 'Power' is required by design intent.",
+                ],
+            )
+        ],
+    )
+    server = build_server("full")
+
+    payload = await call_tool_payload(server, "project_get_next_action", {})
+
+    assert isinstance(payload, dict)
+    assert payload["status"] == "FAIL"
+    assert payload["reason"] == "Sheet 'Power' is required by design intent."
+
+
+@pytest.mark.anyio
+async def test_non_passing_gate_without_tagged_details_uses_summary_finding(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "kicad_mcp.tools.validation._evaluate_schematic_gate",
+        lambda: GateOutcome(
+            name="Schematic",
+            status="FAIL",
+            summary="ERC reported blocking issues.",
+            details=[
+                "Pages analysed: 1",
+                "Violations: 0",
+            ],
+        ),
+    )
+    server = build_server("full")
+
+    payload = await call_tool_payload(server, "schematic_quality_gate", {})
+
+    assert isinstance(payload, dict)
+    assert payload["findings"][0]["description"] == "ERC reported blocking issues."
+
+
+@pytest.mark.anyio
 async def test_pcb_board_summary_returns_verdict_report(mock_board: object) -> None:
     server = build_server("pcb")
 
