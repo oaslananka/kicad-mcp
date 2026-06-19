@@ -97,7 +97,9 @@ async def test_schematic_misc_file_tools_cover_buses_labels_jumper_and_project_f
     assert "(bus_entry" in schematic
     assert "(no_connect" in schematic
     assert '(global_label "USB_DP"' in schematic
+    assert '(global_label "USB_DP"\n\t\t(shape output)\n\t\t(at 50.8 20.32 0)\n\t\t(effects (font (size 1.524 1.524)) (justify left))' in schematic
     assert '(hierarchical_label "SENSE"' in schematic
+    assert '(hierarchical_label "SENSE"\n\t\t(shape input)\n\t\t(at 55.88 25.4 0)\n\t\t(effects (font (size 1.524 1.524)) (justify left))' in schematic
     assert '"hop_over_display": true' in project_payload
     assert "USB_DP" in labels and "SENSE" in labels
     assert "- USB_DP" in nets and "- SENSE" in nets
@@ -355,12 +357,15 @@ async def test_build_circuit_netlist_auto_layout_generates_wires(
 
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
     assert "Applied netlist-aware auto-layout" in result
-    assert "generated 7 wire segment" in result
-    assert '(label "VIN"' in schematic
-    assert '(label "MID"' in schematic
+    # Each net member pin gets its own terminal (stub + global label / power symbol);
+    # nets join by shared name, so no collision-prone Manhattan routing is emitted.
+    assert "per-pin global-label terminal" in result
+    assert '(global_label "VIN"' in schematic
+    assert '(global_label "MID"' in schematic
     assert '(lib_id "power:GND")' in schematic
-    assert "(pts (xy 53.34 50.8) (xy 86.36 50.8))" in schematic
-    assert "(pts (xy 88.9 50.8) (xy 88.9 68.58))" in schematic
+    # MID spans R1.2 and R2.1 -> two like-named global labels; VIN/GND one pin each.
+    assert schematic.count('(global_label "MID"') == 2
+    assert schematic.count("(wire") == 4
 
 
 @pytest.mark.anyio
@@ -409,7 +414,7 @@ async def test_analyze_net_compilation_reports_routable_nets(
     assert "- Nets requested: 3" in result
     assert "- Routable nets: 3" in result
     assert "- Unresolved nets: 0" in result
-    assert "- Generated wire segments: 7" in result
+    assert "- Generated wire segments: 4" in result
 
 
 @pytest.mark.anyio
@@ -823,8 +828,8 @@ async def test_build_circuit_netlist_auto_layout_uses_symbol_unit_for_routing(
     # Unit-2 pins (OUTB/-B) are present, confirming the requested unit was embedded.
     assert '(name "OUTB")' in schematic
     assert '(name "-B")' in schematic
-    assert '(label "OUT2"' in schematic
-    assert '(label "FB2"' in schematic
+    assert '(global_label "OUT2"' in schematic
+    assert '(global_label "FB2"' in schematic
     assert schematic.count("(wire") >= 3
 
 
@@ -878,8 +883,8 @@ async def test_build_circuit_netlist_auto_layout_resolves_pin_names_and_aliases(
 
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
     assert "Applied netlist-aware auto-layout" in result
-    assert '(label "OUT_ALIAS"' in schematic
-    assert '(label "INPUT_ALIAS"' in schematic
+    assert '(global_label "OUT_ALIAS"' in schematic
+    assert '(global_label "INPUT_ALIAS"' in schematic
     assert schematic.count("(wire") >= 3
 
 
@@ -1082,7 +1087,11 @@ async def test_schematic_create_and_inspect_child_sheets(sample_project, mock_ki
     )
 
     assert "Created child sheet 'Power'" in result
-    assert (sample_project / "power.kicad_sch").exists()
+    child_sheet = sample_project / "power.kicad_sch"
+    assert child_sheet.exists()
+    child_text = child_sheet.read_text(encoding="utf-8")
+    assert "(version 20250316)" in child_text
+    assert '(generator "pytest")' in child_text
 
     listing = await call_tool_text(server, "sch_list_sheets", {})
     assert "Power -> power.kicad_sch" in listing

@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import threading
 import uuid
 from collections.abc import Callable, Iterable
 from copy import deepcopy
@@ -452,6 +453,27 @@ def _load_kicad_schematic(sch_file: Path) -> _LoadedSchematicLike:
     from kicad_sch_api import load_schematic
 
     return cast(_LoadedSchematicLike, load_schematic(str(sch_file)))
+
+
+def _align_child_schematic_header(parent_path: Path, child_path: Path) -> None:
+    """Keep generated child schematic headers aligned with the active root sheet."""
+
+    parent_text = parent_path.read_text(encoding="utf-8")
+    child_text = child_path.read_text(encoding="utf-8")
+    for field_name in ("version", "generator", "generator_version"):
+        match = re.search(rf"\({field_name}\s+([^\r\n)]+)\)", parent_text)
+        if match is None:
+            continue
+        replacement = f"({field_name} {match.group(1)})"
+        child_text, count = re.subn(
+            rf"\({field_name}\s+([^\r\n)]+)\)",
+            replacement,
+            child_text,
+            count=1,
+        )
+        if count == 0 and field_name == "generator_version":
+            child_text = child_text.replace("(generator ", f"{replacement}\n\t(generator ", 1)
+    child_path.write_text(child_text, encoding="utf-8")
 
 
 def _component_unit(component: _PlacedComponentLike) -> int:
@@ -2608,6 +2630,151 @@ def _plan_netlist_wires(
     return routed_segments, unresolved_nets, resolution_stats
 
 
+def _plan_netlist_pin_terminals(
+    symbols: list[dict[str, Any]],
+    nets: list[dict[str, Any]],
+    snap_to_grid: bool,
+    stub_mm: float = 5.08,
+) -> tuple[
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, float | bool]],
+    list[dict[str, Any]],
+    dict[str, int],
+]:
+    """Plan deterministic per-pin terminals for netlist-aware auto-layout.
+
+    For each net endpoint that resolves to a symbol pin, emit a short outward
+    wire stub plus a terminal at the stub end (the same proven strategy as
+    ``sch_add_pin_labels``): a power symbol for power nets (GND, +3V3, …) and a
+    same-named global label for signal nets.  Pins that share a ``net`` connect
+    via their common terminal name, so connectivity is geometry-free and never
+    produces the cross-net shorts that long Manhattan routing creates when
+    symbols are packed together.  Returns
+    ``(labels, power_symbols, wires, unresolved_nets, stats)``.
+    """
+    sym_info: dict[str, dict[str, Any]] = {}
+    for sym in symbols:
+        ref = str(sym.get("reference", ""))
+        if not ref:
+            continue
+        ox, oy = _snap_point(
+            _coord_value(sym, "x") or 0.0,
+            _coord_value(sym, "y") or 0.0,
+            snap_to_grid and bool(sym.get("snap_to_grid", True)),
+        )
+        library = str(sym.get("library", ""))
+        symbol_name = str(sym.get("symbol_name", ""))
+        rotation = int(sym.get("rotation", 0) or 0)
+        unit = int(sym.get("unit", 1) or 1)
+        sym_info[ref] = {
+            "ox": ox,
+            "oy": oy,
+            "pins": get_pin_positions(library, symbol_name, ox, oy, rotation, unit),
+            "aliases": get_pin_alias_positions(library, symbol_name, ox, oy, rotation, unit),
+        }
+
+    labels: list[dict[str, Any]] = []
+    powers: list[dict[str, Any]] = []
+    wires: list[dict[str, float | bool]] = []
+    unresolved_nets: list[dict[str, Any]] = []
+    stats = {
+        "resolved_endpoints": 0,
+        "unresolved_endpoints": 0,
+        "pin_alias_resolutions": 0,
+        "symbol_center_resolutions": 0,
+    }
+    seen_terminals: set[tuple[float, float, str]] = set()
+
+    for net in nets:
+        name = _net_name(net)
+        if not name:
+            continue
+        endpoints = _net_endpoints(net)
+        resolved_here = 0
+        missing: list[str] = []
+        net_seen_points: set[tuple[float, float]] = set()
+        for endpoint in endpoints:
+            endpoint_ref = _endpoint_reference(endpoint)
+            endpoint_pin = _endpoint_pin(endpoint)
+            if endpoint_ref is None or endpoint_pin is None:
+                # Power-rail / bare-label endpoints carry no pin; the shared net
+                # name already ties the per-pin terminals together.
+                continue
+            info = sym_info.get(endpoint_ref)
+            if info is None:
+                missing.append(f"{endpoint_ref}.{endpoint_pin}")
+                stats["unresolved_endpoints"] += 1
+                continue
+            point = info["pins"].get(endpoint_pin)
+            if point is None:
+                point = info["aliases"].get(endpoint_pin) or info["aliases"].get(
+                    _normalize_pin_alias(endpoint_pin)
+                )
+                if point is not None:
+                    stats["pin_alias_resolutions"] += 1
+            if point is None:
+                missing.append(f"{endpoint_ref}.{endpoint_pin}")
+                stats["unresolved_endpoints"] += 1
+                continue
+            px, py = point
+            point_key = (round(px, 3), round(py, 3))
+            if point_key in net_seen_points:
+                # Stacked pins at the same coordinate need only one terminal.
+                continue
+            net_seen_points.add(point_key)
+            ox, oy = info["ox"], info["oy"]
+            dx, dy = px - ox, py - oy
+            if abs(dx) >= abs(dy):
+                ux, uy = (1.0 if dx >= 0 else -1.0), 0.0
+            else:
+                ux, uy = 0.0, (1.0 if dy >= 0 else -1.0)
+            ex = round(px + ux * stub_mm, 4)
+            ey = round(py + uy * stub_mm, 4)
+            rotation = 0 if ux > 0 else 180 if ux < 0 else 90 if uy < 0 else 270
+            terminal_key = (round(ex, 3), round(ey, 3), name)
+            if terminal_key in seen_terminals:
+                continue
+            seen_terminals.add(terminal_key)
+            wires.append(
+                {"x1_mm": px, "y1_mm": py, "x2_mm": ex, "y2_mm": ey, "snap_to_grid": False}
+            )
+            if _is_power_net(name):
+                powers.append(
+                    {
+                        "name": name,
+                        "x_mm": ex,
+                        "y_mm": ey,
+                        "rotation": rotation,
+                        "snap_to_grid": False,
+                    }
+                )
+            else:
+                labels.append(
+                    {
+                        "name": name,
+                        "x_mm": ex,
+                        "y_mm": ey,
+                        "rotation": rotation,
+                        "snap_to_grid": False,
+                        "global_label": True,
+                    }
+                )
+            resolved_here += 1
+            stats["resolved_endpoints"] += 1
+        if resolved_here == 0:
+            unresolved_nets.append(
+                {
+                    "name": name or "<unnamed>",
+                    "endpoint_count": len(endpoints),
+                    "resolved_count": 0,
+                    "unresolved_endpoints": missing,
+                    "unresolved_details": [f"{item}: pin not found" for item in missing],
+                }
+            )
+    return labels, powers, wires, unresolved_nets, stats
+
+
 def _prepare_build_circuit_inputs(
     *,
     symbols: list[dict[str, Any]] | None = None,
@@ -2632,14 +2799,35 @@ def _prepare_build_circuit_inputs(
     raw_labels = [dict(item) for item in (labels or [])]
     raw_wires = [dict(item) for item in (wires or [])]
     raw_nets = [dict(item) for item in (nets or [])]
+    use_pin_terminals = bool(auto_layout and raw_nets)
+    terminal_wires: list[dict[str, float | bool]] = []
+    terminal_unresolved: list[dict[str, Any]] = []
+    terminal_stats: dict[str, int] = {
+        "resolved_endpoints": 0,
+        "unresolved_endpoints": 0,
+        "pin_alias_resolutions": 0,
+        "symbol_center_resolutions": 0,
+    }
     if auto_layout:
         if raw_nets:
-            raw_symbols, raw_powers, raw_labels = _apply_netlist_auto_layout(
+            # Place symbols on the connection-aware grid, then connect every net
+            # by dropping a global-label terminal on each member pin (geometry-free,
+            # never shorts) instead of routing collision-prone Manhattan wires.
+            raw_symbols, _, _ = _apply_netlist_auto_layout(
                 raw_symbols,
-                raw_powers,
-                raw_labels,
+                [],
+                [],
                 raw_nets,
             )
+            (
+                terminal_labels,
+                terminal_powers,
+                terminal_wires,
+                terminal_unresolved,
+                terminal_stats,
+            ) = _plan_netlist_pin_terminals(raw_symbols, raw_nets, snap_to_grid)
+            raw_labels = raw_labels + terminal_labels
+            raw_powers = raw_powers + terminal_powers
         else:
             raw_symbols, raw_powers, raw_labels = _apply_basic_auto_layout(
                 raw_symbols,
@@ -2667,7 +2855,13 @@ def _prepare_build_circuit_inputs(
         "pin_alias_resolutions": 0,
         "symbol_center_resolutions": 0,
     }
-    if raw_nets:
+    if use_pin_terminals:
+        # Auto-layout connected each net through per-pin global-label terminals.
+        generated_wires = terminal_wires
+        unresolved_nets = terminal_unresolved
+        resolution_stats = terminal_stats
+        validated_wires.extend(AddWireInput.model_validate(item) for item in generated_wires)
+    elif raw_nets:
         generated_wires, unresolved_nets, resolution_stats = _plan_netlist_wires(
             validated_symbols,
             validated_powers,
@@ -2764,8 +2958,22 @@ def _split_lib_id(lib_id: str) -> tuple[str, str]:
     return library, symbol_name
 
 
+def _extract_no_connects(content: str) -> set[tuple[float, float]]:
+    """Return the grid points carrying an explicit no-connect marker."""
+    points: set[tuple[float, float]] = set()
+    for match in re.finditer(
+        r"\(no_connect\s+\(at\s+([-\d.]+)\s+([-\d.]+)", content
+    ):
+        points.add(_point_key(float(match.group(1)), float(match.group(2))))
+    return points
+
+
 def _build_connectivity_groups(sch_file: Path) -> list[dict[str, Any]]:
     data = parse_schematic_file(sch_file)
+    try:
+        no_connect_points = _extract_no_connects(sch_file.read_text(encoding="utf-8"))
+    except OSError:
+        no_connect_points = set()
     parent: dict[tuple[float, float], tuple[float, float]] = {}
 
     def find(point: tuple[float, float]) -> tuple[float, float]:
@@ -2857,6 +3065,9 @@ def _build_connectivity_groups(sch_file: Path) -> list[dict[str, Any]]:
                     group["pins"],
                     key=lambda item: (item["reference"], item["pin"]),
                 ),
+                "no_connect": any(
+                    point in no_connect_points for point in group["points"]
+                ),
             }
         )
     return sorted(
@@ -2945,11 +3156,12 @@ def label_block(
     if effective_kind == "global_label" and effective_shape is None:
         effective_shape = "bidirectional"
     shape_line = f"\t\t(shape {effective_shape})\n" if effective_shape else ""
+    justify = "right" if int(rotation) % 360 == 180 else "left"
     return (
         f"\t({effective_kind} {_sexpr_string(name)}\n"
         f"{shape_line}"
         f"\t\t(at {_fmt_mm(x)} {_fmt_mm(y)} {rotation})\n"
-        "\t\t(effects (font (size 1.524 1.524)))\n"
+        f"\t\t(effects (font (size 1.524 1.524)) (justify {justify}))\n"
         f'\t\t(uuid "{new_uuid()}")\n'
         "\t)"
     )
@@ -3156,18 +3368,28 @@ def _next_reference(prefix: str) -> str:
     return f"{prefix}{highest + 1}"
 
 
+# Serializes the read-mutate-write cycle below. FastMCP runs synchronous tools
+# in a worker-thread pool, so concurrent write tools (e.g. several
+# sch_add_no_connect calls issued in one batch) would otherwise each read the
+# same baseline and clobber one another, producing lost or duplicated blocks.
+_SCHEMATIC_WRITE_LOCK = threading.RLock()
+
+
 def _transactional_write_to_schematic(mutator: Callable[[str], str]) -> str:
     """Read, mutate, validate, and atomically rewrite the active schematic."""
-    sch_file = _get_schematic_file()
-    current = sch_file.read_text(encoding="utf-8")
-    updated = _normalize_schematic_wire_connectivity(mutator(current))
-    _validate_schematic_text(updated)
-    with NamedTemporaryFile("w", encoding="utf-8", delete=False, dir=sch_file.parent) as handle:
-        handle.write(updated)
-        temp_path = Path(handle.name)
-    temp_path.replace(sch_file)
-    clear_ttl_cache()
-    return str(sch_file)
+    with _SCHEMATIC_WRITE_LOCK:
+        sch_file = _get_schematic_file()
+        current = sch_file.read_text(encoding="utf-8")
+        updated = _normalize_schematic_wire_connectivity(mutator(current))
+        _validate_schematic_text(updated)
+        with NamedTemporaryFile(
+            "w", encoding="utf-8", delete=False, dir=sch_file.parent
+        ) as handle:
+            handle.write(updated)
+            temp_path = Path(handle.name)
+        temp_path.replace(sch_file)
+        clear_ttl_cache()
+        return str(sch_file)
 
 
 def transactional_write(mutator: Callable[[str], str]) -> str:
@@ -3599,14 +3821,19 @@ def register(mcp: FastMCP) -> None:
         global_labels: bool = True,
     ) -> str:
         """Connect placed-symbol pins to nets with a short outward wire stub plus a
-        label placed clear of the symbol body (avoids label-on-pin overlap).
+        terminal placed clear of the symbol body (avoids label-on-pin overlap).
 
         Each connection is ``{"reference": "U3", "pin": "VIN" | "5", "net":
         "5V_SYS"}``; the pin may be a number or a name. The stub direction is
         derived from the pin position relative to the symbol origin (dominant
-        axis), so the label lands outside the symbol and reads outward. Pins that
-        share a ``net`` are joined by their common label name. This is the clean
-        alternative to placing bare labels directly on pins.
+        axis), so the terminal lands outside the symbol and reads outward.
+
+        Power nets (GND, VCC, +3V3, …) get a conventional power symbol oriented
+        outward (GND points down) rather than a rotated global label; other nets
+        get a global label. Pins sharing a ``net`` join by their common
+        name. Neighbouring terminals are staggered (the stub is lengthened) so
+        their labels/symbols do not overlap. This is the clean alternative to
+        placing bare labels directly on pins.
         """
         data = parse_schematic_file(_get_schematic_file())
         placed: dict[str, dict[str, Any]] = {}
@@ -3615,8 +3842,19 @@ def register(mcp: FastMCP) -> None:
             if ref:
                 placed[ref] = sym
 
-        blocks: list[str] = []
+        cfg = get_config()
+        project_name = cfg.project_file.stem if cfg.project_file is not None else "KiCadMCP"
+        root_uuid = str(data.get("uuid") or new_uuid())
+
+        wire_blocks: list[str] = []
+        terminal_blocks: list[str] = []
+        power_lib_defs: dict[str, str] = {}
         results: list[str] = []
+        # Stagger neighbouring terminals so their labels/symbols do not overlap.
+        occupied: list[tuple[float, float]] = []
+        clearance_mm = 6.0
+        stagger_step_mm = 2.54
+        max_stagger = 5
         for conn in connections:
             ref = str(conn.get("reference", ""))
             pin = str(conn.get("pin", ""))
@@ -3650,24 +3888,76 @@ def register(mcp: FastMCP) -> None:
                 ux, uy = (1.0 if dx >= 0 else -1.0), 0.0
             else:
                 ux, uy = 0.0, (1.0 if dy >= 0 else -1.0)
-            ex = round(px + ux * stub_mm, 4)
-            ey = round(py + uy * stub_mm, 4)
-            rotation = 0 if ux > 0 else 180 if ux < 0 else 90 if uy < 0 else 270
-            blocks.append(wire_block(px, py, ex, ey))
-            blocks.append(label_block(net, ex, ey, rotation, global_label=global_labels))
-            results.append(f"{ref}.{pin} -> {net} @ ({ex}, {ey})")
+            length = stub_mm
+            ex = round(px + ux * length, 4)
+            ey = round(py + uy * length, 4)
+            tries = 0
+            while tries < max_stagger and any(
+                abs(ex - qx) < clearance_mm and abs(ey - qy) < clearance_mm for qx, qy in occupied
+            ):
+                length += stagger_step_mm
+                ex = round(px + ux * length, 4)
+                ey = round(py + uy * length, 4)
+                tries += 1
+            occupied.append((ex, ey))
+            wire_blocks.append(wire_block(px, py, ex, ey))
+            if _is_power_net(net):
+                # Power nets get a conventional power symbol (GND points down, etc.)
+                # instead of a rotated global label, oriented outward from the pin.
+                if net not in power_lib_defs:
+                    lib_def = load_lib_symbol("power", net)
+                    if lib_def is not None:
+                        power_lib_defs[net] = lib_def
+                if uy > 0:
+                    power_rot = 0
+                elif uy < 0:
+                    power_rot = 180
+                elif ux > 0:
+                    power_rot = 270
+                else:
+                    power_rot = 90
+                terminal_blocks.append(
+                    place_symbol_block(
+                        lib_id=f"power:{net}",
+                        x=ex,
+                        y=ey,
+                        reference=f"#PWR{new_uuid()[:4]}",
+                        value=net,
+                        rotation=power_rot,
+                        project_name=project_name,
+                        root_uuid=root_uuid,
+                    )
+                )
+                results.append(f"{ref}.{pin} -> {net} (power) @ ({ex}, {ey})")
+            else:
+                rotation = 0 if ux > 0 else 180 if ux < 0 else 90 if uy < 0 else 270
+                terminal_blocks.append(
+                    label_block(net, ex, ey, rotation, global_label=global_labels)
+                )
+                results.append(f"{ref}.{pin} -> {net} @ ({ex}, {ey})")
 
-        if not blocks:
+        if not (wire_blocks or terminal_blocks):
             return "No pin labels were added.\n" + "\n".join(results)
 
         def mutator(current: str) -> str:
-            for block in blocks:
-                current = _append_before_sheet_instances(current, block)
-            return current
+            updated = current
+            for net_name, lib_def in power_lib_defs.items():
+                if f'(symbol "power:{net_name}"' not in updated:
+                    if "(lib_symbols)" in updated:
+                        updated = updated.replace(
+                            "(lib_symbols)", f"(lib_symbols\n\t{lib_def}\n\t)", 1
+                        )
+                    else:
+                        updated = updated.replace(
+                            "\t(lib_symbols\n", f"\t(lib_symbols\n\t{lib_def}\n", 1
+                        )
+            for block in (*wire_blocks, *terminal_blocks):
+                updated = _append_before_sheet_instances(updated, block)
+            return updated
 
         transactional_write(mutator)
         return (
-            f"{_reload_schematic()}\nAdded {len(blocks) // 2} pin label(s) with stubs:\n"
+            f"{_reload_schematic()}\nAdded {len(wire_blocks)} pin terminal(s):\n"
             + "\n".join(results)
         )
 
@@ -4414,7 +4704,9 @@ def register(mcp: FastMCP) -> None:
                 lbl.y_mm,
                 snap_to_grid and lbl.snap_to_grid,
             )
-            elements.append(label_block(lbl.name, label_x, label_y, lbl.rotation))
+            elements.append(
+                label_block(lbl.name, label_x, label_y, lbl.rotation, global_label=lbl.global_label)
+            )
 
         lib_section = "\t(lib_symbols\n"
         for lib_symbol in lib_symbols_content:
@@ -4444,8 +4736,8 @@ def register(mcp: FastMCP) -> None:
         result = _reload_schematic()
         if auto_layout and raw_nets:
             summary = (
-                f"{result}\nApplied netlist-aware auto-layout and generated "
-                f"{len(generated_wires)} wire segment(s)."
+                f"{result}\nApplied netlist-aware auto-layout and connected nets via "
+                f"{len(generated_wires)} per-pin global-label terminal(s)."
             )
             # Never drop a connection silently: if some nets did not resolve to two
             # routable endpoints, surface them in the result, not just the server log.
@@ -4576,9 +4868,13 @@ def register(mcp: FastMCP) -> None:
             schematic = _load_kicad_schematic(top_schematic_path)
             if schematic.sheets.get_sheet_by_name(payload.name) is not None:
                 return f"Sheet '{payload.name}' already exists."
+            created_child = False
             if not child_path.exists():
                 child_schematic = create_schematic(payload.name)
                 child_schematic.save(child_path, preserve_format=True)
+                created_child = True
+            if created_child:
+                _align_child_schematic_header(top_schematic_path, child_path)
             schematic.add_sheet(
                 payload.name,
                 str(child_path.relative_to(top_schematic_path.parent)).replace("\\", "/"),
@@ -4853,7 +5149,12 @@ def register(mcp: FastMCP) -> None:
 
         lines = [f"Connectivity groups ({len(groups)} total):"]
         for index, group in enumerate(groups, start=1):
-            names = ", ".join(group["names"]) if group["names"] else "~unnamed"
+            if group["names"]:
+                names = ", ".join(group["names"])
+            elif group.get("no_connect"):
+                names = "~no-connect"
+            else:
+                names = "~unnamed"
             pins = (
                 ", ".join(f"{item['reference']}:{item['pin']}" for item in group["pins"]) or "none"
             )
