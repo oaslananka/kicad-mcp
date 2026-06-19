@@ -6,8 +6,11 @@ from kicad_mcp.server import create_server
 from tests.conftest import call_tool_text
 from unittest.mock import patch, MagicMock
 
+
 @pytest.mark.anyio
-async def test_kicad_get_version_partial_document_availability(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_kicad_get_version_partial_document_availability(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # We want to test the case where get_open_documents throws an error
     # for DOCTYPE_PCB but succeeds for DOCTYPE_SCHEMATIC.
     # The output should say "unavailable" for PCB and report the count for Schematic.
@@ -18,6 +21,7 @@ async def test_kicad_get_version_partial_document_availability(monkeypatch: pyte
 
         def get_open_documents(self, doc_type: int) -> list[str]:
             from kipy.proto.common.types.base_types_pb2 import DocumentType
+
             if doc_type == DocumentType.DOCTYPE_PCB:
                 raise RuntimeError("No handler for DOCTYPE_PCB")
             elif doc_type == DocumentType.DOCTYPE_SCHEMATIC:
@@ -34,8 +38,11 @@ async def test_kicad_get_version_partial_document_availability(monkeypatch: pyte
     assert "Open PCB documents: unavailable" in output
     assert "Open schematic documents: 2" in output
 
+
 @pytest.mark.anyio
-async def test_kicad_get_version_partial_document_availability_sch_error(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_kicad_get_version_partial_document_availability_sch_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     # Same but error on schematic
     class MockKiCadPartialSch:
         def get_version(self) -> str:
@@ -43,6 +50,7 @@ async def test_kicad_get_version_partial_document_availability_sch_error(monkeyp
 
         def get_open_documents(self, doc_type: int) -> list[str]:
             from kipy.proto.common.types.base_types_pb2 import DocumentType
+
             if doc_type == DocumentType.DOCTYPE_SCHEMATIC:
                 raise RuntimeError("No handler for DOCTYPE_SCHEMATIC")
             elif doc_type == DocumentType.DOCTYPE_PCB:
