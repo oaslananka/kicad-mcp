@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import threading
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
@@ -216,6 +217,178 @@ def _component_search_client(source: str) -> ComponentSearchClient:
     if normalized == "mouser":
         return MouserClient()
     raise ValueError("Unknown component source. Use 'jlcsearch', 'nexar', 'digikey', or 'mouser'.")
+
+
+_PASSIVE_PACKAGES = {"0201", "0402", "0603", "0805", "1206", "1210", "2512"}
+
+
+@dataclass(frozen=True)
+class PassiveParametricQuery:
+    kind: str
+    value: str
+    variants: tuple[str, ...]
+    package: str | None = None
+    tolerance: str | None = None
+    voltage: str | None = None
+
+    def catalog_keyword(self, original_keyword: str) -> str:
+        parts = [self.value, self.kind]
+        if self.package:
+            parts.append(self.package)
+        if self.tolerance:
+            parts.append(self.tolerance)
+        if self.voltage:
+            parts.append(self.voltage)
+        keyword = " ".join(part for part in parts if part).strip()
+        return keyword or original_keyword
+
+
+def _compact_component_text(item: ComponentRecord) -> str:
+    return (
+        " ".join(
+            part for part in (item.lcsc_code, item.mpn, item.description, item.package) if part
+        )
+        .casefold()
+        .replace("µ", "u")
+        .replace("ω", "ohm")
+    )
+
+
+def _passive_value_variants(value: str, kind: str) -> tuple[str, ...]:
+    normalized = value.strip().casefold().replace(" ", "").replace("µ", "u").replace("ω", "ohm")
+    variants = {normalized}
+    if kind == "resistor":
+        match = re.fullmatch(r"(\d+(?:\.\d+)?)(r|k|m|ohm)?", normalized)
+        if match:
+            number = float(match.group(1))
+            suffix = match.group(2) or "ohm"
+            multiplier = {"r": 1.0, "ohm": 1.0, "k": 1_000.0, "m": 1_000_000.0}[suffix]
+            ohms = number * multiplier
+            if suffix == "k":
+                variants.add(f"{number:g}k")
+                variants.add(f"{number:g}kohm")
+            elif suffix == "m":
+                variants.add(f"{number:g}m")
+                variants.add(f"{number:g}mohm")
+            else:
+                variants.add(f"{number:g}r")
+                variants.add(f"{number:g}ohm")
+            variants.add(f"{ohms:g}")
+            variants.add(f"{ohms:g}ohm")
+    else:
+        match = re.fullmatch(r"(\d+(?:\.\d+)?)(p|n|u|µ|m)?f", normalized)
+        if match:
+            number = float(match.group(1))
+            suffix = (match.group(2) or "").replace("µ", "u")
+            variants.add(f"{number:g}{suffix}f")
+            if suffix == "n":
+                variants.add(f"{number / 1000:g}uf")
+            elif suffix == "u":
+                variants.add(f"{number * 1000:g}nf")
+    return tuple(sorted(variants, key=len, reverse=True))
+
+
+def _parse_passive_parametric_query(
+    keyword: str, package: str = ""
+) -> PassiveParametricQuery | None:
+    text = keyword.casefold().replace("µ", "u").replace("ω", "ohm")
+    explicit_package = package.strip() or ""
+    package_match = re.search(r"\b(0201|0402|0603|0805|1206|1210|2512)\b", text)
+    parsed_package = explicit_package or (package_match.group(1) if package_match else "")
+
+    tolerance_match = re.search(r"(?<!\w)(0\.1%|0\.5%|1%|2%|5%|10%)(?!\w)", text)
+    voltage_match = re.search(r"(?<!\w)(\d+(?:\.\d+)?\s*v)(?!\w)", text)
+
+    resistor_match = re.search(
+        r"\b(\d+(?:\.\d+)?\s*(?:r|k|m|ohm|kohm|mohm|Ω|kΩ|mΩ))\b",
+        text,
+    )
+    capacitor_match = re.search(r"\b(\d+(?:\.\d+)?\s*(?:pf|nf|uf|µf|mf))\b", text)
+
+    kind = ""
+    value = ""
+    if "resistor" in text or "resistance" in text or resistor_match:
+        kind = "resistor"
+        value = resistor_match.group(1) if resistor_match else ""
+    if ("capacitor" in text or "capacitance" in text or capacitor_match) and capacitor_match:
+        kind = "capacitor"
+        value = capacitor_match.group(1)
+    if not kind or not value:
+        return None
+
+    normalized_value = value.replace(" ", "").replace("Ω", "ohm").replace("µ", "u")
+    return PassiveParametricQuery(
+        kind=kind,
+        value=normalized_value,
+        variants=_passive_value_variants(normalized_value, kind),
+        package=parsed_package or None,
+        tolerance=tolerance_match.group(1) if tolerance_match else None,
+        voltage=voltage_match.group(1).replace(" ", "") if voltage_match else None,
+    )
+
+
+def _rank_passive_parametric_results(
+    results: list[ComponentRecord],
+    query: PassiveParametricQuery | None,
+) -> tuple[list[ComponentRecord], dict[str, list[str]]]:
+    if query is None:
+        return results, {}
+
+    evidence: dict[str, list[str]] = {}
+
+    def score(item: ComponentRecord) -> tuple[int, float, int, str]:
+        text = _compact_component_text(item)
+        points = 0
+        reasons: list[str] = []
+        if any(variant in text for variant in query.variants):
+            points += 80
+            reasons.append(f"value≈{query.value}")
+        if query.package and query.package.casefold() in item.package.casefold():
+            points += 30
+            reasons.append(f"package={query.package}")
+        if query.tolerance and query.tolerance.casefold() in text:
+            points += 10
+            reasons.append(f"tolerance={query.tolerance}")
+        if query.voltage and query.voltage.casefold() in text:
+            points += 10
+            reasons.append(f"voltage={query.voltage}")
+        if item.is_basic:
+            points += 3
+            reasons.append("basic")
+        if item.is_preferred:
+            points += 2
+            reasons.append("preferred")
+        evidence[item.lcsc_code or item.mpn] = reasons or ["catalog fallback"]
+        return (
+            -points,
+            item.price if item.price is not None else float("inf"),
+            -item.stock,
+            item.mpn,
+        )
+
+    return sorted(results, key=score), evidence
+
+
+def _format_passive_parametric_lines(
+    heading: str,
+    results: list[ComponentRecord],
+    evidence: dict[str, list[str]],
+    *,
+    max_items: int | None = None,
+) -> str:
+    text = _format_component_lines(heading, results, max_items=max_items)
+    if not results or not evidence:
+        return text
+    lines = text.splitlines()
+    annotated: list[str] = []
+    for line in lines:
+        if line.startswith("- "):
+            code = line.split(" | ", 1)[0][2:]
+            reasons = evidence.get(code)
+            if reasons:
+                line = f"{line} | match: {', '.join(reasons)}"
+        annotated.append(line)
+    return "\n".join(annotated)
 
 
 def _sort_component_results(
@@ -720,11 +893,16 @@ def register(mcp: FastMCP) -> None:
         MOUSER_API_KEY). The authenticated sources are inactive until their
         credentials are configured (loaded from ``.env`` at server startup).
         """
+        passive_query = _parse_passive_parametric_query(keyword, package)
+        catalog_keyword = passive_query.catalog_keyword(keyword) if passive_query else keyword
+        catalog_package = (
+            passive_query.package if passive_query and passive_query.package else package or None
+        )
         try:
             client = _component_search_client(source)
             results = client.search(
-                keyword,
-                package=package or None,
+                catalog_keyword,
+                package=catalog_package,
                 only_basic=only_basic,
                 limit=min(get_config().max_items_per_response, 20),
             )
@@ -733,19 +911,45 @@ def register(mcp: FastMCP) -> None:
 
         filtered = [item for item in results if item.stock >= min_stock]
         if results and not filtered:
-            ordered_below_stock = _sort_component_results(results, sort_by=sort_by)
-            return _format_component_lines(
-                (
-                    f"Live component matches for '{keyword}' from {source} "
-                    f"({len(ordered_below_stock)} total below min_stock={min_stock}):\n"
-                    "Matches exist, but all are below the requested stock threshold."
-                ),
-                ordered_below_stock,
+            ranked_below_stock, evidence = _rank_passive_parametric_results(results, passive_query)
+            ordered_below_stock = (
+                ranked_below_stock
+                if passive_query
+                else _sort_component_results(results, sort_by=sort_by)
             )
-        ordered = _sort_component_results(filtered, sort_by=sort_by)
-        return _format_component_lines(
-            f"Live component matches for '{keyword}' from {source} ({len(ordered)} total):",
+            heading = (
+                f"Live component matches for '{keyword}' from {source} "
+                f"({len(ordered_below_stock)} total below min_stock={min_stock}):\n"
+                "Matches exist, but all are below the requested stock threshold."
+            )
+            if passive_query:
+                heading += (
+                    f"\nParsed passive query: kind={passive_query.kind}, "
+                    f"value={passive_query.value}, "
+                    f"package={passive_query.package or '(any)'}"
+                )
+            return _format_passive_parametric_lines(
+                heading,
+                ordered_below_stock,
+                evidence,
+            )
+
+        ranked, evidence = _rank_passive_parametric_results(filtered, passive_query)
+        ordered = ranked if passive_query else _sort_component_results(filtered, sort_by=sort_by)
+        heading = f"Live component matches for '{keyword}' from {source} ({len(ordered)} total):"
+        if passive_query:
+            heading += (
+                f"\nParsed passive query: kind={passive_query.kind}, "
+                f"value={passive_query.value}, package={passive_query.package or '(any)'}"
+            )
+            if passive_query.tolerance:
+                heading += f", tolerance={passive_query.tolerance}"
+            if passive_query.voltage:
+                heading += f", voltage={passive_query.voltage}"
+        return _format_passive_parametric_lines(
+            heading,
             ordered,
+            evidence,
         )
 
     @mcp.tool()
