@@ -6,6 +6,7 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
+import kicad_mcp.diagnostics as diagnostics
 from kicad_mcp.config import reset_config
 from kicad_mcp.connection import KiCadConnectionError
 from kicad_mcp.diagnostics import (
@@ -146,6 +147,55 @@ def test_doctor_reports_checkout_version_drift(
     assert drift[0].status == "warn"
     assert "Active server version" in drift[0].message
     assert "Restart the MCP server" in drift[0].hint
+
+
+def test_doctor_reports_repo_required_uv_version_mismatch(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    checkout = tmp_path / "kicad-mcp"
+    checkout.mkdir()
+    (checkout / "pyproject.toml").write_text(
+        '[project]\nname = "kicad-mcp-pro"\nversion = "99.0.0"\n',
+        encoding="utf-8",
+    )
+    (checkout / "uv.toml").write_text('required-version = "0.10.8"\n', encoding="utf-8")
+    monkeypatch.setenv("KICAD_MCP_REPO_PATH", str(checkout))
+    monkeypatch.setattr("kicad_mcp.diagnostics._agent_config_checks", lambda: [])
+    monkeypatch.setattr(diagnostics, "_installed_uv_version", lambda: "0.10.7")
+
+    report = build_diagnostic_report(probe_cli=True, probe_ipc=False)
+
+    uv_checks = [check for check in report.checks if check.name == "uv_version"]
+    assert len(uv_checks) == 1
+    assert uv_checks[0].status == "warn"
+    assert "requires uv 0.10.8" in uv_checks[0].message
+    assert "uv 0.10.7 is active" in uv_checks[0].message
+    assert "Use uv 0.10.8" in uv_checks[0].hint
+    assert "lockfile" in uv_checks[0].hint
+
+
+def test_doctor_reports_repo_required_uv_version_match(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    checkout = tmp_path / "kicad-mcp"
+    checkout.mkdir()
+    (checkout / "pyproject.toml").write_text(
+        '[project]\nname = "kicad-mcp-pro"\nversion = "99.0.0"\n',
+        encoding="utf-8",
+    )
+    (checkout / "uv.toml").write_text('required-version = "==0.10.8"\n', encoding="utf-8")
+    monkeypatch.setenv("KICAD_MCP_REPO_PATH", str(checkout))
+    monkeypatch.setattr("kicad_mcp.diagnostics._agent_config_checks", lambda: [])
+    monkeypatch.setattr(diagnostics, "_installed_uv_version", lambda: "0.10.8")
+
+    report = build_diagnostic_report(probe_cli=True, probe_ipc=False)
+
+    uv_checks = [check for check in report.checks if check.name == "uv_version"]
+    assert len(uv_checks) == 1
+    assert uv_checks[0].status == "ok"
+    assert "matches repo required-version ==0.10.8" in uv_checks[0].message
 
 
 def test_cli_doctor_bundle_writes_redacted_debug_zip(

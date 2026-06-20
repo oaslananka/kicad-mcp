@@ -269,6 +269,67 @@ def _checkout_candidates() -> list[Path]:
     return candidates
 
 
+
+def _repo_required_uv_version(checkout: Path) -> str | None:
+    uv_toml = checkout / "uv.toml"
+    try:
+        data = tomllib.loads(uv_toml.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+    required = data.get("required-version")
+    return required.strip() if isinstance(required, str) and required.strip() else None
+
+
+def _installed_uv_version() -> str | None:
+    uv_executable = shutil.which("uv")
+    if uv_executable is None:
+        return None
+    try:
+        result = subprocess.run(
+            [uv_executable, "--version"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    match = re.search(r"uv\s+([^\s]+)", result.stdout.strip())
+    return match.group(1) if match else result.stdout.strip() or None
+
+
+def _normalize_uv_required_version(required: str) -> str:
+    return required.strip().removeprefix("==").strip()
+
+
+def _uv_version_check(checkout: Path) -> CheckResult | None:
+    required = _repo_required_uv_version(checkout)
+    if required is None:
+        return None
+    installed = _installed_uv_version()
+    normalized_required = _normalize_uv_required_version(required)
+    if installed == normalized_required:
+        return CheckResult(
+            name="uv_version",
+            status="ok",
+            message=f"uv {installed} matches repo required-version {required}.",
+        )
+    if installed is None:
+        message = f"This checkout requires uv {required}, but uv was not found."
+    else:
+        message = f"This checkout requires uv {required}, but uv {installed} is active."
+    return CheckResult(
+        name="uv_version",
+        status="warn",
+        message=message,
+        hint=(
+            f"Use uv {normalized_required} for repo scripts. The exact pin keeps lockfile, "
+            "CI, and release checks reproducible."
+        ),
+    )
+
 def _package_diagnostics() -> tuple[PackageDiagnostics, list[CheckResult]]:
     package_path = Path(__file__).resolve().parent
     package_repo = _find_checkout_root(package_path)
@@ -319,6 +380,10 @@ def _package_diagnostics() -> tuple[PackageDiagnostics, list[CheckResult]]:
                 ),
             )
         )
+    if checkout is not None:
+        uv_check = _uv_version_check(checkout)
+        if uv_check is not None:
+            checks.append(uv_check)
     return diagnostics, checks
 
 
