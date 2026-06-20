@@ -6,6 +6,8 @@ get an honest answer grounded in the machine-readable parity matrix.
 
 from __future__ import annotations
 
+from typing import cast
+
 from mcp.server.fastmcp import FastMCP
 
 from ..capabilities import metadata_coverage
@@ -96,7 +98,7 @@ def register(mcp: FastMCP) -> None:
             "",
             "## By domain",
         ]
-        missing = metadata["missing_tools"]
+        missing = cast(list[str], metadata["missing_tools"])
         if missing:
             lines.extend(["## Metadata gaps", *[f"- `{name}`" for name in missing]])
             lines.append("")
