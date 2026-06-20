@@ -364,6 +364,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "project_quality_gate",
             "project_quality_gate_report",
             "project_signoff_report",
+            "project_release_readiness",
             "run_drc",
             "run_erc",
             "validate_design",

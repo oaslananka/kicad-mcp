@@ -8,7 +8,8 @@ from pathlib import Path
 import pytest
 
 from kicad_mcp.server import build_server
-from tests.conftest import call_tool_text
+from kicad_mcp.tools.gates import GateOutcome
+from tests.conftest import call_tool_payload, call_tool_text
 
 
 @pytest.mark.anyio
@@ -693,3 +694,160 @@ async def test_project_signoff_report_is_unverified_without_intent(
 
     assert "Manufacturing sign-off:" in result
     assert "UNVERIFIED" in result
+
+
+def _clean_drc_report(report_path: Path) -> tuple[Path, dict[str, object] | None, str | None]:
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report = {
+        "violations": [],
+        "unconnected_items": [],
+        "items_not_passing_courtyard": [],
+    }
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+    return report_path, report, None
+
+
+def _clean_erc_report(report_path: Path) -> tuple[Path, dict[str, object] | None, str | None]:
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report = {"sheets": [{"path": "/", "violations": []}]}
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+    return report_path, report, None
+
+
+@pytest.mark.anyio
+async def test_project_release_readiness_fails_closed_without_release_artifacts(
+    sample_project: Path,
+    monkeypatch,
+) -> None:
+    def fake_run_drc(report_name: str) -> tuple[Path, dict[str, object] | None, str | None]:
+        return _clean_drc_report(sample_project / "output" / report_name)
+
+    def fake_run_erc(report_name: str) -> tuple[Path, dict[str, object] | None, str | None]:
+        return _clean_erc_report(sample_project / "output" / report_name)
+
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_erc_report", fake_run_erc)
+    monkeypatch.setattr(
+        "kicad_mcp.tools.validation._evaluate_project_gate",
+        lambda manufacturer=None, tier=None: [
+            GateOutcome(
+                name="Manufacturing",
+                status="PASS",
+                summary="DFM checks passed.",
+                details=["Profile: JLCPCB / standard"],
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "kicad_mcp.tools.library._schematic_component_rows",
+        lambda: [
+            {
+                "reference": "R1",
+                "value": "10k",
+                "footprint": "Resistor_SMD:R_0603_1608Metric",
+                "lib_id": "Device:R",
+                "lcsc": "C25804",
+                "mpn": "RC0603FR-0710KL",
+                "manufacturer": "Yageo",
+                "populate": "Populate",
+            }
+        ],
+    )
+
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    result = await call_tool_payload(server, "project_release_readiness", {})
+
+    assert result["verdict"] == "FAIL"
+    assert result["drc"]["path"].endswith("release_readiness_drc.json")
+    assert result["erc"]["path"].endswith("release_readiness_erc.json")
+    assert result["artifacts"]["available"] is False
+    assert result["manifest"]["available"] is False
+    assert any(
+        "Archive BOM, pick-and-place, and manufacturing release artifacts" in item
+        for item in result["approval_checklist"]
+    )
+
+
+@pytest.mark.anyio
+async def test_project_release_readiness_exports_markdown_when_evidence_is_complete(
+    sample_project: Path,
+    monkeypatch,
+) -> None:
+    output_dir = sample_project / "output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "bom.csv").write_text("ref,mpn\nR1,RC0603FR-0710KL\n", encoding="utf-8")
+    (output_dir / "board-pos.csv").write_text("ref,x,y,rot\nR1,0,0,0\n", encoding="utf-8")
+    (output_dir / "fabrication.pdf").write_text("placeholder", encoding="utf-8")
+    (output_dir / "manifest.json").write_text(
+        json.dumps({"content_hash": "abc123", "files": [{"filename": "bom.csv"}]}),
+        encoding="utf-8",
+    )
+    (output_dir / "MANIFEST.txt").write_text("manifest", encoding="utf-8")
+
+    def fake_run_drc(report_name: str) -> tuple[Path, dict[str, object] | None, str | None]:
+        return _clean_drc_report(output_dir / report_name)
+
+    def fake_run_erc(report_name: str) -> tuple[Path, dict[str, object] | None, str | None]:
+        return _clean_erc_report(output_dir / report_name)
+
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_drc_report", fake_run_drc)
+    monkeypatch.setattr("kicad_mcp.tools.validation._run_erc_report", fake_run_erc)
+    monkeypatch.setattr(
+        "kicad_mcp.tools.validation._evaluate_project_gate",
+        lambda manufacturer=None, tier=None: [
+            GateOutcome(
+                name="Manufacturing",
+                status="PASS",
+                summary="DFM checks passed.",
+                details=["Profile: JLCPCB / standard"],
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "kicad_mcp.tools.library._schematic_component_rows",
+        lambda: [
+            {
+                "reference": "R1",
+                "value": "10k",
+                "footprint": "Resistor_SMD:R_0603_1608Metric",
+                "lib_id": "Device:R",
+                "lcsc": "C25804",
+                "mpn": "RC0603FR-0710KL",
+                "manufacturer": "Yageo",
+                "populate": "Populate",
+            },
+            {
+                "reference": "DNP1",
+                "value": "TP",
+                "footprint": "TestPoint:TestPoint_Pad",
+                "lib_id": "Connector:TestPoint",
+                "lcsc": "",
+                "mpn": "",
+                "manufacturer": "",
+                "populate": "DNP",
+            },
+        ],
+    )
+
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    result = await call_tool_payload(
+        server,
+        "project_release_readiness",
+        {
+            "output_path": "output/release_readiness.md",
+            "export_format": "markdown",
+        },
+    )
+
+    assert result["verdict"] == "WARN"
+    assert result["artifacts"]["available"] is True
+    assert result["manifest"]["available"] is True
+    assert result["exported_report_path"].endswith("release_readiness.md")
+    assert (output_dir / "release_readiness.md").is_file()
+    exported = (output_dir / "release_readiness.md").read_text(encoding="utf-8")
+    assert "Project release readiness: WARN" in exported
+    assert "Formal sign-off" in exported

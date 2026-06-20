@@ -10,6 +10,7 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from html import escape
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
@@ -82,6 +83,49 @@ class ProjectGateReportPayload(BaseModel):
     status: GateStatus
     summary: str
     outcomes: list[GateOutcomePayload] = Field(default_factory=list)
+
+
+class ReadinessEvidencePayload(BaseModel):
+    """Evidence block used by the release-readiness bundle."""
+
+    available: bool = False
+    summary: str = ""
+    path: str = ""
+    details: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class BomReadinessPayload(BaseModel):
+    """BOM completeness evidence for release readiness."""
+
+    summary: str = ""
+    total_refs: int = 0
+    populated_refs: int = 0
+    dnp_refs: int = 0
+    missing_mpn_refs: list[str] = Field(default_factory=list)
+    missing_lcsc_refs: list[str] = Field(default_factory=list)
+    missing_footprint_refs: list[str] = Field(default_factory=list)
+
+
+class ProjectReleaseReadinessPayload(BaseModel):
+    """Structured release-readiness evidence package."""
+
+    text: str
+    summary: str
+    verdict: Verdict
+    status: GateStatus
+    drc: ReadinessEvidencePayload
+    erc: ReadinessEvidencePayload
+    manufacturing: GateOutcomePayload
+    project_gate: ProjectGateReportPayload
+    bom: BomReadinessPayload
+    waivers: ReadinessEvidencePayload
+    artifacts: ReadinessEvidencePayload
+    manifest: ReadinessEvidencePayload
+    approval_checklist: list[str] = Field(default_factory=list)
+    open_risks: list[str] = Field(default_factory=list)
+    advisory_notes: list[str] = Field(default_factory=list)
+    exported_report_path: str = ""
 
 
 class PlacementGateReportPayload(BaseModel):
@@ -2034,6 +2078,465 @@ def _project_gate_verdict_report(
     )
 
 
+def _readiness_evidence_from_verdict(report: VerdictReport) -> ReadinessEvidencePayload:
+    metadata = dict(report.metadata)
+    return ReadinessEvidencePayload(
+        available=bool(metadata.get("available", False)),
+        summary=report.summary,
+        path=str(metadata.get("report_path", "")),
+        metadata=metadata,
+    )
+
+
+def _release_bom_readiness() -> BomReadinessPayload:
+    from .library import _schematic_component_rows
+
+    rows = _schematic_component_rows()
+    populated_rows = [row for row in rows if str(row.get("populate", "")).strip().upper() != "DNP"]
+    missing_mpn = sorted(
+        str(row["reference"]) for row in populated_rows if not str(row.get("mpn", "")).strip()
+    )
+    missing_lcsc = sorted(
+        str(row["reference"]) for row in populated_rows if not str(row.get("lcsc", "")).strip()
+    )
+    missing_footprint = sorted(
+        str(row["reference"]) for row in populated_rows if not str(row.get("footprint", "")).strip()
+    )
+    if not rows:
+        summary = "No schematic references were available for BOM evidence."
+    elif missing_mpn or missing_lcsc or missing_footprint:
+        unresolved = sorted(set(missing_mpn + missing_lcsc + missing_footprint))
+        summary = (
+            "BOM evidence is incomplete for populated references: "
+            + ", ".join(unresolved[:8])
+            + ("..." if len(unresolved) > 8 else "")
+        )
+    else:
+        summary = "Populated BOM references include MPN, LCSC, and footprint fields."
+    return BomReadinessPayload(
+        summary=summary,
+        total_refs=len(rows),
+        populated_refs=len(populated_rows),
+        dnp_refs=sum(1 for row in rows if str(row.get("populate", "")).strip().upper() == "DNP"),
+        missing_mpn_refs=missing_mpn,
+        missing_lcsc_refs=missing_lcsc,
+        missing_footprint_refs=missing_footprint,
+    )
+
+
+def _release_artifact_evidence() -> ReadinessEvidencePayload:
+    from .manufacturing import _find_release_files
+
+    cfg = get_config()
+    if cfg.project_dir is None:
+        raise ValueError("No active project is configured.")
+    output_dir = cfg.output_dir or (cfg.project_dir / "output")
+    if not output_dir.exists():
+        return ReadinessEvidencePayload(
+            available=False,
+            summary="Release output directory does not exist yet.",
+            path=str(output_dir),
+            metadata={"missing_categories": ["bom", "pick_and_place", "manufacturing"]},
+        )
+
+    release_files = _find_release_files(output_dir)
+    bom_paths: list[str] = []
+    pick_and_place_paths: list[str] = []
+    manufacturing_paths: list[str] = []
+    for file_path in release_files:
+        lowered = file_path.name.casefold()
+        if "bom" in lowered:
+            bom_paths.append(str(file_path))
+        elif any(token in lowered for token in ("pos", "cpl", "pick", "place")):
+            pick_and_place_paths.append(str(file_path))
+        else:
+            manufacturing_paths.append(str(file_path))
+    missing_categories = [
+        name
+        for name, paths in (
+            ("bom", bom_paths),
+            ("pick_and_place", pick_and_place_paths),
+            ("manufacturing", manufacturing_paths),
+        )
+        if not paths
+    ]
+    available = bool(release_files) and not missing_categories
+    summary = (
+        "Found "
+        f"{len(release_files)} release files covering BOM, pick-and-place, "
+        "and manufacturing outputs."
+        if available
+        else "Release artifacts are incomplete for a gated handoff."
+    )
+    return ReadinessEvidencePayload(
+        available=available,
+        summary=summary,
+        path=str(output_dir),
+        details=[str(path) for path in release_files[:12]],
+        metadata={
+            "release_files": [str(path) for path in release_files],
+            "bom_paths": bom_paths,
+            "pick_and_place_paths": pick_and_place_paths,
+            "manufacturing_paths": manufacturing_paths,
+            "missing_categories": missing_categories,
+        },
+    )
+
+
+def _release_manifest_evidence(output_dir: str) -> ReadinessEvidencePayload:
+    manifest_json_path = Path(output_dir) / "manifest.json"
+    manifest_txt_path = Path(output_dir) / "MANIFEST.txt"
+    if not manifest_json_path.exists() or not manifest_txt_path.exists():
+        return ReadinessEvidencePayload(
+            available=False,
+            summary="Release manifest is missing or incomplete.",
+            path=str(manifest_json_path),
+            metadata={
+                "manifest_txt_path": str(manifest_txt_path),
+                "file_count": 0,
+                "content_hash": "",
+            },
+        )
+    try:
+        payload = cast(dict[str, Any], json.loads(manifest_json_path.read_text(encoding="utf-8")))
+    except json.JSONDecodeError as exc:
+        return ReadinessEvidencePayload(
+            available=False,
+            summary=f"Release manifest could not be parsed: {exc}",
+            path=str(manifest_json_path),
+            metadata={"manifest_txt_path": str(manifest_txt_path), "file_count": 0},
+        )
+    return ReadinessEvidencePayload(
+        available=True,
+        summary="Release manifest is present and parseable.",
+        path=str(manifest_json_path),
+        metadata={
+            "manifest_txt_path": str(manifest_txt_path),
+            "file_count": len(cast(list[dict[str, Any]], payload.get("files", []))),
+            "content_hash": str(payload.get("content_hash", "")),
+        },
+    )
+
+
+def _release_waiver_evidence() -> ReadinessEvidencePayload:
+    cfg = get_config()
+    if cfg.project_dir is None:
+        raise ValueError("No active project is configured.")
+    path = cfg.project_dir / ".kicad-mcp" / "drc_exclusions.json"
+    if not path.exists():
+        return ReadinessEvidencePayload(
+            available=True,
+            summary="No DRC exclusions are recorded for this project.",
+            path=str(path),
+            metadata={"count": 0, "uuids": []},
+        )
+    try:
+        payload = cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+    except json.JSONDecodeError as exc:
+        return ReadinessEvidencePayload(
+            available=False,
+            summary=f"DRC exclusion file is invalid JSON: {exc}",
+            path=str(path),
+            metadata={"count": 0, "uuids": []},
+        )
+    exclusions = cast(list[dict[str, Any]], payload.get("exclusions", []))
+    return ReadinessEvidencePayload(
+        available=True,
+        summary=(
+            "No DRC exclusions are recorded for this project."
+            if not exclusions
+            else f"{len(exclusions)} DRC exclusion(s) require explicit human review."
+        ),
+        path=str(path),
+        metadata={
+            "count": len(exclusions),
+            "uuids": [str(entry.get("uuid", "")) for entry in exclusions if entry.get("uuid")],
+        },
+    )
+
+
+def _release_readiness_summary(
+    verdict: Verdict,
+    *,
+    required_failures: list[str],
+    waiver_count: int,
+    dnp_refs: int,
+) -> str:
+    if verdict == "PASS":
+        return "Release evidence is complete for human manufacturing review."
+    if verdict == "WARN":
+        return "Release evidence is mostly complete, but human review is still required."
+    summary_parts = required_failures[:]
+    if waiver_count:
+        summary_parts.append(f"{waiver_count} DRC exclusion(s) need review")
+    if dnp_refs:
+        summary_parts.append(f"{dnp_refs} reference(s) are marked DNP")
+    return "Required release evidence is missing or failing: " + "; ".join(summary_parts)
+
+
+def _render_release_readiness_text(
+    *,
+    status: GateStatus,
+    verdict: Verdict,
+    summary: str,
+    drc: ReadinessEvidencePayload,
+    erc: ReadinessEvidencePayload,
+    manufacturing: GateOutcomePayload,
+    project_gate: ProjectGateReportPayload,
+    bom: BomReadinessPayload,
+    waivers: ReadinessEvidencePayload,
+    artifacts: ReadinessEvidencePayload,
+    manifest: ReadinessEvidencePayload,
+    approval_checklist: list[str],
+    open_risks: list[str],
+    advisory_notes: list[str],
+) -> str:
+    lines = [
+        f"Project release readiness: {verdict}",
+        f"- Gate status: {status}",
+        f"- Summary: {summary}",
+        "",
+        "## Gate evidence",
+        f"- Project gate: {project_gate.status} | {project_gate.summary}",
+        f"- Manufacturing profile: {manufacturing.status} | {manufacturing.summary}",
+        f"- DRC: {'available' if drc.available else 'missing'} | {drc.summary}",
+        f"- ERC: {'available' if erc.available else 'missing'} | {erc.summary}",
+        "",
+        "## BOM evidence",
+        f"- Total references: {bom.total_refs}",
+        f"- Populated references: {bom.populated_refs}",
+        f"- DNP references: {bom.dnp_refs}",
+        f"- BOM summary: {bom.summary}",
+        "",
+        "## Release artifacts",
+        "- Artifact bundle: "
+        f"{'ready' if artifacts.available else 'incomplete'} | {artifacts.summary}",
+        f"- Artifact directory: {artifacts.path}",
+        f"- Release manifest: {'ready' if manifest.available else 'missing'} | {manifest.summary}",
+        f"- Manifest path: {manifest.path}",
+        "",
+        "## Waivers and approval",
+        f"- DRC exclusions: {waivers.metadata.get('count', 0)}",
+    ]
+    if open_risks:
+        lines.extend(["", "## Open risks", *[f"- {risk}" for risk in open_risks]])
+    lines.extend(["", "## Human approval checklist", *[f"- {item}" for item in approval_checklist]])
+    lines.extend(["", "## Advisory notes", *[f"- {note}" for note in advisory_notes]])
+    return "\n".join(lines)
+
+
+def _export_release_readiness_report(
+    payload: ProjectReleaseReadinessPayload,
+    *,
+    output_path: str,
+    export_format: str,
+) -> str:
+    cfg = get_config()
+    target = cfg.resolve_within_project(output_path, allow_absolute=False)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    normalized = export_format.casefold().strip()
+    if not normalized:
+        normalized = {
+            ".json": "json",
+            ".md": "markdown",
+            ".markdown": "markdown",
+            ".html": "html",
+            ".htm": "html",
+        }.get(target.suffix.casefold(), "json")
+    if normalized == "json":
+        target.write_text(json.dumps(payload.model_dump(), indent=2), encoding="utf-8")
+    elif normalized == "markdown":
+        target.write_text(payload.text, encoding="utf-8")
+    elif normalized in {"html", "pdf-ready"}:
+        html_text = "\n".join(
+            [
+                "<!doctype html>",
+                '<html><head><meta charset="utf-8">',
+                "<title>Project release readiness</title>",
+                "<style>"
+                "body{font-family:Segoe UI,Arial,sans-serif;margin:2rem;}"
+                "pre{white-space:pre-wrap;font-family:Consolas,Monaco,monospace;line-height:1.45;}"
+                "@media print{body{margin:1cm;}}"
+                "</style>",
+                "</head><body>",
+                f"<pre>{escape(payload.text)}</pre>",
+                "</body></html>",
+            ]
+        )
+        target.write_text(html_text, encoding="utf-8")
+    else:
+        raise ValueError("export_format must be one of: json, markdown, html, pdf-ready")
+    return str(target)
+
+
+def _build_project_release_readiness_payload(
+    *,
+    manufacturer: str | None = None,
+    tier: str | None = None,
+) -> ProjectReleaseReadinessPayload:
+    outcomes = _evaluate_project_gate(manufacturer=manufacturer, tier=tier)
+    project_gate = _project_gate_report_payload(outcomes)
+    manufacturing_outcome = next(
+        (outcome for outcome in outcomes if outcome.name == "Manufacturing"),
+        GateOutcome(
+            name="Manufacturing",
+            status="BLOCKED",
+            summary="Manufacturing profile evidence was not produced.",
+            details=[],
+        ),
+    )
+    manufacturing = _gate_outcome_payload(manufacturing_outcome)
+
+    drc_path, drc_report, drc_error = _run_drc_report("release_readiness_drc.json")
+    erc_path, erc_report, erc_error = _run_erc_report("release_readiness_erc.json")
+    drc = _readiness_evidence_from_verdict(
+        _drc_report_payload(drc_path, drc_report, drc_error, save_report=False)
+    )
+    erc = _readiness_evidence_from_verdict(
+        _erc_report_payload(erc_path, erc_report, erc_error, save_report=False)
+    )
+    bom = _release_bom_readiness()
+    artifacts = _release_artifact_evidence()
+    manifest = _release_manifest_evidence(artifacts.path)
+    waivers = _release_waiver_evidence()
+
+    required_failures: list[str] = []
+    if project_gate.status != "PASS":
+        required_failures.append(f"project gate is {project_gate.status}")
+    if not drc.available:
+        required_failures.append("DRC report unavailable")
+    if not erc.available:
+        required_failures.append("ERC report unavailable")
+    if bom.total_refs == 0:
+        required_failures.append("BOM evidence missing")
+    if bom.missing_mpn_refs or bom.missing_lcsc_refs or bom.missing_footprint_refs:
+        required_failures.append("populated BOM fields unresolved")
+    if not artifacts.available:
+        missing_categories = cast(list[str], artifacts.metadata.get("missing_categories", []))
+        required_failures.append(
+            "release artifacts missing"
+            + (f" ({', '.join(missing_categories)})" if missing_categories else "")
+        )
+    if not manifest.available:
+        required_failures.append("release manifest missing")
+    if not waivers.available:
+        required_failures.append("waiver evidence unreadable")
+
+    waiver_count = int(waivers.metadata.get("count", 0))
+    open_risks = [
+        f"Project quality gate is {project_gate.status}: {project_gate.summary}"
+        for _ in [0]
+        if project_gate.status != "PASS"
+    ]
+    if not drc.available:
+        open_risks.append(drc.summary)
+    if not erc.available:
+        open_risks.append(erc.summary)
+    if bom.missing_mpn_refs:
+        open_risks.append(
+            "Missing MPN fields on populated refs: " + ", ".join(bom.missing_mpn_refs[:8])
+        )
+    if bom.missing_lcsc_refs:
+        open_risks.append(
+            "Missing LCSC fields on populated refs: " + ", ".join(bom.missing_lcsc_refs[:8])
+        )
+    if bom.missing_footprint_refs:
+        open_risks.append(
+            "Missing footprint fields on populated refs: "
+            + ", ".join(bom.missing_footprint_refs[:8])
+        )
+    if not artifacts.available:
+        missing_categories = cast(list[str], artifacts.metadata.get("missing_categories", []))
+        open_risks.append(
+            "Release artifact categories missing: " + ", ".join(missing_categories or ["unknown"])
+        )
+    if not manifest.available:
+        open_risks.append(manifest.summary)
+    if waiver_count:
+        open_risks.append(f"{waiver_count} DRC exclusion(s) remain active and need review.")
+
+    if required_failures:
+        verdict: Verdict = "FAIL"
+    elif waiver_count or bom.dnp_refs:
+        verdict = "WARN"
+    else:
+        verdict = _gate_status_verdict(project_gate.status)
+    summary = _release_readiness_summary(
+        verdict,
+        required_failures=required_failures,
+        waiver_count=waiver_count,
+        dnp_refs=bom.dnp_refs,
+    )
+    approval_checklist = [
+        (
+            "[x]"
+            if drc.available
+            and int(drc.metadata.get("violations", 0)) == 0
+            and int(drc.metadata.get("unconnected_items", 0)) == 0
+            and int(drc.metadata.get("courtyard_issues", 0)) == 0
+            else "[ ]"
+        )
+        + " Review DRC evidence and confirm zero blocking findings.",
+        ("[x]" if erc.available and int(erc.metadata.get("violations", 0)) == 0 else "[ ]")
+        + " Review ERC evidence and confirm zero blocking findings.",
+        ("[x]" if manufacturing.status == "PASS" else "[ ]")
+        + " Confirm the selected manufacturing profile and DFM checks.",
+        (
+            "[x]"
+            if bom.populated_refs > 0
+            and not bom.missing_mpn_refs
+            and not bom.missing_lcsc_refs
+            and not bom.missing_footprint_refs
+            else "[ ]"
+        )
+        + " Confirm populated BOM rows include MPN, LCSC, and footprint evidence.",
+        ("[x]" if waiver_count == 0 else "[ ]") + " Review all recorded waivers and exclusions.",
+        ("[x]" if artifacts.available else "[ ]")
+        + " Archive BOM, pick-and-place, and manufacturing release artifacts.",
+        ("[x]" if manifest.available else "[ ]")
+        + " Generate and archive the release manifest package.",
+        "[ ] Record final human approval in the external release workflow.",
+    ]
+    advisory_notes = [
+        "This bundle aggregates evidence for release review; it does not grant Formal sign-off.",
+        "Advisory estimators and heuristics remain evidence only and must not be "
+        "treated as certification.",
+    ]
+    text = _render_release_readiness_text(
+        status=project_gate.status,
+        verdict=verdict,
+        summary=summary,
+        drc=drc,
+        erc=erc,
+        manufacturing=manufacturing,
+        project_gate=project_gate,
+        bom=bom,
+        waivers=waivers,
+        artifacts=artifacts,
+        manifest=manifest,
+        approval_checklist=approval_checklist,
+        open_risks=open_risks,
+        advisory_notes=advisory_notes,
+    )
+    return ProjectReleaseReadinessPayload(
+        text=text,
+        summary=summary,
+        verdict=verdict,
+        status=project_gate.status,
+        drc=drc,
+        erc=erc,
+        manufacturing=manufacturing,
+        project_gate=project_gate,
+        bom=bom,
+        waivers=waivers,
+        artifacts=artifacts,
+        manifest=manifest,
+        approval_checklist=approval_checklist,
+        open_risks=open_risks,
+        advisory_notes=advisory_notes,
+    )
+
+
 def _placement_gate_report_payload() -> PlacementGateReportPayload:
     analysis, blocked = _placement_analysis()
     if blocked is not None:
@@ -2496,6 +2999,36 @@ def register(mcp: FastMCP) -> None:
             _signoff_provenance(intent),
         )
         return render_signoff_report(report)
+
+    @mcp.tool()
+    @headless_compatible
+    def project_release_readiness(
+        manufacturer: str = "",
+        tier: str = "",
+        output_path: str = "",
+        export_format: str = "",
+    ) -> ProjectReleaseReadinessPayload:
+        """Assemble a release-readiness evidence bundle for human manufacturing review.
+
+        Aggregates project gate results, DRC/ERC summaries, BOM completeness,
+        waiver state, release artifacts, and manifest presence into one structured,
+        text-renderable payload. Missing required evidence fails closed.
+
+        When ``output_path`` is provided, the bundle is also written as JSON,
+        Markdown, HTML, or a print-friendly HTML report (``pdf-ready``).
+        """
+
+        payload = _build_project_release_readiness_payload(
+            manufacturer=manufacturer or None,
+            tier=tier or None,
+        )
+        if output_path:
+            payload.exported_report_path = _export_release_readiness_report(
+                payload,
+                output_path=output_path,
+                export_format=export_format,
+            )
+        return payload
 
     @mcp.tool()
     @headless_compatible

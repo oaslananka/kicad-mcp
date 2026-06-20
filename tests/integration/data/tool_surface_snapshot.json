@@ -4542,6 +4542,33 @@
     "experimental": false,
     "headless": true,
     "idempotent": false,
+    "name": "project_release_readiness",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "analysis",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "manufacturing",
+      "manufacturing_release",
+      "pcb",
+      "pcb_layout",
+      "power",
+      "release_manager",
+      "schematic",
+      "schematic_authoring"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
     "name": "project_remove_embedded_file",
     "open_world": false,
     "profiles": [
