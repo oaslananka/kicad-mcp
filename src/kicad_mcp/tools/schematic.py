@@ -4119,10 +4119,17 @@ def register(mcp: FastMCP) -> None:
         target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         data = parse_schematic_file(target.path)
         placed: dict[str, dict[str, Any]] = {}
+        placed_kind: dict[str, str] = {}
         for sym in data.get("symbols", []):
             ref = str(sym.get("reference", ""))
             if ref:
                 placed[ref] = sym
+                placed_kind[ref] = "symbol"
+        for sym in data.get("power_symbols", []):
+            ref = str(sym.get("reference", ""))
+            if ref:
+                placed[ref] = sym
+                placed_kind[ref] = "power_symbol"
 
         cfg = get_config()
         project_name = cfg.project_file.stem if cfg.project_file is not None else "KiCadMCP"
@@ -4150,8 +4157,9 @@ def register(mcp: FastMCP) -> None:
                 continue
             sym = placed.get(ref)
             if sym is None:
-                results.append(f"{ref}.{pin}: symbol not placed")
+                results.append(f"{ref}.{pin}: reference not found")
                 continue
+            is_power_symbol_ref = placed_kind.get(ref) == "power_symbol"
             lib_id = str(sym.get("lib_id", ""))
             if ":" not in lib_id:
                 results.append(f"{ref}.{pin}: unresolved lib_id '{lib_id}'")
@@ -4161,15 +4169,21 @@ def register(mcp: FastMCP) -> None:
             oy = float(sym.get("y", 0.0))
             rot = int(sym.get("rotation", 0) or 0)
             unit = int(sym.get("unit", 1) or 1)
-            point = get_pin_positions(library, symbol_name, ox, oy, rot, unit).get(pin)
+            pin_positions = get_pin_positions(library, symbol_name, ox, oy, rot, unit)
+            point = pin_positions.get(pin)
             if point is None:
                 aliases = get_pin_alias_positions(library, symbol_name, ox, oy, rot, unit)
                 point = aliases.get(pin) or aliases.get(pin.upper())
+            if point is None and is_power_symbol_ref:
+                if pin != "1":
+                    results.append(f"{ref}.{pin}: symbol type not supported for pin '{pin}'")
+                    continue
+                point = (ox, oy)
+                pin_positions = {"1": point}
             if point is None:
                 results.append(f"{ref}.{pin}: pin not found")
                 continue
             px, py = point
-            pin_positions = get_pin_positions(library, symbol_name, ox, oy, rot, unit)
             ux, uy = _pin_label_stub_direction(point, (ox, oy), pin_positions.values())
             # KiCad places a symbol's Reference/Value text close to its vertical
             # body extents.  A 5.08 mm up/down stub can land the generated
