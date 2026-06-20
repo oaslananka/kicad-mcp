@@ -56,6 +56,28 @@ class FakeComponentClient:
                 is_basic=True,
                 is_preferred=False,
             ),
+            "C0402": ComponentRecord(
+                source="fake",
+                lcsc_code="C0402",
+                mpn="RC0402FR-0710KL",
+                description="Resistor 10k Ohm 1% 1/16W 0402 thick film",
+                package="0402",
+                stock=80_000,
+                price=0.001,
+                is_basic=True,
+                is_preferred=True,
+            ),
+            "C0603": ComponentRecord(
+                source="fake",
+                lcsc_code="C0603",
+                mpn="CL10B104KB8NNNC",
+                description="Capacitor 100nF 50V X7R 0603 10%",
+                package="0603",
+                stock=60_000,
+                price=0.002,
+                is_basic=True,
+                is_preferred=True,
+            ),
         }
 
     def search(
@@ -66,7 +88,16 @@ class FakeComponentClient:
         only_basic: bool = True,
         limit: int = 20,
     ) -> list[ComponentRecord]:
+        keyword = _keyword.casefold()
         results = list(self.parts.values())
+        if "ldo" in keyword or "regulator" in keyword:
+            results = [part for part in results if "regulator" in part.description.casefold()]
+        elif "diode" in keyword:
+            results = [part for part in results if "diode" in part.description.casefold()]
+        elif "resistor" in keyword or "10k" in keyword:
+            results = [part for part in results if "resistor" in part.description.casefold()]
+        elif "capacitor" in keyword or "100nf" in keyword:
+            results = [part for part in results if "capacitor" in part.description.casefold()]
         if package:
             results = [part for part in results if part.package == package]
         if only_basic:
@@ -273,6 +304,16 @@ async def test_library_live_component_surface(
         "lib_search_components",
         {"keyword": "LDO", "source": "jlcsearch", "min_stock": 1_000_000},
     )
+    passive_search = await call_tool_text(
+        server,
+        "lib_search_components",
+        {"keyword": "0402 10k 1%", "source": "jlcsearch"},
+    )
+    capacitor_search = await call_tool_text(
+        server,
+        "lib_search_components",
+        {"keyword": "0603 100nF 50V", "source": "jlcsearch"},
+    )
     details = await call_tool_text(
         server,
         "lib_get_component_details",
@@ -312,6 +353,17 @@ async def test_library_live_component_surface(
     assert "C123" in search
     assert "below min_stock=1000000" in below_stock
     assert "Matches exist" in below_stock
+    assert "Parsed passive query: kind=resistor" in passive_search
+    assert "value=10k" in passive_search
+    assert "package=0402" in passive_search
+    assert "C0402" in passive_search
+    assert "match: value" in passive_search
+    assert "tolerance=1%" in passive_search
+    assert "Parsed passive query: kind=capacitor" in capacitor_search
+    assert "value=100nf" in capacitor_search
+    assert "package=0603" in capacitor_search
+    assert "C0603" in capacitor_search
+    assert "voltage=" in capacitor_search
     assert "Component details" in details
     assert "LM1117-3.3" in details
     assert "No component details" in missing
