@@ -1526,6 +1526,7 @@ def _register_profile_components(
         power_integrity,
         project,
         routing,
+        sch_transaction,
         schematic,
         signal_integrity,
         simulation,
@@ -1552,6 +1553,7 @@ def _register_profile_components(
         schematic.register(server)
         variants.register(server)
         visual_qa.register(server)
+        sch_transaction.register(server)
     if "library" in enabled:
         library.register(server)
         three_d_models.register(server)
