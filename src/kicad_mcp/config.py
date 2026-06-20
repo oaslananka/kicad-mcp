@@ -81,6 +81,7 @@ class KiCadMCPConfig(BaseSettings):
     mount_path: str = Field(default="/mcp")
     cors_origins: str = Field(default="")
     auth_token: str | None = Field(default=None)
+    allow_query_token_auth: bool = Field(default=False)
     legacy_sse: bool = Field(default=False)
     stateful_http: bool = Field(default=False)
     enable_metrics: bool = Field(default=False)
@@ -93,10 +94,16 @@ class KiCadMCPConfig(BaseSettings):
     studio_watch_dir: Path | None = Field(default=None)
     profile: Literal[
         "full",
+        "expert",
         "minimal",
+        "beginner",
+        "read_only_inspection",
         "schematic_only",
+        "schematic_authoring",
         "pcb_only",
+        "pcb_layout",
         "manufacturing",
+        "manufacturing_release",
         "builder",
         "critic",
         "release_manager",

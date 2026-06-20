@@ -1073,7 +1073,11 @@ def test_dashboard_auth_middleware(sample_project: Path) -> None:
     )
     assert response.status_code == 200
 
-    # 3. With query param auth: should be accepted (200)
+    # 3. Query param auth is disabled by default.
+    response = client.get("/api/config?token=my_super_secret_test_auth_token_value_32_chars")
+    assert response.status_code == 401
+
+    cfg.allow_query_token_auth = True
     response = client.get("/api/config?token=my_super_secret_test_auth_token_value_32_chars")
     assert response.status_code == 200
 
@@ -1122,6 +1126,30 @@ def test_dashboard_origin_checks(sample_project: Path) -> None:
     )
     assert response.status_code == 403
     assert "Forbidden" in response.json()["error"]
+
+
+def test_mcp_origin_checks_apply_without_auth_token(sample_project: Path) -> None:
+    _ = sample_project
+    cfg = get_config()
+    cfg.transport = "streamable-http"
+    cfg.auth_token = None
+    cfg.cors_origins = ""
+
+    server = build_server("minimal")
+    client = TestClient(server.streamable_http_app())
+
+    response = client.post(
+        cfg.mount_path,
+        headers={
+            "Accept": "application/json, text/event-stream",
+            "Content-Type": "application/json",
+            "Origin": "http://malicious-website.com",
+        },
+        json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+    )
+
+    assert response.status_code == 403
+    assert "Origin not allowed" in response.text
 
 
 def test_dashboard_config_filtering(sample_project: Path) -> None:

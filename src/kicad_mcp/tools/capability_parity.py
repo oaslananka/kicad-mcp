@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from mcp.server.fastmcp import FastMCP
 
+from ..capabilities import metadata_coverage
 from ..parity import coverage_summary, find_capabilities, get_matrix, opportunities
 
 
@@ -75,6 +76,7 @@ def register(mcp: FastMCP) -> None:
 
         summary = coverage_summary(matrix)
         overall = summary["overall"]
+        metadata = metadata_coverage()
         lines = [
             "# KiCad capability parity",
             f"KiCad baseline `{summary['kicad_baseline']}` · updated {summary['updated']}.",
@@ -86,8 +88,18 @@ def register(mcp: FastMCP) -> None:
                 f"{overall['gui_only_no_api']} GUI-only with no KiCad API)."
             ),
             "",
+            (
+                "Tool metadata coverage: "
+                f"{metadata['registered_tools']}/{metadata['routed_tools']} routed tools "
+                f"({metadata['coverage_pct']:.1f}%)."
+            ),
+            "",
             "## By domain",
         ]
+        missing = metadata["missing_tools"]
+        if missing:
+            lines.extend(["## Metadata gaps", *[f"- `{name}`" for name in missing]])
+            lines.append("")
         for name, stats in summary["domains"].items():
             lines.append(
                 f"- `{name}`: {_pct(stats['coverage_pct'])} "

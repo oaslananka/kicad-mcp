@@ -309,6 +309,16 @@ async def test_library_live_component_surface(
         "lib_search_components",
         {"keyword": "0402 10k 1%", "source": "jlcsearch"},
     )
+    query_search = await call_tool_text(
+        server,
+        "lib_search_components",
+        {"query": "LDO", "source": "jlcsearch", "sort_by": "stock"},
+    )
+    ambiguous_search = await call_tool_text(
+        server,
+        "lib_search_components",
+        {"query": "LDO", "keyword": "regulator", "source": "jlcsearch"},
+    )
     capacitor_search = await call_tool_text(
         server,
         "lib_search_components",
@@ -351,6 +361,8 @@ async def test_library_live_component_surface(
 
     assert "Live component matches" in search
     assert "C123" in search
+    assert "Live component matches" in query_search
+    assert "Provide either query or keyword" in ambiguous_search
     assert "below min_stock=1000000" in below_stock
     assert "Matches exist" in below_stock
     assert "Parsed passive query: kind=resistor" in passive_search

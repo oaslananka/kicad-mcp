@@ -322,6 +322,69 @@ def _package_diagnostics() -> tuple[PackageDiagnostics, list[CheckResult]]:
     return diagnostics, checks
 
 
+def _required_uv_version(checkout: Path | None) -> str | None:
+    if checkout is None:
+        return None
+    try:
+        data = tomllib.loads((checkout / "uv.toml").read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+    value = data.get("required-version")
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return value.strip().removeprefix("==")
+
+
+def _detect_uv_version() -> tuple[str | None, str | None]:
+    uv_executable = shutil.which("uv")
+    if uv_executable is None:
+        return None, None
+    try:
+        result = subprocess.run(
+            [uv_executable, "--version"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None, uv_executable
+    match = re.search(r"\buv\s+([^\s]+)", result.stdout.strip())
+    return (match.group(1) if match else None), uv_executable
+
+
+def _uv_version_check(checkout: Path | None) -> CheckResult | None:
+    required = _required_uv_version(checkout)
+    if required is None:
+        return None
+    current, executable = _detect_uv_version()
+    if current is None:
+        return CheckResult(
+            name="uv_version",
+            status="warn",
+            message=f"Checkout requires uv {required}, but uv was not found on PATH.",
+            hint=f"Install uv {required} before running repository commands such as uv run.",
+        )
+    if current != required:
+        return CheckResult(
+            name="uv_version",
+            status="warn",
+            message=(
+                f"Checkout requires uv {required}, but PATH resolves uv {current} "
+                f"at {executable}. uv run will fail before tests or tools start."
+            ),
+            hint=(
+                f"Use the repo-compatible uv version, for example: uv self update {required}. "
+                "Then rerun uv sync --all-extras --frozen."
+            ),
+        )
+    return CheckResult(
+        name="uv_version",
+        status="ok",
+        message=f"uv {current} matches checkout requirement {required}.",
+    )
+
+
 def _diagnostic_payload(report: DiagnosticReport) -> dict[str, Any]:
     payload = report.model_dump(mode="json", by_alias=True)
     DiagnosticReport.model_validate(payload)
@@ -499,6 +562,14 @@ def build_diagnostic_report(*, probe_cli: bool, probe_ipc: bool) -> DiagnosticRe
 
     if probe_cli:
         checks.extend(package_checks)
+        checkout = (
+            Path(package_diagnostics.repo_path)
+            if package_diagnostics.repo_path is not None
+            else None
+        )
+        uv_check = _uv_version_check(checkout)
+        if uv_check is not None:
+            checks.append(uv_check)
 
     checks = [_redact_check(check) for check in checks]
 

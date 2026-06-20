@@ -17,10 +17,16 @@ from tests.conftest import call_tool_text
 def test_available_profiles_include_v2_surface() -> None:
     expected = {
         "full",
+        "expert",
         "minimal",
+        "beginner",
+        "read_only_inspection",
         "schematic_only",
+        "schematic_authoring",
         "pcb_only",
+        "pcb_layout",
         "manufacturing",
+        "manufacturing_release",
         "builder",
         "critic",
         "release_manager",
@@ -35,6 +41,11 @@ def test_available_profiles_include_v2_surface() -> None:
 
     assert expected.issubset(set(available_profiles()))
     assert categories_for_profile("analysis") == PROFILE_CATEGORIES["analysis"]
+    assert categories_for_profile("expert") == PROFILE_CATEGORIES["full"]
+    assert "pcb_write" not in categories_for_profile("read_only_inspection")
+    assert "schematic" in categories_for_profile("schematic_authoring")
+    assert "pcb_write" in categories_for_profile("pcb_layout")
+    assert "release_export" in categories_for_profile("manufacturing_release")
     for agent_profile in ("builder", "critic", "release_manager"):
         assert categories_for_profile(agent_profile) == PROFILE_CATEGORIES[agent_profile]
         assert categories_for_profile(agent_profile)
@@ -99,10 +110,19 @@ async def test_tool_category_output_shows_runtime_metadata() -> None:
         {"category": "release_export"},
     )
 
-    assert "route_autoroute_freerouting [HEADLESS / REQUIRES:freerouting]" in routing
-    assert "pcb_get_tracks [HEADLESS]" in pcb_read
-    assert "export_manufacturing_package [HEADLESS]" in release_export
-    assert "get_board_stats [HEADLESS]" in release_export
+    assert "route_autoroute_freerouting [MATURITY:" in routing
+    assert "REQUIRES:freerouting" in routing
+    assert "pcb_get_tracks" in pcb_read
+    assert "HEADLESS" in pcb_read
+    assert "export_manufacturing_package [MATURITY:stable / HEADLESS]" in release_export
+    assert "get_board_stats [MATURITY:stable / HEADLESS]" in release_export
+
+    stable_pcb_read = await call_tool_text(
+        server,
+        "kicad_get_tools_in_category",
+        {"category": "pcb_read", "maturity": "stable"},
+    )
+    assert "pcb_get_board_summary" in stable_pcb_read
 
 
 @pytest.mark.anyio

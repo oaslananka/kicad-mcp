@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import re
 import threading
@@ -41,6 +42,7 @@ from ..models.schematic import (
     TraceNetInput,
     UpdatePropertiesInput,
 )
+from ..models.tool_result import MutatingToolResult, TransactionVerification
 from ..path_safety import resolve_under
 from ..utils.cache import clear_ttl_cache, ttl_cache
 from ..utils.schematic_router import RouterBBox, SchematicRouter
@@ -106,6 +108,22 @@ POWER_NET_NAMES = {
     "3V3_DIG",
     "3V3_ANA",
     "VRTC",
+}
+ORIGIN_PIN_POWER_SYMBOL_NAMES = POWER_NET_NAMES | {
+    "PWR_FLAG",
+    "GNDPWR",
+    "GNDREF",
+    "Earth",
+    "Earth_Protective",
+    "Earth_Clean",
+    "GNDREF",
+    "VAA",
+    "VDD",
+    "VDDA",
+    "VDDD",
+    "VEE",
+    "VSSA",
+    "VSSD",
 }
 logger = structlog.get_logger(__name__)
 _SCHEMATIC_STATE_DIRNAME = ".kicad-mcp"
@@ -1267,6 +1285,21 @@ def _is_power_net(name: str) -> bool:
     return False
 
 
+def _is_origin_pin_power_symbol(symbol_name: str, value: str) -> bool:
+    """Return whether a no-pin power symbol is conventionally anchored at origin."""
+    candidates = {symbol_name, value}
+    for candidate in candidates:
+        normalized = candidate.strip()
+        if not normalized:
+            continue
+        upper = normalized.upper()
+        if _is_power_net(normalized) or upper in {name.upper() for name in ORIGIN_PIN_POWER_SYMBOL_NAMES}:
+            return True
+        if upper.startswith(("#PWR", "PWR_FLAG", "GNDPWR", "GNDREF")):
+            return True
+    return False
+
+
 def _normalize_net_endpoint(endpoint: object) -> dict[str, Any]:
     if isinstance(endpoint, str):
         for separator in (".", ":"):
@@ -1571,6 +1604,179 @@ def parse_schematic_file(sch_file: Path) -> dict[str, Any]:
 def _extract_uuid(content: str) -> str:
     match = re.search(r'\(kicad_sch[^(]*\(uuid\s+"([^"]+)"', content)
     return match.group(1) if match else ""
+
+
+def _find_title_block(content: str) -> tuple[int, str] | None:
+    for match in re.finditer(r"\(title_block\b", content):
+        block, length = _extract_block(content, match.start())
+        if block:
+            return match.start(), block[:length]
+    return None
+
+
+def _replace_or_insert_title_line(block: str, pattern: re.Pattern[str], line: str) -> str:
+    if pattern.search(block):
+        return pattern.sub(line, block, count=1)
+    insert_at = block.rfind("\n")
+    if insert_at == -1:
+        return f"(title_block\n\t\t{line}\n\t)"
+    return f"{block[:insert_at]}\n\t\t{line}{block[insert_at:]}"
+
+
+def _apply_title_block_updates(content: str, updates: dict[str, str]) -> str:
+    field_patterns = {
+        "title": re.compile(rf"\(title\s+{_STRING_PATTERN}\)"),
+        "date": re.compile(rf"\(date\s+{_STRING_PATTERN}\)"),
+        "rev": re.compile(rf"\(rev\s+{_STRING_PATTERN}\)"),
+        "company": re.compile(rf"\(company\s+{_STRING_PATTERN}\)"),
+    }
+    comment_patterns = {
+        f"comment{index}": re.compile(rf"\(comment\s+{index}\s+{_STRING_PATTERN}\)")
+        for index in range(1, 5)
+    }
+
+    found = _find_title_block(content)
+    if found is None:
+        lines = ["\t(title_block"]
+        for key in ("title", "date", "rev", "company"):
+            if key in updates:
+                lines.append(f"\t\t({key} {_sexpr_string(updates[key])})")
+        for index in range(1, 5):
+            key = f"comment{index}"
+            if key in updates:
+                lines.append(f"\t\t(comment {index} {_sexpr_string(updates[key])})")
+        lines.append("\t)")
+        block = "\n".join(lines)
+        paper_match = re.search(r"(\n\s*\(paper\b[^\n]*\)\n)", content)
+        if paper_match:
+            return (
+                content[: paper_match.end()]
+                + block
+                + "\n"
+                + content[paper_match.end() :]
+            )
+        return _append_before_sheet_instances(content, block)
+
+    start, block = found
+    updated = block
+    for key, pattern in field_patterns.items():
+        if key in updates:
+            updated = _replace_or_insert_title_line(
+                updated,
+                pattern,
+                f"({key} {_sexpr_string(updates[key])})",
+            )
+    for index in range(1, 5):
+        key = f"comment{index}"
+        if key in updates:
+            updated = _replace_or_insert_title_line(
+                updated,
+                comment_patterns[key],
+                f"(comment {index} {_sexpr_string(updates[key])})",
+            )
+    return f"{content[:start]}{updated}{content[start + len(block):]}"
+
+
+def _safe_render_output_path(raw_name: str | None, *, default_name: str) -> Path:
+    from .export_support import _ensure_output_dir
+
+    name = (raw_name or default_name).strip()
+    if not name:
+        raise ValueError("output_file cannot be empty.")
+    if "/" in name or "\\" in name or Path(name).name != name:
+        raise ValueError("output_file must be a file name relative to the schematic render dir.")
+    if Path(name).suffix.lower() not in {"", ".png"}:
+        raise ValueError("output_file must use the .png extension.")
+    if not name.lower().endswith(".png"):
+        name = f"{name}.png"
+    return _ensure_output_dir("schematic-renders") / name
+
+
+def _schematic_has_renderable_content(data: dict[str, Any]) -> bool:
+    for key in ("symbols", "power_symbols", "wires", "labels", "buses"):
+        if data.get(key):
+            return True
+    return False
+
+
+def _export_schematic_svg_for_render(
+    sch_file: Path,
+    out_dir: Path,
+    *,
+    include_title_block: bool,
+) -> tuple[int, str, str]:
+    from .export_support import _run_cli_variants
+
+    common_args = ["--no-background-color"]
+    if not include_title_block:
+        common_args.append("--exclude-drawing-sheet")
+    return _run_cli_variants(
+        [
+            ["sch", "export", "svg", *common_args, "--output", str(out_dir), str(sch_file)],
+            [
+                "sch",
+                "export",
+                "svg",
+                *common_args,
+                "--input",
+                str(sch_file),
+                "--output",
+                str(out_dir),
+            ],
+        ]
+    )
+
+
+def _latest_svg_file(out_dir: Path, known_files: set[Path]) -> Path | None:
+    candidates = sorted(out_dir.glob("*.svg"), key=lambda path: path.stat().st_mtime)
+    new_files = [path for path in candidates if path not in known_files]
+    if new_files:
+        return new_files[-1]
+    return candidates[-1] if candidates else None
+
+
+def _render_svg_to_png(
+    svg_file: Path,
+    output_file: Path,
+    *,
+    dpi: int,
+    crop_to_content: bool,
+) -> dict[str, object]:
+    try:
+        import cairosvg
+        from PIL import Image
+    except ImportError as exc:
+        raise RuntimeError(
+            "PNG rendering requires CairoSVG and Pillow. Install the project dev extras "
+            "or run uv sync --all-extras --frozen."
+        ) from exc
+
+    raw_file = (
+        output_file.with_name(f"{output_file.stem}.full.png") if crop_to_content else output_file
+    )
+    cairosvg.svg2png(url=str(svg_file), write_to=str(raw_file), dpi=dpi)
+    with Image.open(raw_file) as image:
+        rgba = image.convert("RGBA")
+        bbox = rgba.getbbox()
+        if crop_to_content and bbox is not None:
+            margin = max(4, int(dpi * 0.04))
+            left = max(0, bbox[0] - margin)
+            top = max(0, bbox[1] - margin)
+            right = min(rgba.width, bbox[2] + margin)
+            bottom = min(rgba.height, bbox[3] + margin)
+            rgba.crop((left, top, right, bottom)).save(output_file)
+            cropped = True
+        else:
+            rgba.save(output_file)
+            cropped = False
+    if raw_file != output_file and raw_file.exists():
+        raw_file.unlink()
+    with Image.open(output_file) as rendered:
+        return {
+            "width_px": rendered.width,
+            "height_px": rendered.height,
+            "cropped": cropped,
+        }
 
 
 def _coord_pair_key(x: float, y: float) -> tuple[float, float]:
@@ -4119,7 +4325,7 @@ def register(mcp: FastMCP) -> None:
         target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         data = parse_schematic_file(target.path)
         placed: dict[str, dict[str, Any]] = {}
-        for sym in data.get("symbols", []):
+        for sym in (*data.get("symbols", []), *data.get("power_symbols", [])):
             ref = str(sym.get("reference", ""))
             if ref:
                 placed[ref] = sym
@@ -4150,26 +4356,44 @@ def register(mcp: FastMCP) -> None:
                 continue
             sym = placed.get(ref)
             if sym is None:
-                results.append(f"{ref}.{pin}: symbol not placed")
+                results.append(f"{ref}.{pin}: reference not found")
                 continue
             lib_id = str(sym.get("lib_id", ""))
             if ":" not in lib_id:
-                results.append(f"{ref}.{pin}: unresolved lib_id '{lib_id}'")
+                results.append(f"{ref}.{pin}: symbol type not supported: unresolved lib_id '{lib_id}'")
                 continue
             library, symbol_name = lib_id.split(":", 1)
+            is_power_symbol = library == "power" or ref.startswith("#PWR")
             ox = float(sym.get("x", 0.0))
             oy = float(sym.get("y", 0.0))
             rot = int(sym.get("rotation", 0) or 0)
             unit = int(sym.get("unit", 1) or 1)
-            point = get_pin_positions(library, symbol_name, ox, oy, rot, unit).get(pin)
+            pin_positions = get_pin_positions(library, symbol_name, ox, oy, rot, unit)
+            point = pin_positions.get(pin)
             if point is None:
                 aliases = get_pin_alias_positions(library, symbol_name, ox, oy, rot, unit)
                 point = aliases.get(pin) or aliases.get(pin.upper())
             if point is None:
+                if (
+                    is_power_symbol
+                    and pin == "1"
+                    and _is_origin_pin_power_symbol(symbol_name, str(sym.get("value", "")))
+                ):
+                    point = (round(ox, 4), round(oy, 4))
+                    pin_positions = {"1": point}
+                elif is_power_symbol and not pin_positions:
+                    results.append(
+                        f"{ref}.{pin}: symbol type not supported: "
+                        f"{lib_id} has no resolvable pin geometry"
+                    )
+                    continue
+                else:
+                    results.append(f"{ref}.{pin}: pin not found")
+                    continue
+            if point is None:
                 results.append(f"{ref}.{pin}: pin not found")
                 continue
             px, py = point
-            pin_positions = get_pin_positions(library, symbol_name, ox, oy, rot, unit)
             ux, uy = _pin_label_stub_direction(point, (ox, oy), pin_positions.values())
             # KiCad places a symbol's Reference/Value text close to its vertical
             # body extents.  A 5.08 mm up/down stub can land the generated
@@ -5769,6 +5993,150 @@ def register(mcp: FastMCP) -> None:
             lines.append(f"  Slot {i}: x_mm={x}, y_mm={y}")
         lines.append("\nPass these coordinates directly to sch_add_symbol(x_mm=..., y_mm=...).")
         return "\n".join(lines)
+
+    @mcp.tool()
+    @headless_compatible
+    def sch_render_png(
+        sheet: str | None = None,
+        sheet_file: str | None = None,
+        crop_to_content: bool = True,
+        dpi: int = 200,
+        include_title_block: bool = True,
+        output_file: str | None = None,
+    ) -> str:
+        """Render a schematic sheet to PNG for visual self-checks.
+
+        Uses headless ``kicad-cli sch export svg`` followed by SVG-to-PNG
+        conversion. Empty sheets return ``status=empty_sheet`` instead of a
+        misleading blank image.
+        """
+        if dpi < 72 or dpi > 600:
+            return "dpi must be between 72 and 600."
+
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
+        data = parse_schematic_file(target.path)
+        if not _schematic_has_renderable_content(data):
+            return json.dumps(
+                {
+                    "status": "empty_sheet",
+                    "sheet_path": str(target.path),
+                    "message": "No schematic content was available to render.",
+                },
+                indent=2,
+            )
+
+        try:
+            png_file = _safe_render_output_path(output_file, default_name=f"{target.path.stem}.png")
+        except ValueError as exc:
+            return f"Invalid output path: {exc}"
+        svg_dir = png_file.parent / "_svg"
+        svg_dir.mkdir(parents=True, exist_ok=True)
+        known_svg_files = set(svg_dir.glob("*.svg"))
+        code, stdout, stderr = _export_schematic_svg_for_render(
+            target.path,
+            svg_dir,
+            include_title_block=include_title_block,
+        )
+        if code != 0:
+            return f"Schematic PNG render failed during SVG export: {stderr or stdout or 'unknown error'}"
+        svg_file = _latest_svg_file(svg_dir, known_svg_files)
+        if svg_file is None:
+            return "Schematic PNG render failed: kicad-cli did not produce an SVG file."
+        try:
+            image_metadata = _render_svg_to_png(
+                svg_file,
+                png_file,
+                dpi=dpi,
+                crop_to_content=crop_to_content,
+            )
+        except RuntimeError as exc:
+            return f"Schematic PNG render failed: {exc}"
+        return json.dumps(
+            {
+                "status": "ok",
+                "png_path": str(png_file),
+                "svg_path": str(svg_file),
+                "sheet_path": str(target.path),
+                "dpi": dpi,
+                "include_title_block": include_title_block,
+                **image_metadata,
+            },
+            indent=2,
+        )
+
+    @mcp.tool()
+    @headless_compatible
+    def sch_set_title_block_info(
+        sheet: str | None = None,
+        sheet_file: str | None = None,
+        title: str | None = None,
+        rev: str | None = None,
+        date: str | None = None,
+        company: str | None = None,
+        comment1: str | None = None,
+        comment2: str | None = None,
+        comment3: str | None = None,
+        comment4: str | None = None,
+        dry_run: bool = False,
+    ) -> str:
+        """Set schematic title block fields on the root sheet or a child sheet.
+
+        Unspecified fields are preserved. Use ``sheet`` for a named child sheet
+        or ``sheet_file`` for a specific ``.kicad_sch`` file; omit both to target
+        the active root schematic.
+        """
+        updates = {
+            key: value
+            for key, value in {
+                "title": title,
+                "rev": rev,
+                "date": date,
+                "company": company,
+                "comment1": comment1,
+                "comment2": comment2,
+                "comment3": comment3,
+                "comment4": comment4,
+            }.items()
+            if value is not None
+        }
+        if not updates:
+            return "No schematic title block fields specified. Provide at least one field."
+
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
+        before_text = target.path.read_text(encoding="utf-8")
+        planned_text = _apply_title_block_updates(before_text, updates)
+        if dry_run:
+            changed = ", ".join(updates)
+            transaction = MutatingToolResult(
+                changed_files=[str(target.path)],
+                changed_objects=[f"title_block.{field}" for field in updates],
+                before_hash=hashlib.sha256(before_text.encode("utf-8")).hexdigest(),
+                after_hash=hashlib.sha256(planned_text.encode("utf-8")).hexdigest(),
+                verification=TransactionVerification(roundtrip="planned_not_written"),
+                dry_run=True,
+            )
+            return transaction.to_compat_text(
+                f"Dry run: schematic title block fields would be updated: {changed}."
+            )
+        transactional_write(
+            lambda current: _apply_title_block_updates(current, updates),
+            target.path,
+        )
+        after_text = target.path.read_text(encoding="utf-8")
+        result = _reload_schematic()
+        changed = ", ".join(updates)
+        summary = (
+            f"{result}\n{_format_target_detail(target)}\n"
+            f"Updated schematic title block fields: {changed}."
+        )
+        transaction = MutatingToolResult(
+            changed_files=[str(target.path)],
+            changed_objects=[f"title_block.{field}" for field in updates],
+            before_hash=hashlib.sha256(before_text.encode("utf-8")).hexdigest(),
+            after_hash=hashlib.sha256(after_text.encode("utf-8")).hexdigest(),
+            verification=TransactionVerification(roundtrip="validated"),
+        )
+        return transaction.to_compat_text(summary)
 
     @mcp.tool()
     @headless_compatible

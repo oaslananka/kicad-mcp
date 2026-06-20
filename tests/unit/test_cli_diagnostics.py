@@ -148,6 +148,34 @@ def test_doctor_reports_checkout_version_drift(
     assert "Restart the MCP server" in drift[0].hint
 
 
+def test_doctor_reports_checkout_uv_required_version_mismatch(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    checkout = tmp_path / "kicad-mcp"
+    checkout.mkdir()
+    (checkout / "pyproject.toml").write_text(
+        '[project]\nname = "kicad-mcp-pro"\nversion = "3.12.1"\n',
+        encoding="utf-8",
+    )
+    (checkout / "uv.toml").write_text('required-version = "0.10.8"\n', encoding="utf-8")
+    monkeypatch.setenv("KICAD_MCP_REPO_PATH", str(checkout))
+    monkeypatch.setattr("kicad_mcp.diagnostics._agent_config_checks", lambda: [])
+    monkeypatch.setattr(
+        "kicad_mcp.diagnostics._detect_uv_version",
+        lambda: ("0.11.19", "C:/tools/uv.exe"),
+    )
+
+    report = build_diagnostic_report(probe_cli=True, probe_ipc=False)
+
+    checks = [check for check in report.checks if check.name == "uv_version"]
+    assert len(checks) == 1
+    assert checks[0].status == "warn"
+    assert "Checkout requires uv 0.10.8" in checks[0].message
+    assert "uv run will fail before tests or tools start" in checks[0].message
+    assert "uv self update 0.10.8" in checks[0].hint
+
+
 def test_cli_doctor_bundle_writes_redacted_debug_zip(
     sample_project: Path,
     tmp_path: Path,
@@ -206,7 +234,8 @@ def test_cli_tools_list_json(sample_project: Path) -> None:
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     names = {tool["name"] for tool in payload}
-    assert "kicad_set_project" in names
+    assert "kicad_get_project_info" in names
+    assert "kicad_list_tool_categories" in names
     assert all("inputSchema" in tool for tool in payload)
 
 

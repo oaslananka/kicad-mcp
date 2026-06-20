@@ -86,11 +86,12 @@ async def test_project_resources_prompts_and_library_surface(
     assert "pcb_only" in categories
     assert "analysis" in categories
     assert "kicad_get_version" in category_tools
-    assert "project_set_design_intent [HEADLESS]" in category_tools
-    assert "project_get_design_intent [HEADLESS]" in category_tools
-    assert "project_get_design_spec [HEADLESS]" in category_tools
-    assert "project_validate_design_spec [HEADLESS]" in category_tools
-    assert "project_get_next_action [HEADLESS]" in category_tools
+    assert "project_set_design_intent" in category_tools
+    assert "project_get_design_intent" in category_tools
+    assert "project_get_design_spec" in category_tools
+    assert "project_validate_design_spec" in category_tools
+    assert "project_get_next_action" in category_tools
+    assert "HEADLESS" in category_tools
     assert "pcb_auto_place_by_schematic" in pcb_write_tools
     assert "pcb_set_stackup" in pcb_write_tools
     assert "pcb_add_blind_via" in pcb_write_tools
@@ -99,13 +100,13 @@ async def test_project_resources_prompts_and_library_surface(
     assert "pcb_add_teardrops" in pcb_write_tools
     assert "pcb_get_impedance_for_trace" in pcb_read_tools
     assert "pcb_check_creepage_clearance" in pcb_read_tools
-    assert "lib_search_components [HEADLESS]" in library_tools
+    assert "lib_search_components" in library_tools
     assert "lib_get_component_details" in library_tools
     assert "lib_get_bom_with_pricing" in library_tools
-    assert "route_autoroute_freerouting [HEADLESS / REQUIRES:freerouting]" in routing_tools
+    assert "route_autoroute_freerouting" in routing_tools
     assert "route_differential_pair" in routing_tools
     assert "route_tune_length" in routing_tools
-    assert "pcb_get_tracks [HEADLESS]" in pcb_read_tools
+    assert "pcb_get_tracks" in pcb_read_tools
     assert "sim_run_operating_point" in simulation_tools
     assert "sim_check_stability" in simulation_tools
     assert "si_calculate_trace_impedance" in si_tools
@@ -116,11 +117,11 @@ async def test_project_resources_prompts_and_library_surface(
     assert "emc_run_full_compliance" in emc_tools
     assert "dfm_load_manufacturer_profile" in dfm_tools
     assert "dfm_run_manufacturer_check" in dfm_tools
-    assert "vcs_init_git [HEADLESS]" in vcs_tools
+    assert "vcs_init_git" in vcs_tools
     assert "vcs_restore_checkpoint" in vcs_tools
-    assert "vcs_tag_release [HEADLESS]" in vcs_tools
-    assert "export_manufacturing_package [HEADLESS]" in release_export_tools
-    assert "get_board_stats [HEADLESS]" in release_export_tools
+    assert "vcs_tag_release" in vcs_tools
+    assert "export_manufacturing_package" in release_export_tools
+    assert "get_board_stats" in release_export_tools
 
     created = await call_tool_text(
         server,

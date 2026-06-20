@@ -9,9 +9,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -30,13 +32,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -52,6 +58,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "power"
     ],
@@ -67,9 +74,13 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "beginner",
       "critic",
+      "expert",
       "full",
       "manufacturing",
+      "manufacturing_release",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": false,
@@ -84,9 +95,13 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "beginner",
       "critic",
+      "expert",
       "full",
       "manufacturing",
+      "manufacturing_release",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": false,
@@ -101,9 +116,13 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "beginner",
       "critic",
+      "expert",
       "full",
       "manufacturing",
+      "manufacturing_release",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": false,
@@ -121,13 +140,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -144,13 +167,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -167,13 +194,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -190,13 +221,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -213,13 +248,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -236,13 +275,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -259,13 +302,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -282,13 +329,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -305,13 +356,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -327,6 +382,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -344,6 +400,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -361,6 +418,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -378,6 +436,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -395,6 +454,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -412,6 +472,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -429,6 +490,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -446,6 +508,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -464,13 +527,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -487,13 +554,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -510,13 +581,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -530,6 +605,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -550,6 +626,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -570,6 +647,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -590,6 +668,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -610,6 +689,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -630,6 +710,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -650,6 +731,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -670,6 +752,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -690,6 +773,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -710,6 +794,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -730,6 +815,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -750,8 +836,10 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "manufacturing",
+      "manufacturing_release",
       "release_manager"
     ],
     "read_only": false,
@@ -766,6 +854,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -786,6 +875,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -806,6 +896,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -826,6 +917,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -846,6 +938,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -866,6 +959,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -886,6 +980,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -906,6 +1001,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -926,6 +1022,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -946,6 +1043,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -966,6 +1064,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -986,6 +1085,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -1006,6 +1106,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -1026,6 +1127,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -1046,6 +1148,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -1066,6 +1169,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -1086,6 +1190,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -1106,6 +1211,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -1126,8 +1232,10 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -1141,8 +1249,10 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -1156,8 +1266,10 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -1171,8 +1283,10 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -1186,8 +1300,10 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "manufacturing",
+      "manufacturing_release",
       "release_manager"
     ],
     "read_only": true,
@@ -1205,13 +1321,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -1228,13 +1348,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -1251,13 +1375,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -1271,8 +1399,10 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -1286,8 +1416,10 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -1301,8 +1433,10 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -1316,8 +1450,10 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -1475,8 +1611,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1493,8 +1631,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1511,8 +1651,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1529,8 +1671,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1547,8 +1691,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1565,8 +1711,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1583,8 +1731,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1601,8 +1751,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1619,8 +1771,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1637,8 +1791,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1655,8 +1811,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1673,8 +1831,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1691,8 +1851,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1709,8 +1871,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1727,8 +1891,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1745,8 +1911,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1763,8 +1931,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1781,8 +1951,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1799,8 +1971,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1817,8 +1991,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1835,8 +2011,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1853,8 +2031,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1871,8 +2051,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1889,8 +2071,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1907,8 +2091,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1925,8 +2111,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1943,8 +2131,10 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -1963,13 +2153,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -1983,8 +2177,10 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -1998,8 +2194,10 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -2013,8 +2211,10 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -2028,8 +2228,10 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -2043,8 +2245,10 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -2058,8 +2262,10 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -2073,8 +2279,10 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -2088,8 +2296,10 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -2103,8 +2313,10 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -2119,9 +2331,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2138,9 +2352,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2157,9 +2373,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2176,9 +2394,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2195,9 +2415,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2214,9 +2436,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2233,9 +2457,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2252,9 +2478,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2271,9 +2499,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2290,9 +2520,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2309,15 +2541,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": false,
@@ -2333,9 +2570,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2352,9 +2591,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2371,9 +2612,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2390,9 +2633,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2409,9 +2654,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2428,9 +2675,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2447,9 +2696,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2466,9 +2717,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2485,9 +2738,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2504,9 +2759,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2523,9 +2780,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2542,15 +2801,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": false,
@@ -2566,9 +2830,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2585,15 +2851,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": false,
@@ -2609,15 +2880,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": false,
@@ -2633,9 +2909,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2652,9 +2930,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2671,9 +2951,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -2689,6 +2971,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -2709,6 +2992,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "minimal",
@@ -2730,15 +3014,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -2754,15 +3043,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -2778,15 +3072,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -2802,15 +3101,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -2826,15 +3130,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -2850,15 +3159,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -2874,15 +3188,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -2898,15 +3217,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -2922,15 +3246,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -2946,15 +3275,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -2970,15 +3304,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -2994,15 +3333,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -3018,15 +3362,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -3042,15 +3391,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -3066,15 +3420,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -3090,15 +3449,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -3114,15 +3478,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -3138,15 +3507,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -3162,15 +3536,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": true,
@@ -3186,9 +3565,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3205,9 +3586,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3223,6 +3606,7 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full"
     ],
     "read_only": false,
@@ -3238,15 +3622,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": false,
@@ -3262,9 +3651,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3281,9 +3672,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3300,15 +3693,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": false,
@@ -3324,15 +3722,20 @@
     "profiles": [
       "agent_full",
       "analysis",
+      "beginner",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "minimal",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power",
+      "read_only_inspection",
       "release_manager"
     ],
     "read_only": false,
@@ -3348,9 +3751,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3367,9 +3772,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3388,13 +3795,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -3411,13 +3822,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -3432,9 +3847,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3453,13 +3870,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -3474,9 +3895,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3493,9 +3916,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3512,9 +3937,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3531,9 +3958,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3552,13 +3981,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -3573,9 +4006,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3592,9 +4027,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3611,9 +4048,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3630,9 +4069,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3649,9 +4090,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3668,9 +4111,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3687,9 +4132,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3706,9 +4153,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3725,9 +4174,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only",
       "power"
     ],
@@ -3746,13 +4197,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -3766,8 +4221,10 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -3783,6 +4240,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "power"
     ],
@@ -3800,6 +4258,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "power"
     ],
@@ -3817,6 +4276,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "power"
     ],
@@ -3834,6 +4294,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "power"
     ],
@@ -3984,6 +4445,19 @@
     "requires_kicad_running": false
   },
   {
+    "destructive": true,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "project_import_design_spec",
+    "open_world": true,
+    "profiles": [
+      "all"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
     "destructive": false,
     "experimental": false,
     "headless": true,
@@ -4021,13 +4495,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -4044,13 +4522,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -4106,13 +4588,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -4140,9 +4626,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only"
     ],
     "read_only": false,
@@ -4158,9 +4646,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only"
     ],
     "read_only": false,
@@ -4176,9 +4666,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only"
     ],
     "read_only": false,
@@ -4194,9 +4686,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only"
     ],
     "read_only": false,
@@ -4212,9 +4706,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only"
     ],
     "read_only": false,
@@ -4230,9 +4726,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only"
     ],
     "read_only": false,
@@ -4248,9 +4746,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only"
     ],
     "read_only": false,
@@ -4266,9 +4766,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only"
     ],
     "read_only": false,
@@ -4284,9 +4786,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only"
     ],
     "read_only": false,
@@ -4302,9 +4806,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only"
     ],
     "read_only": false,
@@ -4320,9 +4826,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only"
     ],
     "read_only": false,
@@ -4338,9 +4846,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only"
     ],
     "read_only": false,
@@ -4356,9 +4866,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only"
     ],
     "read_only": false,
@@ -4376,13 +4888,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -4399,13 +4915,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -4421,10 +4941,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4442,10 +4964,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4463,10 +4987,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4484,10 +5010,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4505,10 +5033,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4526,10 +5056,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4547,10 +5079,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4568,10 +5102,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4589,10 +5125,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4610,10 +5148,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4631,10 +5171,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4652,10 +5194,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4673,10 +5217,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4694,10 +5240,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4715,10 +5263,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4736,10 +5286,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4757,10 +5309,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4778,10 +5332,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4799,10 +5355,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4820,10 +5378,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4841,10 +5401,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4862,10 +5424,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4883,10 +5447,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4904,10 +5470,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4925,10 +5493,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4946,10 +5516,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4967,10 +5539,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -4988,10 +5562,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5009,10 +5585,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5030,10 +5608,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5051,10 +5631,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5072,10 +5654,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5093,10 +5677,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5114,10 +5700,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5135,10 +5723,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5156,10 +5746,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5177,10 +5769,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5198,10 +5792,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5219,10 +5815,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5240,10 +5838,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5261,10 +5861,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5282,10 +5884,35 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "sch_render_png",
+    "open_world": true,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "power",
+      "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5303,10 +5930,35 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": true,
+    "experimental": false,
+    "headless": true,
+    "idempotent": true,
+    "name": "sch_set_dnp",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "power",
+      "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5324,10 +5976,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5345,10 +5999,35 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": true,
+    "experimental": false,
+    "headless": true,
+    "idempotent": true,
+    "name": "sch_set_title_block_info",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "power",
+      "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5366,10 +6045,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5387,10 +6068,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5408,10 +6091,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5429,10 +6114,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -5448,8 +6135,10 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -5466,13 +6155,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -5489,13 +6182,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -5511,6 +6208,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -5528,6 +6226,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -5545,6 +6244,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -5562,6 +6262,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -5579,6 +6280,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -5596,6 +6298,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -5613,6 +6316,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -5630,6 +6334,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -5647,6 +6352,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -5664,6 +6370,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -5681,6 +6388,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "high_speed"
     ],
@@ -5696,6 +6404,7 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "simulation"
@@ -5712,6 +6421,7 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "simulation"
@@ -5728,6 +6438,7 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "simulation"
@@ -5744,6 +6455,7 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "simulation"
@@ -5760,6 +6472,7 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "simulation"
@@ -5776,6 +6489,7 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "simulation"
@@ -5792,6 +6506,7 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "simulation"
@@ -5808,6 +6523,7 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "simulation"
@@ -5824,6 +6540,7 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "simulation"
@@ -5840,6 +6557,7 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "simulation"
@@ -5856,6 +6574,7 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
       "high_speed",
       "simulation"
@@ -5885,8 +6604,10 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -5900,8 +6621,10 @@
     "open_world": true,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -5915,8 +6638,10 @@
     "open_world": false,
     "profiles": [
       "agent_full",
+      "expert",
       "full",
-      "manufacturing"
+      "manufacturing",
+      "manufacturing_release"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -5932,6 +6657,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "power"
     ],
@@ -5949,6 +6675,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "power"
     ],
@@ -5966,6 +6693,7 @@
       "agent_full",
       "analysis",
       "critic",
+      "expert",
       "full",
       "power"
     ],
@@ -5982,9 +6710,11 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
       "pcb",
+      "pcb_layout",
       "pcb_only"
     ],
     "read_only": false,
@@ -6002,13 +6732,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -6025,13 +6759,17 @@
       "analysis",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "manufacturing",
+      "manufacturing_release",
       "pcb",
+      "pcb_layout",
       "power",
       "release_manager",
-      "schematic"
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": true,
     "requires_kicad_running": false
@@ -6047,10 +6785,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -6068,10 +6808,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -6089,10 +6831,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -6110,10 +6854,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -6131,10 +6877,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -6152,10 +6900,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -6173,10 +6923,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -6194,10 +6946,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -6215,10 +6969,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -6236,10 +6992,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -6257,10 +7015,12 @@
       "agent_full",
       "builder",
       "critic",
+      "expert",
       "full",
       "high_speed",
       "power",
       "schematic",
+      "schematic_authoring",
       "schematic_only",
       "simulation"
     ],
@@ -6277,9 +7037,13 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
-      "release_manager"
+      "manufacturing_release",
+      "pcb_layout",
+      "release_manager",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -6294,9 +7058,13 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
-      "release_manager"
+      "manufacturing_release",
+      "pcb_layout",
+      "release_manager",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -6311,9 +7079,13 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
-      "release_manager"
+      "manufacturing_release",
+      "pcb_layout",
+      "release_manager",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -6328,9 +7100,13 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
-      "release_manager"
+      "manufacturing_release",
+      "pcb_layout",
+      "release_manager",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -6345,9 +7121,13 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
-      "release_manager"
+      "manufacturing_release",
+      "pcb_layout",
+      "release_manager",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -6362,9 +7142,13 @@
     "profiles": [
       "agent_full",
       "builder",
+      "expert",
       "full",
       "high_speed",
-      "release_manager"
+      "manufacturing_release",
+      "pcb_layout",
+      "release_manager",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false

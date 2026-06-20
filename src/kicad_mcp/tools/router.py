@@ -30,6 +30,14 @@ def _display_tool_name(tool_name: str) -> str:
     suffixes: list[str] = []
     if tool_name in EXPERIMENTAL_TOOL_NAMES:
         suffixes.append("EXPERIMENTAL")
+    try:
+        from ..capabilities import get as get_capability
+
+        capability = get_capability(tool_name)
+    except Exception:
+        capability = None
+    if capability is not None:
+        suffixes.append(f"MATURITY:{capability.maturity.value}")
     metadata = get_tool_metadata(tool_name)
     if metadata is not None:
         if metadata.headless_compatible:
@@ -209,6 +217,8 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "sch_get_bounding_boxes",
             "sch_find_free_placement",
             "sch_auto_place_functional",
+            "sch_render_png",
+            "sch_set_title_block_info",
             "sch_set_sheet_size",
             "sch_auto_resize_sheet",
             # v2.1.0 — subcircuit template tools
@@ -489,9 +499,14 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
 
 PROFILE_CATEGORIES: dict[str, tuple[str, ...]] = {
     "full": tuple(TOOL_CATEGORIES.keys()),
+    "expert": tuple(TOOL_CATEGORIES.keys()),
     "minimal": ("project", "pcb_read", "export"),
+    "beginner": ("project", "pcb_read", "dfm"),
+    "read_only_inspection": ("project", "pcb_read", "dfm"),
     "schematic_only": ("project", "schematic", "library"),
+    "schematic_authoring": ("project", "schematic", "library", "validation", "version_control"),
     "pcb_only": ("project", "pcb_read", "pcb_write", "routing"),
+    "pcb_layout": ("project", "pcb_read", "pcb_write", "routing", "validation", "version_control"),
     "manufacturing": (
         "project",
         "pcb_read",
@@ -499,6 +514,15 @@ PROFILE_CATEGORIES: dict[str, tuple[str, ...]] = {
         "validation",
         "dfm",
         "manufacturing",
+    ),
+    "manufacturing_release": (
+        "project",
+        "pcb_read",
+        "release_export",
+        "validation",
+        "dfm",
+        "manufacturing",
+        "version_control",
     ),
     "builder": (
         "project",
@@ -568,10 +592,16 @@ def available_profiles() -> tuple[str, ...]:
     """Return the supported server profile names."""
     preferred = [
         "full",
+        "expert",
         "minimal",
+        "beginner",
+        "read_only_inspection",
         "schematic_only",
+        "schematic_authoring",
         "pcb_only",
+        "pcb_layout",
         "manufacturing",
+        "manufacturing_release",
         "builder",
         "critic",
         "release_manager",
@@ -604,14 +634,23 @@ def register(mcp: FastMCP) -> None:
         return "\n".join(lines)
 
     @mcp.tool()
-    def kicad_get_tools_in_category(category: str) -> str:
-        """Get the tool names available in a specific category."""
+    def kicad_get_tools_in_category(category: str, maturity: str = "") -> str:
+        """Get tool names in a category, optionally filtered by maturity."""
         info = TOOL_CATEGORIES.get(category)
         if info is None:
             available = ", ".join(sorted(TOOL_CATEGORIES))
             return f"Unknown category '{category}'. Available categories: {available}"
 
         lines = [f"# Tools in `{category}`", str(info["description"]), ""]
+        maturity_filter = maturity.strip().casefold()
         for tool_name in info["tools"]:
+            if maturity_filter:
+                from ..capabilities import get as get_capability
+
+                capability = get_capability(tool_name)
+                if capability is None or capability.maturity.value != maturity_filter:
+                    continue
             lines.append(f"- `{_display_tool_name(tool_name)}`")
+        if len(lines) == 3:
+            lines.append(f"No tools matched maturity='{maturity}'.")
         return "\n".join(lines)

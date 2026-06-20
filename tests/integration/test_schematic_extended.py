@@ -1083,6 +1083,37 @@ async def test_schematic_add_pin_labels(sample_project, mock_kicad) -> None:
 
 
 @pytest.mark.anyio
+async def test_schematic_add_pin_labels_targets_power_symbol_reference(
+    sample_project, mock_kicad
+) -> None:
+    """sch_add_pin_labels should accept placed #PWR references with pin geometry."""
+    server = build_server("schematic")
+    await call_tool_text(
+        server,
+        "sch_add_power_symbol",
+        {"name": "GND", "x_mm": 25.4, "y_mm": 25.4, "snap_to_grid": False},
+    )
+    schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+    match = re.search(r'\(property "Reference" "(#PWR[^"]+)"', schematic)
+    assert match is not None
+
+    result = await call_tool_text(
+        server,
+        "sch_add_pin_labels",
+        {
+            "connections": [
+                {"reference": match.group(1), "pin": "1", "net": "GND"},
+            ],
+        },
+    )
+
+    assert f"{match.group(1)}.1 -> GND" in result
+    assert "symbol not placed" not in result
+    schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+    assert schematic.count('(lib_id "power:GND")') >= 2
+
+
+@pytest.mark.anyio
 async def test_schematic_add_pin_labels_uses_symbol_edges_for_tall_side_pins(
     sample_project, mock_kicad
 ) -> None:

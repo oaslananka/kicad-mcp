@@ -9,12 +9,20 @@
     "schemaVersion",
     "name",
     "profiles",
+    "category",
     "tier",
     "runtime",
+    "writes_files",
+    "writes_kicad_gui_state",
     "supports_dry_run",
+    "supports_rollback",
     "human_gate_required",
+    "requires_human_confirmation",
     "description",
-    "verification_level"
+    "verification_level",
+    "maturity",
+    "advisory_level",
+    "tested_kicad_versions"
   ],
   "properties": {
     "schemaVersion": {
@@ -32,6 +40,10 @@
       },
       "uniqueItems": true
     },
+    "category": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$"
+    },
     "tier": {
       "enum": ["read", "write", "export", "publish", "human_only"]
     },
@@ -42,13 +54,26 @@
         "kicad_ipc",
         "ngspice",
         "freerouting",
-        "docker"
+        "docker",
+        "network"
       ]
+    },
+    "writes_files": {
+      "type": "boolean"
+    },
+    "writes_kicad_gui_state": {
+      "type": "boolean"
     },
     "supports_dry_run": {
       "type": "boolean"
     },
+    "supports_rollback": {
+      "type": "boolean"
+    },
     "human_gate_required": {
+      "type": "boolean"
+    },
+    "requires_human_confirmation": {
       "type": "boolean"
     },
     "description": {
@@ -56,6 +81,20 @@
     },
     "verification_level": {
       "enum": ["verified", "experimental", "planned"]
+    },
+    "maturity": {
+      "enum": ["stable", "beta", "experimental", "advisory", "deprecated"]
+    },
+    "advisory_level": {
+      "enum": ["none", "advisory", "requires_evidence", "human_review"]
+    },
+    "tested_kicad_versions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "uniqueItems": true
     },
     "inputSchema": {
       "type": "object"

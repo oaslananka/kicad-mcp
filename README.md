@@ -148,6 +148,11 @@ npx kicad-mcp-pro --help
 For source checkouts, `corepack pnpm run dev:doctor` validates Node, pnpm,
 Python, uv, MCP server CLI startup/version reporting, fixture corpus, protocol
 schemas, common development ports, and optional Cloudflare tunnel tooling.
+If repository commands fail with a uv required-version mismatch before Python
+starts, run `kicad-mcp-pro doctor --json` and check the `uv_version` result. The
+checkout's `uv.toml` pins the supported uv release; switch to that version (for
+example `uv self update 0.10.8` when required) and rerun `uv sync --all-extras
+--frozen`.
 
 ## Package metadata
 

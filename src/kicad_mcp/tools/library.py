@@ -878,7 +878,8 @@ def register(mcp: FastMCP) -> None:
     @mcp.tool()
     @headless_compatible
     def lib_search_components(
-        keyword: str,
+        query: str | None = None,
+        keyword: str | None = None,
         package: str = "",
         only_basic: bool = True,
         source: str = "jlcsearch",
@@ -893,8 +894,16 @@ def register(mcp: FastMCP) -> None:
         MOUSER_API_KEY). The authenticated sources are inactive until their
         credentials are configured (loaded from ``.env`` at server startup).
         """
-        passive_query = _parse_passive_parametric_query(keyword, package)
-        catalog_keyword = passive_query.catalog_keyword(keyword) if passive_query else keyword
+        if query and keyword:
+            return "Provide either query or keyword, not both."
+        search_term = query or keyword
+        if not search_term:
+            return "Provide a query string to search live component sources."
+
+        passive_query = _parse_passive_parametric_query(search_term, package)
+        catalog_keyword = (
+            passive_query.catalog_keyword(search_term) if passive_query else search_term
+        )
         catalog_package = (
             passive_query.package if passive_query and passive_query.package else package or None
         )
@@ -918,7 +927,7 @@ def register(mcp: FastMCP) -> None:
                 else _sort_component_results(results, sort_by=sort_by)
             )
             heading = (
-                f"Live component matches for '{keyword}' from {source} "
+                f"Live component matches for '{search_term}' from {source} "
                 f"({len(ordered_below_stock)} total below min_stock={min_stock}):\n"
                 "Matches exist, but all are below the requested stock threshold."
             )
@@ -936,7 +945,7 @@ def register(mcp: FastMCP) -> None:
 
         ranked, evidence = _rank_passive_parametric_results(filtered, passive_query)
         ordered = ranked if passive_query else _sort_component_results(filtered, sort_by=sort_by)
-        heading = f"Live component matches for '{keyword}' from {source} ({len(ordered)} total):"
+        heading = f"Live component matches for '{search_term}' from {source} ({len(ordered)} total):"
         if passive_query:
             heading += (
                 f"\nParsed passive query: kind={passive_query.kind}, "

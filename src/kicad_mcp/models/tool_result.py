@@ -91,3 +91,31 @@ class ToolResult(BaseModel):
     def to_mcp_text(self) -> str:
         """Serialize to human-readable text for MCP tool response content."""
         return json.dumps(self.model_dump(exclude_none=True), indent=2, default=str)
+
+
+class TransactionVerification(BaseModel):
+    """Verification evidence attached to a mutating tool result."""
+
+    erc: str = ""
+    drc: str = ""
+    connectivity: str = ""
+    roundtrip: str = ""
+
+
+class MutatingToolResult(BaseModel):
+    """Standard transactional result contract for state-changing tools."""
+
+    changed_files: list[str] = Field(default_factory=list)
+    changed_objects: list[str] = Field(default_factory=list)
+    before_hash: str = ""
+    after_hash: str = ""
+    patch: str = ""
+    visual_artifacts: list[str] = Field(default_factory=list)
+    verification: TransactionVerification = Field(default_factory=TransactionVerification)
+    rollback_id: str = ""
+    dry_run: bool = False
+
+    def to_compat_text(self, summary: str) -> str:
+        """Render a legacy-friendly summary followed by structured transaction JSON."""
+        payload = self.model_dump()
+        return f"{summary}\nTransaction:\n{json.dumps(payload, indent=2)}"

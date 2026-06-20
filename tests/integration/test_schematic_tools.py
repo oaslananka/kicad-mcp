@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -2074,3 +2075,135 @@ async def test_schematic_set_native_dnp_flag(sample_project, mock_kicad) -> None
     assert "native population state to Populate" in disabled
     assert "(dnp no)" in schematic
     assert "(dnp yes)" not in schematic
+
+
+@pytest.mark.anyio
+async def test_schematic_set_title_block_info_root_and_child_sheet(
+    sample_project, mock_kicad
+) -> None:
+    server = build_server("schematic")
+
+    await call_tool_text(
+        server,
+        "sch_create_sheet",
+        {"name": "Power", "filename": "power.kicad_sch", "x_mm": 40.64, "y_mm": 50.8},
+    )
+    root_result = await call_tool_text(
+        server,
+        "sch_set_title_block_info",
+        {
+            "title": "Sensor Node",
+            "rev": "A",
+            "date": "2026-06-20",
+            "company": "ACME Labs",
+            "comment1": "Prototype",
+        },
+    )
+    preserve_result = await call_tool_text(
+        server,
+        "sch_set_title_block_info",
+        {"rev": "B"},
+    )
+    child_result = await call_tool_text(
+        server,
+        "sch_set_title_block_info",
+        {"sheet": "Power", "title": "Power Sheet", "comment2": "Rails"},
+    )
+
+    root = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+    child = (sample_project / "power.kicad_sch").read_text(encoding="utf-8")
+
+    assert "Updated schematic title block fields" in root_result
+    assert "Updated schematic title block fields: rev" in preserve_result
+    assert "Target schematic (child)" in child_result
+    assert '(title "Sensor Node")' in root
+    assert '(rev "B")' in root
+    assert '(date "2026-06-20")' in root
+    assert '(company "ACME Labs")' in root
+    assert '(comment 1 "Prototype")' in root
+    assert '(title "Power Sheet")' in child
+    assert '(comment 2 "Rails")' in child
+    assert "Power Sheet" not in root
+
+
+@pytest.mark.anyio
+async def test_schematic_render_png_reports_empty_and_renders_populated_sheet(
+    sample_project,
+    mock_kicad,
+    monkeypatch,
+) -> None:
+    server = build_server("schematic")
+
+    empty = await call_tool_text(server, "sch_render_png", {})
+    empty_payload = json.loads(empty)
+    assert empty_payload["status"] == "empty_sheet"
+
+    await call_tool_text(
+        server,
+        "sch_add_label",
+        {"name": "READY", "x_mm": 10.16, "y_mm": 10.16},
+    )
+
+    def fake_export(sch_file: Path, out_dir: Path, *, include_title_block: bool):
+        assert include_title_block is False
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / f"{sch_file.stem}.svg").write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"></svg>',
+            encoding="utf-8",
+        )
+        return 0, "", ""
+
+    def fake_render(svg_file: Path, output_file: Path, *, dpi: int, crop_to_content: bool):
+        assert svg_file.exists()
+        assert dpi == 150
+        assert crop_to_content is True
+        from PIL import Image
+
+        Image.new("RGBA", (32, 16), (0, 0, 0, 0)).save(output_file)
+        return {"width_px": 32, "height_px": 16, "cropped": True}
+
+    monkeypatch.setattr(
+        "kicad_mcp.tools.schematic._export_schematic_svg_for_render",
+        fake_export,
+    )
+    monkeypatch.setattr("kicad_mcp.tools.schematic._render_svg_to_png", fake_render)
+
+    rendered = await call_tool_text(
+        server,
+        "sch_render_png",
+        {
+            "crop_to_content": True,
+            "dpi": 150,
+            "include_title_block": False,
+            "output_file": "agent-check.png",
+        },
+    )
+
+    payload = json.loads(rendered)
+    assert payload["status"] == "ok"
+    assert payload["width_px"] == 32
+    assert payload["height_px"] == 16
+    assert payload["cropped"] is True
+    assert Path(payload["png_path"]).name == "agent-check.png"
+    assert Path(payload["png_path"]).exists()
+
+
+@pytest.mark.anyio
+async def test_schematic_set_title_block_info_dry_run_does_not_write(
+    sample_project, mock_kicad
+) -> None:
+    server = build_server("schematic")
+
+    before = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+    result = await call_tool_text(
+        server,
+        "sch_set_title_block_info",
+        {"title": "Planned Only", "dry_run": True},
+    )
+    after = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
+    payload = json.loads(result.split("Transaction:\n", 1)[1])
+
+    assert before == after
+    assert "Planned Only" not in after
+    assert payload["dry_run"] is True
+    assert payload["changed_objects"] == ["title_block.title"]

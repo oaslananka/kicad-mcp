@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import json
 
-from kicad_mcp.models.tool_result import ArtifactRef, StateDelta, ToolResult
+from kicad_mcp.models.tool_result import (
+    ArtifactRef,
+    MutatingToolResult,
+    StateDelta,
+    ToolResult,
+    TransactionVerification,
+)
 
 
 def test_tool_result_defaults() -> None:
@@ -78,3 +84,22 @@ def test_to_mcp_text_round_trips_as_json() -> None:
     assert payload["tool_name"] == "export_bom"
     assert payload["rollback_token"] == rollback_ref
     assert payload["state_delta"]["changed_files"] == ["bom.csv"]
+
+
+def test_mutating_tool_result_renders_compat_text_contract() -> None:
+    result = MutatingToolResult(
+        changed_files=["demo.kicad_sch"],
+        changed_objects=["title_block.title"],
+        before_hash="before",
+        after_hash="after",
+        verification=TransactionVerification(roundtrip="validated"),
+        rollback_id="checkpoint-1",
+    )
+
+    rendered = result.to_compat_text("Updated schematic title block.")
+    payload = json.loads(rendered.split("Transaction:\n", 1)[1])
+
+    assert rendered.startswith("Updated schematic title block.")
+    assert payload["changed_files"] == ["demo.kicad_sch"]
+    assert payload["changed_objects"] == ["title_block.title"]
+    assert payload["verification"]["roundtrip"] == "validated"

@@ -7,6 +7,7 @@ import pytest
 from kicad_mcp.server import build_server
 from kicad_mcp.tools.metadata import infer_tool_annotations
 from kicad_mcp.tools.router import TOOL_CATEGORIES
+from scripts.check_tool_contracts import lint as lint_tool_contracts
 
 TESTS_ROOT = Path(__file__).resolve().parents[1]
 
@@ -103,3 +104,8 @@ def test_read_only_prefix_takes_precedence_over_write_infix() -> None:
         assert ann.get("destructiveHint") is None, (
             f"{readonly_tool} must NOT be destructiveHint=True"
         )
+
+
+@pytest.mark.anyio
+async def test_tool_contract_linter_passes() -> None:
+    assert await lint_tool_contracts() == []

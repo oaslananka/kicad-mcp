@@ -5,7 +5,7 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from kicad_mcp.capabilities import all_protocol_metadata
+from kicad_mcp.capabilities import all_protocol_metadata, metadata_coverage
 
 SCHEMA_ROOT = Path(__file__).resolve().parents[2] / "packages" / "protocol-schemas" / "schemas"
 
@@ -48,4 +48,14 @@ def test_advertised_tool_metadata_matches_shared_capability_schema() -> None:
 
     by_name = {record["name"]: record for record in metadata}
     assert by_name["export_manufacturing_package"]["human_gate_required"] is True
-    assert by_name["kicad_health"]["verification_level"] == "verified"
+    assert by_name["export_manufacturing_package"]["maturity"] == "stable"
+    assert by_name["sch_render_png"]["runtime"] == "none"
+    assert by_name["sch_render_png"]["writes_files"] is True
+    assert by_name["lib_search_components"]["runtime"] == "network"
+
+
+def test_router_tools_have_capability_metadata_coverage() -> None:
+    coverage = metadata_coverage()
+
+    assert coverage["coverage_pct"] == 100.0
+    assert coverage["missing_tools"] == []

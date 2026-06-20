@@ -858,7 +858,7 @@ class KiCadFastMCP(FastMCP):
                     "MCP-Session-Id",
                 ],
             )
-            app.add_middleware(_OriginValidationMiddleware)
+        app.add_middleware(_OriginValidationMiddleware)
         return app
 
     async def list_tools(self) -> list[mcp_types.Tool]:
@@ -1352,13 +1352,12 @@ class _OriginValidationMiddleware(BaseHTTPMiddleware):
         call_next: RequestResponseEndpoint,
     ) -> Response:
         cfg = get_config()
-        if (
-            cfg.auth_token
-            and request.method.upper() in self._MUTATING_METHODS
-            and request.url.path in {cfg.mount_path, self._ROTATE_PATH}
-        ):
+        if request.method.upper() in self._MUTATING_METHODS and request.url.path in {
+            cfg.mount_path,
+            self._ROTATE_PATH,
+        }:
             origin = request.headers.get("origin")
-            if origin and origin not in cfg.cors_origin_list:
+            if origin and not _is_origin_allowed(origin, cfg):
                 return PlainTextResponse("Origin not allowed for this MCP server.", status_code=403)
         return await call_next(request)
 
@@ -1371,8 +1370,6 @@ class _DashboardAuthMiddleware(BaseHTTPMiddleware):
         request: Request,
         call_next: RequestResponseEndpoint,
     ) -> Response:
-        from urllib.parse import urlparse
-
         cfg = get_config()
         path = request.url.path
 
@@ -1388,7 +1385,7 @@ class _DashboardAuthMiddleware(BaseHTTPMiddleware):
             else:
                 # Check query parameter ?token=<token>
                 query_token = request.query_params.get("token")
-                if query_token and query_token == cfg.auth_token:
+                if cfg.allow_query_token_auth and query_token and query_token == cfg.auth_token:
                     authorized = True
 
             if not authorized:
@@ -1400,25 +1397,7 @@ class _DashboardAuthMiddleware(BaseHTTPMiddleware):
             # Check Origin
             origin = request.headers.get("origin")
             if origin:
-                # Allow same-origin
-                allowed = False
-                if origin in cfg.cors_origin_list:
-                    allowed = True
-                else:
-                    parsed_origin = urlparse(origin)
-                    origin_host = parsed_origin.hostname or ""
-                    origin_port = parsed_origin.port or (
-                        80
-                        if parsed_origin.scheme == "http"
-                        else 443
-                        if parsed_origin.scheme == "https"
-                        else None
-                    )
-                    server_hosts = {cfg.host}
-                    if cfg.host.strip().casefold() in LOOPBACK_HOSTS:
-                        server_hosts.update(LOOPBACK_HOSTS)
-                    if origin_host in server_hosts and origin_port == cfg.port:
-                        allowed = True
+                allowed = _is_origin_allowed(origin, cfg)
                 if not allowed:
                     return JSONResponse(
                         {"error": "Forbidden. Origin not allowed."},
@@ -1431,6 +1410,22 @@ class _DashboardAuthMiddleware(BaseHTTPMiddleware):
 def _server_base_url(cfg: KiCadMCPConfig) -> str:
     host = cfg.host if cfg.host not in {"0.0.0.0", "::"} else "127.0.0.1"  # noqa: S104
     return f"http://{host}:{cfg.port}"
+
+
+def _is_origin_allowed(origin: str, cfg: KiCadMCPConfig) -> bool:
+    from urllib.parse import urlparse
+
+    if origin in cfg.cors_origin_list:
+        return True
+    parsed_origin = urlparse(origin)
+    origin_host = parsed_origin.hostname or ""
+    origin_port = parsed_origin.port or (
+        80 if parsed_origin.scheme == "http" else 443 if parsed_origin.scheme == "https" else None
+    )
+    server_hosts = {cfg.host}
+    if cfg.host.strip().casefold() in LOOPBACK_HOSTS:
+        server_hosts.update(LOOPBACK_HOSTS)
+    return origin_host in server_hosts and origin_port == cfg.port
 
 
 def _bearer_token(request: Request) -> str:
@@ -1771,6 +1766,9 @@ def build_server(profile: str | None = None, *, defer_registration: bool = False
 
 def create_server(profile: str | None = None) -> _SyncServerHandle:
     """Backward-compatible helper used by benchmark and verification scripts."""
+    cfg = get_config()
+    if "KICAD_MCP_OPERATING_MODE" not in os.environ and not cfg.enable_experimental_tools:
+        cfg.operating_mode = "experimental"
     return _SyncServerHandle(build_server(profile))
 
 

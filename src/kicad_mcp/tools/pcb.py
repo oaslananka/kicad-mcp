@@ -59,6 +59,7 @@ from ..models.pcb import (
     StackupLayerSpec,
     SyncPcbFromSchematicInput,
 )
+from ..models.tool_result import MutatingToolResult, TransactionVerification
 from ..models.verdict import Finding, SuggestedFix, VerdictReport, stable_finding_id
 from ..utils import telemetry as otel
 from ..utils.cache import clear_ttl_cache, ttl_cache
@@ -4923,6 +4924,10 @@ def register(mcp: FastMCP) -> None:
                 return "No title block fields specified. Provide at least one field to update."
             set_title_block_info(**kwargs)
             updated_fields = ", ".join(kwargs.keys())
-            return f"Title block updated: {updated_fields}."
+            transaction = MutatingToolResult(
+                changed_objects=[f"board.title_block.{field}" for field in kwargs],
+                verification=TransactionVerification(roundtrip="live_gui_state"),
+            )
+            return transaction.to_compat_text(f"Title block updated: {updated_fields}.")
         except (KiCadConnectionError, OSError) as exc:
             return f"Failed to set title block info: {exc}"
