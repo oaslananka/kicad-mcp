@@ -248,6 +248,7 @@ async def _bridge_server(state: BridgeState) -> None:
     Transport is newline-delimited JSON-RPC over an asyncio TCP stream — no
     WebSocket library dependency is involved despite the historical naming.
     """
+
     async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """Handle a single bridge client connection."""
         peer = writer.get_extra_info("peername")

@@ -2308,7 +2308,8 @@ def setup(
 @app.command()
 def bridge(
     action: str = typer.Argument("start", help="Bridge action: start, stop, status."),
-    port: int = typer.Option(9090, "--port", "-p", help="Port for the WebSocket bridge."),
+    port: int = typer.Option(9090, "--port", "-p", help="Port for the TCP bridge listener."),
+    mcp_port: int = typer.Option(3334, "--mcp-port", help="Local MCP server port to proxy to."),
     code: str = typer.Option(
         "", "--code", "-c", help="Pairing code (auto-generated if not provided)."
     ),
@@ -2318,7 +2319,7 @@ def bridge(
     from .bridge import bridge_start, bridge_status, bridge_stop
 
     if action == "start":
-        bridge_start(port=port, code=code, daemon=daemon)
+        bridge_start(port=port, code=code, daemon=daemon, mcp_port=mcp_port)
     elif action == "status":
         bridge_status()
     elif action == "stop":
