@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import math
 import re
 import threading
@@ -116,7 +116,6 @@ ORIGIN_PIN_POWER_SYMBOL_NAMES = POWER_NET_NAMES | {
     "Earth",
     "Earth_Protective",
     "Earth_Clean",
-    "GNDREF",
     "VAA",
     "VDD",
     "VDDA",
@@ -6037,7 +6036,8 @@ def register(mcp: FastMCP) -> None:
             include_title_block=include_title_block,
         )
         if code != 0:
-            return f"Schematic PNG render failed during SVG export: {stderr or stdout or 'unknown error'}"
+            reason = stderr or stdout or "unknown error"
+            return f"Schematic PNG render failed during SVG export: {reason}"
         svg_file = _latest_svg_file(svg_dir, known_svg_files)
         if svg_file is None:
             return "Schematic PNG render failed: kicad-cli did not produce an SVG file."
