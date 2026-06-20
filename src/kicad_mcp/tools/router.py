@@ -218,6 +218,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "sch_find_free_placement",
             "sch_auto_place_functional",
             "sch_render_png",
+            "sch_visual_qa",
             "sch_set_title_block_info",
             "sch_set_sheet_size",
             "sch_auto_resize_sheet",

@@ -131,7 +131,7 @@ Built-in prompt helpers for the critic/fixer loop:
 
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 342.
+Total public tools: 343.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -426,6 +426,7 @@ Total public tools: 342.
 | `sch_trace_net` | agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation | no | no | no | no | no | no | Trace a named net through the active schematic and matching child sheets. |
 | `sch_update_properties` | agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation | no | yes | no | no | yes | no | Update a property on a placed symbol. This KiCad MCP Pro tool supports production EDA automation workflows for MCP cl... |
 | `sch_upgrade` | agent_full, expert, full, manufacturing, manufacturing_release | no | no | no | yes | yes | no | Upgrade a schematic file to the current KiCad file format. |
+| `sch_visual_qa` | agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation | no | no | no | no | yes | no | Run headless visual/readability QA on the active schematic sheet(s). |
 | `schematic_connectivity_gate` | agent_full, analysis, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, pcb, pcb_layout, power, release_manager, schematic, schematic_authoring | no | no | no | no | yes | no | Evaluate whether schematic structure and hierarchy look electrically meaningful. This KiCad MCP Pro tool supports pro... |
 | `schematic_quality_gate` | agent_full, analysis, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, pcb, pcb_layout, power, release_manager, schematic, schematic_authoring | yes | no | no | yes | yes | no | Evaluate whether the schematic is clean enough to proceed. This KiCad MCP Pro tool supports production EDA automation... |
 | `si_analyze_high_speed_channel` | agent_full, analysis, critic, expert, full, high_speed | no | no | no | no | no | no | Estimate high-speed channel insertion loss and eye opening for a lossy trace. |
@@ -771,6 +772,7 @@ Total public tools: 342.
 - `sch_trace_net`: profiles=agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `sch_update_properties`: profiles=agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `sch_upgrade`: profiles=agent_full, expert, full, manufacturing, manufacturing_release; readOnly=no; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
+- `sch_visual_qa`: profiles=agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `schematic_connectivity_gate`: profiles=agent_full, analysis, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, pcb, pcb_layout, power, release_manager, schematic, schematic_authoring; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `schematic_quality_gate`: profiles=agent_full, analysis, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, pcb, pcb_layout, power, release_manager, schematic, schematic_authoring; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `si_analyze_high_speed_channel`: profiles=agent_full, analysis, critic, expert, full, high_speed; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.

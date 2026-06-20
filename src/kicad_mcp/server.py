@@ -1534,6 +1534,7 @@ def _register_profile_components(
         validation,
         variants,
         version_control,
+        visual_qa,
     )
 
     validate_callable_imports()
@@ -1550,6 +1551,7 @@ def _register_profile_components(
     if "schematic" in enabled:
         schematic.register(server)
         variants.register(server)
+        visual_qa.register(server)
     if "library" in enabled:
         library.register(server)
         three_d_models.register(server)
