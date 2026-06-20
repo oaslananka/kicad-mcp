@@ -945,7 +945,9 @@ def register(mcp: FastMCP) -> None:
 
         ranked, evidence = _rank_passive_parametric_results(filtered, passive_query)
         ordered = ranked if passive_query else _sort_component_results(filtered, sort_by=sort_by)
-        heading = f"Live component matches for '{search_term}' from {source} ({len(ordered)} total):"
+        heading = (
+            f"Live component matches for '{search_term}' from {source} ({len(ordered)} total):"
+        )
         if passive_query:
             heading += (
                 f"\nParsed passive query: kind={passive_query.kind}, "

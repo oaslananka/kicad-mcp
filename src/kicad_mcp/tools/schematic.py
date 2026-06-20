@@ -1293,7 +1293,9 @@ def _is_origin_pin_power_symbol(symbol_name: str, value: str) -> bool:
         if not normalized:
             continue
         upper = normalized.upper()
-        if _is_power_net(normalized) or upper in {name.upper() for name in ORIGIN_PIN_POWER_SYMBOL_NAMES}:
+        if _is_power_net(normalized) or upper in {
+            name.upper() for name in ORIGIN_PIN_POWER_SYMBOL_NAMES
+        }:
             return True
         if upper.startswith(("#PWR", "PWR_FLAG", "GNDPWR", "GNDREF")):
             return True
@@ -1649,12 +1651,7 @@ def _apply_title_block_updates(content: str, updates: dict[str, str]) -> str:
         block = "\n".join(lines)
         paper_match = re.search(r"(\n\s*\(paper\b[^\n]*\)\n)", content)
         if paper_match:
-            return (
-                content[: paper_match.end()]
-                + block
-                + "\n"
-                + content[paper_match.end() :]
-            )
+            return content[: paper_match.end()] + block + "\n" + content[paper_match.end() :]
         return _append_before_sheet_instances(content, block)
 
     start, block = found
@@ -1674,7 +1671,7 @@ def _apply_title_block_updates(content: str, updates: dict[str, str]) -> str:
                 comment_patterns[key],
                 f"(comment {index} {_sexpr_string(updates[key])})",
             )
-    return f"{content[:start]}{updated}{content[start + len(block):]}"
+    return f"{content[:start]}{updated}{content[start + len(block) :]}"
 
 
 def _safe_render_output_path(raw_name: str | None, *, default_name: str) -> Path:
@@ -4360,7 +4357,9 @@ def register(mcp: FastMCP) -> None:
                 continue
             lib_id = str(sym.get("lib_id", ""))
             if ":" not in lib_id:
-                results.append(f"{ref}.{pin}: symbol type not supported: unresolved lib_id '{lib_id}'")
+                results.append(
+                    f"{ref}.{pin}: symbol type not supported: unresolved lib_id '{lib_id}'"
+                )
                 continue
             library, symbol_name = lib_id.split(":", 1)
             is_power_symbol = library == "power" or ref.startswith("#PWR")
