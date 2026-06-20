@@ -131,7 +131,7 @@ Built-in prompt helpers for the critic/fixer loop:
 
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 341.
+Total public tools: 342.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -241,6 +241,7 @@ Total public tools: 341.
 | `lib_search_symbols` | agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation | yes | no | no | yes | yes | no | Search symbol libraries by name, description, or keywords. |
 | `lib_set_3d_model_path` | agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation | no | yes | no | yes | yes | no | Set or replace the 3D model path on a footprint. |
 | `lib_validate_footprint_ipc7351` | agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation | no | no | no | no | yes | no | Validate a two-terminal chip footprint against its IPC-7351B nominal (hard gate). |
+| `lib_verify_component_contract` | agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation | no | no | no | no | yes | no | Verify a placed component's symbol, footprint, and pins actually match. |
 | `manufacturing_quality_gate` | agent_full, analysis, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, pcb, pcb_layout, power, release_manager, schematic, schematic_authoring | yes | no | no | yes | yes | no | Evaluate manufacturing readiness against the active or requested DFM profile. |
 | `mfg_check_import_support` | agent_full, expert, full, manufacturing, manufacturing_release | yes | no | yes | yes | yes | no | Report whether the detected KiCad CLI advertises a given board-import format. |
 | `mfg_correct_cpl_rotations` | agent_full, expert, full, manufacturing, manufacturing_release | no | no | no | no | yes | no | Apply JLCPCB CPL rotation corrections to a KiCad-exported pick-and-place CSV. |
@@ -585,6 +586,7 @@ Total public tools: 341.
 - `lib_search_symbols`: profiles=agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `lib_set_3d_model_path`: profiles=agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation; readOnly=no; destructive=yes; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `lib_validate_footprint_ipc7351`: profiles=agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
+- `lib_verify_component_contract`: profiles=agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `manufacturing_quality_gate`: profiles=agent_full, analysis, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, pcb, pcb_layout, power, release_manager, schematic, schematic_authoring; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `mfg_check_import_support`: profiles=agent_full, expert, full, manufacturing, manufacturing_release; readOnly=yes; destructive=no; openWorld=yes; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `mfg_correct_cpl_rotations`: profiles=agent_full, expert, full, manufacturing, manufacturing_release; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.

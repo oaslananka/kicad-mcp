@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import threading
@@ -12,6 +13,8 @@ from typing import Any, cast
 from mcp.server.fastmcp import FastMCP
 
 from ..config import get_config
+from ..models import contract_verifier as cv
+from ..models.component_contracts import find_component_contract
 from ..utils.cache import ttl_cache
 from ..utils.component_search import (
     ComponentRecord,
@@ -801,6 +804,89 @@ def register(mcp: FastMCP) -> None:
         if model_match is None:
             return f"Footprint '{library}:{footprint}' does not define a 3D model."
         return model_match.group(1)
+
+    @mcp.tool()
+    @headless_compatible
+    def lib_verify_component_contract(reference: str) -> str:
+        """Verify a placed component's symbol, footprint, and pins actually match.
+
+        For the given schematic reference designator this checks, entirely from
+        local project files (no network access):
+
+        - symbol pin count vs footprint connectable pad count
+        - pin numbers vs pad numbers
+        - footprint courtyard / fabrication / silkscreen completeness
+        - 3D model presence (advisory)
+        - datasheet evidence (advisory; never auto-filled)
+
+        Returns a JSON object with a ``status`` of PASS / WARN / FAIL and a list
+        of per-check ``findings``. FAIL marks a structural contract violation,
+        WARN marks a quality/completeness smell, and INFO is advisory evidence
+        that never changes the overall status.
+        """
+        reference = reference.strip()
+        if not reference:
+            return json.dumps({"error": "reference must not be empty."})
+
+        resolved: tuple[str, str] | None = None
+        symbol_block: str | None = None
+        for sch_file in project_schematic_files():
+            try:
+                sch_text = sch_file.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+            found = cv.find_symbol_instance(sch_text, reference)
+            if found is not None:
+                resolved = found
+                symbol_block = cv.extract_lib_symbol_block(sch_text, found[0])
+                break
+
+        if resolved is None:
+            return json.dumps(
+                {"error": f"No placed symbol with reference '{reference}' was found."}
+            )
+
+        lib_id, footprint_id = resolved
+        pins = cv.parse_symbol_pins(symbol_block) if symbol_block else ()
+        datasheet = ""
+        if symbol_block:
+            ds_match = re.search(r'\(property\s+"Datasheet"\s+"([^"]*)"', symbol_block)
+            if ds_match and ds_match.group(1) not in ("", "~"):
+                datasheet = ds_match.group(1)
+
+        footprint_shape = cv.FootprintShape()
+        footprint_read = False
+        if footprint_id and ":" in footprint_id:
+            fp_library, fp_name = footprint_id.split(":", 1)
+            try:
+                fp_path = _footprint_file(fp_library, fp_name)
+            except FileNotFoundError:
+                fp_path = None
+            if fp_path is not None and fp_path.exists():
+                footprint_shape = cv.parse_footprint(
+                    fp_path.read_text(encoding="utf-8", errors="ignore")
+                )
+                footprint_read = True
+
+        contract = find_component_contract(lib_id=lib_id, footprint=footprint_id)
+        report = cv.verify_contract(
+            reference=reference,
+            lib_id=lib_id,
+            footprint_id=footprint_id,
+            pins=pins,
+            footprint=footprint_shape,
+            datasheet=datasheet,
+            known_contract_category=contract.category if contract else "",
+        )
+        result = report.as_dict()
+        notes: list[str] = []
+        if footprint_id and not footprint_read:
+            notes.append("Footprint file could not be located; pad-level checks were skipped.")
+        elif not footprint_id:
+            notes.append("No footprint is assigned to this reference; pad checks were skipped.")
+        if notes:
+            result["notes"] = notes
+        return json.dumps(result, indent=2)
 
     @mcp.tool()
     @headless_compatible

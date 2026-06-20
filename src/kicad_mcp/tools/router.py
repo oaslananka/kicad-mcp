@@ -255,6 +255,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "lib_rebuild_index",
             "lib_get_footprint_info",
             "lib_get_footprint_3d_model",
+            "lib_verify_component_contract",
             "lib_assign_footprint",
             "lib_create_custom_symbol",
             "lib_search_components",
