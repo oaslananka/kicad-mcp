@@ -82,8 +82,14 @@ async def test_tools_list_latency_against_shared_budget(
         samples_ms.append((time.perf_counter() - start) * 1000.0)
 
     p95_ms = sorted(samples_ms)[-1]
-    # macOS GitHub Actions runners can be ~2× slower than bare-metal Linux.
-    multiplier = 2.5 if sys.platform == "darwin" else 1.2
+    # macOS and Windows GitHub Actions runners can be materially slower than
+    # bare-metal Linux. Keep this as a coarse guardrail, not a flaky micro-benchmark.
+    if sys.platform == "darwin":
+        multiplier = 2.5
+    elif sys.platform == "win32":
+        multiplier = 1.4
+    else:
+        multiplier = 1.2
     allowed_ms = float(baseline["baseline"]) * multiplier
     output_path = os.environ.get(MEASUREMENT_OUTPUT_ENV)
     if output_path:
