@@ -299,6 +299,16 @@ async def test_library_live_component_surface(
         "lib_search_components",
         {"keyword": "LDO", "source": "jlcsearch", "sort_by": "stock"},
     )
+    query_alias_search = await call_tool_text(
+        server,
+        "lib_search_components",
+        {"query": "LDO", "source": "jlcsearch"},
+    )
+    empty_search = await call_tool_text(
+        server,
+        "lib_search_components",
+        {"source": "jlcsearch"},
+    )
     below_stock = await call_tool_text(
         server,
         "lib_search_components",
@@ -351,6 +361,9 @@ async def test_library_live_component_surface(
 
     assert "Live component matches" in search
     assert "C123" in search
+    assert "Live component matches for 'LDO'" in query_alias_search
+    assert "C123" in query_alias_search
+    assert "Search term is required" in empty_search
     assert "below min_stock=1000000" in below_stock
     assert "Matches exist" in below_stock
     assert "Parsed passive query: kind=resistor" in passive_search
