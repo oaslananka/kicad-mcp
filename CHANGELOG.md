@@ -10,6 +10,31 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.13.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.12.1...mcp-server-v3.13.0) (2026-06-21)
+
+
+### Features
+
+* add project release readiness workflow ([5fa6f1c](https://github.com/oaslananka/kicad-mcp/commit/5fa6f1cbfd18cc76b3945e2a3506d947934758e3))
+* **erc:** expose structured run_erc finding metadata ([a744635](https://github.com/oaslananka/kicad-mcp/commit/a744635d5ec5a61890aa7691179c19047197e01c))
+* harden tool contracts and operating mode coverage ([5e67cfc](https://github.com/oaslananka/kicad-mcp/commit/5e67cfcaf4d49052149f1cdb99dbd994302f3de1))
+
+
+### Bug Fixes
+
+* avoid generic regulator contract false matches ([0b91796](https://github.com/oaslananka/kicad-mcp/commit/0b91796101fdbe8366176a93ff333f0be8271fee))
+* clear vertical pin terminals from symbol text ([7b3bec0](https://github.com/oaslananka/kicad-mcp/commit/7b3bec06b89700dfb30a6985e0b9b7a556331be4))
+* handle partial document availability in kicad_get_version ([41e031a](https://github.com/oaslananka/kicad-mcp/commit/41e031a37428c259fc7d7981a2a32fe2ee5eb934))
+* ignore explicit no-connect pins in connectivity gate ([cbaefaf](https://github.com/oaslananka/kicad-mcp/commit/cbaefafef8ee97f29566c14b5a8f4a5196713889))
+* ignore informational gate metrics in findings ([3f3f197](https://github.com/oaslananka/kicad-mcp/commit/3f3f19779d17f0ec475867cd042b61e6617eb366))
+* keep dense pin label terminals on natural rows ([3c2f400](https://github.com/oaslananka/kicad-mcp/commit/3c2f400feecac7f24f50c521c7e66355d163e020))
+* preserve schematic paper size on build ([8cbecf6](https://github.com/oaslananka/kicad-mcp/commit/8cbecf680dc598e52003419e3e14c7013615a5d2))
+* preserve unsnapped power symbol coordinates ([b10794d](https://github.com/oaslananka/kicad-mcp/commit/b10794ddfb7ca68b5153b45f975126f5c89f7623))
+* resolve ci lint failure in schematic render error path ([88d3a52](https://github.com/oaslananka/kicad-mcp/commit/88d3a52d7d6d061c2f2c92cc2c4d1389cf5015f5))
+* satisfy typecheck in capability parity and schematic tools ([4c1d8b4](https://github.com/oaslananka/kicad-mcp/commit/4c1d8b4802ace1d0c1fdd5f964ef61b3e3c399c3))
+* use power symbols for pin label power terminals ([c2fb17b](https://github.com/oaslananka/kicad-mcp/commit/c2fb17b738cbe8bffb2ca8f4127b1516cbdaee22))
+* warn on checkout version drift in doctor ([59a54f8](https://github.com/oaslananka/kicad-mcp/commit/59a54f8de43f3593eff60ce3b12da28aa91955ea))
+
 ## [3.12.1](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.12.0...mcp-server-v3.12.1) (2026-06-18)
 
 
