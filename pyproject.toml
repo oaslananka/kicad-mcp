@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "kicad-mcp-pro"
 version = "3.13.0"
-description = "Production-grade MCP server for KiCad EDA\u2014PCB design, DRC, simulation, BOM, DFM, and manufacturing."
+description = "Production-grade MCP server for KiCad EDA—PCB design, DRC, simulation, BOM, DFM, and manufacturing."
 readme = "README.md"
 license = { text = "MIT" }
 license-files = ["LICENSE"]
@@ -43,6 +43,7 @@ dependencies = [
   "mcp[cli]>=1.27.1,<2.0.0",
   "opentelemetry-exporter-otlp>=1.42.1,<2.0.0",
   "opentelemetry-sdk>=1.42.1,<2.0.0",
+  "packaging>=24.0,<26.0",
   "pydantic>=2.7.0",
   "pydantic-settings>=2.14.2",
   "python-dotenv>=1.0.0",

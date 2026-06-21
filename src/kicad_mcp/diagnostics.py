@@ -322,17 +322,77 @@ def _package_diagnostics() -> tuple[PackageDiagnostics, list[CheckResult]]:
     return diagnostics, checks
 
 
-def _required_uv_version(checkout: Path | None) -> str | None:
-    if checkout is None:
-        return None
+def _toml_data(path: Path) -> dict[str, Any] | None:
     try:
-        data = tomllib.loads((checkout / "uv.toml").read_text(encoding="utf-8"))
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    return data
+
+
+def _required_uv_version_from_uv_toml(checkout: Path) -> str | None:
+    data = _toml_data(checkout / "uv.toml")
+    if data is None:
         return None
     value = data.get("required-version")
     if not isinstance(value, str) or not value.strip():
         return None
-    return value.strip().removeprefix("==")
+    return value.strip()
+
+
+def _required_uv_version_from_pyproject(checkout: Path) -> str | None:
+    data = _toml_data(checkout / "pyproject.toml")
+    if data is None:
+        return None
+    tool = data.get("tool")
+    if not isinstance(tool, dict):
+        return None
+    uv = tool.get("uv")
+    if not isinstance(uv, dict):
+        return None
+    value = uv.get("required-version")
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return value.strip()
+
+
+def _required_uv_version(checkout: Path | None) -> str | None:
+    if checkout is None:
+        return None
+    return _required_uv_version_from_uv_toml(checkout) or _required_uv_version_from_pyproject(
+        checkout
+    )
+
+
+def _uv_requirement_specifier(required: str) -> str:
+    requirement = required.strip()
+    if re.match(r"^(===|~=|==|!=|<=|>=|<|>)", requirement):
+        return requirement
+    return f"=={requirement}"
+
+
+def _uv_requirement_satisfied(current: str, required: str) -> bool:
+    try:
+        from packaging.specifiers import InvalidSpecifier, SpecifierSet
+        from packaging.version import InvalidVersion, Version
+    except ImportError:
+        return current == required.strip().removeprefix("==")
+    try:
+        return Version(current) in SpecifierSet(_uv_requirement_specifier(required))
+    except (InvalidSpecifier, InvalidVersion):
+        return current == required.strip().removeprefix("==")
+
+
+def _uv_version_hint(required: str) -> str:
+    exact = required.strip().removeprefix("==")
+    if re.fullmatch(r"[0-9][A-Za-z0-9.!+_-]*", exact):
+        return (
+            f"Use the repo-compatible uv version, for example: uv self update {exact}. "
+            "Then rerun uv sync --all-extras --frozen."
+        )
+    return f"Use a uv version satisfying {required}. Then rerun uv sync --all-extras --frozen."
 
 
 def _detect_uv_version() -> tuple[str | None, str | None]:
@@ -365,7 +425,7 @@ def _uv_version_check(checkout: Path | None) -> CheckResult | None:
             message=f"Checkout requires uv {required}, but uv was not found on PATH.",
             hint=f"Install uv {required} before running repository commands such as uv run.",
         )
-    if current != required:
+    if not _uv_requirement_satisfied(current, required):
         return CheckResult(
             name="uv_version",
             status="warn",
@@ -373,15 +433,12 @@ def _uv_version_check(checkout: Path | None) -> CheckResult | None:
                 f"Checkout requires uv {required}, but PATH resolves uv {current} "
                 f"at {executable}. uv run will fail before tests or tools start."
             ),
-            hint=(
-                f"Use the repo-compatible uv version, for example: uv self update {required}. "
-                "Then rerun uv sync --all-extras --frozen."
-            ),
+            hint=_uv_version_hint(required),
         )
     return CheckResult(
         name="uv_version",
         status="ok",
-        message=f"uv {current} matches checkout requirement {required}.",
+        message=f"uv {current} satisfies checkout requirement {required}.",
     )
 
 
