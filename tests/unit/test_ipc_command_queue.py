@@ -225,3 +225,29 @@ def test_singleton_accessor_resets() -> None:
     assert get_command_queue() is first
     reset_command_queue()
     assert get_command_queue() is not first
+
+
+def test_pcb_live_mutation_helper_routes_through_queue(monkeypatch: pytest.MonkeyPatch) -> None:
+    import kicad_mcp.tools.pcb as pcb_mod
+
+    calls: list[tuple[str, str]] = []
+
+    class _FakeQueue:
+        def execute(
+            self,
+            operation: str,
+            command: Callable[[], str],
+            *,
+            correlation_id: str = "",
+            idempotency_key: str | None = None,
+        ) -> str:
+            del idempotency_key
+            calls.append((operation, correlation_id))
+            return command()
+
+    monkeypatch.setattr(pcb_mod, "get_command_queue", lambda: _FakeQueue())
+
+    result = pcb_mod._run_queued_ipc_mutation("pcb_save", lambda: "ok")
+
+    assert result == "ok"
+    assert calls == [("pcb_save", "pcb_save")]

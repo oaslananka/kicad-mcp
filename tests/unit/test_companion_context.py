@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import urllib.request
 
+import pytest
+
 from kicad_mcp.companion.context import (
     BoardInfo,
     StudioContextClient,
@@ -58,6 +60,20 @@ def test_client_builds_jsonrpc_body() -> None:
     assert body["params"]["arguments"] == {"file_type": "pcb"}
 
 
+def test_client_builds_generic_tool_call_body() -> None:
+    client = StudioContextClient()
+    body = client.build_tool_call_body("sch_render_png", {"sheet": "Power"}, request_id=7)
+    assert body["id"] == 7
+    assert body["method"] == "tools/call"
+    assert body["params"]["name"] == "sch_render_png"
+    assert body["params"]["arguments"] == {"sheet": "Power"}
+
+
+def test_client_rejects_non_loopback_url() -> None:
+    with pytest.raises(ValueError, match="loopback"):
+        StudioContextClient("https://example.com")
+
+
 def test_client_push_posts_to_mcp_endpoint() -> None:
     captured: dict[str, object] = {}
 
@@ -87,3 +103,25 @@ def test_client_push_posts_to_mcp_endpoint() -> None:
     body = captured["body"]
     assert body["params"]["name"] == "studio_push_context"  # type: ignore[index]
     assert body["params"]["arguments"]["active_file"] == "b.kicad_pcb"  # type: ignore[index]
+
+
+def test_client_render_and_highlight_helpers_call_expected_tools() -> None:
+    bodies: list[dict[str, object]] = []
+
+    class _FakeResponse:
+        def read(self) -> bytes:
+            return json.dumps({"result": "ok"}).encode("utf-8")
+
+    def fake_opener(request: urllib.request.Request) -> _FakeResponse:
+        bodies.append(json.loads(request.data.decode("utf-8")))  # type: ignore[union-attr]
+        return _FakeResponse()
+
+    client = StudioContextClient(opener=fake_opener)
+
+    assert client.request_render_artifact(sheet="Power") == {"result": "ok"}
+    assert client.request_highlight_net("VBUS") == {"result": "ok"}
+
+    assert bodies[0]["params"]["name"] == "sch_render_png"  # type: ignore[index]
+    assert bodies[0]["params"]["arguments"] == {"sheet": "Power"}  # type: ignore[index]
+    assert bodies[1]["params"]["name"] == "pcb_highlight_net"  # type: ignore[index]
+    assert bodies[1]["params"]["arguments"] == {"net_name": "VBUS"}  # type: ignore[index]

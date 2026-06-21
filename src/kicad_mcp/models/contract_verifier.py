@@ -88,8 +88,17 @@ def extract_balanced_block(text: str, start: int) -> str:
     length = len(text)
     while index < length:
         char = text[index]
-        if char == '"' and (index == 0 or text[index - 1] != "\\"):
-            in_string = not in_string
+        if char == '"':
+            # A quote only delimits a string if it is not itself escaped. Count the
+            # run of preceding backslashes: an even count means the quote is live
+            # (e.g. ``\\"`` is an escaped backslash followed by a real quote).
+            backslashes = 0
+            back = index - 1
+            while back >= start and text[back] == "\\":
+                backslashes += 1
+                back -= 1
+            if backslashes % 2 == 0:
+                in_string = not in_string
         elif not in_string:
             if char == "(":
                 depth += 1

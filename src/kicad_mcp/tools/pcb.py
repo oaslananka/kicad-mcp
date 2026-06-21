@@ -32,6 +32,7 @@ from mcp.server.fastmcp import FastMCP
 
 from ..config import get_config
 from ..connection import KiCadConnectionError, board_transaction, get_board
+from ..ipc.command_queue import get_command_queue
 from ..models.common import _FootprintLike, _PadLike
 from ..models.pcb import (
     AddCircleInput,
@@ -102,6 +103,11 @@ _COPPER_LAYER_SEQUENCE = [
     "In8_Cu",
     "B_Cu",
 ]
+
+
+def _run_queued_ipc_mutation[T](operation: str, command: Callable[[], T]) -> T:
+    """Serialize a live KiCad GUI mutation through the central IPC queue."""
+    return get_command_queue().execute(operation, command, correlation_id=operation)
 
 
 class _ComponentPlacement(Protocol):
@@ -3298,8 +3304,12 @@ def register(mcp: FastMCP) -> None:
             kiid.value = item_id
             kiids.append(kiid)
         try:
-            with board_transaction() as board:
-                board.remove_items_by_id(kiids)
+
+            def _delete_items() -> None:
+                with board_transaction() as board:
+                    board.remove_items_by_id(kiids)
+
+            _run_queued_ipc_mutation("pcb_delete_items", _delete_items)
         except Exception as exc:
             return f"Failed to delete items: {exc}"
         return f"Deleted {len(kiids)} item(s)."
@@ -3313,14 +3323,21 @@ def register(mcp: FastMCP) -> None:
     @mcp.tool()
     def pcb_save() -> str:
         """Save the active board."""
-        save = cast(Callable[[], None], get_board().save)
-        save()
+
+        def _save() -> None:
+            save = cast(Callable[[], None], get_board().save)
+            save()
+
+        _run_queued_ipc_mutation("pcb_save", _save)
         return "Board saved."
 
     @mcp.tool()
     def pcb_refill_zones() -> str:
         """Refill all copper zones."""
-        get_board().refill_zones(block=True, max_poll_seconds=60.0)
+        _run_queued_ipc_mutation(
+            "pcb_refill_zones",
+            lambda: get_board().refill_zones(block=True, max_poll_seconds=60.0),
+        )
         return "Zones refilled."
 
     @mcp.tool()
@@ -4714,7 +4731,7 @@ def register(mcp: FastMCP) -> None:
                     "Transaction grouping is not supported by the current KiCad IPC version. "
                     "Mutations will be applied individually without atomic grouping."
                 )
-            begin_commit()
+            _run_queued_ipc_mutation("pcb_begin_commit", begin_commit)
             return (
                 "Transaction group started. Use pcb_push_commit to apply or "
                 "pcb_drop_commit to discard."
@@ -4737,7 +4754,7 @@ def register(mcp: FastMCP) -> None:
             push_commit = getattr(board, "push_commit", None)
             if not callable(push_commit):
                 return "No active transaction group to commit."
-            push_commit()
+            _run_queued_ipc_mutation("pcb_push_commit", push_commit)
             return "Transaction group committed successfully."
         except (KiCadConnectionError, OSError) as exc:
             return f"Failed to commit transaction: {exc}"
@@ -4757,7 +4774,7 @@ def register(mcp: FastMCP) -> None:
             drop_commit = getattr(board, "drop_commit", None)
             if not callable(drop_commit):
                 return "No active transaction group to discard."
-            drop_commit()
+            _run_queued_ipc_mutation("pcb_drop_commit", drop_commit)
             return "Transaction group discarded successfully."
         except (KiCadConnectionError, OSError) as exc:
             return f"Failed to discard transaction: {exc}"
@@ -4780,7 +4797,7 @@ def register(mcp: FastMCP) -> None:
                     "Revert is not supported by the current KiCad IPC version. "
                     "Please save and reload the board manually."
                 )
-            revert()
+            _run_queued_ipc_mutation("pcb_revert", revert)
             return "Board reverted to last saved state. All unsaved changes have been discarded."
         except (KiCadConnectionError, OSError) as exc:
             return f"Failed to revert board: {exc}"
@@ -4922,7 +4939,10 @@ def register(mcp: FastMCP) -> None:
                 kwargs["comment4"] = comment4
             if not kwargs:
                 return "No title block fields specified. Provide at least one field to update."
-            set_title_block_info(**kwargs)
+            _run_queued_ipc_mutation(
+                "pcb_set_title_block_info",
+                lambda: set_title_block_info(**kwargs),
+            )
             updated_fields = ", ".join(kwargs.keys())
             transaction = MutatingToolResult(
                 changed_objects=[f"board.title_block.{field}" for field in kwargs],

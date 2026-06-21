@@ -9,7 +9,9 @@ flow is unit-testable without KiCad or a live server.
 
 from __future__ import annotations
 
+import ipaddress
 import json
+import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -83,6 +85,23 @@ class _HttpResponse(Protocol):
 Opener = Callable[[urllib.request.Request], _HttpResponse]
 
 
+def _is_loopback_host(hostname: str | None) -> bool:
+    if hostname is None:
+        return False
+    if hostname.casefold() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        return False
+
+
+def _validate_loopback_base_url(base_url: str) -> None:
+    parsed = urllib.parse.urlparse(base_url)
+    if parsed.scheme not in {"http", "https"} or not _is_loopback_host(parsed.hostname):
+        raise ValueError("KiCad companion can only connect to a loopback http(s) MCP endpoint.")
+
+
 class StudioContextClient:
     """Minimal JSON-RPC client that pushes context to a running kicad-mcp server."""
 
@@ -95,6 +114,7 @@ class StudioContextClient:
         timeout: float = 5.0,
         opener: Opener | None = None,
     ) -> None:
+        _validate_loopback_base_url(base_url)
         self._url = f"{base_url.rstrip('/')}/{mount_path.strip('/')}"
         self._auth_token = auth_token
         self._timeout = timeout
@@ -104,21 +124,34 @@ class StudioContextClient:
         # urlopen is typed to return Any-ish; localhost-only call, narrow to our Protocol.
         return cast(
             _HttpResponse,
-            urllib.request.urlopen(request, timeout=self._timeout),  # noqa: S310 - localhost only
+            urllib.request.urlopen(  # noqa: S310  # nosec B310
+                request,
+                timeout=self._timeout,
+            ),
         )
+
+    def build_tool_call_body(
+        self,
+        tool_name: str,
+        arguments: dict[str, Any] | None = None,
+        *,
+        request_id: int = 1,
+    ) -> dict[str, Any]:
+        """Return the JSON-RPC body for a generic MCP ``tools/call`` request."""
+        return {
+            "jsonrpc": "2.0",
+            "id": request_id,
+            "method": "tools/call",
+            "params": {"name": tool_name, "arguments": arguments or {}},
+        }
 
     def build_request_body(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Return the JSON-RPC body for a ``studio_push_context`` tools/call."""
-        return {
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "tools/call",
-            "params": {"name": "studio_push_context", "arguments": arguments},
-        }
+        return self.build_tool_call_body("studio_push_context", arguments)
 
-    def push(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        """POST the context to the server and return the decoded JSON response."""
-        body = json.dumps(self.build_request_body(arguments)).encode("utf-8")
+    def call_tool(self, tool_name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
+        """POST a MCP tool call to the server and return the decoded JSON response."""
+        body = json.dumps(self.build_tool_call_body(tool_name, arguments)).encode("utf-8")
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
         if self._auth_token:
             headers["Authorization"] = f"Bearer {self._auth_token}"
@@ -130,3 +163,25 @@ class StudioContextClient:
         if isinstance(raw, bytes):
             raw = raw.decode("utf-8")
         return json.loads(raw) if raw else {}
+
+    def push(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        """POST the context to the server and return the decoded JSON response."""
+        return self.call_tool("studio_push_context", arguments)
+
+    def request_render_artifact(
+        self,
+        *,
+        sheet: str = "",
+        output_file: str = "",
+    ) -> dict[str, Any]:
+        """Ask the server to render a schematic PNG artifact for visual QA."""
+        args = {
+            key: value
+            for key, value in {"sheet": sheet, "output_file": output_file}.items()
+            if value
+        }
+        return self.call_tool("sch_render_png", args)
+
+    def request_highlight_net(self, net_name: str) -> dict[str, Any]:
+        """Ask the server to highlight or identify a PCB net when the runtime supports it."""
+        return self.call_tool("pcb_highlight_net", {"net_name": net_name})

@@ -1,0 +1,158 @@
+"""Check incremental domain-boundary guards for the tool refactor.
+
+This is intentionally narrow: it protects the first extracted helper modules from
+sliding back into the schematic/PCB/server monoliths while the larger split
+continues incrementally.
+"""
+
+from __future__ import annotations
+
+import ast
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = REPO_ROOT / "src"
+
+DOMAIN_MODULES = {
+    "kicad_mcp.companion.context": SRC_ROOT / "kicad_mcp" / "companion" / "context.py",
+    "kicad_mcp.ipc.command_queue": SRC_ROOT / "kicad_mcp" / "ipc" / "command_queue.py",
+    "kicad_mcp.models.contract_verifier": SRC_ROOT
+    / "kicad_mcp"
+    / "models"
+    / "contract_verifier.py",
+    "kicad_mcp.models.sch_transaction": SRC_ROOT / "kicad_mcp" / "models" / "sch_transaction.py",
+    "kicad_mcp.models.visual_qa": SRC_ROOT / "kicad_mcp" / "models" / "visual_qa.py",
+    "kicad_mcp.tools.schematic_constants": SRC_ROOT
+    / "kicad_mcp"
+    / "tools"
+    / "schematic_constants.py",
+    "kicad_mcp.tools.schematic_transfer": SRC_ROOT
+    / "kicad_mcp"
+    / "tools"
+    / "schematic_transfer.py",
+}
+
+PURE_HELPERS = {
+    "kicad_mcp.companion.context",
+    "kicad_mcp.ipc.command_queue",
+    "kicad_mcp.models.contract_verifier",
+    "kicad_mcp.models.sch_transaction",
+    "kicad_mcp.models.visual_qa",
+    "kicad_mcp.tools.schematic_constants",
+}
+
+FORBIDDEN_PURE_IMPORT_PREFIXES = (
+    "kicad_mcp.server",
+    "kicad_mcp.connection",
+    "kicad_mcp.tools.pcb",
+    "kicad_mcp.tools.schematic",
+    "mcp",
+    "pcbnew",
+    "wx",
+    "kipy",
+)
+
+
+def _module_package(module_name: str) -> str:
+    return module_name.rsplit(".", 1)[0]
+
+
+def _resolve_import(module_name: str, node: ast.ImportFrom) -> str:
+    if node.level == 0:
+        return node.module or ""
+    package_parts = _module_package(module_name).split(".")
+    if node.level > len(package_parts):
+        return node.module or ""
+    base = ".".join(package_parts[: len(package_parts) - node.level + 1])
+    return f"{base}.{node.module}" if node.module else base
+
+
+def _imports_for(module_name: str, path: Path) -> set[str]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    imports: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imports.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            resolved = _resolve_import(module_name, node)
+            if resolved:
+                imports.add(resolved)
+    return imports
+
+
+def _domain_target(import_name: str) -> str | None:
+    for module_name in DOMAIN_MODULES:
+        if import_name == module_name or import_name.startswith(f"{module_name}."):
+            return module_name
+    return None
+
+
+def _find_cycle(graph: dict[str, set[str]]) -> list[str]:
+    visiting: set[str] = set()
+    visited: set[str] = set()
+    stack: list[str] = []
+
+    def visit(node: str) -> list[str]:
+        if node in visiting:
+            index = stack.index(node)
+            return [*stack[index:], node]
+        if node in visited:
+            return []
+        visiting.add(node)
+        stack.append(node)
+        for child in sorted(graph[node]):
+            cycle = visit(child)
+            if cycle:
+                return cycle
+        stack.pop()
+        visiting.remove(node)
+        visited.add(node)
+        return []
+
+    for node in sorted(graph):
+        cycle = visit(node)
+        if cycle:
+            return cycle
+    return []
+
+
+def main() -> int:
+    errors: list[str] = []
+    imports_by_module: dict[str, set[str]] = {}
+
+    for module_name, path in DOMAIN_MODULES.items():
+        if not path.exists():
+            errors.append(f"Missing extracted module: {path.relative_to(REPO_ROOT)}")
+            continue
+        imports = _imports_for(module_name, path)
+        imports_by_module[module_name] = imports
+        if module_name in PURE_HELPERS:
+            for import_name in sorted(imports):
+                if import_name.startswith(FORBIDDEN_PURE_IMPORT_PREFIXES):
+                    errors.append(f"{module_name} must stay pure; forbidden import: {import_name}")
+
+    graph = {
+        module_name: {
+            target
+            for import_name in imports
+            for target in [_domain_target(import_name)]
+            if target is not None and target != module_name
+        }
+        for module_name, imports in imports_by_module.items()
+    }
+    cycle = _find_cycle(graph)
+    if cycle:
+        errors.append("Import cycle among extracted domain modules: " + " -> ".join(cycle))
+
+    if errors:
+        print("Architecture boundary check failed:", file=sys.stderr)
+        for error in errors:
+            print(f"- {error}", file=sys.stderr)
+        return 1
+    print("Architecture boundary check passed.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

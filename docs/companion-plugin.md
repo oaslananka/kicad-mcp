@@ -11,6 +11,8 @@ endpoint and never writes files itself.
 
 - Publishes the active project / file / selection context to the MCP server
   (via the existing `studio_push_context` tool).
+- Can request server-side visual artifacts (`sch_render_png`) and net highlight
+  attempts (`pcb_highlight_net`) through the same loopback `tools/call` path.
 - Surfaces health/status of the connection in a dialog.
 - Provides a **safe-apply** confirmation gate (`confirm_safe_apply`) that mutating
   flows must pass before touching the board.
@@ -53,8 +55,13 @@ the dependency-free helpers are covered by `tests/unit/test_companion_context.py
 4. In another MCP client, read the `kicad://studio/context` resource and confirm
    the active file and project root match what is open in KiCad.
 5. Select a footprint, push again, and confirm `selected_reference` updates.
-6. Stop the server and push again. Expect a clear error dialog (no crash).
-7. Trigger a mutating action and confirm the **safe-apply** dialog appears and
+6. From a test shell or KiCad console, call `StudioContextClient().request_render_artifact()`
+   and confirm the MCP server returns either a PNG artifact path or a clear
+   renderer-unavailable response.
+7. Call `StudioContextClient().request_highlight_net("GND")` and confirm the
+   server returns the current highlight capability status without mutating files.
+8. Stop the server and push again. Expect a clear error dialog (no crash).
+9. Trigger a mutating action and confirm the **safe-apply** dialog appears and
    that declining it leaves the board unchanged.
 
 ## Security notes

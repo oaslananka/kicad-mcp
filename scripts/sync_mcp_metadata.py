@@ -147,7 +147,9 @@ def _pypi_package(metadata: dict[str, Any]) -> dict[str, Any]:
             {
                 "type": "named",
                 "name": "--transport",
-                "description": "Transport protocol (stdio or streamable-http). Legacy SSE disabled by default.",
+                "description": (
+                    "Transport protocol (stdio or streamable-http). Legacy SSE disabled by default."
+                ),
                 "isRequired": False,
                 "default": "stdio",
             },

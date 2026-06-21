@@ -1665,7 +1665,7 @@ def _render_svg_to_png(
     crop_to_content: bool,
 ) -> dict[str, object]:
     try:
-        import cairosvg  # type: ignore[import-untyped]
+        import cairosvg  # type: ignore[import-not-found, import-untyped, unused-ignore]
         from PIL import Image
     except ImportError as exc:
         raise RuntimeError(
