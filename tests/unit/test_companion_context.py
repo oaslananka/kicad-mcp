@@ -90,6 +90,7 @@ def test_client_push_posts_to_mcp_endpoint() -> None:
         captured["method"] = request.get_method()
         captured["body"] = json.loads(request.data.decode("utf-8"))  # type: ignore[union-attr]
         captured["auth"] = request.headers.get("Authorization")
+        captured["accept"] = request.headers.get("Accept")
         return _FakeResponse()
 
     client = StudioContextClient(
@@ -104,6 +105,9 @@ def test_client_push_posts_to_mcp_endpoint() -> None:
     assert captured["url"] == "http://127.0.0.1:9999/mcp"
     assert captured["method"] == "POST"
     assert captured["auth"] == "Bearer secret"
+    # MCP Streamable HTTP rejects a JSON-only Accept header with HTTP 400.
+    accept = str(captured["accept"])
+    assert "application/json" in accept and "text/event-stream" in accept
     body = captured["body"]
     assert body["params"]["name"] == "studio_push_context"  # type: ignore[index]
     assert body["params"]["arguments"]["active_file"] == "b.kicad_pcb"  # type: ignore[index]
