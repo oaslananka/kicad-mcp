@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/oaslananka/kicad-mcp/compare/protocol-schemas-v1.1.1...protocol-schemas-v1.2.0) (2026-06-21)
+
+
+### Features
+
+* harden tool contracts and operating mode coverage ([5e67cfc](https://github.com/oaslananka/kicad-mcp/commit/5e67cfcaf4d49052149f1cdb99dbd994302f3de1))
+
 ## [1.1.1](https://github.com/oaslananka/kicad-mcp/compare/protocol-schemas-v1.1.0...protocol-schemas-v1.1.1) (2026-06-03)
 
 
