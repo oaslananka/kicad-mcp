@@ -15,7 +15,7 @@ names the model chose; the model itself lives outside this module.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -62,6 +62,25 @@ class EvalDatasetError(ValueError):
     """Raised when an eval dataset is structurally invalid."""
 
 
+def _tool_name_list(raw: Mapping[str, Any], key: str, case_id: str) -> tuple[str, ...]:
+    value = raw.get(key, [])
+    if value is None:
+        value = []
+    if not isinstance(value, list):
+        raise EvalDatasetError(f"Case {case_id!r} field {key!r} must be a list of tool names.")
+
+    tools: list[str] = []
+    for item_index, item in enumerate(value):
+        if not isinstance(item, str):
+            raise EvalDatasetError(
+                f"Case {case_id!r} field {key!r} item #{item_index} must be a string."
+            )
+        name = item.strip()
+        if name:
+            tools.append(name)
+    return tuple(tools)
+
+
 def load_cases(path: str | Path) -> list[EvalCase]:
     """Load and validate eval cases from a YAML file (``{cases: [...]}``)."""
     data = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
@@ -78,12 +97,8 @@ def load_cases(path: str | Path) -> list[EvalCase]:
             raise EvalDatasetError(f"Case #{index} must be a mapping.")
         case_id = str(raw.get("id", "")).strip()
         prompt = str(raw.get("prompt", "")).strip()
-        expected = tuple(
-            str(t).strip() for t in (raw.get("expected_tools") or []) if str(t).strip()
-        )
-        forbidden = tuple(
-            str(t).strip() for t in (raw.get("forbidden_tools") or []) if str(t).strip()
-        )
+        expected = _tool_name_list(raw, "expected_tools", case_id or f"#{index}")
+        forbidden = _tool_name_list(raw, "forbidden_tools", case_id or f"#{index}")
         if not case_id:
             raise EvalDatasetError(f"Case #{index} is missing an 'id'.")
         if case_id in seen:

@@ -6425,7 +6425,7 @@ def register(mcp: FastMCP) -> None:
             return "No subcircuit templates are available."
 
         try:
-            import yaml  # type: ignore[import-untyped]
+            import yaml
         except ImportError:
             return "Template tools require PyYAML. Install it to inspect bundled templates."
 

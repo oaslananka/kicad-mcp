@@ -119,3 +119,29 @@ def test_golden_dataset_only_references_real_tools() -> None:
     referenced = all_referenced_tools(load_cases(CASES_PATH))
     unknown = sorted(referenced - registered)
     assert unknown == [], f"Dataset references unregistered tools: {unknown}"
+
+
+def test_load_cases_requires_tool_fields_to_be_lists(tmp_path: Path) -> None:
+    bad = tmp_path / "bad-tool-list.yaml"
+    bad.write_text(
+        "cases:\n  - id: bad\n    prompt: run DRC\n    expected_tools: run_drc\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(EvalDatasetError, match="expected_tools.*list"):
+        load_cases(bad)
+
+
+def test_load_cases_requires_tool_list_items_to_be_strings(tmp_path: Path) -> None:
+    bad = tmp_path / "bad-tool-item.yaml"
+    bad.write_text(
+        "cases:\n"
+        "  - id: bad\n"
+        "    prompt: run DRC\n"
+        "    expected_tools: [run_drc]\n"
+        "    forbidden_tools: [null]\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(EvalDatasetError, match="forbidden_tools.*string"):
+        load_cases(bad)
