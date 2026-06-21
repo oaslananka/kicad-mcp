@@ -4247,10 +4247,17 @@ def register(mcp: FastMCP) -> None:
         target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         data = parse_schematic_file(target.path)
         placed: dict[str, dict[str, Any]] = {}
-        for sym in (*data.get("symbols", []), *data.get("power_symbols", [])):
+        placed_kind: dict[str, str] = {}
+        for sym in data.get("symbols", []):
             ref = str(sym.get("reference", ""))
             if ref:
                 placed[ref] = sym
+                placed_kind[ref] = "symbol"
+        for sym in data.get("power_symbols", []):
+            ref = str(sym.get("reference", ""))
+            if ref:
+                placed[ref] = sym
+                placed_kind[ref] = "power_symbol"
 
         cfg = get_config()
         project_name = cfg.project_file.stem if cfg.project_file is not None else "KiCadMCP"
@@ -4280,6 +4287,7 @@ def register(mcp: FastMCP) -> None:
             if sym is None:
                 results.append(f"{ref}.{pin}: reference not found")
                 continue
+            is_power_symbol_ref = placed_kind.get(ref) == "power_symbol"
             lib_id = str(sym.get("lib_id", ""))
             if ":" not in lib_id:
                 results.append(
@@ -4297,6 +4305,12 @@ def register(mcp: FastMCP) -> None:
             if point is None:
                 aliases = get_pin_alias_positions(library, symbol_name, ox, oy, rot, unit)
                 point = aliases.get(pin) or aliases.get(pin.upper())
+            if point is None and is_power_symbol_ref:
+                if pin != "1":
+                    results.append(f"{ref}.{pin}: symbol type not supported for pin '{pin}'")
+                    continue
+                point = (ox, oy)
+                pin_positions = {"1": point}
             if point is None:
                 if (
                     is_power_symbol

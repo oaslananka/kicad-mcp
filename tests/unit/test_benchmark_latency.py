@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 import time
@@ -15,6 +16,11 @@ from kicad_mcp.server import build_server
 PERFORMANCE_CATALOG_PATH = Path(__file__).resolve().parents[2] / "performance" / "baselines.json"
 MEASUREMENT_OUTPUT_ENV = "KICAD_PERFORMANCE_MEASUREMENTS_JSON"
 TOOLS_LIST_METRIC = "mcp.tools_list.response_ms"
+# Discard the first calls: they pay one-time import / cache / JIT warm-up that is
+# not representative of steady-state tools/list latency.
+WARMUP_ITERATIONS = 3
+# Enough samples for a meaningful nearest-rank p95 that tolerates a single spike.
+MEASURE_ITERATIONS = 20
 
 
 def _unavailable_ipc_state() -> KiCadIpcCapabilityState:
@@ -74,16 +80,23 @@ async def test_tools_list_latency_against_shared_budget(
         TOOLS_LIST_METRIC
     ]
     server = build_server("full")
-    samples_ms: list[float] = []
 
-    for _index in range(5):
+    for _ in range(WARMUP_ITERATIONS):
+        await server.list_tools()
+
+    samples_ms: list[float] = []
+    for _index in range(MEASURE_ITERATIONS):
         start = time.perf_counter()
         await server.list_tools()
         samples_ms.append((time.perf_counter() - start) * 1000.0)
 
-    p95_ms = sorted(samples_ms)[-1]
-    # macOS GitHub Actions runners can be ~2× slower than bare-metal Linux.
-    multiplier = 2.5 if sys.platform == "darwin" else 1.2
+    # Genuine nearest-rank p95 so a single scheduler/GC spike on a noisy hosted
+    # runner does not fail the build (the previous max-of-5 was spike-sensitive).
+    ordered = sorted(samples_ms)
+    p95_ms = ordered[max(0, math.ceil(0.95 * len(ordered)) - 1)]
+    # Hosted macOS and Windows Actions runners run markedly slower, with higher
+    # variance, than the Linux runners the baseline was measured on.
+    multiplier = 1.2 if sys.platform == "linux" else 2.5
     allowed_ms = float(baseline["baseline"]) * multiplier
     output_path = os.environ.get(MEASUREMENT_OUTPUT_ENV)
     if output_path:
