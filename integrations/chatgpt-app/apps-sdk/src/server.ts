@@ -79,7 +79,7 @@ function assertPathSegmentSafe(userPath: string, label: string): void {
   if (/[%]2[ef]/i.test(userPath) || /[%]5c/i.test(userPath)) {
     throw new Error(`${label}: path contains URL-encoded traversal`);
   }
-  if (userPath.split(/[\/]+/).includes("..")) {
+  if (userPath.replace(/\\/g, "/").split("/").includes("..")) {
     throw new Error(`${label}: directory traversal detected`);
   }
 }
@@ -651,21 +651,16 @@ function createMcpServer(): McpServer {
   return mcp;
 }
 
-async function handleMcpRequest(req: Request, res: Response): Promise<void> {
-  const mcp = createMcpServer();
-  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+const mcp = createMcpServer();
+const mcpTransport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+await mcp.connect(mcpTransport);
 
-  res.on("close", () => {
-    void transport.close();
-    void mcp.close();
-  });
-
+async function handleMcpPostRequest(req: Request, res: Response): Promise<void> {
   try {
-    await mcp.connect(transport);
-    await transport.handleRequest(req, res, req.body);
+    await mcpTransport.handleRequest(req, res, req.body);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("Error handling MCP request:", message);
+    console.error("Error handling MCP POST request:", message);
     if (!res.headersSent) {
       res.status(500).json({
         jsonrpc: "2.0",
@@ -676,14 +671,24 @@ async function handleMcpRequest(req: Request, res: Response): Promise<void> {
   }
 }
 
-app.post("/mcp", async (req: Request, res: Response) => { await handleMcpRequest(req, res); });
-app.get("/mcp", (_req: Request, res: Response) => {
-  res.status(405).json({
-    jsonrpc: "2.0",
-    error: { code: -32000, message: "Method not allowed." },
-    id: null,
-  });
-});
+async function handleMcpGetRequest(req: Request, res: Response): Promise<void> {
+  try {
+    await mcpTransport.handleRequest(req, res);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("Error handling MCP GET request:", message);
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: "2.0",
+        error: { code: -32603, message: "Internal server error" },
+        id: null,
+      });
+    }
+  }
+}
+
+app.post("/mcp", async (req: Request, res: Response) => { await handleMcpPostRequest(req, res); });
+app.get("/mcp", async (req: Request, res: Response) => { await handleMcpGetRequest(req, res); });
 app.delete("/mcp", (_req: Request, res: Response) => {
   res.status(405).json({
     jsonrpc: "2.0",
