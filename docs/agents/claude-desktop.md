@@ -3,7 +3,7 @@
 ## Quick Start
 
 ```bash
-kicad-mcp setup claude-desktop
+kicad-mcp-pro setup claude-desktop
 ```
 
 Or manually:
@@ -40,7 +40,7 @@ Claude Desktop local config is **separate** from Claude.ai custom connectors. Lo
 ## Verification
 
 ```bash
-kicad-mcp doctor --agent claude-desktop
+kicad-mcp-pro doctor --agent claude-desktop
 ```
 
 In Claude Desktop, ask: *"Use the kicad MCP server to inspect the current project."*

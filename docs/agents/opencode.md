@@ -3,7 +3,7 @@
 ## Quick Start
 
 ```bash
-kicad-mcp setup opencode
+kicad-mcp-pro setup opencode
 ```
 
 Or manually add to `opencode.json`:
@@ -43,7 +43,7 @@ Or manually add to `opencode.json`:
 
 ```bash
 opencode mcp list
-kicad-mcp doctor --agent opencode
+kicad-mcp-pro doctor --agent opencode
 ```
 
 ## Plugin

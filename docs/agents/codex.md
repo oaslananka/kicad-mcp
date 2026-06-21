@@ -3,7 +3,7 @@
 ## Quick Start
 
 ```bash
-kicad-mcp setup codex
+kicad-mcp-pro setup codex
 ```
 
 Or manually add to `~/.codex/config.toml`:
@@ -33,7 +33,7 @@ KICAD_MCP_OPERATING_MODE = "readonly"
 
 ## Verification
 
-Run: `kicad-mcp doctor --agent codex`
+Run: `kicad-mcp-pro doctor --agent codex`
 
 The kicad tools appear automatically in Codex CLI when the config is present.
 

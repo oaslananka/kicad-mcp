@@ -3,7 +3,7 @@
 ## Quick Start
 
 ```bash
-kicad-mcp setup vscode
+kicad-mcp-pro setup vscode
 ```
 
 Or manually add `.vscode/mcp.json`:

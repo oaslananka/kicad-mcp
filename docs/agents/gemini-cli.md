@@ -3,7 +3,7 @@
 ## Quick Start
 
 ```bash
-kicad-mcp setup gemini
+kicad-mcp-pro setup gemini
 ```
 
 Or manually add to `~/.gemini/settings.json`:

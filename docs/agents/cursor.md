@@ -3,7 +3,7 @@
 ## Quick Start
 
 ```bash
-kicad-mcp setup cursor
+kicad-mcp-pro setup cursor
 ```
 
 Or manually:
