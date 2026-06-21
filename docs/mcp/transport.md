@@ -56,4 +56,4 @@ uv run --project packages/mcp-server --all-extras kicad-mcp-pro --transport stdi
 ## Compatibility
 
 Protocol and capability expectations are generated in [MCP API reference](api-reference.md). Runtime
-support boundaries are tracked in the [runtime matrix](../status/runtime-matrix.md).
+support boundaries are tracked in the [runtime matrix](../status/runtime-policy-matrix.md).
