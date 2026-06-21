@@ -177,7 +177,7 @@ def register(mcp: FastMCP) -> None:
         else:
             out = _project_dir() / name
 
-        assert_within(out, _project_dir())
+        assert_within(_project_dir(), out)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_bytes(decoded)
 

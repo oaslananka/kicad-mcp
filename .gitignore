@@ -2,6 +2,10 @@
 node_modules/
 .venv/
 
+# Editor / IDE
+.vscode/
+.idea/
+
 # Build outputs
 dist/
 out/

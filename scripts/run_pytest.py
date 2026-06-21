@@ -9,7 +9,8 @@ from pathlib import Path
 import pytest
 
 SUITES = {
-    "unit": ["tests/unit/", "-q"],
+    "unit": ["tests/unit/", "-q", "-m", "not benchmark"],
+    "benchmark": ["tests/unit/test_regression_zoo.py", "-q", "-m", "benchmark"],
     "transport-contract": ["tests/unit/test_mcp_protocol_contract.py", "-q"],
     "gui": ["tests/gui/", "-q"],
     "full": [

@@ -135,7 +135,7 @@
   "remotes": [],
   "_meta": {
     "io.github.oaslananka/kicad-mcp-pro": {
-      "longDescription": "KiCad MCP Pro is a production-grade MCP server for KiCad EDA. It provides 225+ tools for PCB design, schematic capture, DRC/ERC validation, BOM generation, simulation, DFM analysis, and manufacturing export. Integrates with Claude Code, ChatGPT, VS Code Copilot, Cursor, and other MCP hosts. Uses KiCad CLI for file-backed operations when KiCad is available on PATH.",
+      "longDescription": "KiCad MCP Pro is a production-grade MCP server for KiCad EDA. It provides 348 tools for PCB design, schematic capture, DRC/ERC validation, BOM generation, simulation, DFM analysis, and manufacturing export. Integrates with Claude Code, ChatGPT, VS Code Copilot, Cursor, and other MCP hosts. Uses KiCad CLI for file-backed operations when KiCad is available on PATH.",
       "categories": [
         "developer-tools",
         "electronic-design-automation",
@@ -155,24 +155,24 @@
       ],
       "screenshots": [
         {
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/drc-report.png",
-          "caption": "DRC report with categorized violations"
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/01-claude-desktop-quality-gate.png",
+          "caption": "Quality gate report in Claude Desktop"
         },
         {
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/erc-report.png",
-          "caption": "ERC report with severity breakdown"
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/02-cursor-schematic-build.png",
+          "caption": "Schematic build workflow in Cursor"
         },
         {
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/manufacturing-checklist.png",
-          "caption": "Manufacturing readiness checklist"
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/03-vscode-pcb-inspection.png",
+          "caption": "PCB inspection in VS Code"
         },
         {
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/bom-generation.png",
-          "caption": "BOM generation with pricing data"
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/04-tools-reference.png",
+          "caption": "Tools reference documentation"
         },
         {
-          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/stackup-editor.png",
-          "caption": "Stackup editor and impedance planning"
+          "src": "https://oaslananka.github.io/kicad-mcp/assets/screenshots/05-export-manufacturing.png",
+          "caption": "Export and manufacturing package generation"
         }
       ],
       "toolCatalog": {

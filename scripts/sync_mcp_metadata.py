@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import tomllib
 from copy import deepcopy
@@ -15,6 +16,10 @@ PYPROJECT = ROOT / "pyproject.toml"
 PACKAGE_INIT = ROOT / "src" / "kicad_mcp" / "__init__.py"
 SERVER_JSON = ROOT / "server.json"
 NPM_WRAPPER_PACKAGE = ROOT / "packages" / "mcp-npm" / "package.json"
+# Authoritative public tool count is produced (and CI-checked) by
+# scripts/generate_tools_reference.py; we read it instead of hand-maintaining a
+# number that silently drifts away from the real tool surface.
+TOOLS_REFERENCE_GENERATED = ROOT / "docs" / "tools-reference.generated.md"
 MCP_SERVER_NAME = "io.github.oaslananka/kicad-mcp-pro"
 REPOSITORY = "https://github.com/oaslananka/kicad-mcp"
 REPOSITORY_ID = "R_kgDOOIB7Lg"
@@ -46,9 +51,9 @@ SERVER_DESCRIPTION = (
     "Production-grade MCP server for KiCad EDA\u2014PCB design, DRC, "
     "simulation, BOM, DFM, and manufacturing."
 )
-LONG_DESCRIPTION = (
+LONG_DESCRIPTION_TEMPLATE = (
     "KiCad MCP Pro is a production-grade MCP server for KiCad EDA. "
-    "It provides 225+ tools for PCB design, schematic capture, DRC/ERC "
+    "It provides {tool_count} tools for PCB design, schematic capture, DRC/ERC "
     "validation, BOM generation, simulation, DFM analysis, and manufacturing "
     "export. Integrates with Claude Code, ChatGPT, VS Code Copilot, Cursor, "
     "and other MCP hosts. Uses KiCad CLI for file-backed operations when "
@@ -67,12 +72,34 @@ REGISTRY_TAGS = [
     "electronics",
 ]
 SCREENSHOTS = [
-    ("drc-report.png", "DRC report with categorized violations"),
-    ("erc-report.png", "ERC report with severity breakdown"),
-    ("manufacturing-checklist.png", "Manufacturing readiness checklist"),
-    ("bom-generation.png", "BOM generation with pricing data"),
-    ("stackup-editor.png", "Stackup editor and impedance planning"),
+    ("01-claude-desktop-quality-gate.png", "Quality gate report in Claude Desktop"),
+    ("02-cursor-schematic-build.png", "Schematic build workflow in Cursor"),
+    ("03-vscode-pcb-inspection.png", "PCB inspection in VS Code"),
+    ("04-tools-reference.png", "Tools reference documentation"),
+    ("05-export-manufacturing.png", "Export and manufacturing package generation"),
 ]
+
+
+def _public_tool_count() -> int:
+    """Return the authoritative public tool count from the generated catalog.
+
+    ``scripts/generate_tools_reference.py`` builds the server across every
+    profile and writes ``Total public tools: N.`` into the generated catalog,
+    which CI verifies for freshness. Reading that number keeps the registry
+    description honest instead of relying on a hand-edited figure.
+    """
+    text = TOOLS_REFERENCE_GENERATED.read_text(encoding="utf-8")
+    match = re.search(r"Total public tools:\s*(\d+)", text)
+    if match is None:
+        raise ValueError(
+            f"Could not read the tool count from {TOOLS_REFERENCE_GENERATED.name}. "
+            "Regenerate it with: pnpm run docs:tools"
+        )
+    return int(match.group(1))
+
+
+def _long_description() -> str:
+    return LONG_DESCRIPTION_TEMPLATE.format(tool_count=_public_tool_count())
 
 
 def _license_text(project: dict[str, Any]) -> str:
@@ -120,7 +147,9 @@ def _pypi_package(metadata: dict[str, Any]) -> dict[str, Any]:
             {
                 "type": "named",
                 "name": "--transport",
-                "description": "Transport protocol (stdio or streamable-http). Legacy SSE disabled by default.",
+                "description": (
+                    "Transport protocol (stdio or streamable-http). Legacy SSE disabled by default."
+                ),
                 "isRequired": False,
                 "default": "stdio",
             },
@@ -236,7 +265,7 @@ def _registry_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
         "remotes": _remotes_metadata(),
         "_meta": {
             REGISTRY_META_KEY: {
-                "longDescription": LONG_DESCRIPTION,
+                "longDescription": _long_description(),
                 "categories": [
                     "developer-tools",
                     "electronic-design-automation",

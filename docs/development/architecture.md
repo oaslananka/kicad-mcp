@@ -55,6 +55,18 @@ The MCP resource layer exposes the current review state as text-first surfaces:
 These resources exist so an agent can inspect, criticize, fix, and re-check without
 inventing its own hidden state model.
 
+## IPC Command Queue
+
+Live KiCad GUI mutations must pass through `kicad_mcp.ipc.command_queue` so
+stateful IPC operations are serialized, retried only when safe, and journaled
+with a correlation id. The initial routed operations include board save, zone
+refill, item deletion, board commit/revert actions, and PCB title-block edits.
+
+File-backed/headless writes such as schematic S-expression transactions are
+intentionally outside the IPC queue: they use project-local atomic file writers
+and rollback checkpoints instead, so they continue to work when KiCad is not
+running.
+
 ## Placement Review
 
 Placement review is intentionally split in two:
@@ -79,3 +91,19 @@ The benchmark suite ensures that:
 
 That corpus is part of the architecture, not just a test convenience. It is the
 regression harness for agent-to-tool synchronization quality.
+
+## Domain Split Guard
+
+Large implementation files are being split incrementally without changing public
+MCP tool names. The first extracted slices are:
+
+- `kicad_mcp.tools.schematic_constants` for schematic geometry, layout, power-net,
+  and public-tool constants.
+- `kicad_mcp.models.visual_qa`, `sch_transaction`, and `contract_verifier` for
+  pure, file-backed engines.
+- `kicad_mcp.ipc.command_queue` for serialized KiCad IPC mutations.
+- `kicad_mcp.companion.context` for dependency-free companion plugin helpers.
+
+`scripts/check_architecture_boundaries.py` keeps those helpers import-light and
+cycle-free. It is part of `check:meta`, so future refactor slices must preserve
+the extracted-domain boundaries while the monolith split continues.

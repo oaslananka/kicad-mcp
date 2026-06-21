@@ -1,11 +1,11 @@
 """Hybrid bridge daemon — local-to-remote MCP proxy.
 
 Allows remote clients (ChatGPT app, Claude.ai) to reach a local
-kicad-mcp-pro server through a WebSocket tunnel.
+kicad-mcp-pro server through a TCP pairing bridge.
 
 Usage:
     kicad-mcp bridge start            # start with random pairing code
-    kicad-mcp bridge start --port 9090 --code SECRET
+    kicad-mcp bridge start --port 9090 --mcp-port 3334 --code SECRET
     kicad-mcp bridge status           # check if bridge is running
     kicad-mcp bridge stop             # stop bridge
 """
@@ -34,7 +34,12 @@ logger = structlog.get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def bridge_start(port: int = 9090, code: str = "", daemon: bool = False) -> None:
+def bridge_start(
+    port: int = 9090,
+    code: str = "",
+    daemon: bool = False,
+    mcp_port: int = 3334,
+) -> None:
     """Start the bridge daemon (entry point called from server.py)."""
     from .setup import _check_kicad_mcp_available
 
@@ -42,7 +47,7 @@ def bridge_start(port: int = 9090, code: str = "", daemon: bool = False) -> None
     state = BridgeState(
         pairing_code=pairing_code,
         port=port,
-        target_url=f"http://127.0.0.1:{port}",
+        target_url=f"http://127.0.0.1:{mcp_port}",
     )
 
     if daemon:
@@ -128,8 +133,8 @@ def _bridge_pid_path() -> Path:
 
 
 def _generate_pairing_code() -> str:
-    """Generate a 6-character alphanumeric pairing code."""
-    return secrets.token_hex(3).upper()
+    """Generate a 128-bit (32 hex character) pairing code."""
+    return secrets.token_hex(16).upper()
 
 
 # ---------------------------------------------------------------------------
@@ -140,8 +145,8 @@ def _generate_pairing_code() -> str:
 # legitimate client, but bounds floods even though the daemon binds to localhost.
 BRIDGE_RATE_CAPACITY = 60.0
 BRIDGE_RATE_REFILL = 20.0  # tokens/second
-# Pairing attempts are bounded hard so a 24-bit code cannot be brute-forced: a
-# small burst then one attempt every five seconds.
+# Pairing attempts are bounded hard as defense-in-depth (the code itself is a
+# 128-bit secret): a small burst then one attempt every five seconds.
 BRIDGE_PAIR_CAPACITY = 5.0
 BRIDGE_PAIR_REFILL = 0.2  # tokens/second
 
@@ -212,7 +217,7 @@ class BridgeState:
     pair_limiter: TokenBucket = field(
         default_factory=lambda: TokenBucket(BRIDGE_PAIR_CAPACITY, BRIDGE_PAIR_REFILL)
     )
-    _ws_server: Any = None
+    _server: Any = None
 
     @property
     def uptime_seconds(self) -> float:
@@ -233,15 +238,17 @@ class BridgeState:
 
 
 # ---------------------------------------------------------------------------
-# WebSocket Bridge Server
+# TCP Bridge Server
 # ---------------------------------------------------------------------------
 
 
 async def _bridge_server(state: BridgeState) -> None:
-    """Run the bridge WebSocket server that proxies to kicad-mcp-pro."""
+    """Run the bridge TCP server that proxies to kicad-mcp-pro.
 
-    # Uses asyncio TCP streams — no WebSocket library dependency needed.
-    # Using Python's built-in asyncio for the server
+    Transport is newline-delimited JSON-RPC over an asyncio TCP stream — no
+    WebSocket library dependency is involved despite the historical naming.
+    """
+
     async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """Handle a single bridge client connection."""
         peer = writer.get_extra_info("peername")
@@ -281,7 +288,7 @@ async def _bridge_server(state: BridgeState) -> None:
             logger.info("bridge_client_disconnected", peer=peer)
 
     server = await asyncio.start_server(handle_client, host="127.0.0.1", port=state.port)
-    state._ws_server = server
+    state._server = server
 
     logger.info(
         "bridge_started",
@@ -313,7 +320,7 @@ async def _route_message(
 
     # --- Bridge control methods ---
     if method == "bridge.pair":
-        # Bound pairing attempts hard so the 24-bit code cannot be guessed at speed.
+        # Bound pairing attempts hard as defense-in-depth around the 128-bit code.
         if not state.pair_limiter.allow():
             state.rate_limited_count += 1
             return _rate_limited_error(msg_id)
