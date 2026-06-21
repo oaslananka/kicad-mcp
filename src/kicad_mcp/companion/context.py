@@ -81,6 +81,8 @@ class _HttpResponse(Protocol):
 
     def read(self) -> bytes | str: ...
 
+    def close(self) -> None: ...
+
 
 Opener = Callable[[urllib.request.Request], _HttpResponse]
 
@@ -159,10 +161,13 @@ class StudioContextClient:
             self._url, data=body, headers=headers, method="POST"
         )
         response = self._opener(request)
-        raw = response.read()
-        if isinstance(raw, bytes):
-            raw = raw.decode("utf-8")
-        return json.loads(raw) if raw else {}
+        try:
+            raw = response.read()
+            if isinstance(raw, bytes):
+                raw = raw.decode("utf-8")
+            return json.loads(raw) if raw else {}
+        finally:
+            response.close()
 
     def push(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """POST the context to the server and return the decoded JSON response."""

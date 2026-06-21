@@ -113,34 +113,57 @@ def extract_balanced_block(text: str, start: int) -> str:
 def parse_symbol_pins(symbol_block: str) -> tuple[Pin, ...]:
     """Extract pins from a ``(symbol "Lib:Name" ...)`` definition block.
 
-    KiCad stores pins inside the symbol's unit sub-symbols; a single ``findall``
-    over the whole block captures them all. Duplicate pin numbers (which can
-    appear when a part is drawn as multiple units) are collapsed to the first
-    occurrence so the count reflects distinct electrical pins.
+    Each ``(pin ...)`` sub-expression is isolated as a balanced block and parsed
+    on its own, so a pin missing a name or number cannot bleed into the next
+    pin's fields (a single non-greedy ``findall`` over the whole block could).
+    Duplicate pin numbers (parts drawn as multiple units) are collapsed to the
+    first occurrence so the count reflects distinct electrical pins.
     """
 
-    matches = re.findall(
-        r'\(pin\s+(\w+)\s+\w+.*?\(name\s+"([^"]*)".*?\(number\s+"([^"]*)"',
-        symbol_block,
-        re.DOTALL,
-    )
+    # ``(pin`` + word boundary tolerates any whitespace after the keyword
+    # (space/tab/newline) while still excluding ``(pin_numbers``/``(pin_names``.
+    pin_start = re.compile(r"\(pin\b")
     seen: set[str] = set()
     pins: list[Pin] = []
-    for electrical_type, name, number in matches:
+    cursor = 0
+    while True:
+        match = pin_start.search(symbol_block, cursor)
+        if match is None:
+            break
+        index = match.start()
+        pin_block = extract_balanced_block(symbol_block, index)
+        cursor = index + len(pin_block)
+        type_match = re.match(r"\(pin\s+(\w+)", pin_block)
+        # Quoted values may contain escaped chars (e.g. ``\"``); consume escape
+        # pairs so an escaped quote inside a name does not truncate the match.
+        name_match = re.search(r'\(name\s+"([^"\\]*(?:\\.[^"\\]*)*)"', pin_block)
+        number_match = re.search(r'\(number\s+"([^"\\]*(?:\\.[^"\\]*)*)"', pin_block)
+        if not (type_match and name_match and number_match):
+            continue
+        number = number_match.group(1)
         if number in seen:
             continue
         seen.add(number)
-        pins.append(Pin(number=number, name=name, electrical_type=electrical_type))
+        pins.append(
+            Pin(
+                number=number,
+                name=name_match.group(1),
+                electrical_type=type_match.group(1),
+            )
+        )
     return tuple(pins)
 
 
 def parse_footprint(text: str) -> FootprintShape:
     """Extract structural facts from ``.kicad_mod`` footprint text."""
 
-    pads = re.findall(r'\(pad\s+"([^"]*)"\s+(\w+)', text)
+    # Pad numbers may be quoted (``(pad "1" ...)``, modern KiCad) or bare
+    # (``(pad 1 ...)``, older/hand-written footprints); accept both.
+    pads = re.findall(r'\(pad\s+(?:"([^"]*)"|([^\s()]+))\s+(\w+)', text)
     connectable: list[str] = []
     mechanical = 0
-    for number, _pad_type in pads:
+    for quoted, unquoted, _pad_type in pads:
+        number = quoted if quoted else unquoted
         if number == "":
             mechanical += 1
         else:

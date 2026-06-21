@@ -113,6 +113,33 @@ def test_parse_symbol_pins_resistor() -> None:
     assert all(pin.electrical_type == "passive" for pin in pins)
 
 
+def test_parse_symbol_pins_tolerates_tab_and_newline_whitespace() -> None:
+    # S-expressions are whitespace-insensitive; a tab/newline after (pin must
+    # not cause the pin to be skipped.
+    symbol = (
+        '(symbol "X"\n'
+        "\t(pin\tinput line (at 0 0 0) (length 1)\n"
+        '\t\t(name "A" (effects))\n'
+        '\t\t(number "1" (effects))))'
+    )
+    pins = parse_symbol_pins(symbol)
+    assert {pin.number for pin in pins} == {"1"}
+    assert pins[0].electrical_type == "input"
+
+
+def test_parse_symbol_pins_handles_escaped_quote_in_name() -> None:
+    # An escaped quote inside a pin name must not truncate the captured value.
+    symbol = (
+        '(symbol "X"\n'
+        "  (pin input line (at 0 0 0) (length 1)\n"
+        '    (name "A\\"B" (effects))\n'
+        '    (number "1" (effects))))'
+    )
+    pins = parse_symbol_pins(symbol)
+    assert {pin.number for pin in pins} == {"1"}
+    assert pins[0].name == 'A\\"B'
+
+
 def test_parse_footprint_resistor_is_complete() -> None:
     shape = parse_footprint(RESISTOR_FOOTPRINT)
     assert shape.connectable_pads == ("1", "2")
@@ -129,6 +156,19 @@ def test_parse_footprint_counts_mechanical_pads() -> None:
     assert shape.mechanical_pad_count == 1
     assert not shape.has_courtyard
     assert not shape.has_3d_model
+
+
+def test_parse_footprint_accepts_unquoted_pad_numbers() -> None:
+    # Older/hand-written footprints write bare, unquoted pad numbers.
+    footprint = """
+(footprint "Legacy_2pad"
+    (pad 1 smd rect (at 0 0) (size 1 1) (layers "F.Cu"))
+    (pad 2 smd rect (at 2 0) (size 1 1) (layers "F.Cu"))
+)
+"""
+    shape = parse_footprint(footprint)
+    assert shape.connectable_pads == ("1", "2")
+    assert shape.mechanical_pad_count == 0
 
 
 def test_verify_good_resistor_passes() -> None:
