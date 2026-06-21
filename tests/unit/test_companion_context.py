@@ -137,3 +137,35 @@ def test_client_render_and_highlight_helpers_call_expected_tools() -> None:
     assert bodies[0]["params"]["arguments"] == {"sheet": "Power"}  # type: ignore[index]
     assert bodies[1]["params"]["name"] == "pcb_highlight_net"  # type: ignore[index]
     assert bodies[1]["params"]["arguments"] == {"net_name": "VBUS"}  # type: ignore[index]
+
+
+def test_companion_plugin_loads_adjacent_context_when_imported_top_level(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import importlib.util
+    import sys
+    import types
+    from pathlib import Path
+
+    plugin_dir = Path(__file__).resolve().parents[2] / "packages" / "kicad-plugin"
+
+    class _ActionPlugin:
+        pass
+
+    monkeypatch.setitem(sys.modules, "pcbnew", types.SimpleNamespace(ActionPlugin=_ActionPlugin))
+    monkeypatch.syspath_prepend(str(plugin_dir))
+    monkeypatch.delitem(sys.modules, "context", raising=False)
+
+    spec = importlib.util.spec_from_file_location(
+        "kicad_mcp_companion_top_level_test",
+        plugin_dir / "kicad_mcp_companion.py",
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    ctx = module._load_context()
+
+    assert ctx.__name__ == "context"
+    assert hasattr(ctx, "BoardInfo")

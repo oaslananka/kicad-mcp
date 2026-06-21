@@ -38,10 +38,15 @@ def _load_context() -> ModuleType:
 
         return ctx
     except ImportError:
-        _ensure_companion_importable()
-        from kicad_mcp.companion import context as ctx
+        try:
+            import context as ctx
 
-        return ctx
+            return ctx
+        except ImportError:
+            _ensure_companion_importable()
+            from kicad_mcp.companion import context as ctx
+
+            return ctx
 
 
 class KiCadMcpCompanionPlugin(pcbnew.ActionPlugin):
