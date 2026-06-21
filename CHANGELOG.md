@@ -10,6 +10,14 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.14.1](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.14.0...mcp-server-v3.14.1) (2026-06-21)
+
+
+### Bug Fixes
+
+* harden ChatGPT app server ([#182](https://github.com/oaslananka/kicad-mcp/issues/182)) ([c5f6368](https://github.com/oaslananka/kicad-mcp/commit/c5f6368bfa33fa8034d28fa3cf36c208d8c37fd1))
+* support pin labels on power symbols ([#185](https://github.com/oaslananka/kicad-mcp/issues/185)) ([291bf62](https://github.com/oaslananka/kicad-mcp/commit/291bf62f40cfb6b1849db954a1193442267e7de5))
+
 ## [3.14.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.13.0...mcp-server-v3.14.0) (2026-06-21)
 
 
