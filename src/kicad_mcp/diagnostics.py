@@ -269,7 +269,6 @@ def _checkout_candidates() -> list[Path]:
     return candidates
 
 
-
 def _repo_required_uv_version(checkout: Path) -> str | None:
     uv_toml = checkout / "uv.toml"
     try:
@@ -329,6 +328,7 @@ def _uv_version_check(checkout: Path) -> CheckResult | None:
             "CI, and release checks reproducible."
         ),
     )
+
 
 def _package_diagnostics() -> tuple[PackageDiagnostics, list[CheckResult]]:
     package_path = Path(__file__).resolve().parent
