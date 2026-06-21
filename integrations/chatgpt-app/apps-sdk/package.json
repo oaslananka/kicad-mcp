@@ -11,9 +11,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "dotenv": "^16.4.0",
     "express": "^4.21.0",
-    "mcp": "^1.0.0",
+    "express-rate-limit": "^8.1.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {

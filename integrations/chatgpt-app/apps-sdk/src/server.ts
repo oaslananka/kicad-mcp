@@ -15,11 +15,13 @@
  */
 
 import express, { type Request, type Response } from "express";
-import { McpServer } from "mcp";
+import rateLimit from "express-rate-limit";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import { existsSync, readFileSync } from "node:fs";
 import { readdir } from "node:fs/promises";
-import { join, resolve, normalize, isAbsolute, relative } from "node:path";
+import { isAbsolute, join, normalize, relative, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { createWriteStream } from "node:fs";
@@ -29,7 +31,7 @@ import { pipeline } from "node:stream/promises";
 import { createReadStream } from "node:fs";
 
 // ---------------------------------------------------------------------------
-// Security — Safe path resolution & rate limiting
+// Security — safe workspace resolution and rate limiting
 // ---------------------------------------------------------------------------
 
 const ALLOWED_EXTENSIONS = new Set([
@@ -38,116 +40,97 @@ const ALLOWED_EXTENSIONS = new Set([
   ".json",
 ]);
 
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 120;
+
 /**
- * Validates that a user-supplied path (directory or file reference) does not
- * escape outside a known safe workspace.  This prevents directory traversal
- * attacks (``../``, encoded variants, null-bytes).
+ * Optional, deployment-specific roots for uploaded/cached projects.
  *
- * Because ChatGPT Apps are sandboxed and have no persistent local storage, we
- * enforce a simple rule: the path MUST be an absolute path to a temporary
- * directory that the server itself created (we do not allow arbitrary
- * user-chosen absolute paths), OR a plain relative name that refers to a known
- * uploaded/cached project.
- *
- * In practice, the Apps SDK only receives paths from the ChatGPT file upload
- * flow which extracts into a temp directory.  We make the validator explicit
- * anyway as a defence-in-depth layer.
+ * ChatGPT Apps should normally hand this server temp/extracted directories.
+ * Production deployments that persist uploads elsewhere can set a platform
+ * path-list here (":" on POSIX, ";" on Windows).  The OS temp directory is
+ * always allowed so test/upload sandboxes keep working without extra config.
  */
-function assertSafePath(userPath: string, label: string): void {
+const CONFIGURED_UPLOAD_ROOTS = (process.env.KICAD_MCP_UPLOAD_ROOTS || "")
+  .split(process.platform === "win32" ? ";" : ":")
+  .map((entry) => entry.trim())
+  .filter(Boolean);
+
+function canonicalizePath(pathValue: string): string {
+  return normalize(resolve(pathValue));
+}
+
+function allowedWorkspaceRoots(): string[] {
+  return [tmpdir(), ...CONFIGURED_UPLOAD_ROOTS].map(canonicalizePath);
+}
+
+function isWithinRoot(root: string, candidate: string): boolean {
+  const rel = relative(root, candidate);
+  return rel === "" || (rel !== "" && !rel.startsWith("..") && !isAbsolute(rel));
+}
+
+function assertPathSegmentSafe(userPath: string, label: string): void {
   if (typeof userPath !== "string" || userPath.length === 0) {
     throw new Error(`${label}: path must be a non-empty string`);
   }
-
-  // Block null bytes
-  if (userPath.includes("\0")) {
+  if (userPath.includes("\u0000")) {
     throw new Error(`${label}: path contains null byte`);
   }
-
-  // Block encoded traversal sequences
   if (/[%]2[ef]/i.test(userPath) || /[%]5c/i.test(userPath)) {
     throw new Error(`${label}: path contains URL-encoded traversal`);
   }
-
-  // Reject bare `..`
-  if (userPath === "..") {
-    throw new Error(`${label}: bare parent-directory reference`);
-  }
-
-  // Normalise and check for directory traversal
-  const normalized = normalize(userPath);
-
-  // Block any path that resolves to ".." component
-  if (normalized.includes("..")) {
+  if (userPath.split(/[\/]+/).includes("..")) {
     throw new Error(`${label}: directory traversal detected`);
-  }
-
-  // On Windows, also block drive-letter transitions (e.g. C: -> D:)
-  if (/^[A-Za-z]:\\/.test(normalized)) {
-    // This is fine — the temp dir lives on a drive.  We just ensure it stays
-    // within the temp area below.
   }
 }
 
 /**
- * Resolves a user-supplied path against a known workspace root,
- * verifying the result stays within that root.
+ * Resolve a user-supplied project directory into an allowlisted workspace path.
+ * All file-system operations must use this returned canonical path, not the raw
+ * request parameter.  This keeps CodeQL-visible file access anchored under
+ * explicit upload roots and blocks arbitrary absolute path reads.
  */
-function resolveWorkspacePath(workspaceRoot: string, userPath: string): string {
-  const resolved = resolve(workspaceRoot, userPath);
-  const normalized = normalize(resolved);
+function resolveSafeWorkspaceDirectory(userPath: string, label: string): string {
+  assertPathSegmentSafe(userPath, label);
 
-  // Ensure the resolved path starts with the workspace root
-  const rootNormalized = normalize(workspaceRoot);
-  if (!normalized.startsWith(rootNormalized)) {
-    throw new Error(`Path escapes workspace root`);
+  const roots = allowedWorkspaceRoots();
+  if (isAbsolute(userPath)) {
+    const candidate = canonicalizePath(userPath);
+    if (roots.some((root) => isWithinRoot(root, candidate))) {
+      return candidate;
+    }
+    throw new Error(`${label}: path is outside allowed upload roots`);
   }
 
-  return normalized;
+  for (const root of roots) {
+    const candidate = canonicalizePath(join(root, userPath));
+    if (isWithinRoot(root, candidate) && existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  throw new Error(`${label}: path does not resolve to an uploaded project directory`);
 }
 
-// ---------------------------------------------------------------------------
-// Simple in-memory rate limiter (token bucket per IP)
-// ---------------------------------------------------------------------------
-
-interface Bucket {
-  tokens: number;
-  lastRefill: number;
+function resolveProjectSibling(projectPath: string, extension: string): string {
+  if (!ALLOWED_EXTENSIONS.has(extension)) {
+    throw new Error(`Unsupported KiCad project extension: ${extension}`);
+  }
+  const projectDir = canonicalizePath(resolve(projectPath, ".."));
+  const sibling = canonicalizePath(projectPath.replace(/\.kicad_proj$/, extension));
+  if (!isWithinRoot(projectDir, sibling)) {
+    throw new Error("Project sibling path escapes project directory");
+  }
+  return sibling;
 }
 
-const rateLimitBuckets = new Map<string, Bucket>();
-const RATE_LIMIT = { capacity: 10, refillPerSec: 2 };
-
-function rateLimitMiddleware(req: Request, res: Response, next: () => void): void {
-  const ip = req.ip || req.socket.remoteAddress || "unknown";
-  const now = Date.now();
-  let bucket = rateLimitBuckets.get(ip);
-
-  if (!bucket) {
-    bucket = { tokens: RATE_LIMIT.capacity, lastRefill: now };
-    rateLimitBuckets.set(ip, bucket);
-  }
-
-  // Refill
-  const elapsed = (now - bucket.lastRefill) / 1000;
-  bucket.tokens = Math.min(RATE_LIMIT.capacity, bucket.tokens + elapsed * RATE_LIMIT.refillPerSec);
-  bucket.lastRefill = now;
-
-  if (bucket.tokens < 1) {
-    res.status(429).json({ error: "Too many requests. Please slow down." });
-    return;
-  }
-
-  bucket.tokens -= 1;
-  next();
-}
-
-// Periodically evict stale buckets (every 5 minutes)
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, bucket] of rateLimitBuckets) {
-    if (now - bucket.lastRefill > 300_000) rateLimitBuckets.delete(ip);
-  }
-}, 300_000);
+const analyzeRateLimiter = rateLimit({
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  limit: RATE_LIMIT_MAX_REQUESTS,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many requests. Please slow down." },
+});
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -375,19 +358,18 @@ app.get("/", (_req: Request, res: Response) => {
 });
 
 // Project upload endpoint (rate-limited, path-safety validated)
-app.post("/api/analyze", rateLimitMiddleware, async (req: Request, res: Response) => {
+app.post("/api/analyze", analyzeRateLimiter, async (req: Request, res: Response) => {
   try {
     const { projectDir } = req.body as { projectDir?: string };
     if (!projectDir) {
       return res.status(400).json({ error: "projectDir is required" });
     }
-    // Validate the user-supplied path before any file operations
-    assertSafePath(projectDir, "projectDir");
-    const projPath = await extractProject(projectDir);
-    const projectDirRoot = resolve(projectDir, "..");
+    // Resolve the user-supplied path before any file operations.
+    const safeProjectDir = resolveSafeWorkspaceDirectory(projectDir, "projectDir");
+    const projPath = await extractProject(safeProjectDir);
     const name = projPath.replace(/\.kicad_proj$/, "").split(/[/\\]/).pop() || "unknown";
-    const boardPath = projPath.replace(/\.kicad_proj$/, ".kicad_pcb");
-    const schematicPath = projPath.replace(/\.kicad_proj$/, ".kicad_sch");
+    const boardPath = resolveProjectSibling(projPath, ".kicad_pcb");
+    const schematicPath = resolveProjectSibling(projPath, ".kicad_sch");
     const metadata = parseKiCadProj(projPath);
     const project: KiCadProject = {
       name,
@@ -405,269 +387,311 @@ app.post("/api/analyze", rateLimitMiddleware, async (req: Request, res: Response
 });
 
 // MCP Server
-const mcp = new McpServer({
-  name: "KiCad MCP",
-  version: "0.1.0",
-  tools: [
+function createMcpServer(): McpServer {
+  const mcp = new McpServer({
+    name: "KiCad MCP",
+    version: "0.1.0",
+  });
+
+  mcp.registerTool(
+    "search_kicad_knowledge",
     {
-      name: "search_kicad_knowledge",
       description: "Search KiCad documentation and knowledge base for PCB design topics.",
-      inputSchema: z.object({
+      inputSchema: {
         query: z.string().describe("Search query (e.g. 'footprint editor', 'differential pair routing')"),
         maxResults: z.number().optional().describe("Maximum results to return"),
-      }),
-      handler: async ({ query }: { query: string }) => {
-        try {
-          const result = await runKicadMcp("search_kicad_docs", { query });
-          return { content: [{ type: "text", text: result }] };
-        } catch {
-          return {
-            content: [{
-              type: "text",
-              text: `KiCad documentation search for "${query}" — use https://docs.kicad.org for latest docs.`,
-            }],
-          };
-        }
       },
     },
+    async ({ query }) => {
+      try {
+        const result = await runKicadMcp("search_kicad_docs", { query });
+        return { content: [{ type: "text" as const, text: result }] };
+      } catch {
+        return {
+          content: [{
+            type: "text" as const,
+            text: `KiCad documentation search for "${query}" — use https://docs.kicad.org for latest docs.`,
+          }],
+        };
+      }
+    },
+  );
+
+  mcp.registerTool(
+    "analyze_uploaded_kicad_project",
     {
-      name: "analyze_uploaded_kicad_project",
       description:
         "Analyze an uploaded KiCad project archive. " +
         "Accepts a directory path containing .kicad_proj, .kicad_pcb, .kicad_sch files. " +
         "Returns project metadata, layer stackup, component count, and board statistics.",
-      inputSchema: z.object({
+      inputSchema: {
         fileId: z.string().describe("Uploaded file identifier or project directory path"),
-      }),
-      handler: async ({ fileId }: { fileId: string }) => {
-        // Try already-analyzed project
-        const cached = projects.get(fileId);
-        if (cached) {
-          const board = cached.boardPath ? analyzePcbFile(cached.boardPath) : null;
-          return {
-            content: [
-              {
-                type: "text",
-                text: [
-                  `## Project: ${cached.name}`,
-                  `- Board: ${cached.boardPath || "N/A"}`,
-                  `- Schematic: ${cached.schematicPath || "N/A"}`,
-                  board
-                    ? [
-                        `- Layers: ${board.layers} (${board.copperLayers} copper)`,
-                        `- Components: ${board.componentCount}`,
-                        `- Tracks: ${board.trackCount}`,
-                        `- Vias: ${board.viaCount}`,
-                        board.boardThickness ? `- Board Thickness: ${board.boardThickness}mm` : "",
-                      ].filter(Boolean).join("\n")
-                    : "",
-                  "",
-                  "Upload a KiCad project archive to get full analysis.",
-                ].join("\n"),
-              },
-            ],
-          };
-        }
-        // Try to analyze path directly
-        try {
-          assertSafePath(fileId, "fileId");
-          const projPath = await extractProject(fileId);
-          const name = projPath.replace(/\.kicad_proj$/, "").split(/[/\\]/).pop() || "unknown";
-          const projDir = resolve(projPath, "..");
-          const boardPath = resolve(projDir, `${name}.kicad_pcb`);
-          const board = existsSync(boardPath) ? analyzePcbFile(boardPath) : null;
-          return {
-            content: [
-              {
-                type: "text",
-                text: [
-                  `## Project: ${name}`,
-                  board
-                    ? [
-                        `- Layers: ${board.layers} (${board.copperLayers} copper)`,
-                        `- Components: ${board.componentCount}`,
-                        `- Tracks: ${board.trackCount}`,
-                        `- Vias: ${board.viaCount}`,
-                      ].join("\n")
-                    : "Board file not found in archive.",
-                  "",
-                  "Upload a complete KiCad project (kicad_proj + kicad_pcb + kicad_sch) for full analysis.",
-                ].join("\n"),
-              },
-            ],
-          };
-        } catch {
-          return {
-            content: [{
-              type: "text",
-              text: `Project "${fileId}" not found. Upload a KiCad project archive (.zip, .kicad_proj) first.`,
-            }],
-          };
-        }
       },
     },
+    async ({ fileId }) => {
+      const cached = projects.get(fileId);
+      if (cached) {
+        const board = cached.boardPath ? analyzePcbFile(cached.boardPath) : null;
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: [
+                `## Project: ${cached.name}`,
+                `- Board: ${cached.boardPath || "N/A"}`,
+                `- Schematic: ${cached.schematicPath || "N/A"}`,
+                board
+                  ? [
+                      `- Layers: ${board.layers} (${board.copperLayers} copper)`,
+                      `- Components: ${board.componentCount}`,
+                      `- Tracks: ${board.trackCount}`,
+                      `- Vias: ${board.viaCount}`,
+                      board.boardThickness ? `- Board Thickness: ${board.boardThickness}mm` : "",
+                    ].filter(Boolean).join("\n")
+                  : "",
+                "",
+                "Upload a KiCad project archive to get full analysis.",
+              ].join("\n"),
+            },
+          ],
+        };
+      }
+
+      try {
+        const safeProjectDir = resolveSafeWorkspaceDirectory(fileId, "fileId");
+        const projPath = await extractProject(safeProjectDir);
+        const name = projPath.replace(/\.kicad_proj$/, "").split(/[/\\]/).pop() || "unknown";
+        const boardPath = resolveProjectSibling(projPath, ".kicad_pcb");
+        const board = existsSync(boardPath) ? analyzePcbFile(boardPath) : null;
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: [
+                `## Project: ${name}`,
+                board
+                  ? [
+                      `- Layers: ${board.layers} (${board.copperLayers} copper)`,
+                      `- Components: ${board.componentCount}`,
+                      `- Tracks: ${board.trackCount}`,
+                      `- Vias: ${board.viaCount}`,
+                    ].join("\n")
+                  : "Board file not found in archive.",
+                "",
+                "Upload a complete KiCad project (kicad_proj + kicad_pcb + kicad_sch) for full analysis.",
+              ].join("\n"),
+            },
+          ],
+        };
+      } catch {
+        return {
+          content: [{
+            type: "text" as const,
+            text: `Project "${fileId}" not found. Upload a KiCad project archive (.zip, .kicad_proj) first.`,
+          }],
+        };
+      }
+    },
+  );
+
+  mcp.registerTool(
+    "explain_drc_report",
     {
-      name: "explain_drc_report",
       description:
         "Interpret a DRC (Design Rule Check) report and explain issues. " +
         "Accepts raw report text and returns a structured summary with categorized violations.",
-      inputSchema: z.object({
+      inputSchema: {
         reportText: z.string().describe("Raw DRC report text"),
-      }),
-      handler: async ({ reportText }: { reportText: string }) => {
-        const { errors, warnings, issues } = analyzeDrcReport(reportText);
-        const lines = [
-          `## DRC Report Summary`,
-          `- **Errors:** ${errors}`,
-          `- **Warnings:** ${warnings}`,
-          "",
-        ];
-        if (issues.length > 0) {
-          lines.push("### Issues Found");
-          for (const issue of issues.slice(0, 20)) {
-            lines.push(`- [${issue.severity.toUpperCase()}] \`${issue.rule}\`: ${issue.description}`);
-          }
-        }
-        lines.push(
-          "",
-          "### Tips",
-          "- Check clearance, track width, and via size constraints",
-          "- Verify net classes match design requirements",
-          "- Ensure all unrouted nets are intentional",
-          "- Run `kicad_run_drc` from the KiCad MCP toolset for a fresh check",
-        );
-        return { content: [{ type: "text", text: lines.join("\n") }] };
       },
     },
+    async ({ reportText }) => {
+      const { errors, warnings, issues } = analyzeDrcReport(reportText);
+      const lines = [
+        `## DRC Report Summary`,
+        `- **Errors:** ${errors}`,
+        `- **Warnings:** ${warnings}`,
+        "",
+      ];
+      if (issues.length > 0) {
+        lines.push("### Issues Found");
+        for (const issue of issues.slice(0, 20)) {
+          lines.push(`- [${issue.severity.toUpperCase()}] \`${issue.rule}\`: ${issue.description}`);
+        }
+      }
+      lines.push(
+        "",
+        "### Tips",
+        "- Check clearance, track width, and via size constraints",
+        "- Verify net classes match design requirements",
+        "- Ensure all unrouted nets are intentional",
+        "- Run `kicad_run_drc` from the KiCad MCP toolset for a fresh check",
+      );
+      return { content: [{ type: "text" as const, text: lines.join("\n") }] };
+    },
+  );
+
+  mcp.registerTool(
+    "explain_erc_report",
     {
-      name: "explain_erc_report",
       description:
         "Interpret an ERC (Electrical Rule Check) report and explain issues. " +
         "Accepts raw report text and returns a structured summary.",
-      inputSchema: z.object({
+      inputSchema: {
         reportText: z.string().describe("Raw ERC report text"),
-      }),
-      handler: async ({ reportText }: { reportText: string }) => {
-        const { errors, warnings, issues } = analyzeErcReport(reportText);
-        const lines = [
-          `## ERC Report Summary`,
-          `- **Errors:** ${errors}`,
-          `- **Warnings:** ${warnings}`,
-          "",
-        ];
-        if (issues.length > 0) {
-          lines.push("### Issues Found");
-          for (const issue of issues.slice(0, 20)) {
-            lines.push(`- [${issue.severity.toUpperCase()}] \`${issue.rule}\`: ${issue.description}`);
-          }
-        }
-        lines.push(
-          "",
-          "### Tips",
-          "- Verify power flags on all power nets",
-          "- Check pin conflicts and unconnected pins",
-          "- Ensure hierarchical labels match across sheets",
-          "- Run `kicad_run_erc` from the KiCad MCP toolset for a fresh check",
-        );
-        return { content: [{ type: "text", text: lines.join("\n") }] };
       },
     },
+    async ({ reportText }) => {
+      const { errors, warnings, issues } = analyzeErcReport(reportText);
+      const lines = [
+        `## ERC Report Summary`,
+        `- **Errors:** ${errors}`,
+        `- **Warnings:** ${warnings}`,
+        "",
+      ];
+      if (issues.length > 0) {
+        lines.push("### Issues Found");
+        for (const issue of issues.slice(0, 20)) {
+          lines.push(`- [${issue.severity.toUpperCase()}] \`${issue.rule}\`: ${issue.description}`);
+        }
+      }
+      lines.push(
+        "",
+        "### Tips",
+        "- Verify power flags on all power nets",
+        "- Check pin conflicts and unconnected pins",
+        "- Ensure hierarchical labels match across sheets",
+        "- Run `kicad_run_erc` from the KiCad MCP toolset for a fresh check",
+      );
+      return { content: [{ type: "text" as const, text: lines.join("\n") }] };
+    },
+  );
+
+  mcp.registerTool(
+    "generate_manufacturing_readiness_report",
     {
-      name: "generate_manufacturing_readiness_report",
       description:
         "Generate a manufacturing readiness report for a KiCad project. " +
         "Evaluates DRC/ERC status, BOM, and Gerber availability.",
-      inputSchema: z.object({
+      inputSchema: {
         drcErrors: z.number().describe("Number of DRC errors"),
         ercErrors: z.number().describe("Number of ERC errors"),
         hasBom: z.boolean().describe("Whether BOM is available"),
         hasGerbers: z.boolean().describe("Whether Gerber files are available"),
         projectName: z.string().optional().describe("Project name"),
-      }),
-      handler: async (input: {
-        drcErrors: number;
-        ercErrors: number;
-        hasBom: boolean;
-        hasGerbers: boolean;
-        projectName?: string;
-      }) => {
-        const { overall, checks } = generateReadinessChecklist(
-          input.drcErrors,
-          input.ercErrors,
-          input.hasBom,
-          input.hasGerbers,
-        );
-        const header = input.projectName
-          ? `## Manufacturing Readiness: ${input.projectName}`
-          : "## Manufacturing Readiness Report";
-        const statusLine = overall === "ready"
-          ? "✅ **Ready for manufacturing**"
-          : "❌ **Not ready for manufacturing**";
-        const lines = [header, "", statusLine, "", "### Checklist", ""];
-        for (const check of checks) {
-          const icon = check.passed ? "✅" : "❌";
-          lines.push(`| ${icon} | ${check.name} | ${check.detail} |`);
-        }
-        if (overall !== "ready") {
-          lines.push(
-            "",
-            "### Next Steps",
-            ...checks.filter((c) => !c.passed).map((c) => `- Fix: ${c.name} — ${c.detail}`),
-          );
-        }
-        return { content: [{ type: "text", text: lines.join("\n") }] };
       },
     },
+    async (input) => {
+      const { overall, checks } = generateReadinessChecklist(
+        input.drcErrors,
+        input.ercErrors,
+        input.hasBom,
+        input.hasGerbers,
+      );
+      const header = input.projectName
+        ? `## Manufacturing Readiness: ${input.projectName}`
+        : "## Manufacturing Readiness Report";
+      const statusLine = overall === "ready"
+        ? "✅ **Ready for manufacturing**"
+        : "❌ **Not ready for manufacturing**";
+      const lines = [header, "", statusLine, "", "### Checklist", ""];
+      for (const check of checks) {
+        const icon = check.passed ? "✅" : "❌";
+        lines.push(`| ${icon} | ${check.name} | ${check.detail} |`);
+      }
+      if (overall !== "ready") {
+        lines.push(
+          "",
+          "### Next Steps",
+          ...checks.filter((c) => !c.passed).map((c) => `- Fix: ${c.name} — ${c.detail}`),
+        );
+      }
+      return { content: [{ type: "text" as const, text: lines.join("\n") }] };
+    },
+  );
+
+  mcp.registerTool(
+    "generate_agent_config",
     {
-      name: "generate_agent_config",
       description: "Generate an MCP configuration snippet for a supported AI coding agent.",
-      inputSchema: z.object({
+      inputSchema: {
         targetAgent: z
           .enum(["claude-code", "codex", "gemini", "opencode", "cursor", "vscode", "claude-desktop"])
           .describe("Target AI coding agent"),
         mode: z.enum(["readonly", "write"]).optional().describe("Operating mode"),
         transport: z.enum(["stdio", "sse", "streamable-http"]).optional().describe("Transport protocol"),
-      }),
-      handler: async ({
-        targetAgent,
-        mode = "readonly",
-        transport = "stdio",
-      }: {
-        targetAgent: string;
-        mode?: string;
-        transport?: string;
-      }) => {
-        const env = {
-          KICAD_MCP_PROFILE: "readonly",
-          KICAD_MCP_OPERATING_MODE: mode,
-        };
-        const stdioEntry = transport === "stdio"
-          ? { command: "uvx", args: ["kicad-mcp-pro"] }
-          : { url: process.env.KICAD_MCP_URL || "http://localhost:8412/mcp", env };
-        const configs: Record<string, object> = {
-          "claude-code": { mcpServers: { kicad: { type: "stdio", ...stdioEntry, env } } },
-          codex: { mcp_servers: { kicad: { command: "uvx", args: ["kicad-mcp-pro"], env } } },
-          gemini: { mcpServers: { kicad: { ...stdioEntry, env } } },
-          opencode: { mcp: { kicad: { type: "local", command: ["uvx", "kicad-mcp-pro"], environment: env } } },
-          cursor: { mcpServers: { kicad: { ...stdioEntry, env } } },
-          vscode: { servers: { kicad: { type: "stdio", ...stdioEntry, env } } },
-          "claude-desktop": { mcpServers: { kicad: { ...stdioEntry, env } } },
-        };
-        return {
-          content: [
-            {
-              type: "text",
-              text: `## Config for ${targetAgent} (${mode}, ${transport})\n\`\`\`json\n${JSON.stringify(configs[targetAgent as keyof typeof configs] || configs["claude-code"], null, 2)}\n\`\`\``,
-            },
-          ],
-        };
       },
     },
-  ],
-});
+    async ({ targetAgent, mode = "readonly", transport = "stdio" }) => {
+      const env = {
+        KICAD_MCP_PROFILE: "readonly",
+        KICAD_MCP_OPERATING_MODE: mode,
+      };
+      const stdioEntry = transport === "stdio"
+        ? { command: "uvx", args: ["kicad-mcp-pro"] }
+        : { url: process.env.KICAD_MCP_URL || "http://localhost:8412/mcp", env };
+      const configs: Record<string, object> = {
+        "claude-code": { mcpServers: { kicad: { type: "stdio", ...stdioEntry, env } } },
+        codex: { mcp_servers: { kicad: { command: "uvx", args: ["kicad-mcp-pro"], env } } },
+        gemini: { mcpServers: { kicad: { ...stdioEntry, env } } },
+        opencode: { mcp: { kicad: { type: "local", command: ["uvx", "kicad-mcp-pro"], environment: env } } },
+        cursor: { mcpServers: { kicad: { ...stdioEntry, env } } },
+        vscode: { servers: { kicad: { type: "stdio", ...stdioEntry, env } } },
+        "claude-desktop": { mcpServers: { kicad: { ...stdioEntry, env } } },
+      };
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `## Config for ${targetAgent} (${mode}, ${transport})\n\`\`\`json\n${JSON.stringify(configs[targetAgent] || configs["claude-code"], null, 2)}\n\`\`\``,
+          },
+        ],
+      };
+    },
+  );
 
-// Mount MCP endpoint
-app.use("/mcp", mcp);
+  return mcp;
+}
+
+async function handleMcpRequest(req: Request, res: Response): Promise<void> {
+  const mcp = createMcpServer();
+  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+
+  res.on("close", () => {
+    void transport.close();
+    void mcp.close();
+  });
+
+  try {
+    await mcp.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("Error handling MCP request:", message);
+    if (!res.headersSent) {
+      res.status(500).json({
+        jsonrpc: "2.0",
+        error: { code: -32603, message: "Internal server error" },
+        id: null,
+      });
+    }
+  }
+}
+
+app.post("/mcp", async (req: Request, res: Response) => { await handleMcpRequest(req, res); });
+app.get("/mcp", (_req: Request, res: Response) => {
+  res.status(405).json({
+    jsonrpc: "2.0",
+    error: { code: -32000, message: "Method not allowed." },
+    id: null,
+  });
+});
+app.delete("/mcp", (_req: Request, res: Response) => {
+  res.status(405).json({
+    jsonrpc: "2.0",
+    error: { code: -32000, message: "Method not allowed." },
+    id: null,
+  });
+});
 
 // Start server
 app.listen(PORT, HOST, () => {
