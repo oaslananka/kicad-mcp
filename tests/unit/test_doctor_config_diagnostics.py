@@ -6,7 +6,7 @@ from pytest import MonkeyPatch
 
 from kicad_mcp import diagnostics
 
-REQ_KEY = "required" "-version"
+REQ_KEY = "required-version"
 LOW_RANGE = ">=0.10,<0.12"
 HIGH_RANGE = ">=0.11,<0.12"
 
@@ -65,7 +65,7 @@ def test_config_check_reports_exact_pin_mismatch(tmp_path: Path, monkeypatch: Mo
     monkeypatch.setattr(
         diagnostics,
         "_detect_uv_version",
-        lambda: ("0.11.19", "C:/tools/uv.exe"),
+        lambda: ("0.11.19", "/usr/local/bin/uv-old"),
     )
 
     check = diagnostics._uv_version_check(checkout)
