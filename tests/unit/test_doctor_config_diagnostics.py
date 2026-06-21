@@ -59,9 +59,7 @@ def test_config_check_accepts_range_specifier(tmp_path: Path, monkeypatch: Monke
     assert f"satisfies checkout requirement {LOW_RANGE}" in check.message
 
 
-def test_config_check_reports_exact_pin_mismatch(
-    tmp_path: Path, monkeypatch: MonkeyPatch
-) -> None:
+def test_config_check_reports_exact_pin_mismatch(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
     checkout = _checkout(tmp_path)
     (checkout / "uv.toml").write_text(_requirement("0.10.8"), encoding="utf-8")
     monkeypatch.setattr(
