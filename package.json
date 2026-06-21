@@ -68,8 +68,7 @@
   },
   "devDependencies": {
     "@commitlint/cli": "21.0.2",
-    "@commitlint/config-conventional": "21.0.2",
-    "husky": "9.1.7"
+    "@commitlint/config-conventional": "21.0.2"
   },
   "engines": {
     "node": ">=24.11.0 <25",

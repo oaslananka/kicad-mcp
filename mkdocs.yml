@@ -28,8 +28,6 @@ plugins:
   - git-revision-date-localized:
       enable_creation_date: true
   - redirects
-  - minify:
-      minify_html: true
   - glightbox
   - mkdocstrings:
       handlers:
@@ -104,6 +102,7 @@ nav:
       - Local Workflow: development.md
       - Contributing: development/contributing.md
       - Testing: testing.md
+      - Dependency Audit: development/dependency-audit-2026-06.md
       - Architecture: development/architecture.md
       - Architecture Decisions:
           - Overview: adr/README.md
