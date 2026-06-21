@@ -1,31 +1,52 @@
 """pcbnew Action Plugin entry point for the kicad-mcp companion (issue #157).
 
 This module is only imported inside KiCad (it depends on ``pcbnew`` and ``wx``).
-All testable logic lives in ``kicad_mcp.companion.context``; this file is the thin
-GUI shim that reads the live board and drives that logic.
+All testable logic lives in ``context.py`` (vendored alongside this plugin from
+``kicad_mcp.companion.context``); this file is the thin GUI shim that reads the
+live board and drives that logic. The plugin is self-contained — it needs no
+``KICAD_MCP_HOME`` and no system-wide install.
 """
 
 from __future__ import annotations
 
 import os
 import sys
+from types import ModuleType
 
 import pcbnew  # type: ignore[import-not-found]  # provided by KiCad
 
 
 def _ensure_companion_importable() -> None:
-    """Make ``kicad_mcp.companion`` importable from KiCad's bundled Python.
-
-    Honours ``KICAD_MCP_HOME`` (the repo root or an installed package's parent) so
-    the plugin can find the shared, dependency-free helpers without requiring a
-    system-wide install.
-    """
+    """Add a kicad-mcp checkout to ``sys.path`` (dev fallback when not vendored)."""
     home = os.environ.get("KICAD_MCP_HOME")
     if home:
         src = os.path.join(home, "src")
         for path in (src, home):
             if os.path.isdir(path) and path not in sys.path:
                 sys.path.insert(0, path)
+
+
+def _load_context() -> ModuleType:
+    """Return the companion context module.
+
+    Prefers the ``context.py`` vendored next to this plugin so it works out of the
+    box inside KiCad's bundled Python. Falls back to an installed ``kicad_mcp``
+    package (optionally located via ``KICAD_MCP_HOME``) for source checkouts.
+    """
+    try:
+        from . import context as ctx
+
+        return ctx
+    except ImportError:
+        try:
+            import context as ctx
+
+            return ctx
+        except ImportError:
+            _ensure_companion_importable()
+            from kicad_mcp.companion import context as ctx
+
+            return ctx
 
 
 class KiCadMcpCompanionPlugin(pcbnew.ActionPlugin):
@@ -40,24 +61,24 @@ class KiCadMcpCompanionPlugin(pcbnew.ActionPlugin):
     def Run(self) -> None:
         import wx  # type: ignore[import-not-found]  # provided by KiCad
 
-        _ensure_companion_importable()
         try:
-            from kicad_mcp.companion.context import BoardInfo, StudioContextClient, build_studio_context
+            ctx = _load_context()
         except Exception as exc:  # noqa: BLE001 - surfaced to the user
             wx.MessageBox(
-                f"kicad-mcp companion helpers not found.\n"
-                f"Set KICAD_MCP_HOME to the kicad-mcp checkout.\n\n{exc}",
+                "kicad-mcp companion helpers not found.\n"
+                "Reinstall the plugin (it should contain context.py), or set "
+                f"KICAD_MCP_HOME to a kicad-mcp checkout.\n\n{exc}",
                 "kicad-mcp companion",
                 wx.ICON_ERROR,
             )
             return
 
-        info = self._read_board_info(BoardInfo)
+        info = self._read_board_info(ctx.BoardInfo)
         base_url = os.environ.get("KICAD_MCP_URL", "http://127.0.0.1:3334")
         auth_token = os.environ.get("KICAD_MCP_AUTH_TOKEN", "")
-        client = StudioContextClient(base_url, auth_token=auth_token)
         try:
-            client.push(build_studio_context(info))
+            client = ctx.StudioContextClient(base_url, auth_token=auth_token)
+            client.push(ctx.build_studio_context(info))
             wx.MessageBox(
                 f"Pushed context for {info.file_name or 'active board'} to {base_url}.",
                 "kicad-mcp companion",
@@ -65,7 +86,9 @@ class KiCadMcpCompanionPlugin(pcbnew.ActionPlugin):
             )
         except Exception as exc:  # noqa: BLE001 - network/server errors are user-facing
             wx.MessageBox(
-                f"Could not reach kicad-mcp at {base_url}:\n{exc}",
+                f"Could not reach kicad-mcp at {base_url}:\n{exc}\n\n"
+                "Start an HTTP-mode server, e.g.:\n"
+                "kicad-mcp-pro --transport streamable-http --port 3334 --mode write",
                 "kicad-mcp companion",
                 wx.ICON_ERROR,
             )
@@ -75,7 +98,6 @@ class KiCadMcpCompanionPlugin(pcbnew.ActionPlugin):
         file_name = board.GetFileName() if board else ""
         project_root = os.path.dirname(file_name) if file_name else ""
         selected_reference = ""
-        selected_net = ""
         for footprint in board.GetFootprints() if board else []:
             if footprint.IsSelected():
                 selected_reference = footprint.GetReference()
@@ -86,7 +108,7 @@ class KiCadMcpCompanionPlugin(pcbnew.ActionPlugin):
             project_root=project_root,
             project_file=file_name,
             selected_reference=selected_reference,
-            selected_net=selected_net,
+            selected_net="",
         )
 
     @staticmethod
@@ -94,9 +116,8 @@ class KiCadMcpCompanionPlugin(pcbnew.ActionPlugin):
         """Show a confirmation dialog before a mutating action; return user choice."""
         import wx  # type: ignore[import-not-found]
 
-        from kicad_mcp.companion.context import requires_confirmation
-
-        if not requires_confirmation(action):
+        ctx = _load_context()
+        if not ctx.requires_confirmation(action):
             return True
         result = wx.MessageBox(
             f"Allow kicad-mcp to apply '{action}' to the board?",

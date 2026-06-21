@@ -90,6 +90,7 @@ def test_client_push_posts_to_mcp_endpoint() -> None:
         captured["method"] = request.get_method()
         captured["body"] = json.loads(request.data.decode("utf-8"))  # type: ignore[union-attr]
         captured["auth"] = request.headers.get("Authorization")
+        captured["accept"] = request.headers.get("Accept")
         return _FakeResponse()
 
     client = StudioContextClient(
@@ -104,6 +105,9 @@ def test_client_push_posts_to_mcp_endpoint() -> None:
     assert captured["url"] == "http://127.0.0.1:9999/mcp"
     assert captured["method"] == "POST"
     assert captured["auth"] == "Bearer secret"
+    # MCP Streamable HTTP rejects a JSON-only Accept header with HTTP 400.
+    accept = str(captured["accept"])
+    assert "application/json" in accept and "text/event-stream" in accept
     body = captured["body"]
     assert body["params"]["name"] == "studio_push_context"  # type: ignore[index]
     assert body["params"]["arguments"]["active_file"] == "b.kicad_pcb"  # type: ignore[index]
@@ -133,3 +137,35 @@ def test_client_render_and_highlight_helpers_call_expected_tools() -> None:
     assert bodies[0]["params"]["arguments"] == {"sheet": "Power"}  # type: ignore[index]
     assert bodies[1]["params"]["name"] == "pcb_highlight_net"  # type: ignore[index]
     assert bodies[1]["params"]["arguments"] == {"net_name": "VBUS"}  # type: ignore[index]
+
+
+def test_companion_plugin_loads_adjacent_context_when_imported_top_level(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import importlib.util
+    import sys
+    import types
+    from pathlib import Path
+
+    plugin_dir = Path(__file__).resolve().parents[2] / "packages" / "kicad-plugin"
+
+    class _ActionPlugin:
+        pass
+
+    monkeypatch.setitem(sys.modules, "pcbnew", types.SimpleNamespace(ActionPlugin=_ActionPlugin))
+    monkeypatch.syspath_prepend(str(plugin_dir))
+    monkeypatch.delitem(sys.modules, "context", raising=False)
+
+    spec = importlib.util.spec_from_file_location(
+        "kicad_mcp_companion_top_level_test",
+        plugin_dir / "kicad_mcp_companion.py",
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    ctx = module._load_context()
+
+    assert ctx.__name__ == "context"
+    assert hasattr(ctx, "BoardInfo")

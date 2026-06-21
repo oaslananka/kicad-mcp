@@ -29,15 +29,15 @@ in the loop.
    - **Linux:** `~/.local/share/kicad/<version>/scripting/plugins`
    (or open *Tools → External Plugins → Open Plugin Directory* in pcbnew).
 2. Copy or symlink `packages/kicad-plugin` into that directory as
-   `kicad_mcp_companion`.
-3. Make the shared helpers importable from KiCad's Python by pointing
-   `KICAD_MCP_HOME` at your kicad-mcp checkout (the folder containing `src/`):
+   `kicad_mcp_companion`. The plugin is **self-contained** — it ships a vendored
+   copy of `context.py`, so no `KICAD_MCP_HOME` and no system-wide install are
+   required.
+3. Optional environment overrides:
 
    ```bash
-   # set in your shell profile or KiCad launch environment
-   export KICAD_MCP_HOME=/path/to/kicad-mcp
    export KICAD_MCP_URL=http://127.0.0.1:3334   # optional, this is the default
    export KICAD_MCP_AUTH_TOKEN=...              # only if the server requires auth
+   # KICAD_MCP_HOME is only needed for a non-vendored dev checkout fallback.
    ```
 
 4. Restart pcbnew, then run *Tools → External Plugins → Refresh*. A
@@ -48,7 +48,11 @@ in the loop.
 These steps require a real KiCad install and cannot be exercised in headless CI;
 the dependency-free helpers are covered by `tests/unit/test_companion_context.py`.
 
-1. Start the server: `uv run kicad-mcp-pro --transport streamable-http --port 3334`.
+1. Start the server in **write** mode (the `studio_push_context` tool is rejected
+   in the default read-only mode):
+   `uv run kicad-mcp-pro --transport streamable-http --port 3334 --mode write`.
+   The client sends `Accept: application/json, text/event-stream` as the MCP
+   Streamable HTTP transport requires.
 2. Open any `.kicad_pcb` in pcbnew.
 3. Click **kicad-mcp companion**. Expect an information dialog confirming the
    context push to `http://127.0.0.1:3334`.
