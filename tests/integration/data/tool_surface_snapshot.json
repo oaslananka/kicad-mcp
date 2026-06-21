@@ -2145,6 +2145,26 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
+    "name": "lib_verify_component_contract",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "expert",
+      "full",
+      "schematic",
+      "schematic_authoring",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
     "idempotent": true,
     "name": "manufacturing_quality_gate",
     "open_world": false,
@@ -5303,6 +5323,29 @@
     "requires_kicad_running": false
   },
   {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "sch_apply_plan",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "power",
+      "schematic",
+      "schematic_authoring",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
     "destructive": true,
     "experimental": false,
     "headless": true,
@@ -5902,6 +5945,52 @@
   },
   {
     "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "sch_plan_from_spec",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "power",
+      "schematic",
+      "schematic_authoring",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "sch_preview_plan",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "power",
+      "schematic",
+      "schematic_authoring",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
     "experimental": true,
     "headless": false,
     "idempotent": false,
@@ -5930,6 +6019,29 @@
     "idempotent": false,
     "name": "sch_render_png",
     "open_world": true,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "power",
+      "schematic",
+      "schematic_authoring",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "sch_rollback_plan",
+    "open_world": false,
     "profiles": [
       "agent_full",
       "builder",
@@ -6166,6 +6278,52 @@
       "full",
       "manufacturing",
       "manufacturing_release"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "sch_verify_plan",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "power",
+      "schematic",
+      "schematic_authoring",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "sch_visual_qa",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "power",
+      "schematic",
+      "schematic_authoring",
+      "schematic_only",
+      "simulation"
     ],
     "read_only": false,
     "requires_kicad_running": false
