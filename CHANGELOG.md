@@ -10,6 +10,23 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.14.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.13.0...mcp-server-v3.14.0) (2026-06-21)
+
+
+### Features
+
+* add tool-selection eval harness and golden dataset ([#174](https://github.com/oaslananka/kicad-mcp/issues/174)) ([ca93d94](https://github.com/oaslananka/kicad-mcp/commit/ca93d94ce3c4af5bc80f821115ef4dac545e3301))
+
+
+### Bug Fixes
+
+* address code-review feedback on merged [#167](https://github.com/oaslananka/kicad-mcp/issues/167) ([#172](https://github.com/oaslananka/kicad-mcp/issues/172)) ([3bf7bb3](https://github.com/oaslananka/kicad-mcp/commit/3bf7bb3d8e9a498a2f8292d737926a946056f50e))
+
+
+### Documentation
+
+* fix CLI command examples ([e76c79e](https://github.com/oaslananka/kicad-mcp/commit/e76c79eba0f12a7830ae3ac471b9946472934e7d))
+
 ## [3.13.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.12.1...mcp-server-v3.13.0) (2026-06-21)
 
 
