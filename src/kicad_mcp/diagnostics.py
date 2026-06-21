@@ -361,7 +361,9 @@ def _required_uv_version_from_pyproject(checkout: Path) -> str | None:
 def _required_uv_version(checkout: Path | None) -> str | None:
     if checkout is None:
         return None
-    return _required_uv_version_from_uv_toml(checkout) or _required_uv_version_from_pyproject(checkout)
+    return _required_uv_version_from_uv_toml(checkout) or _required_uv_version_from_pyproject(
+        checkout
+    )
 
 
 def _uv_requirement_specifier(required: str) -> str:
@@ -390,10 +392,7 @@ def _uv_version_hint(required: str) -> str:
             f"Use the repo-compatible uv version, for example: uv self update {exact}. "
             "Then rerun uv sync --all-extras --frozen."
         )
-    return (
-        f"Use a uv version satisfying {required}. "
-        "Then rerun uv sync --all-extras --frozen."
-    )
+    return f"Use a uv version satisfying {required}. Then rerun uv sync --all-extras --frozen."
 
 
 def _detect_uv_version() -> tuple[str | None, str | None]:
