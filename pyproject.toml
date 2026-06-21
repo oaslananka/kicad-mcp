@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "kicad-mcp-pro"
 version = "3.13.0"
-description = "Production-grade MCP server for KiCad EDA\u2014PCB design, DRC, simulation, BOM, DFM, and manufacturing."
+description = "Production-grade MCP server for KiCad EDA—PCB design, DRC, simulation, BOM, DFM, and manufacturing."
 readme = "README.md"
 license = { text = "MIT" }
 license-files = ["LICENSE"]
@@ -43,6 +43,7 @@ dependencies = [
   "mcp[cli]>=1.27.1,<2.0.0",
   "opentelemetry-exporter-otlp>=1.42.1,<2.0.0",
   "opentelemetry-sdk>=1.42.1,<2.0.0",
+  "packaging>=24.0,<26.0",
   "pydantic>=2.7.0",
   "pydantic-settings>=2.14.2",
   "python-dotenv>=1.0.0",
@@ -118,49 +119,3 @@ exclude = ["*.json", "*.md"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "S", "ANN"]
 ignore = ["S603"]
-
-[tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["ANN001", "ANN202", "S101"]
-"src/kicad_mcp/web/dashboard.py" = ["E501"]
-# Generated file: long JSON lines live inside a raw string (regenerate via
-# scripts/build_parity_matrix.py); do not hand-edit.
-"src/kicad_mcp/parity_matrix_data.py" = ["E501"]
-
-[tool.mypy]
-python_version = "3.13"
-strict = true
-plugins = ["pydantic.mypy"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-q"
-asyncio_mode = "auto"
-markers = [
-  "benchmark: lightweight performance regression checks with committed baselines",
-  "gui: real KiCad GUI smoke tests for scheduled/manual environments",
-  "mcp_mode(mode): run the test with an explicit KiCad MCP operating mode",
-  "slow: tests that are useful for scheduled/full validation but skipped by fast loops",
-]
-
-[tool.interrogate]
-ignore-init-method = true
-ignore-init-module = true
-ignore-magic = true
-ignore-module = false
-ignore-nested-functions = true
-ignore-private = true
-fail-under = 50.0
-verbose = 1
-
-[tool.coverage.run]
-source = ["src/kicad_mcp"]
-omit = ["tests/*"]
-
-[tool.coverage.report]
-fail_under = 83
-
-[dependency-groups]
-dev = [
-    "pytest-asyncio>=0.25.0",
-    "pytest-playwright>=0.8.0",
-]
