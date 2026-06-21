@@ -113,6 +113,33 @@ def test_parse_symbol_pins_resistor() -> None:
     assert all(pin.electrical_type == "passive" for pin in pins)
 
 
+def test_parse_symbol_pins_tolerates_tab_and_newline_whitespace() -> None:
+    # S-expressions are whitespace-insensitive; a tab/newline after (pin must
+    # not cause the pin to be skipped.
+    symbol = (
+        '(symbol "X"\n'
+        "\t(pin\tinput line (at 0 0 0) (length 1)\n"
+        '\t\t(name "A" (effects))\n'
+        '\t\t(number "1" (effects))))'
+    )
+    pins = parse_symbol_pins(symbol)
+    assert {pin.number for pin in pins} == {"1"}
+    assert pins[0].electrical_type == "input"
+
+
+def test_parse_symbol_pins_handles_escaped_quote_in_name() -> None:
+    # An escaped quote inside a pin name must not truncate the captured value.
+    symbol = (
+        '(symbol "X"\n'
+        "  (pin input line (at 0 0 0) (length 1)\n"
+        '    (name "A\\"B" (effects))\n'
+        '    (number "1" (effects))))'
+    )
+    pins = parse_symbol_pins(symbol)
+    assert {pin.number for pin in pins} == {"1"}
+    assert pins[0].name == 'A\\"B'
+
+
 def test_parse_footprint_resistor_is_complete() -> None:
     shape = parse_footprint(RESISTOR_FOOTPRINT)
     assert shape.connectable_pads == ("1", "2")

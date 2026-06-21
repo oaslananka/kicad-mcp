@@ -120,18 +120,24 @@ def parse_symbol_pins(symbol_block: str) -> tuple[Pin, ...]:
     first occurrence so the count reflects distinct electrical pins.
     """
 
+    # ``(pin`` + word boundary tolerates any whitespace after the keyword
+    # (space/tab/newline) while still excluding ``(pin_numbers``/``(pin_names``.
+    pin_start = re.compile(r"\(pin\b")
     seen: set[str] = set()
     pins: list[Pin] = []
     cursor = 0
     while True:
-        index = symbol_block.find("(pin ", cursor)
-        if index == -1:
+        match = pin_start.search(symbol_block, cursor)
+        if match is None:
             break
+        index = match.start()
         pin_block = extract_balanced_block(symbol_block, index)
         cursor = index + len(pin_block)
         type_match = re.match(r"\(pin\s+(\w+)", pin_block)
-        name_match = re.search(r'\(name\s+"([^"]*)"', pin_block)
-        number_match = re.search(r'\(number\s+"([^"]*)"', pin_block)
+        # Quoted values may contain escaped chars (e.g. ``\"``); consume escape
+        # pairs so an escaped quote inside a name does not truncate the match.
+        name_match = re.search(r'\(name\s+"([^"\\]*(?:\\.[^"\\]*)*)"', pin_block)
+        number_match = re.search(r'\(number\s+"([^"\\]*(?:\\.[^"\\]*)*)"', pin_block)
         if not (type_match and name_match and number_match):
             continue
         number = number_match.group(1)
