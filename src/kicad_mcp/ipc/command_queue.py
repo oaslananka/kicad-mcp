@@ -114,7 +114,7 @@ class KiCadCommandQueue:
     def backoff_delay(self, attempt: int) -> float:
         """Return the deterministic backoff before ``attempt`` (1-based retry index)."""
         delay = self._base_delay_s * (2 ** max(0, attempt - 1))
-        return min(self._max_delay_s, delay)
+        return float(min(self._max_delay_s, delay))
 
     def execute(
         self,
@@ -193,7 +193,7 @@ class KiCadCommandQueue:
                     )
                     return result
             # Unreachable: the loop either returns or raises.
-            raise last_exc  # type: ignore[misc]  # pragma: no cover
+            raise last_exc  # pragma: no cover
 
     @property
     def journal(self) -> tuple[JournalEntry, ...]:

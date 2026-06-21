@@ -13,7 +13,7 @@ import json
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 # Mutating operations a companion plugin must guard behind a safe-apply dialog
 # before they touch the board.
@@ -101,7 +101,11 @@ class StudioContextClient:
         self._opener = opener or self._default_opener
 
     def _default_opener(self, request: urllib.request.Request) -> _HttpResponse:
-        return urllib.request.urlopen(request, timeout=self._timeout)  # noqa: S310 - localhost only
+        # urlopen is typed to return Any-ish; localhost-only call, narrow to our Protocol.
+        return cast(
+            _HttpResponse,
+            urllib.request.urlopen(request, timeout=self._timeout),  # noqa: S310 - localhost only
+        )
 
     def build_request_body(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Return the JSON-RPC body for a ``studio_push_context`` tools/call."""
