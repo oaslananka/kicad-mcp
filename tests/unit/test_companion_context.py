@@ -76,10 +76,14 @@ def test_client_rejects_non_loopback_url() -> None:
 
 def test_client_push_posts_to_mcp_endpoint() -> None:
     captured: dict[str, object] = {}
+    closed: list[bool] = []
 
     class _FakeResponse:
         def read(self) -> bytes:
             return json.dumps({"result": {"status": "ok"}}).encode("utf-8")
+
+        def close(self) -> None:
+            closed.append(True)
 
     def fake_opener(request: urllib.request.Request) -> _FakeResponse:
         captured["url"] = request.full_url
@@ -103,6 +107,7 @@ def test_client_push_posts_to_mcp_endpoint() -> None:
     body = captured["body"]
     assert body["params"]["name"] == "studio_push_context"  # type: ignore[index]
     assert body["params"]["arguments"]["active_file"] == "b.kicad_pcb"  # type: ignore[index]
+    assert closed == [True], "the HTTP response must be closed after reading"
 
 
 def test_client_render_and_highlight_helpers_call_expected_tools() -> None:
@@ -111,6 +116,9 @@ def test_client_render_and_highlight_helpers_call_expected_tools() -> None:
     class _FakeResponse:
         def read(self) -> bytes:
             return json.dumps({"result": "ok"}).encode("utf-8")
+
+        def close(self) -> None:
+            pass
 
     def fake_opener(request: urllib.request.Request) -> _FakeResponse:
         bodies.append(json.loads(request.data.decode("utf-8")))  # type: ignore[union-attr]

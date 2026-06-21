@@ -161,8 +161,23 @@ class KiCadCommandQueue:
                         and attempts <= self._max_retries
                     )
                     if can_retry:
-                        if self._reconnect is not None:
-                            self._reconnect()
+                        try:
+                            if self._reconnect is not None:
+                                self._reconnect()
+                        except Exception as reconnect_exc:  # noqa: BLE001 - journaled, then re-raised
+                            self._journal.append(
+                                JournalEntry(
+                                    operation=operation,
+                                    correlation_id=correlation_id,
+                                    idempotency_key=idempotency_key,
+                                    attempts=attempts,
+                                    status="failed",
+                                    duration_s=self._time() - started,
+                                    error_code=getattr(reconnect_exc, "code", None),
+                                    error_class=type(reconnect_exc).__name__,
+                                )
+                            )
+                            raise
                         self._sleep(self.backoff_delay(attempts))
                         continue
                     self._journal.append(

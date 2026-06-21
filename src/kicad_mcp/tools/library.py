@@ -860,7 +860,7 @@ def register(mcp: FastMCP) -> None:
             fp_library, fp_name = footprint_id.split(":", 1)
             try:
                 fp_path = _footprint_file(fp_library, fp_name)
-            except FileNotFoundError:
+            except (OSError, ValueError):
                 fp_path = None
             if fp_path is not None and fp_path.exists():
                 footprint_shape = cv.parse_footprint(

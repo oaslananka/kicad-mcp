@@ -131,6 +131,19 @@ def test_parse_footprint_counts_mechanical_pads() -> None:
     assert not shape.has_3d_model
 
 
+def test_parse_footprint_accepts_unquoted_pad_numbers() -> None:
+    # Older/hand-written footprints write bare, unquoted pad numbers.
+    footprint = """
+(footprint "Legacy_2pad"
+    (pad 1 smd rect (at 0 0) (size 1 1) (layers "F.Cu"))
+    (pad 2 smd rect (at 2 0) (size 1 1) (layers "F.Cu"))
+)
+"""
+    shape = parse_footprint(footprint)
+    assert shape.connectable_pads == ("1", "2")
+    assert shape.mechanical_pad_count == 0
+
+
 def test_verify_good_resistor_passes() -> None:
     report = verify_contract(
         reference="R5",
