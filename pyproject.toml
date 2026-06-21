@@ -113,7 +113,7 @@ include = ["src/kicad_mcp", "README.md", "LICENSE", "pyproject.toml"]
 
 [tool.ruff]
 target-version = "py313"
-line-length = 100
+line-length = 103
 exclude = ["*.json", "*.md"]
 
 [tool.ruff.lint]
