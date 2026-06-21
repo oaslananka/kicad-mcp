@@ -50,10 +50,20 @@ nav:
       - Comparison: comparison.md
   - Reference and Status:
       - Tools Reference: tools-reference.md
+      - Generated Tools Reference: tools-reference.generated.md
+      - Error Catalog: errors.md
+      - MCP Reference:
+          - Overview: mcp/index.md
+          - API Reference: mcp/api-reference.md
+          - Tools: mcp/tools.md
+          - Transport: mcp/transport.md
+          - Deployment: mcp/deployment.md
       - API Stability: api-stability.md
       - Maintenance Policy: maintenance-policy.md
       - Capability Verification Levels: status/capability-levels.md
       - Runtime Matrix: status/runtime-matrix.md
+      - Runtime Policy Matrix: runtime-matrix.md
+      - Capability Parity: compatibility/capability-parity.generated.md
       - Work-Order Audit: status/work-order-audit-2026-06-17.md
   - Install, Packaging, and Distribution:
       - Docker Install: install/docker.md
@@ -62,13 +72,40 @@ nav:
       - Public Listings: public-listing.md
   - Integrations:
       - KiCad Studio: integration/kicad-studio.md
+      - Companion Plugin: companion-plugin.md
       - Claude Desktop: integration/claude-desktop.md
       - Cursor: integration/cursor.md
       - Claude Code: integration/claude-code.md
+      - Agent Guides:
+          - Overview: agents/index.md
+          - Install: agents/install.md
+          - Compatibility: agents/compatibility.md
+          - Security: agents/security.md
+          - Toolsets: agents/toolsets.md
+          - Prompts: agents/prompts.md
+          - Troubleshooting: agents/troubleshooting.md
+          - Antigravity: agents/antigravity.md
+          - ChatGPT App: agents/chatgpt-app.md
+          - Claude AI: agents/claude-ai.md
+          - Claude Code: agents/claude-code.md
+          - Claude Desktop: agents/claude-desktop.md
+          - Cline: agents/cline.md
+          - Codex: agents/codex.md
+          - Continue: agents/continue.md
+          - Cursor: agents/cursor.md
+          - Gemini CLI: agents/gemini-cli.md
+          - OpenCode: agents/opencode.md
+          - VS Code Copilot: agents/vscode-copilot.md
+          - Windsurf: agents/windsurf.md
+          - Zed: agents/zed.md
   - KiCad 10:
       - Variants: kicad10/variants.md
       - Time-Domain Tuning: kicad10/time-domain.md
       - Graphical DRC: kicad10/graphical-drc.md
+      - KiCad 10.0.3 Feature Parity: compatibility/kicad-10-0-3-feature-parity.md
+      - KiCad 10 to 11 Migration: compatibility/kicad-10-to-11-migration.md
+      - KiCad 10.0.3 Canary Report: development/kicad-10-0-3-canary-report.md
+      - KiCad 10.0.3 Gap Audit: development/kicad-10-0-3-gap-audit.md
   - Workflows:
       - First PCB: workflows/first-pcb.md
       - Schematic to PCB: workflows/schematic-to-pcb.md
@@ -80,6 +117,9 @@ nav:
       - Autonomy Model: autonomy.md
       - Repository Operations: repository-operations.md
       - Branch Protection: branch-protection.md
+      - Automation:
+          - Failure Classifier: automation/failure-classifier.md
+          - Review Thread Gate: automation/review-thread-gate.md
       - Docker Deployment: deployment/docker.md
       - HTTP Mode: deployment/http-mode.md
       - Release Process: release-process.md
@@ -108,6 +148,7 @@ nav:
           - Overview: adr/README.md
           - Repository Topology: adr/0001-repository-topology.md
           - Version Single Source: adr/0002-version-single-source.md
+          - Export Tool Naming: adr/0003-export-tool-naming.md
       - Regression Fixtures: development/contributing-fixtures.md
       - Production Principles: development/principles.md
       - 2026 Roadmap: development/roadmap-2026.md
