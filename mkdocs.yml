@@ -62,7 +62,7 @@ nav:
       - Maintenance Policy: maintenance-policy.md
       - Capability Verification Levels: status/capability-levels.md
       - Runtime Matrix: status/runtime-matrix.md
-      - Runtime Policy Matrix: runtime-matrix.md
+      - Runtime Policy Matrix: status/runtime-policy-matrix.md
       - Capability Parity: compatibility/capability-parity.generated.md
       - Work-Order Audit: status/work-order-audit-2026-06-17.md
   - Install, Packaging, and Distribution:
@@ -72,7 +72,7 @@ nav:
       - Public Listings: public-listing.md
   - Integrations:
       - KiCad Studio: integration/kicad-studio.md
-      - Companion Plugin: companion-plugin.md
+      - Companion Plugin: integration/companion-plugin.md
       - Claude Desktop: integration/claude-desktop.md
       - Cursor: integration/cursor.md
       - Claude Code: integration/claude-code.md

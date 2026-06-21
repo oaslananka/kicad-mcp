@@ -32,7 +32,7 @@ The publish workflows keep release evidence product-scoped:
 - `publish-protocol-schemas.yml` publishes `@oaslananka/kicad-protocol-schemas`
   for `protocol-schemas-v*` GitHub Releases.
 
-Release dry-runs also validate `compatibility.yaml` through the MCP server release preflight. Update [docs/status/runtime-matrix.md](status/runtime-matrix.md) and release notes whenever KiCad, VS Code, MCP, Node, pnpm, Python, or tool-schema support changes.
+Release dry-runs also validate `compatibility.yaml` through the MCP server release preflight. Update [docs/status/runtime-policy-matrix.md](status/runtime-policy-matrix.md) and release notes whenever KiCad, VS Code, MCP, Node, pnpm, Python, or tool-schema support changes.
 
 ## Conventional Commit Scopes
 
