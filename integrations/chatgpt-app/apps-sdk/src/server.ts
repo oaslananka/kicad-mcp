@@ -102,14 +102,13 @@ function resolveSafeWorkspaceDirectory(userPath: string, label: string): string 
     throw new Error(`${label}: path is outside allowed upload roots`);
   }
 
-  for (const root of roots) {
-    const candidate = canonicalizePath(join(root, userPath));
-    if (isWithinRoot(root, candidate) && existsSync(candidate)) {
-      return candidate;
-    }
+  const root = roots[0];
+  const candidate = canonicalizePath(join(root, userPath));
+  if (isWithinRoot(root, candidate)) {
+    return candidate;
   }
 
-  throw new Error(`${label}: path does not resolve to an uploaded project directory`);
+  throw new Error(`${label}: path is outside allowed upload roots`);
 }
 
 function resolveProjectSibling(projectPath: string, extension: string): string {
