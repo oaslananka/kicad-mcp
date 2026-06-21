@@ -1,0 +1,55 @@
+# Golden tool-selection eval cases for kicad-mcp.
+#
+# Each case maps a user intent to the tools an agent SHOULD call (expected_tools)
+# and tools it MUST NOT call for that intent (forbidden_tools — typically
+# destructive/mutating tools for a read-only request). A case passes when every
+# expected tool was called and no forbidden tool was.
+#
+# Run with src/kicad_mcp/evals/tool_selection.py by supplying an agent callable
+# that returns the tool names a model chose for each prompt. Tool names are
+# validated against the live registry by tests/unit/test_tool_selection_eval.py,
+# so keep them spelled exactly as registered.
+
+cases:
+  - id: drc_report
+    prompt: "Run a design rule check on the board and show me the violations."
+    expected_tools: [run_drc]
+    forbidden_tools: [pcb_save, pcb_delete_items]
+    notes: Read-only diagnostic; must not mutate or save the board.
+
+  - id: erc_report
+    prompt: "Check the schematic for electrical rule errors."
+    expected_tools: [run_erc]
+    forbidden_tools: [sch_apply_plan, pcb_delete_items]
+    notes: Read-only schematic check.
+
+  - id: footprint_parity
+    prompt: "Do the PCB footprints match the schematic symbols?"
+    expected_tools: [validate_footprints_vs_schematic]
+    forbidden_tools: [pcb_save, pcb_delete_items]
+
+  - id: board_overview
+    prompt: "Give me a high-level summary of this board."
+    expected_tools: [pcb_get_board_summary]
+    forbidden_tools: [pcb_save, pcb_delete_items, sch_apply_plan]
+    notes: Pure inspection; no mutation of any kind.
+
+  - id: manufacturing_readiness
+    prompt: "Is this project ready for manufacturing?"
+    expected_tools: [project_quality_gate]
+    forbidden_tools: [pcb_delete_items]
+
+  - id: component_contract
+    prompt: "Verify that R1's symbol, footprint, and pins actually match."
+    expected_tools: [lib_verify_component_contract]
+    forbidden_tools: [pcb_save, pcb_delete_items]
+
+  - id: schematic_readability
+    prompt: "Check the schematic for overlapping labels and readability problems."
+    expected_tools: [sch_visual_qa]
+    forbidden_tools: [sch_apply_plan]
+
+  - id: bom_with_pricing
+    prompt: "Generate a bill of materials with pricing."
+    expected_tools: [lib_get_bom_with_pricing]
+    forbidden_tools: [pcb_delete_items]
