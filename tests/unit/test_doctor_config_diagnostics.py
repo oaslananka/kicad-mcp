@@ -5,6 +5,8 @@ from pathlib import Path
 from kicad_mcp import diagnostics
 
 REQ_KEY = "required" "-version"
+LOW_RANGE = ">=0.10,<0.12"
+HIGH_RANGE = ">=0.11,<0.12"
 
 
 def _checkout(tmp_path: Path) -> Path:
@@ -21,7 +23,7 @@ def test_config_requirement_reads_tool_file_first(tmp_path: Path) -> None:
     checkout = _checkout(tmp_path)
     (checkout / "uv.toml").write_text(_requirement("0.10.8"), encoding="utf-8")
     (checkout / "pyproject.toml").write_text(
-        f'[tool.uv]\n{_requirement(">=0.11,<0.12")}',
+        f"[tool.uv]\n{_requirement(HIGH_RANGE)}",
         encoding="utf-8",
     )
 
@@ -30,18 +32,18 @@ def test_config_requirement_reads_tool_file_first(tmp_path: Path) -> None:
 
 def test_config_requirement_falls_back_to_pyproject_tool_table(tmp_path: Path) -> None:
     checkout = _checkout(tmp_path)
-    (checkout / "uv.toml").write_text('preview = true\n', encoding="utf-8")
+    (checkout / "uv.toml").write_text("preview = true\n", encoding="utf-8")
     (checkout / "pyproject.toml").write_text(
-        f'[tool.uv]\n{_requirement(">=0.10,<0.12")}',
+        f"[tool.uv]\n{_requirement(LOW_RANGE)}",
         encoding="utf-8",
     )
 
-    assert diagnostics._required_uv_version(checkout) == ">=0.10,<0.12"
+    assert diagnostics._required_uv_version(checkout) == LOW_RANGE
 
 
 def test_config_check_accepts_range_specifier(tmp_path: Path, monkeypatch) -> None:
     checkout = _checkout(tmp_path)
-    (checkout / "uv.toml").write_text(_requirement(">=0.10,<0.12"), encoding="utf-8")
+    (checkout / "uv.toml").write_text(_requirement(LOW_RANGE), encoding="utf-8")
     monkeypatch.setattr(
         diagnostics,
         "_detect_uv_version",
@@ -52,7 +54,7 @@ def test_config_check_accepts_range_specifier(tmp_path: Path, monkeypatch) -> No
 
     assert check is not None
     assert check.status == "ok"
-    assert "satisfies checkout requirement >=0.10,<0.12" in check.message
+    assert f"satisfies checkout requirement {LOW_RANGE}" in check.message
 
 
 def test_config_check_reports_exact_pin_mismatch(tmp_path: Path, monkeypatch) -> None:
@@ -76,12 +78,12 @@ def test_config_requirement_handles_invalid_and_missing_config(tmp_path: Path) -
     checkout = _checkout(tmp_path)
     assert diagnostics._required_uv_version(checkout) is None
 
-    (checkout / "uv.toml").write_text(f'{REQ_KEY} = 123\n', encoding="utf-8")
+    (checkout / "uv.toml").write_text(f"{REQ_KEY} = 123\n", encoding="utf-8")
     assert diagnostics._required_uv_version(checkout) is None
 
-    (checkout / "uv.toml").write_text(f'{REQ_KEY} = [\n', encoding="utf-8")
+    (checkout / "uv.toml").write_text(f"{REQ_KEY} = [\n", encoding="utf-8")
     (checkout / "pyproject.toml").write_text(
-        f'[tool.uv]\n{_requirement("0.10.8")}',
+        f"[tool.uv]\n{_requirement("0.10.8")}",
         encoding="utf-8",
     )
     assert diagnostics._required_uv_version(checkout) == "0.10.8"
