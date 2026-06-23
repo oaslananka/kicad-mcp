@@ -759,6 +759,15 @@ def _evaluate_pcb_transfer_gate() -> GateOutcome:
         for pad_number, expected_net in expected_for_ref:
             total_expected_pads += 1
             actual_net = actual_pad_nets.get(pad_number, "")
+            expected_unconnected = expected_net.startswith("unconnected-(")
+            if expected_unconnected:
+                if actual_net:
+                    mismatches.append(
+                        f"{reference}.{pad_number}: PCB has '{actual_net}', expected no net."
+                    )
+                    continue
+                matched_pads += 1
+                continue
             if not actual_net:
                 mismatches.append(f"{reference}.{pad_number}: missing net '{expected_net}' on PCB.")
                 continue
@@ -2603,6 +2612,311 @@ def render_gate_by_name(
     )
 
 
+@dataclass(slots=True)
+class _PcbTrackSegment:
+    """Small file-level representation of a PCB segment for quality gates."""
+
+    net: str
+    layer: str
+    start: tuple[float, float]
+    end: tuple[float, float]
+    width_mm: float
+
+
+def _balanced_blocks(text: str, atom: str) -> list[str]:
+    """Return top-level-ish S-expression blocks whose first atom matches ``atom``.
+
+    This intentionally stays lightweight: it is used for quality linting only and
+    does not attempt to be a full KiCad file parser. It handles nested parentheses
+    and ignores malformed trailing content by omitting incomplete blocks.
+    """
+    blocks: list[str] = []
+    pattern = re.compile(r"\(" + re.escape(atom) + r"\b")
+    pos = 0
+    while True:
+        match = pattern.search(text, pos)
+        if match is None:
+            break
+        start = match.start()
+        depth = 0
+        end = start
+        while end < len(text):
+            char = text[end]
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0:
+                    blocks.append(text[start : end + 1])
+                    pos = end + 1
+                    break
+            end += 1
+        else:
+            break
+    return blocks
+
+
+def _pcb_net_name_from_block(block: str) -> str:
+    numbered = re.search(r'\(net\s+\d+\s+"([^"]*)"\)', block)
+    if numbered is not None:
+        return numbered.group(1)
+    named = re.search(r'\(net\s+"([^"]*)"\)', block)
+    return named.group(1) if named is not None else ""
+
+
+def _pcb_layer_from_block(block: str) -> str:
+    match = re.search(r'\(layer\s+"([^"]+)"\)', block)
+    return match.group(1) if match is not None else ""
+
+
+def _pcb_point_from_block(block: str, atom: str) -> tuple[float, float] | None:
+    match = re.search(r"\(" + re.escape(atom) + r"\s+([-0-9.]+)\s+([-0-9.]+)", block)
+    if match is None:
+        return None
+    return (float(match.group(1)), float(match.group(2)))
+
+
+def _pcb_width_from_block(block: str) -> float:
+    match = re.search(r"\(width\s+([-0-9.]+)\)", block)
+    return float(match.group(1)) if match is not None else 0.0
+
+
+def _pcb_track_segments_from_text(pcb_text: str) -> list[_PcbTrackSegment]:
+    segments: list[_PcbTrackSegment] = []
+    for block in _balanced_blocks(pcb_text, "segment"):
+        start = _pcb_point_from_block(block, "start")
+        end = _pcb_point_from_block(block, "end")
+        if start is None or end is None:
+            continue
+        segments.append(
+            _PcbTrackSegment(
+                net=_pcb_net_name_from_block(block),
+                layer=_pcb_layer_from_block(block),
+                start=start,
+                end=end,
+                width_mm=_pcb_width_from_block(block),
+            )
+        )
+    return segments
+
+
+def _segment_length_mm(segment: _PcbTrackSegment) -> float:
+    return math.hypot(segment.end[0] - segment.start[0], segment.end[1] - segment.start[1])
+
+
+def _segment_axis(segment: _PcbTrackSegment, tolerance_mm: float = 1e-4) -> str:
+    dx = segment.end[0] - segment.start[0]
+    dy = segment.end[1] - segment.start[1]
+    if abs(dx) <= tolerance_mm and abs(dy) <= tolerance_mm:
+        return "point"
+    if abs(dx) <= tolerance_mm:
+        return "vertical"
+    if abs(dy) <= tolerance_mm:
+        return "horizontal"
+    if abs(abs(dx) - abs(dy)) <= tolerance_mm:
+        return "45deg"
+    return "angled"
+
+
+def _point_key(point: tuple[float, float], precision: int = 3) -> tuple[float, float]:
+    return (round(point[0], precision), round(point[1], precision))
+
+
+def _route_90_degree_corners(
+    segments: list[_PcbTrackSegment],
+    *,
+    min_segment_length_mm: float = 0.25,
+) -> list[str]:
+    """Return descriptions of orthogonal H/V corners that should be chamfered.
+
+    We only flag corners formed by two real segments on the same net/layer that
+    meet at an endpoint. Pad-entry stubs shorter than ``min_segment_length_mm``
+    are ignored to avoid noisy reports around QFN/THT pin escapes.
+    """
+    by_point: dict[tuple[str, str, tuple[float, float]], list[_PcbTrackSegment]] = {}
+    for segment in segments:
+        if not segment.net or _segment_length_mm(segment) < min_segment_length_mm:
+            continue
+        for point in (segment.start, segment.end):
+            key = (segment.net, segment.layer, _point_key(point))
+            by_point.setdefault(key, []).append(segment)
+
+    findings: list[str] = []
+    seen: set[tuple[int, int, tuple[str, str, tuple[float, float]]]] = set()
+    for key, connected in by_point.items():
+        if len(connected) < 2:
+            continue
+        for left_index, left in enumerate(connected):
+            for right in connected[left_index + 1 :]:
+                axes = {_segment_axis(left), _segment_axis(right)}
+                if axes != {"horizontal", "vertical"}:
+                    continue
+                pair_key = (id(left), id(right), key)
+                if pair_key in seen:
+                    continue
+                seen.add(pair_key)
+                net, layer, point = key
+                findings.append(
+                    f"{net} on {layer} has a 90° corner at ({point[0]:.3f}, {point[1]:.3f})"
+                )
+    return sorted(findings)
+
+
+def _pcb_layer_table_copper_layers(pcb_text: str) -> list[str]:
+    layer_blocks = _balanced_blocks(pcb_text, "layers")
+    if not layer_blocks:
+        return []
+    layers = re.findall(r'\(\s*\d+\s+"([^"]+\.Cu)"\s+[^\)]*\)', layer_blocks[0])
+    return list(dict.fromkeys(layers))
+
+
+def _pcb_stackup_copper_layers(pcb_text: str) -> list[str]:
+    stackup_blocks = _balanced_blocks(pcb_text, "stackup")
+    if not stackup_blocks:
+        return []
+    layers = re.findall(r'\(layer\s+"([^"]+\.Cu)"', stackup_blocks[0])
+    return list(dict.fromkeys(layers))
+
+
+def _evaluate_stackup_consistency_gate() -> GateOutcome:
+    cfg = get_config()
+    if cfg.pcb_file is None:
+        return GateOutcome(
+            name="Stackup consistency",
+            status="BLOCKED",
+            summary="PCB file must be configured first.",
+        )
+    try:
+        pcb_text = cfg.pcb_file.read_text(encoding="utf-8", errors="ignore")
+    except OSError as exc:
+        return GateOutcome(
+            name="Stackup consistency",
+            status="BLOCKED",
+            summary=f"Could not read PCB file: {exc}",
+        )
+
+    table_layers = _pcb_layer_table_copper_layers(pcb_text)
+    stackup_layers = _pcb_stackup_copper_layers(pcb_text)
+    details = [
+        f"Layer table copper layers: {', '.join(table_layers) or '(none)'}",
+        f"Stackup copper layers: {', '.join(stackup_layers) or '(none)'}",
+    ]
+    if not table_layers:
+        return GateOutcome(
+            name="Stackup consistency",
+            status="FAIL",
+            summary="The PCB layer table contains no copper layers.",
+            details=details,
+        )
+    if not stackup_layers:
+        return GateOutcome(
+            name="Stackup consistency",
+            status="WARN",
+            summary="The PCB has copper layers but no explicit stackup profile.",
+            details=details,
+        )
+    missing_in_table = sorted(set(stackup_layers) - set(table_layers))
+    missing_in_stackup = sorted(set(table_layers) - set(stackup_layers))
+    if missing_in_table or missing_in_stackup or len(table_layers) != len(stackup_layers):
+        details.extend(
+            [
+                "Missing from layer table: " + (", ".join(missing_in_table) or "none"),
+                "Missing from stackup: " + (", ".join(missing_in_stackup) or "none"),
+            ]
+        )
+        return GateOutcome(
+            name="Stackup consistency",
+            status="FAIL",
+            summary="Board layer table and stackup copper layers are inconsistent.",
+            details=details,
+        )
+    return GateOutcome(
+        name="Stackup consistency",
+        status="PASS",
+        summary=f"Layer table and stackup agree on {len(table_layers)} copper layer(s).",
+        details=details,
+    )
+
+
+def _evaluate_route_corner_style_gate(
+    *,
+    max_90_degree_corners: int = 0,
+    min_segment_length_mm: float = 0.25,
+) -> GateOutcome:
+    cfg = get_config()
+    if cfg.pcb_file is None:
+        return GateOutcome(
+            name="Route corner style",
+            status="BLOCKED",
+            summary="PCB file must be configured first.",
+        )
+    try:
+        pcb_text = cfg.pcb_file.read_text(encoding="utf-8", errors="ignore")
+    except OSError as exc:
+        return GateOutcome(
+            name="Route corner style",
+            status="BLOCKED",
+            summary=f"Could not read PCB file: {exc}",
+        )
+    segments = _pcb_track_segments_from_text(pcb_text)
+    corners = _route_90_degree_corners(
+        segments,
+        min_segment_length_mm=min_segment_length_mm,
+    )
+    details = [
+        f"Track segments scanned: {len(segments)}",
+        f"90° route corners found: {len(corners)}",
+        f"Allowed 90° route corners: {max_90_degree_corners}",
+        *corners[:30],
+    ]
+    if len(corners) > max_90_degree_corners:
+        return GateOutcome(
+            name="Route corner style",
+            status="FAIL",
+            summary=(
+                "PCB routing contains right-angle corners that should be "
+                "refactored to chamfered or rounded geometry."
+            ),
+            details=details,
+        )
+    return GateOutcome(
+        name="Route corner style",
+        status="PASS",
+        summary="PCB route corners satisfy the configured 45°/rounded-style policy.",
+        details=details,
+    )
+
+
+def _evaluate_professional_release_gate(
+    *,
+    max_90_degree_corners: int = 0,
+    manufacturer: str | None = None,
+    tier: str | None = None,
+) -> GateOutcome:
+    outcomes = [
+        _evaluate_schematic_gate(),
+        _evaluate_pcb_gate(),
+        _evaluate_pcb_transfer_gate(),
+        _evaluate_pcb_placement_gate(),
+        _evaluate_stackup_consistency_gate(),
+        _evaluate_route_corner_style_gate(max_90_degree_corners=max_90_degree_corners),
+        _evaluate_manufacturing_gate(manufacturer=manufacturer, tier=tier),
+    ]
+    status = _combined_status(outcomes)
+    details: list[str] = []
+    for outcome in outcomes:
+        details.append(f"{outcome.name}: {outcome.status} — {outcome.summary}")
+        details.extend(f"  {detail}" for detail in outcome.details[:8])
+    return GateOutcome(
+        name="Professional release",
+        status=status,
+        summary="All professional release gates passed."
+        if status == "PASS"
+        else "One or more professional release gates require attention.",
+        details=details,
+    )
+
+
 def _drc_state_path() -> Path:
     cfg = get_config()
     if cfg.project_dir is None:
@@ -2919,6 +3233,42 @@ def register(mcp: FastMCP) -> None:
     def pcb_transfer_quality_gate() -> VerdictReport:
         """Evaluate whether named schematic pad nets transferred cleanly onto PCB pads."""
         return _gate_report(_evaluate_pcb_transfer_gate())
+
+    @mcp.tool()
+    @headless_compatible
+    def pcb_stackup_consistency_gate() -> VerdictReport:
+        """Validate board layer table and stackup copper layer consistency."""
+        return _gate_report(_evaluate_stackup_consistency_gate())
+
+    @mcp.tool()
+    @headless_compatible
+    def pcb_route_corner_style_gate(
+        max_90_degree_corners: int = 0,
+        min_segment_length_mm: float = 0.25,
+    ) -> VerdictReport:
+        """Check whether routed tracks still contain non-professional 90-degree corners."""
+        return _gate_report(
+            _evaluate_route_corner_style_gate(
+                max_90_degree_corners=max_90_degree_corners,
+                min_segment_length_mm=min_segment_length_mm,
+            )
+        )
+
+    @mcp.tool()
+    @headless_compatible
+    def project_professional_release_gate(
+        max_90_degree_corners: int = 0,
+        manufacturer: str = "",
+        tier: str = "",
+    ) -> VerdictReport:
+        """Run the professional release gate bundle before manufacturing handoff."""
+        return _gate_report(
+            _evaluate_professional_release_gate(
+                max_90_degree_corners=max_90_degree_corners,
+                manufacturer=manufacturer or None,
+                tier=tier or None,
+            )
+        )
 
     @mcp.tool()
     @headless_compatible
