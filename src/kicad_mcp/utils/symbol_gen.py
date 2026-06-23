@@ -187,9 +187,6 @@ def generate_symbol(
             f"\t\t\t(rectangle (start {-half_w:.4f} {half_h:.4f}) (end {half_w:.4f} {-half_h:.4f})"
             f" (stroke (width 0)(type default)) (fill (type background)))"
         )
-        lines.append("\t\t)")
-
-        lines.append(f"\t\t(symbol {_escape(name + f'_{unit_idx}_2')}")
 
         # Left side pins — descend from top
         for idx, pin in enumerate(groups["left"]):

@@ -171,3 +171,18 @@ def test_large_pin_count() -> None:
     sym = generate_symbol("LARGE_IC", pins)
     assert _count_pins(sym) == 128
     assert _is_balanced(sym)
+
+
+def test_generated_unit_child_contains_body_and_pins_together() -> None:
+    """Pins must be in the rendered unit child, not a separate *_1_2 child.
+
+    KiCad's netlist exporter ignores generated pins when the symbol body and
+    pins are split into sibling child symbols such as TEST_IC_1_1 and
+    TEST_IC_1_2.
+    """
+    sym = generate_symbol("TEST_IC", _simple_pins(2))
+    assert 'symbol "TEST_IC_1_2"' not in sym
+    unit_match = re.search(r'\(symbol "TEST_IC_1_1"(?P<body>.*?)\n\t\t\)', sym, re.DOTALL)
+    assert unit_match is not None
+    assert "(rectangle" in unit_match.group("body")
+    assert "(pin " in unit_match.group("body")
