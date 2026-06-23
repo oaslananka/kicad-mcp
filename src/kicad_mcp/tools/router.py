@@ -434,6 +434,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
         "tools": [
             "schematic_quality_gate",
             "schematic_connectivity_gate",
+            "schematic_design_rule_check",
             "pcb_quality_gate",
             "pcb_placement_quality_gate",
             "pcb_placement_quality_report",
