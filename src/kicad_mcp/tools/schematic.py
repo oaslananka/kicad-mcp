@@ -1210,6 +1210,14 @@ def _is_power_net(name: str) -> bool:
     return False
 
 
+def _has_power_symbol_definition(name: str) -> bool:
+    return load_lib_symbol("power", name) is not None
+
+
+def _should_place_power_terminal_symbol(name: str) -> bool:
+    return _is_power_net(name) and _has_power_symbol_definition(name)
+
+
 def _is_origin_pin_power_symbol(symbol_name: str, value: str) -> bool:
     """Return whether a no-pin power symbol is conventionally anchored at origin."""
     candidates = {symbol_name, value}
@@ -2364,12 +2372,25 @@ def _pin_label_stub_direction(
         # small tolerance so grid/rotation floating point noise cannot flip a
         # true edge pin into the origin fallback.
         edge_tol = 1e-3
-        if (max_x - min_x) > edge_tol:
+        x_span = max_x - min_x
+        y_span = max_y - min_y
+        # A single-column connector has every pin on the same X coordinate.  The
+        # top/bottom pins are geometric extrema, but routing them vertically makes
+        # their terminal stubs run through neighbouring pins and can short nets.
+        # Treat one-dimensional vertical pin rows as side pins and stub away from
+        # the symbol body instead.
+        if x_span <= edge_tol and y_span > edge_tol:
+            return ((1.0 if px >= ox else -1.0), 0.0)
+        # Conversely, a single-row connector should not have left/right extrema
+        # stub horizontally through neighbouring pins.
+        if y_span <= edge_tol and x_span > edge_tol:
+            return (0.0, (1.0 if py >= oy else -1.0))
+        if x_span > edge_tol:
             if abs(px - min_x) <= edge_tol:
                 return (-1.0, 0.0)
             if abs(px - max_x) <= edge_tol:
                 return (1.0, 0.0)
-        if (max_y - min_y) > edge_tol:
+        if y_span > edge_tol:
             if abs(py - min_y) <= edge_tol:
                 return (0.0, -1.0)
             if abs(py - max_y) <= edge_tol:
@@ -2939,7 +2960,7 @@ def _plan_netlist_pin_terminals(
                 }
             )
             rotation = _terminal_rotation_from_vector(ux, uy)
-            if _is_power_net(net_name):
+            if _should_place_power_terminal_symbol(net_name):
                 terminal_powers.append(
                     {"name": net_name, "x_mm": ex, "y_mm": ey, "rotation": 0, "snap_to_grid": False}
                 )

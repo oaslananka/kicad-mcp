@@ -1394,3 +1394,66 @@ async def test_pcb_check_creepage_clearance_reports_worst_pad_pair(mock_board) -
     assert "Worst pad pair: J1.1 (VIN) vs J1.2 (GND)" in creepage
     assert "Estimated edge-to-edge clearance: 1.200 mm" in creepage
     assert "Required creepage" in creepage
+
+
+@pytest.mark.anyio
+async def test_pcb_sync_from_root_collects_linked_child_sheet_components(
+    sample_project,
+    mock_kicad,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _allow_schematic_sync(monkeypatch)
+    monkeypatch.setattr("kicad_mcp.tools.pcb._board_is_open", lambda: False)
+    monkeypatch.setattr(
+        "kicad_mcp.tools.pcb._export_schematic_net_map",
+        lambda: ({("R9", "1"): "VIN", ("R9", "2"): "GND"}, ""),
+    )
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+    await call_tool_text(
+        server,
+        "sch_create_sheet",
+        {"name": "Child", "filename": "child.kicad_sch", "x_mm": 40.64, "y_mm": 50.8},
+    )
+    await call_tool_text(
+        server,
+        "kicad_set_project",
+        {
+            "project_dir": str(sample_project),
+            "sch_file": str(sample_project / "child.kicad_sch"),
+            "pcb_file": str(sample_project / "demo.kicad_pcb"),
+        },
+    )
+    await call_tool_text(
+        server,
+        "sch_build_circuit",
+        {
+            "symbols": [
+                {
+                    "library": "Device",
+                    "symbol_name": "R",
+                    "reference": "R9",
+                    "value": "10k",
+                    "footprint": "Resistor_SMD:R_0805",
+                    "x_mm": 50.8,
+                    "y_mm": 50.8,
+                }
+            ]
+        },
+    )
+    await call_tool_text(
+        server,
+        "kicad_set_project",
+        {
+            "project_dir": str(sample_project),
+            "sch_file": str(sample_project / "demo.kicad_sch"),
+            "pcb_file": str(sample_project / "demo.kicad_pcb"),
+        },
+    )
+
+    result = await call_tool_text(server, "pcb_sync_from_schematic", {})
+    pcb_text = (sample_project / "demo.kicad_pcb").read_text(encoding="utf-8")
+
+    assert "No schematic symbols were found" not in result
+    assert "New footprints added: 1" in result
+    assert '(property "Reference" "R9"' in pcb_text

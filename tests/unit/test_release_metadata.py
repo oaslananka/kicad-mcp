@@ -207,3 +207,10 @@ def test_built_distributions_include_runtime_entrypoint(tmp_path: Path) -> None:
     )
     assert smoke.returncode == 0, smoke.stdout + smoke.stderr
     assert smoke.stdout.strip() == "kicad_mcp.server"
+
+
+def test_docs_workflow_uses_properdocs_to_avoid_mkdocs_2_warning() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "docs.yml").read_text(encoding="utf-8")
+
+    assert "uv run properdocs build -f mkdocs.yml --strict" in workflow
+    assert "python -m mkdocs build" not in workflow

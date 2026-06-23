@@ -78,7 +78,7 @@ from ..utils.sexpr import _extract_block, _sexpr_string
 from ..utils.units import _coord_nm, mm_to_nm, nm_to_mm
 from .export_support import _run_cli_variants
 from .metadata import headless_compatible, requires_kicad_running
-from .schematic import parse_schematic_file
+from .schematic import _iter_child_sheet_paths, parse_schematic_file
 
 logger = structlog.get_logger(__name__)
 BOARD_FILE_VERSION = "20250216"
@@ -2164,33 +2164,49 @@ def _parse_netlist_text(content: str) -> dict[tuple[str, str], str]:
     return net_map
 
 
-def _collect_schematic_components() -> tuple[list[dict[str, Any]], list[str]]:
+def _schematic_files_for_pcb_sync() -> list[Path]:
     cfg = get_config()
     if cfg.sch_file is None or not cfg.sch_file.exists():
         raise ValueError(
             "No schematic file is configured. Call kicad_set_project() or set KICAD_MCP_SCH_FILE."
         )
+    active = cfg.sch_file.resolve()
+    files: list[Path] = [active]
+    for _name, child_path in _iter_child_sheet_paths(active):
+        if child_path.exists():
+            files.append(child_path.resolve())
+    seen: set[Path] = set()
+    unique: list[Path] = []
+    for file_path in files:
+        if file_path in seen:
+            continue
+        seen.add(file_path)
+        unique.append(file_path)
+    return unique
 
-    data = parse_schematic_file(cfg.sch_file)
+
+def _collect_schematic_components() -> tuple[list[dict[str, Any]], list[str]]:
     grouped: dict[str, dict[str, Any]] = {}
     issues: list[str] = []
-    for symbol in data["symbols"]:
-        reference = str(symbol["reference"])
-        component = grouped.setdefault(
-            reference,
-            {
-                "reference": reference,
-                "value": str(symbol["value"]),
-                "footprints": set(),
-                "positions": [],
-                "rotations": [],
-            },
-        )
-        footprint = str(symbol["footprint"]).strip()
-        if footprint:
-            component["footprints"].add(footprint)
-        component["positions"].append((float(symbol["x"]), float(symbol["y"])))
-        component["rotations"].append(int(symbol["rotation"]))
+    for sch_file in _schematic_files_for_pcb_sync():
+        data = parse_schematic_file(sch_file)
+        for symbol in data["symbols"]:
+            reference = str(symbol["reference"])
+            component = grouped.setdefault(
+                reference,
+                {
+                    "reference": reference,
+                    "value": str(symbol["value"]),
+                    "footprints": set(),
+                    "positions": [],
+                    "rotations": [],
+                },
+            )
+            footprint = str(symbol["footprint"]).strip()
+            if footprint:
+                component["footprints"].add(footprint)
+            component["positions"].append((float(symbol["x"]), float(symbol["y"])))
+            component["rotations"].append(int(symbol["rotation"]))
 
     components: list[dict[str, Any]] = []
     for reference, component in grouped.items():

@@ -18,6 +18,23 @@ OPTIONAL_COMMANDS = {
 }
 
 
+def _required_paths() -> dict[str, str]:
+    """Return all required scanner paths, reporting every missing tool at once."""
+    paths: dict[str, str] = {}
+    missing: list[str] = []
+    for command in REQUIRED_COMMANDS:
+        path = _which(command)
+        if path is None:
+            missing.append(command)
+        else:
+            paths[command] = path
+    if missing:
+        for command in missing:
+            print(f"{command} is required. {REQUIRED_COMMANDS[command]}", file=sys.stderr)
+        raise SystemExit(127)
+    return paths
+
+
 def _require(command: str) -> str:
     path = _which(command)
     if path is None:
@@ -51,9 +68,10 @@ def _run(command: list[str]) -> None:
 
 
 def main() -> None:
-    _run([_require("gitleaks"), "detect", "--no-banner", "--redact"])
-    _run([_require("actionlint")])
-    _run([_require("zizmor"), "--offline", "--min-severity", "high", ".github/workflows"])
+    required = _required_paths()
+    _run([required["gitleaks"], "detect", "--no-banner", "--redact"])
+    _run([required["actionlint"]])
+    _run([required["zizmor"], "--offline", "--min-severity", "high", ".github/workflows"])
 
     osv = _which("osv-scanner")
     if osv is None:

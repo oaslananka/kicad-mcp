@@ -61,6 +61,7 @@ dev = [
   "bandit>=1.7.9",
   "cairosvg>=2.7.0,<3.0.0",
   "hypothesis>=6.100.0",
+  "httpx2>=0.28.0",
   "mkdocs-material>=9.5.32",
   "pymdown-extensions>=10.21.3",
   "mkdocs-git-revision-date-localized-plugin>=1.2.9",
@@ -125,6 +126,8 @@ ignore = ["S603"]
 # Generated file: long JSON lines live inside a raw string (regenerate via
 # scripts/build_parity_matrix.py); do not hand-edit.
 "src/kicad_mcp/parity_matrix_data.py" = ["E501"]
+"packages/kicad-plugin/__init__.py" = ["N999"]
+"packages/kicad-plugin/kicad_mcp_companion.py" = ["N802"]
 
 [tool.mypy]
 python_version = "3.13"

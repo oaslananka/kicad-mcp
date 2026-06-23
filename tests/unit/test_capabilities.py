@@ -64,14 +64,33 @@ def test_registered_tools_have_valid_verification_levels() -> None:
         assert record.verification_level in valid_levels
 
 
-def test_oaslana_119_live_editing_tools_require_kicad_ipc() -> None:
+def test_oaslana_119_pcb_live_editing_tools_require_kicad_ipc() -> None:
     records = all_records()
+    pcb_tools = {name for name in REQUIRED_OASLANA_119_TOOLS if name.startswith("pcb_")}
 
-    assert REQUIRED_OASLANA_119_TOOLS.issubset(records)
-    for tool_name in REQUIRED_OASLANA_119_TOOLS:
+    assert pcb_tools.issubset(records)
+    for tool_name in pcb_tools:
         record = records[tool_name]
         assert record.runtime is RuntimeRequirement.KICAD_IPC
         assert record.tier is AccessTier.WRITE
+
+
+def test_file_backed_schematic_authoring_tools_do_not_require_live_kicad_ipc() -> None:
+    records = all_records()
+    schematic_tools = {name for name in REQUIRED_OASLANA_119_TOOLS if name.startswith("sch_")} | {
+        "sch_add_symbol",
+        "sch_add_label",
+        "sch_update_properties",
+        "sch_build_circuit",
+        "sch_annotate",
+    }
+
+    assert schematic_tools.issubset(records)
+    for tool_name in schematic_tools:
+        record = records[tool_name]
+        assert record.runtime is RuntimeRequirement.NONE
+        assert record.tier is AccessTier.WRITE
+        assert record.writes_files is True
 
 
 def test_profile_results_are_copies() -> None:

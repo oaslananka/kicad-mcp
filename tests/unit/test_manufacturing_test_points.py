@@ -58,3 +58,25 @@ def test_collect_board_nets_file_fallback(tmp_path: Path, monkeypatch) -> None:
     names = {n["name"] for n in nets}
     assert "GND" in names
     assert "+5V" in names
+
+
+class _DeprecatedCodeNet:
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    @property
+    def code(self) -> int:  # pragma: no cover - should never be touched
+        raise AssertionError("deprecated net code was accessed")
+
+
+class _BoardWithDeprecatedNetCode:
+    def get_nets(self):  # type: ignore[no-untyped-def]
+        return [_DeprecatedCodeNet("GND")]
+
+
+def test_collect_board_nets_uses_net_names_not_deprecated_codes(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(
+        "kicad_mcp.tools.test_points.get_board", lambda: _BoardWithDeprecatedNetCode()
+    )
+
+    assert _collect_board_nets() == [{"code": None, "name": "GND"}]

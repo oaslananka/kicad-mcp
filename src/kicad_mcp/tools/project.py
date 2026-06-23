@@ -1334,8 +1334,8 @@ def register(mcp: FastMCP) -> None:
         required_sheets: list[str] | None = None,
         optional_sheets: list[str] | None = None,
         rf_keepout_regions: list[dict[str, Any]] | None = None,
-        manufacturer: str = "",
-        manufacturer_tier: str = "",
+        manufacturer: str | None = None,
+        manufacturer_tier: str | None = None,
         functional_spacing_mm: float | None = None,
         thermal_hotspots: list[str] | None = None,
         critical_frequencies_mhz: list[float] | None = None,
@@ -1382,9 +1382,9 @@ def register(mcp: FastMCP) -> None:
             rf_keepout_regions=(
                 existing.rf_keepout_regions if rf_keepout_regions is None else rf_keepout_regions
             ),
-            manufacturer=existing.manufacturer if not manufacturer else manufacturer,
+            manufacturer=existing.manufacturer if manufacturer is None else manufacturer,
             manufacturer_tier=(
-                existing.manufacturer_tier if not manufacturer_tier else manufacturer_tier
+                existing.manufacturer_tier if manufacturer_tier is None else manufacturer_tier
             ),
             functional_spacing_mm=(
                 existing.functional_spacing_mm
