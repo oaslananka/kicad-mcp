@@ -3169,6 +3169,7 @@ def _prepare_build_circuit_inputs(
     nets: list[dict[str, Any]] | None = None,
     snap_to_grid: bool = True,
     auto_layout: bool = False,
+    unsafe_routed_wires: bool = False,
 ) -> tuple[
     list[AddSymbolInput],
     list[PowerSymbolInput],
@@ -3220,7 +3221,12 @@ def _prepare_build_circuit_inputs(
         "symbol_center_resolutions": 0,
     }
     if raw_nets:
-        if auto_layout:
+        if not unsafe_routed_wires:
+            # Default, collision-safe path: each pin endpoint gets a short outward
+            # stub plus a same-named terminal (global label / power symbol), so nets
+            # connect by name rather than by accidental wire geometry. This is the
+            # default regardless of auto_layout — only the explicit opt-in below
+            # falls back to routed wires that can short by crossing geometry.
             generated_powers: list[dict[str, Any]]
             generated_labels: list[dict[str, Any]]
             (
@@ -3241,6 +3247,9 @@ def _prepare_build_circuit_inputs(
             )
             validated_labels.extend(AddLabelInput.model_validate(item) for item in generated_labels)
         else:
+            # Opt-in only: routed Manhattan star wires. These can cross unrelated
+            # pins/labels and merge by geometry into silent shorts, so this path is
+            # gated behind unsafe_routed_wires=True.
             generated_wires, unresolved_nets, resolution_stats = _plan_netlist_wires(
                 validated_symbols,
                 validated_powers,
@@ -3273,8 +3282,10 @@ def _render_net_compilation_report(
     unresolved_nets: list[dict[str, Any]],
     resolution_stats: dict[str, int],
     auto_layout: bool,
+    terminalized: bool = True,
 ) -> str:
     lines = ["Net compilation analysis:"]
+    routing_mode = "terminal labels (collision-safe)" if terminalized else "routed wires (unsafe)"
     lines.extend(
         [
             f"- Symbols: {len(symbols)}",
@@ -3285,9 +3296,10 @@ def _render_net_compilation_report(
             f"- Routable nets: {len(nets) - len(unresolved_nets)}",
             f"- Unresolved nets: {len(unresolved_nets)}",
             (
-                f"- Generated {'terminal stubs' if auto_layout and nets else 'wire segments'}: "
+                f"- Generated {'terminal stubs' if terminalized and nets else 'wire segments'}: "
                 f"{len(generated_wires)}"
             ),
+            f"- Net routing mode: {routing_mode}",
             f"- Resolved endpoints: {resolution_stats['resolved_endpoints']}",
             f"- Unresolved endpoints: {resolution_stats['unresolved_endpoints']}",
             f"- Pin alias matches: {resolution_stats['pin_alias_resolutions']}",
@@ -5075,8 +5087,14 @@ def register(mcp: FastMCP) -> None:
         nets: list[dict[str, Any]] | None = None,
         snap_to_grid: bool = True,
         auto_layout: bool = False,
+        unsafe_routed_wires: bool = False,
     ) -> str:
-        """Preview how netlist-aware schematic compilation will resolve endpoints and wires."""
+        """Preview how netlist-aware schematic compilation will resolve endpoints and wires.
+
+        Mirrors ``sch_build_circuit``: by default nets resolve to collision-safe
+        terminal stubs; pass ``unsafe_routed_wires=True`` to preview routed Manhattan
+        wire segments instead.
+        """
         (
             validated_symbols,
             validated_powers,
@@ -5094,6 +5112,7 @@ def register(mcp: FastMCP) -> None:
             nets=nets,
             snap_to_grid=snap_to_grid,
             auto_layout=auto_layout,
+            unsafe_routed_wires=unsafe_routed_wires,
         )
         return _render_net_compilation_report(
             symbols=validated_symbols,
@@ -5105,6 +5124,7 @@ def register(mcp: FastMCP) -> None:
             unresolved_nets=unresolved_nets,
             resolution_stats=resolution_stats,
             auto_layout=auto_layout,
+            terminalized=not unsafe_routed_wires,
         )
 
     @mcp.tool()
@@ -5116,6 +5136,7 @@ def register(mcp: FastMCP) -> None:
         nets: list[dict[str, Any]] | None = None,
         snap_to_grid: bool = True,
         auto_layout: bool = False,
+        unsafe_routed_wires: bool = False,
     ) -> str:
         """Build (overwrite) the active schematic from structured symbol, wire, and label inputs.
 
@@ -5126,10 +5147,20 @@ def register(mcp: FastMCP) -> None:
 
         Coordinates are snapped to the 2.54 mm grid by default.  When no coordinates
         are provided for a symbol, set ``auto_layout=True`` so the placement engine
-        assigns non-overlapping positions automatically.  If nets are also provided
-        the layout is connection-aware and generates Manhattan wire segments from
-        symbol pins.  Nets that cannot resolve to at least two routable endpoints
-        raise a clear error instead of silently producing a disconnected schematic.
+        assigns non-overlapping positions automatically.
+
+        When ``nets`` are provided, the builder is connection-aware. By default it
+        uses the **collision-safe** strategy: each pin endpoint gets a short stub plus
+        a same-named terminal (a global label for signal nets, a power symbol for
+        power nets), so nets connect *by name* and can never short by crossing wire
+        geometry.  Nets that cannot resolve to a routable pin endpoint raise a clear
+        error (or are surfaced as warnings) instead of silently producing a
+        disconnected schematic.
+
+        Set ``unsafe_routed_wires=True`` only if you explicitly want routed Manhattan
+        wire segments between pins.  That star-routing can cross unrelated pins or
+        labels and KiCad will merge them by geometry, so it can introduce silent
+        shorts on non-trivial netlists — prefer the default terminal strategy.
 
         Recommended workflow:
           1. Call ``sch_find_free_placement(count=N)`` to obtain safe coordinates.
@@ -5153,6 +5184,7 @@ def register(mcp: FastMCP) -> None:
             nets=nets,
             snap_to_grid=snap_to_grid,
             auto_layout=auto_layout,
+            unsafe_routed_wires=unsafe_routed_wires,
         )
         if unresolved_nets:
             logger.warning(
@@ -5302,25 +5334,33 @@ def register(mcp: FastMCP) -> None:
         _validate_schematic_text(content)
         sch_file.write_text(content, encoding="utf-8")
         result = _reload_schematic()
-        if auto_layout and raw_nets:
-            summary = (
-                f"{result}\nApplied netlist-aware auto-layout and generated "
-                f"{len(generated_wires)} collision-safe terminal stub(s)."
-            )
-            # Never drop a connection silently: if some nets did not resolve to two
-            # routable endpoints, surface them in the result, not just the server log.
+        notes: list[str] = []
+        if auto_layout:
+            notes.append("Applied auto-layout to schematic symbols.")
+        if raw_nets:
+            if unsafe_routed_wires:
+                notes.append(
+                    f"Generated {len(generated_wires)} routed wire segment(s) in "
+                    "unsafe routed mode — these can short by crossing geometry; "
+                    "prefer the default terminal strategy."
+                )
+            else:
+                notes.append(
+                    f"Generated {len(generated_wires)} collision-safe terminal "
+                    "stub(s); nets connect by name."
+                )
+            # Never drop a connection silently: if some nets did not resolve to a
+            # routable endpoint, surface them in the result, not just the server log.
             if unresolved_nets:
                 names = ", ".join(str(item["name"]) for item in unresolved_nets[:8])
                 more = " …" if len(unresolved_nets) > 8 else ""
-                summary += (
-                    f"\nWARNING: {len(unresolved_nets)} net(s) could not be "
-                    "terminalized safely and "
-                    f"were left unconnected: {names}{more}. "
+                notes.append(
+                    f"WARNING: {len(unresolved_nets)} net(s) could not be "
+                    f"terminalized safely and were left unconnected: {names}{more}. "
                     "Use sch_analyze_net_compilation() for per-endpoint details."
                 )
-            return summary
-        if auto_layout:
-            return f"{result}\nApplied basic auto-layout to schematic symbols."
+        if notes:
+            return result + "\n" + "\n".join(notes)
         return result
 
     @mcp.tool()
