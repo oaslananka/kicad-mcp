@@ -305,7 +305,7 @@ async def test_build_circuit_auto_layout_assigns_missing_coordinates(
     )
 
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
-    assert "Applied basic auto-layout" in result
+    assert "Applied auto-layout to schematic symbols." in result
     assert '(property "Reference" "R1"\n\t\t\t(at 50.8 46.99 0)' in schematic
     assert "\t\t(at 76.2 50.8 0)" in schematic
     assert "\t\t(at 50.8 68.58 0)" in schematic
@@ -355,8 +355,8 @@ async def test_build_circuit_netlist_auto_layout_generates_wires(
     )
 
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
-    assert "Applied netlist-aware auto-layout" in result
-    assert "generated 4 collision-safe terminal stub" in result
+    assert "Applied auto-layout to schematic symbols." in result
+    assert "Generated 4 collision-safe terminal stub" in result
     assert '(global_label "VIN"' in schematic
     assert schematic.count('(global_label "MID"') == 2
     assert '(lib_id "power:GND")' in schematic
@@ -485,8 +485,11 @@ async def test_build_circuit_netlist_auto_layout_uses_safe_usb_terminals(
     )
 
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
-    assert "generated 14 collision-safe terminal stub" in result
-    assert '(lib_id "power:VBUS_5V")' in schematic
+    assert "Generated 14 collision-safe terminal stub" in result
+    # VBUS_5V is not a standard KiCad power-lib symbol, so the builder correctly
+    # terminalizes it as a named global label (same intent as the +3V3_A smoke test)
+    # rather than fabricating a power symbol. GND is a real power symbol.
+    assert '(global_label "VBUS_5V"' in schematic
     assert '(lib_id "power:GND")' in schematic
     assert '(global_label "USB_DP"' in schematic
     assert '(global_label "USB_DM"' in schematic
@@ -899,7 +902,7 @@ async def test_build_circuit_netlist_auto_layout_supports_extended_symbols(
     )
 
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
-    assert "Applied netlist-aware auto-layout" in result
+    assert "Applied auto-layout to schematic symbols." in result
     # The derived symbol is embedded as a flattened, self-contained cache entry
     # (base body merged in, no separate base block, no (extends ...)).
     assert '(symbol "Extended:ChildTimer"' in schematic
@@ -959,7 +962,7 @@ async def test_build_circuit_netlist_auto_layout_uses_symbol_unit_for_routing(
     )
 
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
-    assert "Applied netlist-aware auto-layout" in result
+    assert "Applied auto-layout to schematic symbols." in result
     # The multi-unit derived symbol is embedded as a flattened, self-contained cache
     # entry: the base's unit sub-symbols are merged in and renamed to the derived
     # symbol, with no separate base block and no (extends ...).
@@ -1022,7 +1025,7 @@ async def test_build_circuit_netlist_auto_layout_resolves_pin_names_and_aliases(
     )
 
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
-    assert "Applied netlist-aware auto-layout" in result
+    assert "Applied auto-layout to schematic symbols." in result
     assert '(global_label "OUT_ALIAS"' in schematic
     assert '(global_label "INPUT_ALIAS"' in schematic
     assert schematic.count("(wire") >= 3

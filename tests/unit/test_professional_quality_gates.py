@@ -1,9 +1,24 @@
+from kicad_mcp.tools.router import TOOL_CATEGORIES
 from kicad_mcp.tools.validation import (
     _pcb_layer_table_copper_layers,
     _pcb_stackup_copper_layers,
     _pcb_track_segments_from_text,
     _route_90_degree_corners,
 )
+
+# Gate tools that must stay declared in a category, otherwise they are registered
+# but hidden from discovery in every profile (regression guard for the orphaned-tool
+# fix that paired with these gates).
+PROFESSIONAL_GATE_TOOLS = {
+    "pcb_stackup_consistency_gate",
+    "pcb_route_corner_style_gate",
+    "project_professional_release_gate",
+}
+
+
+def test_professional_gates_declared_in_validation_category() -> None:
+    declared = set(TOOL_CATEGORIES["validation"]["tools"])
+    assert PROFESSIONAL_GATE_TOOLS <= declared
 
 
 def test_stackup_consistency_parser_detects_missing_inner_layers() -> None:

@@ -32,6 +32,8 @@ Board: {board_size_mm} mm, {layer_count} copper layer(s), target fab {target_fab
    - Add power symbols before dependent circuits
    - Route wires, then call `sch_add_missing_junctions()`
    - Run `sch_check_power_flags()` and `run_erc()`
+   - Run `schematic_design_rule_check()` and resolve advisory findings
+     (decoupling caps, I2C/reset pull-ups, crystal load caps)
 3. PCB transfer and placement:
    - `pcb_set_board_outline()`
    - `pcb_sync_from_schematic()`; the pre-sync gate blocks dirty schematics
@@ -73,7 +75,7 @@ Workflow:
 3. Review `kicad://project/info` and `kicad://board/summary`.
 4. Define the outline with `pcb_set_board_outline()`.
 5. Populate the schematic using the schematic and library tools.
-6. Run `run_erc()` and fix issues before layout.
+6. Run `run_erc()` and `schematic_design_rule_check()`, then fix issues before layout.
 7. Route with PCB tools.
 8. Run `run_drc()` and `check_design_for_manufacture()`.
 9. Export a manufacturing package.
@@ -88,7 +90,7 @@ Move a design from schematic capture to PCB layout.
 
 1. Inspect the active project and schematic.
 2. Add or update symbols, labels, buses, and power flags.
-3. Run ERC and power checks.
+3. Run ERC, power checks, and `schematic_design_rule_check()` (electrical-correctness critic).
 4. Export the netlist.
 5. Inspect footprints and assign missing ones.
 6. Move footprints, then run the post-placement routing pass (apply the routed

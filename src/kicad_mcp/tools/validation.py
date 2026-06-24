@@ -305,7 +305,7 @@ def _report_entry_finding(
 def _gate_status_verdict(status: GateStatus) -> Verdict:
     if status == "PASS":
         return "PASS"
-    if status == "EMPTY":
+    if status in ("EMPTY", "WARN"):
         return "WARN"
     return "FAIL"
 
@@ -1204,6 +1204,71 @@ def _evaluate_schematic_connectivity_gate() -> GateOutcome:
         name="Schematic connectivity",
         status="PASS",
         summary="Connectivity structure looks consistent across the active schematic set.",
+        details=details,
+    )
+
+
+def _evaluate_schematic_design_rule_gate() -> GateOutcome:
+    """Check the schematic against professional electrical-design rules (advisory).
+
+    Goes beyond ERC connectivity: flags supply rails that feed ICs without a
+    decoupling capacitor and I2C buses without pull-up resistors. Advisory by
+    design — findings are surfaced as WARN, not a hard release blocker.
+    """
+    from ..utils.schematic_rules import run_schematic_design_rules
+    from .schematic import _build_connectivity_groups, _iter_child_sheet_paths
+
+    try:
+        top_file = _get_sch_file()
+    except ValueError as exc:
+        return GateOutcome(name="Schematic design rules", status="BLOCKED", summary=str(exc))
+
+    pages: list[tuple[str, Path]] = [("Top level", top_file)]
+    notes: list[str] = []
+    try:
+        pages.extend(_iter_child_sheet_paths(top_file))
+    except Exception as exc:  # pragma: no cover - sheet discovery is best-effort
+        notes.append(f"Child-sheet discovery skipped ({exc}); analysed top sheet only.")
+
+    all_nets: list[dict[str, object]] = []
+    for page_name, page_path in pages:
+        if not page_path.exists():
+            continue
+        try:
+            all_nets.extend(_build_connectivity_groups(page_path))
+        except (OSError, RuntimeError, ValueError) as exc:
+            notes.append(f"{page_name}: connectivity data unavailable ({exc}).")
+
+    if notes and not all_nets:
+        return GateOutcome(
+            name="Schematic design rules",
+            status="BLOCKED",
+            summary="Design-rule checks could not read the schematic connectivity.",
+            details=notes,
+        )
+
+    findings = run_schematic_design_rules(all_nets)
+    details = [f"Pages analysed: {len(pages)}", f"Findings: {len(findings)}"]
+    details.extend(
+        f"{finding.severity.upper()} [{finding.rule_id}] {finding.message}"
+        for finding in findings[:30]
+    )
+    details.extend(f"NOTE: {note}" for note in notes[:6])
+
+    if not findings:
+        return GateOutcome(
+            name="Schematic design rules",
+            status="PASS",
+            summary="No electrical-design-rule issues detected.",
+            details=details,
+        )
+    return GateOutcome(
+        name="Schematic design rules",
+        status="WARN",
+        summary=(
+            f"{len(findings)} electrical-design-rule advisory finding(s); "
+            "review before PCB or release work."
+        ),
         details=details,
     )
 
@@ -3215,6 +3280,18 @@ def register(mcp: FastMCP) -> None:
     def schematic_connectivity_gate() -> VerdictReport:
         """Evaluate whether schematic structure and hierarchy look electrically meaningful."""
         return _gate_report(_evaluate_schematic_connectivity_gate())
+
+    @mcp.tool()
+    @headless_compatible
+    def schematic_design_rule_check() -> VerdictReport:
+        """Check the schematic against professional electrical-design rules (advisory).
+
+        Beyond ERC connectivity: flags supply rails that feed ICs without a
+        decoupling capacitor and I2C buses without pull-up resistors. This is an
+        advisory critic (WARN), not a hard release gate, so it complements
+        ``run_erc()`` rather than replacing it.
+        """
+        return _gate_report(_evaluate_schematic_design_rule_gate())
 
     @mcp.tool()
     @headless_compatible

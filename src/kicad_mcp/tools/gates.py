@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-GateStatus = Literal["PASS", "FAIL", "BLOCKED", "EMPTY"]
+GateStatus = Literal["PASS", "FAIL", "BLOCKED", "EMPTY", "WARN"]
 
 
 @dataclass(slots=True)
@@ -26,4 +26,6 @@ def _combined_status(outcomes: list[GateOutcome]) -> GateStatus:
         return "BLOCKED"
     if "FAIL" in statuses:
         return "FAIL"
+    if "WARN" in statuses:
+        return "WARN"
     return "PASS"
