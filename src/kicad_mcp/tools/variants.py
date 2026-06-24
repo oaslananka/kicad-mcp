@@ -12,7 +12,7 @@ from mcp.server.fastmcp import FastMCP
 
 from ..config import get_config
 from .metadata import headless_compatible
-from .schematic import parse_schematic_file
+from .schematic import native_population_flags, parse_schematic_file
 
 _VARIANTS_DIRNAME = ".kicad-mcp"
 _VARIANTS_FILENAME = "variants.json"
@@ -44,16 +44,25 @@ def _base_components() -> dict[str, dict[str, Any]]:
     if cfg.sch_file is None or not cfg.sch_file.exists():
         raise ValueError("No schematic file is configured. Call kicad_set_project() first.")
     data = parse_schematic_file(cfg.sch_file)
+    # The active backend may not model the native DNP flag, so recover it from
+    # the file directly and let it take precedence over the parsed value.
+    native_flags = native_population_flags(cfg.sch_file)
     components: dict[str, dict[str, Any]] = {}
     for symbol in data.get("symbols", []):
         reference = str(symbol.get("reference", "")).strip()
         if not reference or reference.startswith("#PWR"):
             continue
+        native = native_flags.get(reference, {})
+        dnp = bool(native.get("dnp", symbol.get("dnp", False)))
+        in_bom = bool(native.get("in_bom", symbol.get("in_bom", True)))
         components[reference] = {
             "reference": reference,
             "value": str(symbol.get("value", "")),
             "footprint": str(symbol.get("footprint", "")),
             "enabled": True,
+            "populated": not dnp,
+            "dnp": dnp,
+            "in_bom": in_bom,
         }
     return components
 
@@ -164,8 +173,17 @@ def _render_variant_components(state: dict[str, Any], name: str) -> dict[str, di
                 "value": "",
                 "footprint": "",
                 "enabled": True,
+                "populated": True,
+                "dnp": False,
+                "in_bom": True,
             }
-        rendered[reference].update(override)
+        # Keep populated/dnp consistent when only one side of the pair is set.
+        normalized_override = dict(override)
+        if "dnp" in normalized_override and "populated" not in normalized_override:
+            normalized_override["populated"] = not bool(normalized_override["dnp"])
+        if "populated" in normalized_override and "dnp" not in normalized_override:
+            normalized_override["dnp"] = not bool(normalized_override["populated"])
+        rendered[reference].update(normalized_override)
     return rendered
 
 
@@ -179,6 +197,8 @@ def _bom_rows(state: dict[str, Any], name: str) -> list[dict[str, Any]]:
                 "reference": reference,
                 "value": str(component.get("value", "")),
                 "footprint": str(component.get("footprint", "")),
+                "populated": bool(component.get("populated", True)),
+                "dnp": bool(component.get("dnp", False)),
             }
         )
     return rows
@@ -190,7 +210,10 @@ def _write_bom(path: Path, rows: list[dict[str, Any]], format_name: str) -> Path
         return path
 
     buffer = StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=["reference", "value", "footprint"])
+    writer = csv.DictWriter(
+        buffer,
+        fieldnames=["reference", "value", "footprint", "populated", "dnp"],
+    )
     writer.writeheader()
     writer.writerows(rows)
     path.write_text(buffer.getvalue(), encoding="utf-8")

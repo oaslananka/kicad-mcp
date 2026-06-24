@@ -267,6 +267,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "sch_add_bus_wire_entry",
             "sch_add_no_connect",
             "sch_set_dnp",
+            "sch_get_population_status",
             "sch_update_properties",
             "sch_modify_property",
             "sch_delete_symbol",
