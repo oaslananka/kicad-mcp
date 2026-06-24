@@ -1134,6 +1134,7 @@ vcs = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "httpx2" },
     { name = "pytest-asyncio" },
     { name = "pytest-playwright" },
 ]
@@ -1197,6 +1198,7 @@ provides-extras = ["components", "dev", "freerouting", "http", "tray", "simulati
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "httpx2", specifier = ">=0.28.0" },
     { name = "pytest-asyncio", specifier = ">=0.25.0" },
     { name = "pytest-playwright", specifier = ">=0.8.0" },
 ]

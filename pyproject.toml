@@ -164,6 +164,10 @@ fail_under = 83
 
 [dependency-groups]
 dev = [
+    # httpx2 keeps starlette.testclient from emitting its httpx deprecation
+    # warning (issue #187); it lives in the default group so bare `uv run`
+    # test invocations stay warning-free, not only `--all-extras` runs.
+    "httpx2>=0.28.0",
     "pytest-asyncio>=0.25.0",
     "pytest-playwright>=0.8.0",
 ]
