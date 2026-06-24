@@ -32,9 +32,7 @@ def check_kicad_cli() -> tuple[bool, str]:
     path = shutil.which("kicad-cli")
     if path:
         try:
-            result = subprocess.run(
-                [path, "version"], capture_output=True, text=True, timeout=10
-            )
+            result = subprocess.run([path, "version"], capture_output=True, text=True, timeout=10)
             version = result.stdout.strip() or result.stderr.strip()
             return True, f"kicad-cli found: {version}"
         except (subprocess.TimeoutExpired, OSError):
@@ -44,17 +42,24 @@ def check_kicad_cli() -> tuple[bool, str]:
 
 def check_kicad_mcp_server() -> tuple[bool, str, dict | None]:
     """Check if kicad-mcp-pro starts and returns tools."""
+    executable = shutil.which("kicad-mcp-pro")
+    if executable is None:
+        return False, "kicad-mcp-pro not found — install with: pipx install kicad-mcp-pro", None
     try:
         result = subprocess.run(
-            ["kicad-mcp-pro", "doctor", "--json"],
-            capture_output=True, text=True, timeout=30,
+            [executable, "doctor", "--json"],
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
         if result.returncode == 0:
             data = json.loads(result.stdout)
-            return True, f"Server OK: status={data['status']}, tools={data['tools']['tool_count']}", data
+            return (
+                True,
+                f"Server OK: status={data['status']}, tools={data['tools']['tool_count']}",
+                data,
+            )
         return False, f"Server error (exit {result.returncode}): {result.stderr[:200]}", None
-    except FileNotFoundError:
-        return False, "kicad-mcp-pro not found — install with: pipx install kicad-mcp-pro", None
     except json.JSONDecodeError as e:
         return False, f"Server JSON parse error: {e}", None
     except subprocess.TimeoutExpired:
@@ -72,7 +77,7 @@ def check_project_dir() -> tuple[bool, str]:
     kicad_pro = list(path.glob("*.kicad_pro"))
     if kicad_pro:
         return True, f"Project found: {kicad_pro[0].name}"
-    return True, f"Directory exists (no .kicad_pro file found — this is fine for analysis)"
+    return True, "Directory exists (no .kicad_pro file found — this is fine for analysis)"
 
 
 def check_config_exists(agent: str | None = None) -> list[tuple[str, bool, str]]:
@@ -89,7 +94,11 @@ def check_config_exists(agent: str | None = None) -> list[tuple[str, bool, str]]
         "claude-desktop": lambda: (
             Path(os.environ.get("APPDATA", "")) / "Claude" / "claude_desktop_config.json"
             if platform.system() == "Windows"
-            else Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
+            else Path.home()
+            / "Library"
+            / "Application Support"
+            / "Claude"
+            / "claude_desktop_config.json"
             if platform.system() == "Darwin"
             else Path.home() / ".config" / "Claude" / "claude_desktop_config.json"
         ),

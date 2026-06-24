@@ -38,3 +38,53 @@ def test_nets_uses_file_fallback_when_no_board(tmp_path, monkeypatch) -> None:  
     monkeypatch.setattr("kicad_mcp.tools.net_analysis._get_pcb_file", lambda: pcb_file)
     result = _nets()
     assert len(result) >= 1
+
+
+class _DeprecatedCodeNet:
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.class_name = "Default"
+
+    @property
+    def code(self) -> int:  # pragma: no cover - should never be touched
+        raise AssertionError("deprecated net code was accessed")
+
+
+class _NetObject:
+    def __init__(self, net_name: str, *, length: int = 0) -> None:
+        self.net = type("NetRef", (), {"name": net_name})()
+        self.length = length
+
+
+class _BoardByName:
+    def get_nets(self):  # type: ignore[no-untyped-def]
+        return [_DeprecatedCodeNet("GND")]
+
+    def get_tracks(self):  # type: ignore[no-untyped-def]
+        return [_NetObject("GND", length=1_000_000)]
+
+    def get_vias(self):  # type: ignore[no-untyped-def]
+        return [_NetObject("GND")]
+
+    def get_pads(self):  # type: ignore[no-untyped-def]
+        return [_NetObject("GND")]
+
+
+def test_collect_nets_from_board_uses_net_names_not_deprecated_codes(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from kicad_mcp.tools.net_analysis import _collect_nets_from_board
+
+    monkeypatch.setattr("kicad_mcp.tools.net_analysis.get_board", lambda: _BoardByName())
+
+    nets = _collect_nets_from_board()
+
+    assert nets == [
+        {
+            "code": None,
+            "name": "GND",
+            "class_name": "Default",
+            "track_count": 1,
+            "via_count": 1,
+            "pad_count": 1,
+            "total_track_length_mm": 1.0,
+        }
+    ]

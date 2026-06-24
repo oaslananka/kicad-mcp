@@ -166,6 +166,8 @@ def _register_many(
     tier: AccessTier,
     runtime: RuntimeRequirement = RuntimeRequirement.NONE,
     supports_dry_run: bool = False,
+    writes_files: bool = False,
+    writes_kicad_gui_state: bool = False,
     verification_level: str = "experimental",
 ) -> None:
     for name in names:
@@ -175,6 +177,8 @@ def _register_many(
                 profiles=profiles,
                 tier=tier,
                 runtime=runtime,
+                writes_files=writes_files,
+                writes_kicad_gui_state=writes_kicad_gui_state,
                 supports_dry_run=supports_dry_run,
                 verification_level=verification_level,
             )
@@ -221,8 +225,25 @@ _register_many(
     ],
     profiles=_SCH_PROFILES,
     tier=AccessTier.WRITE,
-    runtime=RuntimeRequirement.KICAD_IPC,
+    runtime=RuntimeRequirement.NONE,
     supports_dry_run=True,
+    writes_files=True,
+)
+
+# File-based schematic authoring tools that write the ``.kicad_sch`` directly and
+# only reload KiCad opportunistically. They do not require a live IPC session, so
+# they must stay discoverable when KiCad is not running (issue #198 follow-up).
+# Kept separate from the block above because they do not expose a dry-run path.
+_register_many(
+    [
+        "sch_add_no_connect",
+        "sch_instantiate_template",
+        "sch_auto_place_functional",
+    ],
+    profiles=_SCH_PROFILES,
+    tier=AccessTier.WRITE,
+    runtime=RuntimeRequirement.NONE,
+    writes_files=True,
 )
 
 _register_many(

@@ -126,6 +126,35 @@ async def test_tool_category_output_shows_runtime_metadata() -> None:
 
 
 @pytest.mark.anyio
+async def test_tool_category_output_marks_mode_unavailable_tools() -> None:
+    server = build_server("full")
+
+    schematic = await call_tool_text(
+        server, "kicad_get_tools_in_category", {"category": "schematic"}
+    )
+
+    assert "Active operating mode: `readonly`" in schematic
+    assert (
+        "sch_build_circuit [MATURITY:experimental]` — unavailable in `readonly` "
+        "mode; requires `write` mode"
+    ) in schematic
+
+
+@pytest.mark.anyio
+@pytest.mark.mcp_mode("write")
+async def test_tool_category_output_omits_mode_note_when_tool_is_callable() -> None:
+    server = build_server("full")
+
+    schematic = await call_tool_text(
+        server, "kicad_get_tools_in_category", {"category": "schematic"}
+    )
+
+    assert "Active operating mode: `write`" in schematic
+    assert "sch_build_circuit [MATURITY:experimental]`" in schematic
+    assert "sch_build_circuit [MATURITY:experimental]` — unavailable" not in schematic
+
+
+@pytest.mark.anyio
 @pytest.mark.mcp_mode("manufacturing")
 async def test_manufacturing_profile_exposes_release_exports_only() -> None:
     server = build_server("manufacturing")

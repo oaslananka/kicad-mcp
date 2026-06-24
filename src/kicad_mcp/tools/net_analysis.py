@@ -8,8 +8,7 @@ FAZ 6.3 — pcb_export_stats
 from __future__ import annotations
 
 import json
-import logging
-from typing import Any
+from typing import Any, cast
 
 from mcp.server.fastmcp import FastMCP
 
@@ -19,44 +18,76 @@ from .export_support import _get_pcb_file
 from .metadata import headless_compatible
 
 
+def _object_net_name(obj: object) -> str:
+    """Return the stable net name for a board object without reading net codes."""
+    return str(getattr(getattr(obj, "net", None), "name", "") or "")
+
+
+def _board_tracks(board: object) -> list[Any]:
+    try:
+        return list(cast(Any, board).get_tracks())
+    except (AttributeError, TypeError, OSError):
+        return []
+
+
+def _board_vias(board: object) -> list[Any]:
+    try:
+        return list(cast(Any, board).get_vias())
+    except (AttributeError, TypeError, OSError):
+        return []
+
+
+def _board_pads(board: object) -> list[Any]:
+    try:
+        return list(cast(Any, board).get_pads())
+    except (AttributeError, TypeError, OSError):
+        pads: list[Any] = []
+        try:
+            footprints = cast(Any, board).get_footprints()
+        except (AttributeError, TypeError, OSError):
+            return pads
+        for footprint in footprints:
+            try:
+                pads.extend(list(footprint.get_pads()))
+            except (AttributeError, TypeError, OSError):
+                continue
+        return pads
+
+
 def _collect_nets_from_board() -> list[dict[str, Any]]:
-    """Collect net data from a live KiCad IPC connection."""
+    """Collect net data from a live KiCad IPC connection using net names."""
     try:
         board = get_board()
         nets = board.get_nets()
     except (KiCadConnectionError, OSError, AttributeError) as exc:
         raise RuntimeError(f"Could not retrieve nets from live board: {exc}") from exc
 
+    tracks = _board_tracks(board)
+    vias = _board_vias(board)
+    pads = _board_pads(board)
+
     result: list[dict[str, Any]] = []
     for net in nets:
-        net_info = {
-            "code": getattr(net, "code", None) or 0,
-            "name": getattr(net, "name", "") or "",
-            "class_name": getattr(net, "class_name", "") or "",
-        }
-        try:
-            net_info["track_count"] = len(board.get_tracks_for_net(net.code))  # type: ignore[attr-defined]
-        except Exception:
-            net_info["track_count"] = 0
-        try:
-            net_info["via_count"] = len(board.get_vias_for_net(net.code))  # type: ignore[attr-defined]
-        except Exception:
-            net_info["via_count"] = 0
-        try:
-            net_info["pad_count"] = len(board.get_pads_for_net(net.code))  # type: ignore[attr-defined]
-        except Exception:
-            net_info["pad_count"] = 0
-        # Total track length
+        name = str(getattr(net, "name", "") or "")
+        net_tracks = [track for track in tracks if _object_net_name(track) == name]
+        net_vias = [via for via in vias if _object_net_name(via) == name]
+        net_pads = [pad for pad in pads if _object_net_name(pad) == name]
         total_length_mm = 0.0
-        try:
-            for track in board.get_tracks_for_net(net.code):  # type: ignore[attr-defined]
-                length = getattr(track, "length", None)
-                if length is not None:
-                    total_length_mm += nm_to_mm(length)
-        except Exception:
-            logging.exception("Failed to get track length for net %s", getattr(net, "name", "?"))
-        net_info["total_track_length_mm"] = round(total_length_mm, 4)
-        result.append(net_info)
+        for track in net_tracks:
+            length = getattr(track, "length", None)
+            if length is not None:
+                total_length_mm += nm_to_mm(length)
+        result.append(
+            {
+                "code": None,
+                "name": name,
+                "class_name": getattr(net, "class_name", "") or "",
+                "track_count": len(net_tracks),
+                "via_count": len(net_vias),
+                "pad_count": len(net_pads),
+                "total_track_length_mm": round(total_length_mm, 4),
+            }
+        )
     return result
 
 
@@ -138,7 +169,7 @@ def register(mcp: FastMCP) -> None:
             return f"Net '{net_name}' was not found in the PCB. Sample nets: {available}"
 
         net = matches[0]
-        net_code = int(net.get("code", -1))
+        net_code = net.get("code")
 
         # Collect footprint pads on this net
         pads_on_net: list[dict[str, object]] = []
@@ -146,7 +177,7 @@ def register(mcp: FastMCP) -> None:
             board = get_board()
             for footprint in board.get_footprints():
                 for pad in footprint.get_pads():  # type: ignore[attr-defined]
-                    if pad.net and pad.net.code == net_code:
+                    if _object_net_name(pad) == net_name:
                         pads_on_net.append(
                             {
                                 "reference": footprint.reference_field.text.value,
@@ -155,25 +186,25 @@ def register(mcp: FastMCP) -> None:
                             }
                         )
         except Exception:
-            # File fallback — parse footprint pad nets
+            # File fallback — parse footprint pad nets by stable net name.
+            import re
+
             from .board_file import _normalize_board_content
 
             content = _normalize_board_content(
                 _get_pcb_file().read_text(encoding="utf-8", errors="ignore")
             )
-            for fp_match in __import__("re").finditer(
-                r"\(footprint\s+.*?\)",
-                content,
-                __import__("re").DOTALL,
-            ):
+            escaped_name = re.escape(net_name)
+            pad_net_re = re.compile(
+                r'\(pad\s+"([^"]*)"\s+\w+.*?\(net\s+\d+\s+"' + escaped_name + r'"\)',
+                re.DOTALL,
+            )
+            for fp_match in re.finditer(r"\(footprint\s+.*?\)", content, re.DOTALL):
                 block = fp_match.group()
-                ref_m = __import__("re").search(r'\(property\s+"Reference"\s+"([^"]*)"', block)
+                ref_m = re.search(r'\(property\s+"Reference"\s+"([^"]*)"', block)
                 if not ref_m:
                     continue
-                for pad_m in __import__("re").finditer(
-                    r'\(pad\s+"([^"]*)"\s+\w+\s+\(net\s+' + str(net_code) + r'\s+"[^"]*"\)',
-                    block,
-                ):
+                for pad_m in pad_net_re.finditer(block):
                     pads_on_net.append(
                         {
                             "reference": ref_m.group(1),

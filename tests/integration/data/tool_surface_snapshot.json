@@ -3950,6 +3950,33 @@
   {
     "destructive": true,
     "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "pcb_route_corner_style_gate",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "analysis",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "manufacturing",
+      "manufacturing_release",
+      "pcb",
+      "pcb_layout",
+      "power",
+      "release_manager",
+      "schematic",
+      "schematic_authoring"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": true,
+    "experimental": false,
     "headless": false,
     "idempotent": false,
     "name": "pcb_route_trace",
@@ -4183,6 +4210,33 @@
     ],
     "read_only": false,
     "requires_kicad_running": true
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "pcb_stackup_consistency_gate",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "analysis",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "manufacturing",
+      "manufacturing_release",
+      "pcb",
+      "pcb_layout",
+      "power",
+      "release_manager",
+      "schematic",
+      "schematic_authoring"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
   },
   {
     "destructive": false,
@@ -4499,6 +4553,33 @@
     "open_world": false,
     "profiles": [
       "all"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "project_professional_release_gate",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "analysis",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "manufacturing",
+      "manufacturing_release",
+      "pcb",
+      "pcb_layout",
+      "power",
+      "release_manager",
+      "schematic",
+      "schematic_authoring"
     ],
     "read_only": false,
     "requires_kicad_running": false
@@ -6334,6 +6415,33 @@
     "headless": true,
     "idempotent": false,
     "name": "schematic_connectivity_gate",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "analysis",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "manufacturing",
+      "manufacturing_release",
+      "pcb",
+      "pcb_layout",
+      "power",
+      "release_manager",
+      "schematic",
+      "schematic_authoring"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "schematic_design_rule_check",
     "open_world": false,
     "profiles": [
       "agent_full",

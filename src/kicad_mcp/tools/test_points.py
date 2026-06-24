@@ -7,7 +7,6 @@ FAZ 8.1 — pcb_add_test_point, pcb_list_test_points,
 from __future__ import annotations
 
 import json
-import logging
 import re
 from pathlib import Path
 from typing import Any, cast
@@ -19,6 +18,18 @@ from ..connection import KiCadConnectionError, get_board
 from ..utils.units import nm_to_mm
 from .export_support import _get_pcb_file
 from .metadata import headless_compatible
+
+
+def _object_net_name(obj: object) -> str:
+    """Return the stable net name for a board object without reading net codes."""
+    return str(getattr(getattr(obj, "net", None), "name", "") or "")
+
+
+def _board_vias(board: object) -> list[Any]:
+    try:
+        return list(cast(Any, board).get_vias())
+    except (AttributeError, TypeError, OSError):
+        return []
 
 
 def _sidecar_dir() -> Path:
@@ -54,14 +65,14 @@ def _save_test_points(state: dict[str, Any]) -> Path:
 
 
 def _collect_board_nets() -> list[dict[str, Any]]:
-    """Collect net names and codes from the board (IPC or file fallback)."""
+    """Collect board net names using stable net names; file fallback keeps parsed codes."""
     live_nets: list[dict[str, Any]] = []
     try:
         board = get_board()
         nets = board.get_nets()
         live_nets = [
             {
-                "code": getattr(n, "code", 0),
+                "code": None,
                 "name": getattr(n, "name", ""),
             }
             for n in nets
@@ -171,13 +182,12 @@ def register(mcp: FastMCP) -> None:
                 if net_found is None:
                     continue
 
-                net_code = getattr(net_found, "code", -1)
                 candidates: list[dict[str, Any]] = []
 
-                # Check existing pads on this net
+                # Check existing pads on this net by stable net name.
                 for fp in board.get_footprints():
                     for pad in fp.get_pads():  # type: ignore[attr-defined]
-                        if hasattr(pad, "net") and pad.net and pad.net.code == net_code:
+                        if _object_net_name(pad) == net_name:
                             pos = getattr(pad, "position", None)
                             if pos:
                                 candidates.append(
@@ -190,21 +200,20 @@ def register(mcp: FastMCP) -> None:
                                     }
                                 )
 
-                # Check vias on this net
-                try:
-                    for via in board.get_vias_for_net(net_code):  # type: ignore[attr-defined]
-                        pos = getattr(via, "position", None)
-                        if pos:
-                            candidates.append(
-                                {
-                                    "type": "via",
-                                    "x_mm": round(nm_to_mm(pos.x), 4),
-                                    "y_mm": round(nm_to_mm(pos.y), 4),
-                                    "diameter_mm": round(nm_to_mm(getattr(via, "drill", 0)), 4),
-                                }
-                            )
-                except Exception:
-                    logging.exception("Failed to suggest test point via via")
+                # Check vias on this net by stable net name.
+                for via in _board_vias(board):
+                    if _object_net_name(via) != net_name:
+                        continue
+                    pos = getattr(via, "position", None)
+                    if pos:
+                        candidates.append(
+                            {
+                                "type": "via",
+                                "x_mm": round(nm_to_mm(pos.x), 4),
+                                "y_mm": round(nm_to_mm(pos.y), 4),
+                                "diameter_mm": round(nm_to_mm(getattr(via, "drill", 0)), 4),
+                            }
+                        )
 
                 suggestions.append(
                     {

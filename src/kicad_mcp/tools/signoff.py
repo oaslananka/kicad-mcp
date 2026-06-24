@@ -20,7 +20,7 @@ from typing import Any, Literal
 
 from .gates import GateOutcome, _combined_status
 
-SignoffVerdict = Literal["PASS", "FAIL", "BLOCKED", "EMPTY", "UNVERIFIED"]
+SignoffVerdict = Literal["PASS", "FAIL", "BLOCKED", "EMPTY", "UNVERIFIED", "WARN"]
 
 
 @dataclass(slots=True)
@@ -118,6 +118,12 @@ def build_signoff_report(
         summary = (
             "No design intent declared — nothing to sign off against. Declare "
             "requirements with project_set_design_intent() first."
+        )
+    elif gate_status == "WARN":
+        verdict = "WARN"
+        summary = (
+            "Sign-off passed with advisories: one or more backing gates reported "
+            "WARN. Review the warned checks before release."
         )
     elif gate_status != "PASS":
         verdict = gate_status

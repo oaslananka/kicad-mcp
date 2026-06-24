@@ -51,6 +51,78 @@ def _display_tool_name(tool_name: str) -> str:
     return f"{tool_name} [{' / '.join(suffixes)}]"
 
 
+def _mode_availability_note(tool_name: str) -> str:
+    try:
+        from ..operating_modes import active_operating_mode, tool_availability
+
+        active = active_operating_mode()
+        availability = tool_availability(tool_name, active)
+    except Exception:
+        return ""
+    if availability.available:
+        return ""
+    return (
+        f" — unavailable in `{active.value}` mode; "
+        f"requires `{availability.required_mode.value}` mode"
+    )
+
+
+def _tool_requires_kicad_ipc(tool_name: str) -> bool:
+    try:
+        from ..capabilities import RuntimeRequirement
+        from ..capabilities import get as get_capability
+
+        capability = get_capability(tool_name)
+    except Exception:
+        return False
+    return bool(capability and capability.runtime is RuntimeRequirement.KICAD_IPC)
+
+
+def _runtime_availability_note(tool_name: str, ipc_state: object | None) -> str:
+    if ipc_state is None or not _tool_requires_kicad_ipc(tool_name):
+        return ""
+    try:
+        from ..capabilities import AccessTier
+        from ..capabilities import get as get_capability
+
+        capability = get_capability(tool_name)
+    except Exception:
+        return ""
+    tier = capability.tier if capability is not None else AccessTier.WRITE
+
+    operations = getattr(ipc_state, "operations", {})
+    if tool_name in operations:
+        operation = operations[tool_name]
+        if getattr(operation, "available", False):
+            return ""
+        reason = getattr(operation, "reason", None)
+        return " — unavailable at runtime; " + (
+            str(reason) if reason else "KiCad IPC operation is unavailable"
+        )
+
+    if tool_name.startswith("pcb_"):
+        available = (
+            getattr(ipc_state, "live_pcb_read", False)
+            if tier is AccessTier.READ
+            else getattr(ipc_state, "live_pcb_write", False)
+        )
+        requirement = "live PCB read" if tier is AccessTier.READ else "live PCB write"
+    elif tool_name.startswith("sch_"):
+        available = (
+            getattr(ipc_state, "live_schematic_read", False)
+            if tier is AccessTier.READ
+            else getattr(ipc_state, "live_schematic_write", False)
+        )
+        requirement = "live schematic read" if tier is AccessTier.READ else "live schematic write"
+    else:
+        available = getattr(ipc_state, "reachable", False)
+        requirement = "KiCad IPC connection"
+
+    if available:
+        return ""
+    return f" — unavailable at runtime; requires {requirement}"
+
+
 TOOL_CATEGORIES: dict[str, ToolCategory] = {
     "project": {
         "description": "Project setup, server discovery, and quick help.",
@@ -362,16 +434,20 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
         "tools": [
             "schematic_quality_gate",
             "schematic_connectivity_gate",
+            "schematic_design_rule_check",
             "pcb_quality_gate",
             "pcb_placement_quality_gate",
             "pcb_placement_quality_report",
             "pcb_transfer_quality_gate",
+            "pcb_stackup_consistency_gate",
+            "pcb_route_corner_style_gate",
             "pcb_score_placement",
             "manufacturing_quality_gate",
             "project_quality_gate",
             "project_quality_gate_report",
             "project_signoff_report",
             "project_release_readiness",
+            "project_professional_release_gate",
             "run_drc",
             "run_erc",
             "validate_design",
@@ -649,7 +725,23 @@ def register(mcp: FastMCP) -> None:
             available = ", ".join(sorted(TOOL_CATEGORIES))
             return f"Unknown category '{category}'. Available categories: {available}"
 
-        lines = [f"# Tools in `{category}`", str(info["description"]), ""]
+        from ..operating_modes import active_operating_mode
+
+        active_mode = active_operating_mode()
+        try:
+            from ..config import get_config
+            from ..ipc.capabilities import get_ipc_capability_state
+
+            runtime_filter_enabled = bool(get_config().filter_runtime_tools)
+            ipc_state = get_ipc_capability_state() if runtime_filter_enabled else None
+        except Exception:
+            ipc_state = None
+        lines = [
+            f"# Tools in `{category}`",
+            str(info["description"]),
+            f"Active operating mode: `{active_mode.value}`",
+            "",
+        ]
         maturity_filter = maturity.strip().casefold()
         for tool_name in info["tools"]:
             if maturity_filter:
@@ -658,7 +750,9 @@ def register(mcp: FastMCP) -> None:
                 capability = get_capability(tool_name)
                 if capability is None or capability.maturity.value != maturity_filter:
                     continue
-            lines.append(f"- `{_display_tool_name(tool_name)}`")
-        if len(lines) == 3:
+            mode_note = _mode_availability_note(tool_name)
+            runtime_note = "" if mode_note else _runtime_availability_note(tool_name, ipc_state)
+            lines.append(f"- `{_display_tool_name(tool_name)}`{mode_note}{runtime_note}")
+        if len(lines) == 4:
             lines.append(f"No tools matched maturity='{maturity}'.")
         return "\n".join(lines)
