@@ -1040,7 +1040,7 @@ async def test_schematic_build_circuit_auto_layout_no_coords(sample_project, moc
             "power_symbols": [{"name": "GND"}],
         },
     )
-    assert "Applied basic auto-layout" in result or "Applied netlist-aware auto-layout" in result
+    assert "Applied auto-layout to schematic symbols." in result
     schematic = (sample_project / "demo.kicad_sch").read_text(encoding="utf-8")
     assert "R1" in schematic
     assert "R2" in schematic

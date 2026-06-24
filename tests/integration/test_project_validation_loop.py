@@ -123,7 +123,9 @@ async def test_project_auto_fix_loop_applies_server_fix_and_reports_remaining_ac
 
     assert isinstance(result, dict)
     assert calls == ["auto"]
-    assert result["gate_status"] == "PASS"
+    # After the auto-fix clears the Schematic FAIL, a Placement WARN remains; the
+    # combined gate status now surfaces that WARN instead of swallowing it as PASS.
+    assert result["gate_status"] == "WARN"
     assert result["ready_for_release"] is False
     assert result["remaining_issues"] == 1
     assert result["actions"][0]["gate"] == "Placement"
@@ -154,6 +156,7 @@ async def test_project_gate_trend_and_design_report(
     assert '"gate_name": "Placement"' in trend
     assert '"history"' in trend
     assert isinstance(report, dict)
-    assert report["gate_status"] == "PASS"
+    # A Manufacturing WARN in the gate set now yields a WARN combined status.
+    assert report["gate_status"] == "WARN"
     assert "Project Design Report" in report["text"]
     assert "Manufacturing" in report["text"]
