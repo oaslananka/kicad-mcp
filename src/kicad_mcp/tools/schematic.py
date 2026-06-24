@@ -3741,6 +3741,25 @@ def _append_before_sheet_instances(content: str, block: str) -> str:
     return content.rstrip().rstrip(")") + f"\n{block}\n)\n"
 
 
+def _duplicate_uuids(content: str) -> set[str]:
+    """Return element UUIDs that appear more than once in a schematic.
+
+    Every KiCad schematic element carries a unique UUID. A regex/string mutation
+    that clones a block (instead of generating a fresh UUID) produces duplicates
+    that parse fine but corrupt connectivity and instance paths in KiCad — exactly
+    the silent-corruption class the transactional writer must refuse.
+    """
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for match in re.finditer(r'\(uuid\s+"([0-9a-fA-F-]+)"', content):
+        value = match.group(1)
+        if value in seen:
+            duplicates.add(value)
+        else:
+            seen.add(value)
+    return duplicates
+
+
 def _validate_schematic_text(content: str) -> None:
     depth = 0
     in_string = False
@@ -3766,6 +3785,13 @@ def _validate_schematic_text(content: str) -> None:
     if re.search(r'\(paper\s+"User"\s*\)', content):
         raise ValueError(
             'Refusing to write an invalid schematic with incomplete (paper "User") dimensions.'
+        )
+    duplicate_uuids = _duplicate_uuids(content)
+    if duplicate_uuids:
+        sample = ", ".join(sorted(duplicate_uuids)[:5])
+        raise ValueError(
+            "Refusing to write a schematic with duplicate element UUIDs "
+            f"(a string/regex mutation likely cloned a block): {sample}."
         )
 
 
