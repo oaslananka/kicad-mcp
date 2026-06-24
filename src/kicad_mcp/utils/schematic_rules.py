@@ -115,6 +115,29 @@ def is_reset_name(name: str) -> bool:
     return any(token in _RESET_TOKENS for token in re.split(r"[^A-Z0-9]+", upper))
 
 
+_CAN_BUS_RE = re.compile(r"\bCAN[_ -]?[HL]\b")
+_INTERRUPT_TOKENS = frozenset({"INT", "IRQ", "NINT", "NIRQ", "INTN", "IRQN"})
+_ACTIVE_LOW_INTERRUPT_TOKENS = frozenset({"NINT", "NIRQ", "INTN", "IRQN"})
+
+
+def is_can_name(name: str) -> bool:
+    """Return whether a net name denotes a CAN differential bus line (CANH/CANL)."""
+    return bool(_CAN_BUS_RE.search(name.strip().upper()))
+
+
+def is_active_low_interrupt_name(name: str) -> bool:
+    """Return whether a net name denotes an active-low (open-drain) interrupt line."""
+    raw = name.strip()
+    tokens = set(re.split(r"[^A-Z0-9]+", raw.upper()))
+    if not (tokens & _INTERRUPT_TOKENS):
+        return False
+    if raw.startswith(("~", "/")):
+        return True
+    if tokens & _ACTIVE_LOW_INTERRUPT_TOKENS:
+        return True
+    return raw.upper().endswith("_N")
+
+
 def merge_nets_by_name(nets: Iterable[NetView]) -> list[dict[str, Any]]:
     """Union nets that share a name so cross-sheet named rails analyze as one net.
 
@@ -294,6 +317,79 @@ def _rule_decoupling_count(nets: Sequence[NetView]) -> list[Finding]:
     return findings
 
 
+def _rule_nc_pin_connected(nets: Sequence[NetView]) -> list[Finding]:
+    """Flag pins whose symbol marks them no-connect but which are wired to a net."""
+    findings: list[Finding] = []
+    for net in nets:
+        pins = net.get("pins", [])
+        if len(pins) < 2:
+            continue
+        for pin in pins:
+            if str(pin.get("etype", "")) != "no_connect":
+                continue
+            ref = str(pin.get("reference", ""))
+            number = str(pin.get("pin", ""))
+            findings.append(
+                Finding(
+                    rule_id="nc_pin_connected",
+                    severity="warning",
+                    message=(
+                        f"{ref} pin {number} is a no-connect (NC) pin but is wired to "
+                        "other pins. NC pins must be left unconnected."
+                    ),
+                    refs=(ref,),
+                )
+            )
+    return findings
+
+
+def _rule_can_bus_termination(nets: Sequence[NetView]) -> list[Finding]:
+    findings: list[Finding] = []
+    for net in nets:
+        can_names = [name for name in _net_names(net) if is_can_name(name)]
+        if not can_names:
+            continue
+        if _net_refs(net, _RESISTOR_RE):
+            continue
+        findings.append(
+            Finding(
+                rule_id="can_bus_termination",
+                severity="warning",
+                message=(
+                    f"CAN bus net '{can_names[0]}' has no termination resistor. A CAN bus "
+                    "needs 120-ohm termination at both physical ends of the bus."
+                ),
+                refs=(can_names[0],),
+            )
+        )
+    return findings
+
+
+def _rule_interrupt_pullup(nets: Sequence[NetView]) -> list[Finding]:
+    findings: list[Finding] = []
+    for net in nets:
+        int_names = [name for name in _net_names(net) if is_active_low_interrupt_name(name)]
+        if not int_names:
+            continue
+        ics = _net_refs(net, _IC_RE)
+        if not ics:
+            continue
+        if _net_refs(net, _RESISTOR_RE):
+            continue
+        findings.append(
+            Finding(
+                rule_id="interrupt_pullup",
+                severity="warning",
+                message=(
+                    f"Active-low interrupt net '{int_names[0]}' on {', '.join(ics)} has no "
+                    "pull-up resistor. Open-drain interrupt lines need a pull-up to their rail."
+                ),
+                refs=tuple(ics),
+            )
+        )
+    return findings
+
+
 # Registry of active rules. Append new pure ``(nets) -> [Finding]`` callables here.
 DESIGN_RULES: tuple[Callable[[Sequence[NetView]], list[Finding]], ...] = (
     _rule_i2c_pullups,
@@ -301,6 +397,9 @@ DESIGN_RULES: tuple[Callable[[Sequence[NetView]], list[Finding]], ...] = (
     _rule_reset_pullup,
     _rule_crystal_load_caps,
     _rule_decoupling_count,
+    _rule_nc_pin_connected,
+    _rule_can_bus_termination,
+    _rule_interrupt_pullup,
 )
 
 

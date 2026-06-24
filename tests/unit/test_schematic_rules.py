@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from kicad_mcp.utils.schematic_rules import (
+    is_active_low_interrupt_name,
+    is_can_name,
     is_ground_name,
     is_i2c_name,
     is_reset_name,
@@ -167,6 +169,51 @@ def test_pin_records_capture_electrical_type() -> None:
     records = {r["number"]: r for r in _extract_pin_records(block)}
     assert records["1"]["etype"] == "power_in" and records["1"]["name"] == "VDD"
     assert records["2"]["etype"] == "input"
+
+
+def test_can_and_interrupt_classification() -> None:
+    assert is_can_name("CANH") and is_can_name("CAN_L") and is_can_name("CAN-H")
+    assert not is_can_name("VCAN") and not is_can_name("SCAN")
+    assert is_active_low_interrupt_name("NINT") and is_active_low_interrupt_name("INT_N")
+    assert is_active_low_interrupt_name("~IRQ") and is_active_low_interrupt_name("MCU_IRQ_N")
+    assert not is_active_low_interrupt_name("INT")  # active-high, not flagged
+    assert not is_active_low_interrupt_name("PRINT") and not is_active_low_interrupt_name("POINT_N")
+
+
+def _net_e(names: list[str], pins: list[tuple[str, str, str]]) -> dict:
+    return {
+        "names": names,
+        "pins": [{"reference": r, "pin": p, "etype": e} for r, p, e in pins],
+    }
+
+
+def test_no_connect_pin_wired_is_flagged() -> None:
+    wired = run_schematic_design_rules(
+        [_net_e(["NET1"], [("U1", "3", "no_connect"), ("U2", "1", "input")])]
+    )
+    nc = [f for f in wired if f.rule_id == "nc_pin_connected"]
+    assert len(nc) == 1 and nc[0].refs == ("U1",)
+
+    # An NC pin alone on its own net is fine.
+    alone = run_schematic_design_rules([_net_e([], [("U1", "3", "no_connect")])])
+    assert not any(f.rule_id == "nc_pin_connected" for f in alone)
+
+
+def test_can_bus_without_termination_is_flagged() -> None:
+    flagged = run_schematic_design_rules([_net(["CANH"], [("U1", "5"), ("J1", "1")])])
+    assert any(f.rule_id == "can_bus_termination" for f in flagged)
+    with_r = run_schematic_design_rules([_net(["CANH"], [("U1", "5"), ("R1", "1")])])
+    assert not any(f.rule_id == "can_bus_termination" for f in with_r)
+
+
+def test_active_low_interrupt_without_pullup_is_flagged() -> None:
+    flagged = run_schematic_design_rules([_net(["NINT"], [("U1", "12")])])
+    assert any(f.rule_id == "interrupt_pullup" for f in flagged)
+    with_r = run_schematic_design_rules([_net(["NINT"], [("U1", "12"), ("R1", "1")])])
+    assert not any(f.rule_id == "interrupt_pullup" for f in with_r)
+    # Active-high INT is not flagged.
+    active_high = run_schematic_design_rules([_net(["INT"], [("U1", "12")])])
+    assert not any(f.rule_id == "interrupt_pullup" for f in active_high)
 
 
 def test_design_rule_check_tool_is_declared_in_validation_category() -> None:
