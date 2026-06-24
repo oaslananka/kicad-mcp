@@ -113,6 +113,62 @@ def test_crystal_without_load_caps_is_flagged() -> None:
     assert not any(f.rule_id == "crystal_load_caps" for f in with_caps)
 
 
+def _supply_net(name: str, pins: list[tuple[str, str, str]]) -> dict:
+    return {
+        "names": [name],
+        "pins": [{"reference": r, "pin": p, "etype": e} for r, p, e in pins],
+    }
+
+
+def test_decoupling_count_flags_partial_decoupling() -> None:
+    nets = [
+        _supply_net(
+            "+3V3",
+            [("U1", "1", "power_in"), ("U1", "2", "power_in"), ("C1", "1", "passive")],
+        )
+    ]
+    flagged = [f for f in run_schematic_design_rules(nets) if f.rule_id == "decoupling_count"]
+    assert len(flagged) == 1 and flagged[0].refs == ("U1",)
+
+
+def test_decoupling_count_clean_when_caps_match_pins() -> None:
+    nets = [
+        _supply_net(
+            "+3V3",
+            [
+                ("U1", "1", "power_in"),
+                ("U1", "2", "power_in"),
+                ("C1", "1", "passive"),
+                ("C2", "1", "passive"),
+            ],
+        )
+    ]
+    assert not any(f.rule_id == "decoupling_count" for f in run_schematic_design_rules(nets))
+
+
+def test_decoupling_count_defers_to_rail_rule_when_zero_caps() -> None:
+    found = run_schematic_design_rules([_supply_net("+3V3", [("U1", "1", "power_in")])])
+    assert any(f.rule_id == "power_rail_decoupling" for f in found)
+    assert not any(f.rule_id == "decoupling_count" for f in found)
+
+
+def test_pin_records_capture_electrical_type() -> None:
+    from kicad_mcp.tools.schematic import _extract_pin_records
+
+    block = (
+        '(symbol "U_1_1"'
+        " (pin power_in line (at -10.16 0 0) (length 2.54)"
+        ' (name "VDD" (effects (font (size 1.27 1.27))))'
+        ' (number "1" (effects (font (size 1.27 1.27)))))'
+        " (pin input line (at 10.16 0 180) (length 2.54)"
+        ' (name "IN" (effects (font (size 1.27 1.27))))'
+        ' (number "2" (effects (font (size 1.27 1.27))))))'
+    )
+    records = {r["number"]: r for r in _extract_pin_records(block)}
+    assert records["1"]["etype"] == "power_in" and records["1"]["name"] == "VDD"
+    assert records["2"]["etype"] == "input"
+
+
 def test_design_rule_check_tool_is_declared_in_validation_category() -> None:
     from kicad_mcp.tools.router import TOOL_CATEGORIES
 

@@ -2272,12 +2272,15 @@ def _extract_pin_records(block: str) -> list[dict[str, Any]]:
         if at_match is None or number_match is None:
             continue
         name_match = re.search(r'\(name\s+"([^"]*)"', pin_block)
+        # The electrical type is the first token after "(pin", e.g. "(pin power_in line".
+        etype_match = re.match(r"\(pin\s+([a-z_]+)\b", pin_block)
         records.append(
             {
                 "x": float(at_match.group(1)),
                 "y": float(at_match.group(2)),
                 "name": name_match.group(1) if name_match else "",
                 "number": number_match.group(1),
+                "etype": etype_match.group(1) if etype_match else "unspecified",
             }
         )
     return records
@@ -2399,6 +2402,47 @@ def get_pin_positions(
                 rx, ry = rotate_point(px, -py, rotation)
                 pins[pin_number] = (round(sym_x + rx, 4), round(sym_y + ry, 4))
     return pins
+
+
+def get_pin_metadata(library: str, symbol_name: str, unit: int = 1) -> dict[str, dict[str, str]]:
+    """Return ``{pin_number: {"name", "etype"}}`` for a symbol's pins.
+
+    Mirrors :func:`get_pin_positions`' block/unit traversal but carries the pin
+    name and electrical type so design-rule checks can reason about power, input,
+    and no-connect pins rather than only geometry.
+    """
+    sym_file = _symbol_library_file(library)
+    if sym_file is None:
+        return {}
+    content = sym_file.read_text(encoding="utf-8", errors="ignore")
+    blocks = _collect_symbol_blocks(content, symbol_name)
+    if not blocks:
+        return {}
+    available_units = _available_units_from_blocks(blocks)
+    if available_units and unit not in available_units:
+        return {}
+
+    meta: dict[str, dict[str, str]] = {}
+
+    def _record(record: dict[str, Any]) -> None:
+        meta[record["number"]] = {
+            "name": str(record.get("name", "")),
+            "etype": str(record.get("etype", "unspecified")),
+        }
+
+    for block in blocks:
+        for record in _extract_pin_records(_strip_child_symbol_blocks(block)):
+            _record(record)
+        block_name = _symbol_block_name(block)
+        if block_name is None:
+            continue
+        unit_prefixes = (f"{block_name}_{unit}_", f"{block_name}_0_")
+        for child_name, child_block in _extract_child_symbol_blocks(block):
+            if not child_name.startswith(unit_prefixes):
+                continue
+            for record in _extract_pin_records(child_block):
+                _record(record)
+    return meta
 
 
 def _pin_label_stub_direction(
@@ -3444,14 +3488,18 @@ def _build_connectivity_groups(sch_file: Path) -> list[dict[str, Any]]:
             int(symbol["rotation"]),
             int(symbol["unit"]),
         )
+        pin_meta = get_pin_metadata(library, symbol_name, int(symbol["unit"]))
         for pin_number, point in pin_positions.items():
             group = ensure_group(point)
             group["points"].add(_point_key(*point))
+            meta = pin_meta.get(pin_number, {})
             group["pins"].append(
                 {
                     "reference": symbol["reference"],
                     "pin": pin_number,
                     "value": symbol["value"],
+                    "name": meta.get("name", ""),
+                    "etype": meta.get("etype", "unspecified"),
                 }
             )
 

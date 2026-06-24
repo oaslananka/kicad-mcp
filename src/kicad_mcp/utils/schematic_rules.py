@@ -251,12 +251,56 @@ def _rule_crystal_load_caps(nets: Sequence[NetView]) -> list[Finding]:
     return findings
 
 
+def _rule_decoupling_count(nets: Sequence[NetView]) -> list[Finding]:
+    """Flag ICs with fewer decoupling caps than power pins (partial decoupling).
+
+    Uses pin electrical type: counts ``power_in`` pins that sit on a positive
+    supply rail per IC, and the distinct capacitors on those rails. The fully
+    undecoupled case (zero caps) is left to ``power_rail_decoupling`` so the two
+    rules never double-report; this one catches the 0 < caps < power-pins gap.
+    """
+    power_pins: dict[str, int] = {}
+    rail_caps: dict[str, set[str]] = {}
+    for net in nets:
+        if not any(is_supply_rail_name(name) for name in _net_names(net)):
+            continue
+        caps_on_net = set(_net_refs(net, _CAP_RE))
+        ics_on_net: set[str] = set()
+        for pin in net.get("pins", []):
+            ref = str(pin.get("reference", ""))
+            if _IC_RE.match(ref) and str(pin.get("etype", "")) == "power_in":
+                power_pins[ref] = power_pins.get(ref, 0) + 1
+                ics_on_net.add(ref)
+        for ic in ics_on_net:
+            rail_caps.setdefault(ic, set()).update(caps_on_net)
+
+    findings: list[Finding] = []
+    for ic in sorted(power_pins):
+        pins = power_pins[ic]
+        caps = len(rail_caps.get(ic, set()))
+        if 0 < caps < pins:
+            findings.append(
+                Finding(
+                    rule_id="decoupling_count",
+                    severity="warning",
+                    message=(
+                        f"{ic} has {pins} supply pin(s) but only {caps} decoupling "
+                        "capacitor(s) on its rails. Aim for roughly one ~100nF "
+                        "capacitor per power pin, placed close to the pin."
+                    ),
+                    refs=(ic,),
+                )
+            )
+    return findings
+
+
 # Registry of active rules. Append new pure ``(nets) -> [Finding]`` callables here.
 DESIGN_RULES: tuple[Callable[[Sequence[NetView]], list[Finding]], ...] = (
     _rule_i2c_pullups,
     _rule_power_rail_decoupling,
     _rule_reset_pullup,
     _rule_crystal_load_caps,
+    _rule_decoupling_count,
 )
 
 
