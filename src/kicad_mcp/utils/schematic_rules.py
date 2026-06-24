@@ -83,6 +83,8 @@ def _net_refs(net: NetView, prefix_re: re.Pattern[str]) -> list[str]:
 _RESISTOR_RE = re.compile(r"^R\d")
 _CAP_RE = re.compile(r"^C\d")
 _IC_RE = re.compile(r"^(?:U|IC)\d")
+_CRYSTAL_RE = re.compile(r"^(?:Y|X)\d")
+_RESET_TOKENS = frozenset({"RST", "NRST", "RSTN", "POR"})
 
 
 def is_ground_name(name: str) -> bool:
@@ -103,6 +105,14 @@ def is_supply_rail_name(name: str) -> bool:
 
 def is_i2c_name(name: str) -> bool:
     return bool(_I2C_TOKEN_RE.search(name.strip().upper()))
+
+
+def is_reset_name(name: str) -> bool:
+    """Return whether a net name denotes a reset line (typically active-low)."""
+    upper = name.strip().upper()
+    if "RESET" in upper or "MCLR" in upper:
+        return True
+    return any(token in _RESET_TOKENS for token in re.split(r"[^A-Z0-9]+", upper))
 
 
 def merge_nets_by_name(nets: Iterable[NetView]) -> list[dict[str, Any]]:
@@ -183,10 +193,70 @@ def _rule_power_rail_decoupling(nets: Sequence[NetView]) -> list[Finding]:
     return findings
 
 
+def _rule_reset_pullup(nets: Sequence[NetView]) -> list[Finding]:
+    findings: list[Finding] = []
+    for net in nets:
+        names = _net_names(net)
+        reset_names = [name for name in names if is_reset_name(name)]
+        if not reset_names:
+            continue
+        # Only flag reset lines that actually reach an IC; ignore stray test points.
+        ics = _net_refs(net, _IC_RE)
+        if not ics:
+            continue
+        if _net_refs(net, _RESISTOR_RE):
+            continue
+        label = reset_names[0]
+        findings.append(
+            Finding(
+                rule_id="reset_pullup",
+                severity="warning",
+                message=(
+                    f"Reset net '{label}' on {', '.join(ics)} has no pull resistor. "
+                    "A reset line needs a defined idle level (active-low resets typically "
+                    "use a pull-up, often with an RC for noise immunity)."
+                ),
+                refs=tuple(ics),
+            )
+        )
+    return findings
+
+
+def _rule_crystal_load_caps(nets: Sequence[NetView]) -> list[Finding]:
+    # Collect, per crystal reference, whether any net it touches carries a capacitor.
+    crystal_nets: dict[str, bool] = {}
+    for net in nets:
+        crystals = _net_refs(net, _CRYSTAL_RE)
+        if not crystals:
+            continue
+        has_cap = bool(_net_refs(net, _CAP_RE))
+        for crystal in crystals:
+            crystal_nets[crystal] = crystal_nets.get(crystal, False) or has_cap
+    findings: list[Finding] = []
+    for crystal, has_cap in sorted(crystal_nets.items()):
+        if has_cap:
+            continue
+        findings.append(
+            Finding(
+                rule_id="crystal_load_caps",
+                severity="warning",
+                message=(
+                    f"Crystal/resonator '{crystal}' has no load capacitors on its pins. "
+                    "A quartz crystal needs matched load capacitors (value per the crystal's "
+                    "specified load capacitance) to oscillate reliably."
+                ),
+                refs=(crystal,),
+            )
+        )
+    return findings
+
+
 # Registry of active rules. Append new pure ``(nets) -> [Finding]`` callables here.
 DESIGN_RULES: tuple[Callable[[Sequence[NetView]], list[Finding]], ...] = (
     _rule_i2c_pullups,
     _rule_power_rail_decoupling,
+    _rule_reset_pullup,
+    _rule_crystal_load_caps,
 )
 
 

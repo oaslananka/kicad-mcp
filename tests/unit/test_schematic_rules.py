@@ -5,6 +5,7 @@ from __future__ import annotations
 from kicad_mcp.utils.schematic_rules import (
     is_ground_name,
     is_i2c_name,
+    is_reset_name,
     is_supply_rail_name,
     merge_nets_by_name,
     run_schematic_design_rules,
@@ -72,6 +73,44 @@ def test_supply_rail_with_cap_or_without_ic_is_clean() -> None:
     # Ground is never flagged as needing decoupling.
     gnd = run_schematic_design_rules([_net(["GND"], [("U1", "8")])])
     assert not any(f.rule_id == "power_rail_decoupling" for f in gnd)
+
+
+def test_reset_name_classification() -> None:
+    for name in ["NRST", "RESET", "~RESET", "MCU_RST", "RESET_N", "MCLR"]:
+        assert is_reset_name(name), name
+    for name in ["BURST", "VCC", "SDA", "FIRST"]:
+        assert not is_reset_name(name), name
+
+
+def test_reset_line_without_pull_resistor_is_flagged() -> None:
+    flagged = run_schematic_design_rules([_net(["NRST"], [("U1", "7")])])
+    reset = [f for f in flagged if f.rule_id == "reset_pullup"]
+    assert len(reset) == 1 and "U1" in reset[0].refs
+
+    with_r = run_schematic_design_rules([_net(["NRST"], [("U1", "7"), ("R1", "1")])])
+    assert not any(f.rule_id == "reset_pullup" for f in with_r)
+
+    # A reset-named net that does not reach an IC is not flagged.
+    no_ic = run_schematic_design_rules([_net(["NRST"], [("J1", "3")])])
+    assert not any(f.rule_id == "reset_pullup" for f in no_ic)
+
+
+def test_crystal_without_load_caps_is_flagged() -> None:
+    nets = [
+        _net(["XIN"], [("Y1", "1"), ("U1", "5")]),
+        _net(["XOUT"], [("Y1", "2"), ("U1", "6")]),
+    ]
+    flagged = run_schematic_design_rules(nets)
+    crystal = [f for f in flagged if f.rule_id == "crystal_load_caps"]
+    assert len(crystal) == 1 and crystal[0].refs == ("Y1",)
+
+    with_caps = run_schematic_design_rules(
+        [
+            _net(["XIN"], [("Y1", "1"), ("C1", "1")]),
+            _net(["XOUT"], [("Y1", "2"), ("C2", "1")]),
+        ]
+    )
+    assert not any(f.rule_id == "crystal_load_caps" for f in with_caps)
 
 
 def test_design_rule_check_tool_is_declared_in_validation_category() -> None:
