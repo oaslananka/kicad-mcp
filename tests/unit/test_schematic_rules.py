@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from kicad_mcp.utils.schematic_rules import (
+    ethernet_pair_key,
     is_active_low_interrupt_name,
     is_can_name,
     is_ground_name,
@@ -311,6 +312,36 @@ def test_usbc_cc_resistor_is_required_and_resistor_clears_it() -> None:
     # A CC net with no part on it (stray label) is not flagged.
     stray = run_schematic_design_rules([_net(["CC2"], [("TP1", "1")])])
     assert not any(f.rule_id == "usbc_cc_resistors" for f in stray)
+
+
+def test_ethernet_pair_key_classification() -> None:
+    assert ethernet_pair_key("TX+") == ("TX", "P")
+    assert ethernet_pair_key("TX-") == ("TX", "N")
+    assert ethernet_pair_key("MDI0_P") == ("MDI0", "P")
+    assert ethernet_pair_key("MDI0_N") == ("MDI0", "N")
+    assert ethernet_pair_key("ETH_TX_P") == ("TX", "P")
+    assert ethernet_pair_key("TRD1-") == ("TRD1", "N")
+    assert ethernet_pair_key("RX0_N") == ("RX0", "N")
+    # Single-ended UART / MII control lines carry no polarity -> not a pair.
+    for name in ["TX", "RX", "TXD", "RXD0", "TXEN", "RX_DV", "RXER", "DATA", "VCC"]:
+        assert ethernet_pair_key(name) is None, name
+
+
+def test_ethernet_incomplete_lane_is_flagged_and_complete_is_clean() -> None:
+    # Only TX+ present -> the missing TX- half is flagged once.
+    half = run_schematic_design_rules([_net(["ETH_TX_P"], [("U1", "1"), ("J1", "2")])])
+    eth = [f for f in half if f.rule_id == "ethernet_diff_pair"]
+    assert len(eth) == 1
+    assert "TX-" in eth[0].message
+    assert set(eth[0].refs) == {"U1", "J1"}
+
+    # Both halves present -> clean.
+    full = run_schematic_design_rules([_net(["TX+"], [("U1", "1")]), _net(["TX-"], [("U1", "2")])])
+    assert not any(f.rule_id == "ethernet_diff_pair" for f in full)
+
+    # Single-ended UART TX/RX must never be flagged as a half-pair.
+    uart = run_schematic_design_rules([_net(["TX"], [("U1", "1")]), _net(["RX"], [("U1", "2")])])
+    assert not any(f.rule_id == "ethernet_diff_pair" for f in uart)
 
 
 def test_findings_are_sorted_and_typed() -> None:
