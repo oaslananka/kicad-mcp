@@ -53,6 +53,27 @@ async def lint() -> list[str]:
                 errors.append(f"{name} must explicitly declare rollback support.")
             if not isinstance(record.supports_dry_run, bool):
                 errors.append(f"{name} must explicitly declare dry-run support.")
+
+    # Contract/tier consistency: the side-effect flags an agent reads to decide
+    # whether a call is safe must never contradict the access tier. A READ tool
+    # that writes files or mutates GUI state would be wrongly surfaced in
+    # read-only profiles; a human-gated op whose tier is not HUMAN_ONLY (or vice
+    # versa) lets an agent auto-run something that needs a person.
+    for name, record in records.items():
+        if record.tier is AccessTier.READ:
+            if record.writes_files:
+                errors.append(f"READ-tier tool {name} must not declare writes_files=True.")
+            if record.writes_kicad_gui_state:
+                errors.append(
+                    f"READ-tier tool {name} must not declare writes_kicad_gui_state=True."
+                )
+        is_human_only = record.tier is AccessTier.HUMAN_ONLY
+        if is_human_only and not record.human_gate_required:
+            errors.append(f"HUMAN_ONLY tool {name} must declare human_gate_required=True.")
+        if record.human_gate_required and not is_human_only:
+            errors.append(
+                f"{name} declares human_gate_required=True but its tier is not HUMAN_ONLY."
+            )
     return errors
 
 
