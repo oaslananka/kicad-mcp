@@ -3122,6 +3122,38 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @headless_compatible
+    def drc_check_rule_conflicts() -> str:
+        """Report conflicting or unsatisfiable rules in the active ``.kicad_dru``.
+
+        Flags duplicate rule names (KiCad keeps only the last), two scoped rules
+        setting different minimums for the same constraint and condition,
+        inverted min/max bounds, and negative dimensions. Useful after generating
+        constraints from several sources (net classes, interface binders,
+        manufacturer profiles) to reconcile them to one truth.
+        """
+        from ..utils.dru_analysis import analyze_rule_conflicts
+        from .routing_rules import _load_rules_content, _rules_file_path
+
+        root, _version = parse_dru(_load_rules_content(_rules_file_path()))
+        conflicts = analyze_rule_conflicts(root)
+        return json.dumps(
+            {
+                "conflict_count": len(conflicts),
+                "conflicts": [
+                    {
+                        "kind": c.kind,
+                        "severity": c.severity,
+                        "message": c.message,
+                        "rules": list(c.rules),
+                    }
+                    for c in conflicts
+                ],
+            },
+            indent=2,
+        )
+
+    @mcp.tool()
+    @headless_compatible
     def drc_rule_create(
         name: str,
         constraint_type: str,

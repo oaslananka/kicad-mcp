@@ -156,6 +156,33 @@
     "requires_kicad_running": false
   },
   {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "drc_check_rule_conflicts",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "analysis",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "manufacturing",
+      "manufacturing_release",
+      "pcb",
+      "pcb_layout",
+      "power",
+      "release_manager",
+      "schematic",
+      "schematic_authoring"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
     "destructive": true,
     "experimental": false,
     "headless": true,
