@@ -458,6 +458,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "get_silk_to_pad_violations",
             "validate_footprints_vs_schematic",
             "drc_list_rules",
+            "drc_check_rule_conflicts",
             "drc_rule_create",
             "drc_rule_delete",
             "drc_rule_enable",

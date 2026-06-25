@@ -118,6 +118,31 @@ async def test_drc_rule_tools_round_trip_through_parsed_dru(sample_project) -> N
     assert relisted_rules["Tight Clearance"]["enabled"] is False
     assert "(severity ignore)" in dru_text
     assert "Deleted custom DRC rule" in deleted
+
+
+@pytest.mark.anyio
+async def test_drc_check_rule_conflicts_flags_contradictory_minimums(sample_project) -> None:
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    for name, minimum in (("hs_a", "0.2mm"), ("hs_b", "0.3mm")):
+        await call_tool_text(
+            server,
+            "drc_rule_create",
+            {
+                "name": name,
+                "constraint_type": "clearance",
+                "min_value": minimum,
+                "condition": "A.NetClass == 'HS'",
+            },
+        )
+
+    report = json.loads(await call_tool_text(server, "drc_check_rule_conflicts", {}))
+
+    assert report["conflict_count"] >= 1
+    contradictions = [c for c in report["conflicts"] if c["kind"] == "contradictory_constraint"]
+    assert contradictions, report
+    assert set(contradictions[0]["rules"]) == {"hs_a", "hs_b"}
     assert "Tight Clearance" not in (sample_project / "demo.kicad_dru").read_text(encoding="utf-8")
 
 
