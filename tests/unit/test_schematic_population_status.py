@@ -94,9 +94,7 @@ async def test_get_population_status_unknown_reference_raises(
     await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
     await _place_test_resistor(server)
 
-    result = await call_tool_text(
-        server, "sch_get_population_status", {"reference": "R99"}
-    )
+    result = await call_tool_text(server, "sch_get_population_status", {"reference": "R99"})
     assert "was not found" in result
 
 
