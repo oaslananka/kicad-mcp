@@ -44,6 +44,11 @@ THERMAL_FD_ACCURACY = (
     "distributed steady-state lateral heat-spreading solve over the copper plane; not a "
     "3-D FEA with airflow, board-stack conduction, or radiation detail"
 )
+EMC_HEURISTIC_METHOD = "geometry/rule heuristics (return path, stitching, clearance, skew)"
+EMC_HEURISTIC_ACCURACY = (
+    "first-order geometric screening of emission/coupling risk; not a full-wave EM or "
+    "radiated-emissions simulation"
+)
 
 
 def pdn_solver_available() -> bool:
@@ -53,6 +58,11 @@ def pdn_solver_available() -> bool:
 
 def thermal_solver_available() -> bool:
     """Return ``True`` only when a thermal-network / FEA solver is wired."""
+    return False
+
+
+def emc_solver_available() -> bool:
+    """Return ``True`` only when a full-wave EM / radiated-emissions solver is wired."""
     return False
 
 
@@ -150,3 +160,19 @@ def thermal_fd_method() -> dict[str, Any]:
         "solver_grade": True,
         "accuracy": THERMAL_FD_ACCURACY,
     }
+
+
+def emc_method() -> dict[str, Any]:
+    """Describe the active EMC computation method, honestly.
+
+    The EMC checks (return-path continuity, via stitching, clearance, diff-pair skew)
+    are geometric/rule heuristics that screen for emission and coupling risk; they are a
+    critic, never a sign-off. They are not a full-wave EM or radiated-emissions solve.
+    """
+    return _method(
+        available=emc_solver_available(),
+        solver_method="full-wave EM / radiated-emissions solver",
+        closed_method=EMC_HEURISTIC_METHOD,
+        closed_accuracy=EMC_HEURISTIC_ACCURACY,
+        what="full-wave EM",
+    )

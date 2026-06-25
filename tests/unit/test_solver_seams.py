@@ -7,9 +7,12 @@ solver it does not have, and results must be labeled with the honest method.
 from __future__ import annotations
 
 from kicad_mcp.utils.solver_seams import (
+    EMC_HEURISTIC_METHOD,
     PDN_CLOSED_FORM_METHOD,
     PDN_MESH_METHOD,
     THERMAL_CLOSED_FORM_METHOD,
+    emc_method,
+    emc_solver_available,
     ir_drop_method,
     pdn_mesh_method,
     pdn_solver_available,
@@ -39,4 +42,12 @@ def test_no_thermal_solver_is_integrated_yet() -> None:
     method = thermal_method()
     assert method["solver_grade"] is False
     assert method["method"] == THERMAL_CLOSED_FORM_METHOD
+    assert "not a" in method["note"].lower()
+
+
+def test_no_emc_solver_is_integrated_yet() -> None:
+    assert emc_solver_available() is False
+    method = emc_method()
+    assert method["solver_grade"] is False
+    assert method["method"] == EMC_HEURISTIC_METHOD
     assert "not a" in method["note"].lower()
