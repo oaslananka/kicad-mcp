@@ -64,6 +64,19 @@ def test_registered_tools_have_valid_verification_levels() -> None:
         assert record.verification_level in valid_levels
 
 
+def test_contract_side_effect_flags_are_consistent_with_access_tier() -> None:
+    """Contract invariants (#196): the side-effect flags an agent reads to decide
+    whether a call is safe must never contradict the access tier."""
+    for record in all_records().values():
+        if record.tier is AccessTier.READ:
+            assert record.writes_files is False, record.name
+            assert record.writes_kicad_gui_state is False, record.name
+        if record.tier is AccessTier.HUMAN_ONLY:
+            assert record.human_gate_required is True, record.name
+        if record.human_gate_required:
+            assert record.tier is AccessTier.HUMAN_ONLY, record.name
+
+
 def test_oaslana_119_pcb_live_editing_tools_require_kicad_ipc() -> None:
     records = all_records()
     pcb_tools = {name for name in REQUIRED_OASLANA_119_TOOLS if name.startswith("pcb_")}
