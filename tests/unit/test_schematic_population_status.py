@@ -32,7 +32,13 @@ async def _place_test_resistor(server: object) -> None:
             "rotation": 0,
         },
     )
-    assert "placed" in result.lower() or "added symbol" in result.lower()
+    # The footprint-not-found "Symbol placed" warning is only emitted when KiCad's
+    # footprint libraries are installed (e.g. on a dev box); in CI the search roots
+    # are empty so it is omitted. Assert on the environment-independent success
+    # message from the schematic writer instead.
+    lowered = result.lower()
+    assert "was not found" not in lowered
+    assert "schematic was updated" in lowered or "placed" in lowered or "added symbol" in lowered
 
 
 @pytest.mark.anyio
