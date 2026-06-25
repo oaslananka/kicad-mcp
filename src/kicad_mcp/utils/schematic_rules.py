@@ -84,6 +84,7 @@ _RESISTOR_RE = re.compile(r"^R\d")
 _CAP_RE = re.compile(r"^C\d")
 _IC_RE = re.compile(r"^(?:U|IC)\d")
 _CRYSTAL_RE = re.compile(r"^(?:Y|X)\d")
+_CONNECTOR_RE = re.compile(r"^(?:J|CN|CON)\d")
 _RESET_TOKENS = frozenset({"RST", "NRST", "RSTN", "POR"})
 
 
@@ -154,6 +155,38 @@ def is_active_low_interrupt_name(name: str) -> bool:
     if tokens & _ACTIVE_LOW_INTERRUPT_TOKENS:
         return True
     return raw.upper().endswith("_N")
+
+
+# --- USB interface (issue #205, domain rule pack) ---------------------------
+# Sign forms (D+/D-) are unambiguous and matched anywhere. Letter forms
+# (DP/DM/D_P/D_N) require a USB prefix so DDR data-mask lines (DM/DQM) and the
+# like do not trip the diff-pair rule.
+_USB_DP_SIGN_RE = re.compile(r"(?:^|[^A-Z0-9])D\+", re.IGNORECASE)
+_USB_DM_SIGN_RE = re.compile(r"(?:^|[^A-Z0-9])D-(?![A-Z0-9])", re.IGNORECASE)
+_USB_DP_LETTER_RE = re.compile(
+    r"(?:^|[^A-Z0-9])USB[ _-]*D[ _-]*(?:P|PLUS)(?![A-Z0-9])", re.IGNORECASE
+)
+_USB_DM_LETTER_RE = re.compile(
+    r"(?:^|[^A-Z0-9])USB[ _-]*D[ _-]*(?:M|N|MINUS)(?![A-Z0-9])", re.IGNORECASE
+)
+# USB-C configuration channel: CC, CC1, CC2 (optionally USB-prefixed). The
+# leading boundary keeps VCC/AVCC/ACC out.
+_USB_CC_RE = re.compile(r"(?:^|[^A-Z0-9])(?:USB[ _-]*)?CC[12]?(?![A-Z0-9])", re.IGNORECASE)
+
+
+def usb_data_polarity(name: str) -> str | None:
+    """Return ``"+"``/``"-"`` if the net is a USB D+/D- data line, else ``None``."""
+    raw = name.strip()
+    if _USB_DP_SIGN_RE.search(raw) or _USB_DP_LETTER_RE.search(raw):
+        return "+"
+    if _USB_DM_SIGN_RE.search(raw) or _USB_DM_LETTER_RE.search(raw):
+        return "-"
+    return None
+
+
+def is_usb_cc_name(name: str) -> bool:
+    """Return whether a net name denotes a USB-C CC (configuration channel) line."""
+    return bool(_USB_CC_RE.search(name.strip()))
 
 
 def merge_nets_by_name(nets: Iterable[NetView]) -> list[dict[str, Any]]:
@@ -447,6 +480,75 @@ def _rule_conflicting_supply_rails(nets: Sequence[NetView]) -> list[Finding]:
     return findings
 
 
+def _rule_usb_diff_pair_complete(nets: Sequence[NetView]) -> list[Finding]:
+    """Flag a USB design that wires only one half of the D+/D- data pair.
+
+    USB data is a differential pair: D+ and D- must both be present. When the
+    design carries one polarity but not its complement, the other half is missing
+    (or mis-named), which breaks the link. Fires once per missing polarity.
+    """
+    present: dict[str, str] = {}  # polarity -> example net label
+    refs_by_polarity: dict[str, list[str]] = {"+": [], "-": []}
+    for net in nets:
+        for name in _net_names(net):
+            polarity = usb_data_polarity(name)
+            if polarity is None:
+                continue
+            present.setdefault(polarity, name)
+            for ref in _net_refs(net, _IC_RE) + _net_refs(net, _CONNECTOR_RE):
+                if ref not in refs_by_polarity[polarity]:
+                    refs_by_polarity[polarity].append(ref)
+    if len(present) != 1:
+        return []  # neither half, or both halves present -> nothing to flag
+    have = next(iter(present))
+    missing = "-" if have == "+" else "+"
+    label = present[have]
+    return [
+        Finding(
+            rule_id="usb_diff_pair_complete",
+            severity="warning",
+            message=(
+                f"USB data net '{label}' (D{have}) has no matching D{missing} half. "
+                "USB D+/D- form a differential pair and must both be routed; check the "
+                "complement net is present and named consistently."
+            ),
+            refs=tuple(refs_by_polarity[have]) or (label,),
+        )
+    ]
+
+
+def _rule_usbc_cc_resistors(nets: Sequence[NetView]) -> list[Finding]:
+    """Flag a USB-C CC line that reaches a part but carries no configuration resistor.
+
+    CC1/CC2 need a configuration resistor — Rd (5.1k to GND) on a sink/UFP, or Rp
+    on a source — for the port to be detected and to advertise current. A CC net
+    that touches a connector or IC but has no resistor is almost always missing it.
+    """
+    findings: list[Finding] = []
+    for net in nets:
+        cc_names = [name for name in _net_names(net) if is_usb_cc_name(name)]
+        if not cc_names:
+            continue
+        parts = _net_refs(net, _IC_RE) + _net_refs(net, _CONNECTOR_RE)
+        if not parts:
+            continue
+        if _net_refs(net, _RESISTOR_RE):
+            continue
+        findings.append(
+            Finding(
+                rule_id="usbc_cc_resistors",
+                severity="warning",
+                message=(
+                    f"USB-C CC net '{cc_names[0]}' on {', '.join(parts)} has no configuration "
+                    "resistor. CC pins need Rd (5.1k to GND, sink) or Rp (source) — without it "
+                    "the port will not be detected."
+                ),
+                refs=tuple(parts),
+            )
+        )
+    return findings
+
+
 # Registry of active rules. Append new pure ``(nets) -> [Finding]`` callables here.
 DESIGN_RULES: tuple[Callable[[Sequence[NetView]], list[Finding]], ...] = (
     _rule_i2c_pullups,
@@ -458,6 +560,8 @@ DESIGN_RULES: tuple[Callable[[Sequence[NetView]], list[Finding]], ...] = (
     _rule_can_bus_termination,
     _rule_interrupt_pullup,
     _rule_conflicting_supply_rails,
+    _rule_usb_diff_pair_complete,
+    _rule_usbc_cc_resistors,
 )
 
 

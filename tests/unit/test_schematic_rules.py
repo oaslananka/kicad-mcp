@@ -9,9 +9,11 @@ from kicad_mcp.utils.schematic_rules import (
     is_i2c_name,
     is_reset_name,
     is_supply_rail_name,
+    is_usb_cc_name,
     merge_nets_by_name,
     rail_voltage,
     run_schematic_design_rules,
+    usb_data_polarity,
 )
 
 
@@ -257,6 +259,58 @@ def test_consistent_rail_aliases_are_not_flagged() -> None:
     # A single rail is always clean.
     single = run_schematic_design_rules([_net(["+3V3"], [("U1", "1"), ("C1", "1")])])
     assert not any(f.rule_id == "conflicting_supply_rails" for f in single)
+
+
+def test_usb_data_polarity_classification() -> None:
+    # Sign forms anywhere; letter forms only with a USB prefix.
+    for name in ["D+", "USB_DP", "USB_D+", "USB_D_P", "USB DP"]:
+        assert usb_data_polarity(name) == "+", name
+    for name in ["D-", "USB_DM", "USB_D-", "USB_D_N", "USB DM"]:
+        assert usb_data_polarity(name) == "-", name
+    # Ambiguous bare letter forms and non-USB names — including DDR data-mask
+    # lines — must not be mistaken for a USB pair.
+    for name in ["DATA", "VCC", "GND", "DDR_DM", "DQM0", "SDRAM_DM1", "ADDR", "DP", "DM", "VDD+"]:
+        assert usb_data_polarity(name) is None, name
+
+
+def test_usb_cc_classification() -> None:
+    for name in ["CC", "CC1", "CC2", "USB_CC1", "USBC_CC2"]:
+        assert is_usb_cc_name(name), name
+    for name in ["VCC", "AVCC", "ACC", "SUCCESS", "CCD"]:
+        assert not is_usb_cc_name(name), name
+
+
+def test_usb_diff_pair_half_is_flagged_and_complete_pair_is_clean() -> None:
+    # Only D+ wired -> the missing D- half is flagged once.
+    half = run_schematic_design_rules([_net(["USB_DP"], [("J1", "3"), ("U1", "10")])])
+    pair = [f for f in half if f.rule_id == "usb_diff_pair_complete"]
+    assert len(pair) == 1
+    assert "D-" in pair[0].message
+    assert set(pair[0].refs) == {"J1", "U1"}
+
+    # Both halves present on their own nets -> clean.
+    complete = run_schematic_design_rules(
+        [_net(["USB_DP"], [("J1", "3")]), _net(["USB_DM"], [("J1", "2")])]
+    )
+    assert not any(f.rule_id == "usb_diff_pair_complete" for f in complete)
+
+    # No USB data nets at all -> nothing to say.
+    none = run_schematic_design_rules([_net(["+3V3"], [("U1", "1"), ("C1", "1")])])
+    assert not any(f.rule_id == "usb_diff_pair_complete" for f in none)
+
+
+def test_usbc_cc_resistor_is_required_and_resistor_clears_it() -> None:
+    flagged = run_schematic_design_rules([_net(["CC1"], [("J1", "5"), ("U1", "1")])])
+    cc = [f for f in flagged if f.rule_id == "usbc_cc_resistors"]
+    assert len(cc) == 1
+    assert set(cc[0].refs) == {"J1", "U1"}
+
+    with_r = run_schematic_design_rules([_net(["CC1"], [("J1", "5"), ("R1", "1")])])
+    assert not any(f.rule_id == "usbc_cc_resistors" for f in with_r)
+
+    # A CC net with no part on it (stray label) is not flagged.
+    stray = run_schematic_design_rules([_net(["CC2"], [("TP1", "1")])])
+    assert not any(f.rule_id == "usbc_cc_resistors" for f in stray)
 
 
 def test_findings_are_sorted_and_typed() -> None:
