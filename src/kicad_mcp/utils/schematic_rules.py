@@ -189,6 +189,31 @@ def is_usb_cc_name(name: str) -> bool:
     return bool(_USB_CC_RE.search(name.strip()))
 
 
+# --- Ethernet / MII differential pairs (issue #205, domain rule pack) --------
+# An Ethernet/MDI lane base (TX/RX/TD/RD/MDI/TRD/MX, with optional lane digits)
+# carrying an explicit polarity (+/-, _P/_N, trailing P/N). The required polarity
+# is what excludes single-ended UART TX/RX and MII control lines (TXEN, RXDV).
+_ETH_PAIR_RE = re.compile(
+    r"^(?:ETH(?:ERNET)?[ _-]*)?(?:PHY[ _-]*)?((?:MDI|MX|TRD|TX|RX|TD|RD)\d*)[ _-]*([+\-]|[PN])$",
+    re.IGNORECASE,
+)
+
+
+def ethernet_pair_key(name: str) -> tuple[str, str] | None:
+    """Return ``(base, polarity)`` for an Ethernet diff-pair net, else ``None``.
+
+    ``polarity`` is canonicalized to ``"P"``/``"N"`` (so ``TX+`` and ``TX_P`` are
+    the same half). ``base`` is upper-cased and keeps any lane digit, e.g.
+    ``("MDI0", "P")`` for ``MDI0_P``.
+    """
+    match = _ETH_PAIR_RE.match(name.strip())
+    if match is None:
+        return None
+    base = match.group(1).upper()
+    raw = match.group(2).upper()
+    return base, ("P" if raw in {"+", "P"} else "N")
+
+
 def merge_nets_by_name(nets: Iterable[NetView]) -> list[dict[str, Any]]:
     """Union nets that share a name so cross-sheet named rails analyze as one net.
 
@@ -549,6 +574,51 @@ def _rule_usbc_cc_resistors(nets: Sequence[NetView]) -> list[Finding]:
     return findings
 
 
+def _rule_ethernet_diff_pairs(nets: Sequence[NetView]) -> list[Finding]:
+    """Flag an Ethernet/MDI differential lane wired with only one polarity half.
+
+    Each lane base (e.g. ``TX``, ``MDI0``, ``TRD1``) must carry both a P and an N
+    half. When only one polarity is present across the design, the complement is
+    missing or mis-named. Single-ended UART ``TX``/``RX`` carry no polarity and so
+    are never considered. Fires once per incomplete lane.
+    """
+    lanes: dict[str, dict[str, Any]] = {}
+    for net in nets:
+        for name in _net_names(net):
+            key = ethernet_pair_key(name)
+            if key is None:
+                continue
+            base, polarity = key
+            lane = lanes.setdefault(base, {"polarities": set(), "labels": {}, "refs": []})
+            lane["polarities"].add(polarity)
+            lane["labels"].setdefault(polarity, name)
+            for ref in _net_refs(net, _IC_RE) + _net_refs(net, _CONNECTOR_RE):
+                if ref not in lane["refs"]:
+                    lane["refs"].append(ref)
+
+    findings: list[Finding] = []
+    for base in sorted(lanes):
+        lane = lanes[base]
+        if len(lane["polarities"]) != 1:
+            continue
+        have = next(iter(lane["polarities"]))
+        have_sign, missing_sign = ("+", "-") if have == "P" else ("-", "+")
+        label = lane["labels"][have]
+        findings.append(
+            Finding(
+                rule_id="ethernet_diff_pair",
+                severity="warning",
+                message=(
+                    f"Differential net '{label}' ({base}{have_sign}) has no matching "
+                    f"{base}{missing_sign} half. Ethernet/MDI lanes (TX±, RX±, MDI±) must be "
+                    "wired as complete differential pairs."
+                ),
+                refs=tuple(lane["refs"]) or (label,),
+            )
+        )
+    return findings
+
+
 # Registry of active rules. Append new pure ``(nets) -> [Finding]`` callables here.
 DESIGN_RULES: tuple[Callable[[Sequence[NetView]], list[Finding]], ...] = (
     _rule_i2c_pullups,
@@ -562,6 +632,7 @@ DESIGN_RULES: tuple[Callable[[Sequence[NetView]], list[Finding]], ...] = (
     _rule_conflicting_supply_rails,
     _rule_usb_diff_pair_complete,
     _rule_usbc_cc_resistors,
+    _rule_ethernet_diff_pairs,
 )
 
 
