@@ -5,7 +5,9 @@ from __future__ import annotations
 from kicad_mcp.utils.schematic_rules import (
     ethernet_pair_key,
     is_active_low_interrupt_name,
+    is_bootstrap_name,
     is_can_name,
+    is_feedback_name,
     is_ground_name,
     is_i2c_name,
     is_reset_name,
@@ -342,6 +344,41 @@ def test_ethernet_incomplete_lane_is_flagged_and_complete_is_clean() -> None:
     # Single-ended UART TX/RX must never be flagged as a half-pair.
     uart = run_schematic_design_rules([_net(["TX"], [("U1", "1")]), _net(["RX"], [("U1", "2")])])
     assert not any(f.rule_id == "ethernet_diff_pair" for f in uart)
+
+
+def test_smps_bootstrap_and_feedback_classification() -> None:
+    for name in ["BST", "VBST", "SW_BST", "BOOTSTRAP", "BUCK_BST"]:
+        assert is_bootstrap_name(name), name
+    # MCU boot-mode straps and unrelated words must not look like a bootstrap node.
+    for name in ["BOOT0", "BOOT1", "BOOTSEL", "BURST", "ROBUST", "VCC"]:
+        assert not is_bootstrap_name(name), name
+
+    for name in ["FB", "VFB", "FEEDBACK", "BUCK_FB", "FB_SENSE"]:
+        assert is_feedback_name(name), name
+    for name in ["FBGA", "AFB", "VCC", "GND"]:
+        assert not is_feedback_name(name), name
+
+
+def test_smps_bootstrap_cap_is_required_and_cap_clears_it() -> None:
+    flagged = run_schematic_design_rules([_net(["SW_BST"], [("U1", "3")])])
+    bst = [f for f in flagged if f.rule_id == "smps_bootstrap_cap"]
+    assert len(bst) == 1 and bst[0].refs == ("U1",)
+
+    with_cap = run_schematic_design_rules([_net(["SW_BST"], [("U1", "3"), ("C1", "1")])])
+    assert not any(f.rule_id == "smps_bootstrap_cap" for f in with_cap)
+
+    # A BST-named net that reaches no IC is not flagged.
+    no_ic = run_schematic_design_rules([_net(["BST"], [("J1", "1")])])
+    assert not any(f.rule_id == "smps_bootstrap_cap" for f in no_ic)
+
+
+def test_smps_feedback_divider_is_required_and_resistor_clears_it() -> None:
+    flagged = run_schematic_design_rules([_net(["VFB"], [("U1", "4")])])
+    fb = [f for f in flagged if f.rule_id == "smps_feedback_divider"]
+    assert len(fb) == 1 and fb[0].refs == ("U1",)
+
+    with_r = run_schematic_design_rules([_net(["VFB"], [("U1", "4"), ("R1", "1")])])
+    assert not any(f.rule_id == "smps_feedback_divider" for f in with_r)
 
 
 def test_findings_are_sorted_and_typed() -> None:

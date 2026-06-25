@@ -189,6 +189,25 @@ def is_usb_cc_name(name: str) -> bool:
     return bool(_USB_CC_RE.search(name.strip()))
 
 
+# --- Switching regulator / SMPS (issue #205, domain rule pack) ---------------
+# Explicit [^A-Z0-9] boundaries are used (not \b) because regex word boundaries
+# treat "_" as a word char, and KiCad net names are underscore-heavy
+# (e.g. "SW_BST", "BUCK_FB"). Bare "BOOT" is intentionally excluded so MCU
+# boot-mode straps (BOOT0/BOOT1/BOOTSEL) do not trip the bootstrap rule.
+_SMPS_BOOTSTRAP_RE = re.compile(r"(?:^|[^A-Z0-9])(?:V?BST|BOOTSTRAP)(?:[^A-Z0-9]|$)", re.IGNORECASE)
+_SMPS_FEEDBACK_RE = re.compile(r"(?:^|[^A-Z0-9])(?:V?FB|FEEDBACK)(?:[^A-Z0-9]|$)", re.IGNORECASE)
+
+
+def is_bootstrap_name(name: str) -> bool:
+    """Return whether a net name denotes a switching-regulator bootstrap (BST) node."""
+    return bool(_SMPS_BOOTSTRAP_RE.search(name.strip()))
+
+
+def is_feedback_name(name: str) -> bool:
+    """Return whether a net name denotes a regulator feedback (FB) node."""
+    return bool(_SMPS_FEEDBACK_RE.search(name.strip()))
+
+
 # --- Ethernet / MII differential pairs (issue #205, domain rule pack) --------
 # An Ethernet/MDI lane base (TX/RX/TD/RD/MDI/TRD/MX, with optional lane digits)
 # carrying an explicit polarity (+/-, _P/_N, trailing P/N). The required polarity
@@ -619,6 +638,60 @@ def _rule_ethernet_diff_pairs(nets: Sequence[NetView]) -> list[Finding]:
     return findings
 
 
+def _rule_smps_bootstrap_cap(nets: Sequence[NetView]) -> list[Finding]:
+    """Flag a switching-regulator bootstrap (BST) node with no bootstrap capacitor."""
+    findings: list[Finding] = []
+    for net in nets:
+        bst_names = [name for name in _net_names(net) if is_bootstrap_name(name)]
+        if not bst_names:
+            continue
+        ics = _net_refs(net, _IC_RE)
+        if not ics:
+            continue
+        if _net_refs(net, _CAP_RE):
+            continue
+        findings.append(
+            Finding(
+                rule_id="smps_bootstrap_cap",
+                severity="warning",
+                message=(
+                    f"Bootstrap net '{bst_names[0]}' on {', '.join(ics)} has no bootstrap "
+                    "capacitor. A switching regulator's BST pin needs a small capacitor "
+                    "(often 100nF) to the switch node to drive the high-side gate."
+                ),
+                refs=tuple(ics),
+            )
+        )
+    return findings
+
+
+def _rule_smps_feedback_divider(nets: Sequence[NetView]) -> list[Finding]:
+    """Flag a regulator feedback (FB) node that reaches an IC with no resistor divider."""
+    findings: list[Finding] = []
+    for net in nets:
+        fb_names = [name for name in _net_names(net) if is_feedback_name(name)]
+        if not fb_names:
+            continue
+        ics = _net_refs(net, _IC_RE)
+        if not ics:
+            continue
+        if _net_refs(net, _RESISTOR_RE):
+            continue
+        findings.append(
+            Finding(
+                rule_id="smps_feedback_divider",
+                severity="warning",
+                message=(
+                    f"Feedback net '{fb_names[0]}' on {', '.join(ics)} has no resistor. An "
+                    "adjustable regulator sets its output with a feedback resistor divider; "
+                    "check the divider is present (a fixed-output part can ignore this)."
+                ),
+                refs=tuple(ics),
+            )
+        )
+    return findings
+
+
 # Registry of active rules. Append new pure ``(nets) -> [Finding]`` callables here.
 DESIGN_RULES: tuple[Callable[[Sequence[NetView]], list[Finding]], ...] = (
     _rule_i2c_pullups,
@@ -633,6 +706,8 @@ DESIGN_RULES: tuple[Callable[[Sequence[NetView]], list[Finding]], ...] = (
     _rule_usb_diff_pair_complete,
     _rule_usbc_cc_resistors,
     _rule_ethernet_diff_pairs,
+    _rule_smps_bootstrap_cap,
+    _rule_smps_feedback_divider,
 )
 
 
