@@ -103,6 +103,24 @@ def is_supply_rail_name(name: str) -> bool:
     return bool(_VOLTAGE_RAIL_RE.match(token)) and token not in {"0V"}
 
 
+# A rail whose name encodes an explicit voltage: +3V3, 3V3, +5V, 3.3V, +1V8, +12V.
+_RAIL_VOLTAGE_RE = re.compile(r"^\+?(\d+)(?:[V.](\d+))?V?$", re.IGNORECASE)
+
+
+def rail_voltage(name: str) -> float | None:
+    """Return the nominal voltage a rail name encodes, or ``None`` if it has none.
+
+    ``+3V3`` / ``3V3`` / ``3.3V`` -> 3.3, ``+5V`` -> 5.0, ``+1V8`` -> 1.8. Named
+    rails without an explicit number (``VCC``, ``VDD``, ``VBUS``) return ``None``
+    so they are never compared by value.
+    """
+    match = _RAIL_VOLTAGE_RE.match(name.strip().upper())
+    if match is None:
+        return None
+    whole, frac = match.group(1), match.group(2)
+    return float(whole) if frac is None else float(f"{whole}.{frac}")
+
+
 def is_i2c_name(name: str) -> bool:
     return bool(_I2C_TOKEN_RE.search(name.strip().upper()))
 
@@ -390,6 +408,45 @@ def _rule_interrupt_pullup(nets: Sequence[NetView]) -> list[Finding]:
     return findings
 
 
+def _rule_conflicting_supply_rails(nets: Sequence[NetView]) -> list[Finding]:
+    """Flag a single net carrying two different supply voltages (rails shorted).
+
+    Power-rail naming consistency (Rule 13/14): when one connectivity group holds
+    more than one explicit rail voltage — e.g. both ``+3V3`` and ``+5V`` — the
+    rails are electrically tied together, which is a short. Only rails with a
+    parseable numeric voltage are compared, so value-less aliases like ``VCC`` or
+    ``VBUS`` never trip this rule.
+    """
+    findings: list[Finding] = []
+    for net in nets:
+        by_voltage: dict[float, str] = {}
+        for name in _net_names(net):
+            if not is_supply_rail_name(name):
+                continue
+            voltage = rail_voltage(name)
+            if voltage is None:
+                continue
+            by_voltage.setdefault(round(voltage, 3), name)
+        if len(by_voltage) < 2:
+            continue
+        ordered = sorted(by_voltage.items())
+        rail_names = [name for _, name in ordered]
+        ics = _net_refs(net, _IC_RE)
+        findings.append(
+            Finding(
+                rule_id="conflicting_supply_rails",
+                severity="error",
+                message=(
+                    f"One net carries conflicting supply rails {', '.join(rail_names)} "
+                    f"({', '.join(format(v, 'g') + 'V' for v, _ in ordered)}). These rails "
+                    "are on the same net and are shorted together — give each rail its own net."
+                ),
+                refs=tuple(ics) or tuple(rail_names),
+            )
+        )
+    return findings
+
+
 # Registry of active rules. Append new pure ``(nets) -> [Finding]`` callables here.
 DESIGN_RULES: tuple[Callable[[Sequence[NetView]], list[Finding]], ...] = (
     _rule_i2c_pullups,
@@ -400,6 +457,7 @@ DESIGN_RULES: tuple[Callable[[Sequence[NetView]], list[Finding]], ...] = (
     _rule_nc_pin_connected,
     _rule_can_bus_termination,
     _rule_interrupt_pullup,
+    _rule_conflicting_supply_rails,
 )
 
 
