@@ -10,6 +10,7 @@ from kicad_mcp.utils.schematic_rules import (
     is_reset_name,
     is_supply_rail_name,
     merge_nets_by_name,
+    rail_voltage,
     run_schematic_design_rules,
 )
 
@@ -220,6 +221,42 @@ def test_design_rule_check_tool_is_declared_in_validation_category() -> None:
     from kicad_mcp.tools.router import TOOL_CATEGORIES
 
     assert "schematic_design_rule_check" in TOOL_CATEGORIES["validation"]["tools"]
+
+
+def test_rail_voltage_parsing() -> None:
+    assert rail_voltage("+3V3") == 3.3
+    assert rail_voltage("3V3") == 3.3
+    assert rail_voltage("3.3V") == 3.3
+    assert rail_voltage("+5V") == 5.0
+    assert rail_voltage("+1V8") == 1.8
+    assert rail_voltage("+12V") == 12.0
+    # Value-less aliases carry no comparable voltage.
+    assert rail_voltage("VCC") is None
+    assert rail_voltage("VBUS") is None
+    assert rail_voltage("GND") is None
+
+
+def test_conflicting_supply_rails_on_one_net_is_flagged() -> None:
+    flagged = run_schematic_design_rules([_net(["+3V3", "+5V"], [("U1", "1")])])
+    conflict = [f for f in flagged if f.rule_id == "conflicting_supply_rails"]
+    assert len(conflict) == 1
+    assert conflict[0].severity == "error"
+    assert "+3V3" in conflict[0].message and "+5V" in conflict[0].message
+    assert conflict[0].refs == ("U1",)
+
+
+def test_consistent_rail_aliases_are_not_flagged() -> None:
+    # Same voltage written two ways is consistent, not a conflict.
+    same = run_schematic_design_rules([_net(["+3V3", "3V3"], [("U1", "1")])])
+    assert not any(f.rule_id == "conflicting_supply_rails" for f in same)
+
+    # A value-less alias next to a numeric rail cannot be compared by value.
+    aliased = run_schematic_design_rules([_net(["VCC", "+5V"], [("U1", "1")])])
+    assert not any(f.rule_id == "conflicting_supply_rails" for f in aliased)
+
+    # A single rail is always clean.
+    single = run_schematic_design_rules([_net(["+3V3"], [("U1", "1"), ("C1", "1")])])
+    assert not any(f.rule_id == "conflicting_supply_rails" for f in single)
 
 
 def test_findings_are_sorted_and_typed() -> None:
