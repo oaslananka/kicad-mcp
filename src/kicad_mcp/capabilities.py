@@ -212,6 +212,17 @@ _register_many(
     verification_level="verified",
 )
 
+# File-backed schematic reads that parse the ``.kicad_sch`` directly and stay
+# discoverable when KiCad is not running.
+_register_many(
+    [
+        "sch_get_population_status",
+    ],
+    profiles=_SCH_PROFILES,
+    tier=AccessTier.READ,
+    verification_level="verified",
+)
+
 _register_many(
     [
         "sch_add_component",

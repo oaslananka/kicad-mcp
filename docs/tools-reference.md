@@ -131,7 +131,7 @@ Built-in prompt helpers for the critic/fixer loop:
 
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 352.
+Total public tools: 353.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -407,6 +407,7 @@ Total public tools: 352.
 | `sch_get_labels` | agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation | yes | no | no | yes | no | no | List all labels in the schematic. This KiCad MCP Pro tool supports production EDA automation workflows for MCP clients. |
 | `sch_get_net_names` | agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation | yes | no | no | yes | no | no | List unique net names derived from labels. This KiCad MCP Pro tool supports production EDA automation workflows for M... |
 | `sch_get_pin_positions` | agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation | yes | no | no | yes | no | no | Calculate absolute pin positions for a given symbol placement. This KiCad MCP Pro tool supports production EDA automa... |
+| `sch_get_population_status` | agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation | yes | no | no | yes | yes | no | Report native KiCad Populate/DNP status for schematic components. |
 | `sch_get_sheet_info` | agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation | yes | no | no | yes | no | no | Return metadata for a specific child sheet. This KiCad MCP Pro tool supports production EDA automation workflows for... |
 | `sch_get_symbols` | agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation | yes | no | no | yes | no | no | List all schematic symbols. This KiCad MCP Pro tool supports production EDA automation workflows for MCP clients. |
 | `sch_get_template_info` | agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation | yes | no | no | yes | yes | no | Return full details for a subcircuit template. |
@@ -762,6 +763,7 @@ Total public tools: 352.
 - `sch_get_labels`: profiles=agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=no; requiresKiCadRunning=no.
 - `sch_get_net_names`: profiles=agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=no; requiresKiCadRunning=no.
 - `sch_get_pin_positions`: profiles=agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=no; requiresKiCadRunning=no.
+- `sch_get_population_status`: profiles=agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `sch_get_sheet_info`: profiles=agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=no; requiresKiCadRunning=no.
 - `sch_get_symbols`: profiles=agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=no; requiresKiCadRunning=no.
 - `sch_get_template_info`: profiles=agent_full, builder, critic, expert, full, high_speed, power, schematic, schematic_authoring, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.

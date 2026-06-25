@@ -5774,6 +5774,29 @@
   {
     "destructive": false,
     "experimental": false,
+    "headless": true,
+    "idempotent": true,
+    "name": "sch_get_population_status",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "power",
+      "schematic",
+      "schematic_authoring",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": true,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
     "headless": false,
     "idempotent": true,
     "name": "sch_get_sheet_info",
