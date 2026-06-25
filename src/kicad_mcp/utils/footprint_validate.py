@@ -122,3 +122,150 @@ def validate_chip_footprint(
             f"{tol_mm:.3f} mm."
         )
     return FootprintCheck(verdict=verdict, summary=summary, findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Pad-count vs package cross-check (issue #201)
+# ---------------------------------------------------------------------------
+# A package name encodes its pin count; the footprint must actually carry that
+# many numbered pads. A footprint with fewer pads than its package promises is a
+# hard error (silent fab-killer). This is package-agnostic and complements the
+# chip-geometry check above.
+
+# Families where the integer right after the family token IS the pin/lead count
+# (e.g. SOIC-8, LQFP-48, QFN-32, TSSOP-20, PDIP-16). Longest names must be tried
+# first so "TSSOP" wins over "SOP"/"SO" and "SDIP" wins over "DIP".
+_PIN_COUNT_FAMILIES = (
+    "HTSSOP",
+    "TSSOP",
+    "VSSOP",
+    "SSOP",
+    "QSOP",
+    "MSOP",
+    "SOIC",
+    "SOP",
+    "SO",
+    "HVQFN",
+    "WQFN",
+    "UQFN",
+    "VQFN",
+    "TQFN",
+    "QFN",
+    "UDFN",
+    "WDFN",
+    "DFN",
+    "LQFP",
+    "TQFP",
+    "MQFP",
+    "HQFP",
+    "QFP",
+    "PLCC",
+    "PDIP",
+    "CDIP",
+    "SDIP",
+    "DIP",
+)
+# Families where the FIRST number is a JEDEC package code, not the pin count —
+# the lead count (if present) follows a second dash: SOT-23-5, SOT-23-3,
+# TO-252-3. Bare "SOT-23"/"SOT-223" carry no explicit lead count, so we skip
+# them rather than guess (no false positives).
+_CODE_FIRST_FAMILIES = ("SOT", "SOD", "SC", "TO")
+
+_PIN_COUNT_RE = re.compile(
+    r"(?<![A-Z])(?:" + "|".join(_PIN_COUNT_FAMILIES) + r")-(\d+)(?![0-9])",
+    re.IGNORECASE,
+)
+_CODE_FIRST_RE = re.compile(
+    r"(?<![A-Z])(?:" + "|".join(_CODE_FIRST_FAMILIES) + r")-\d+-(\d+)(?![0-9])",
+    re.IGNORECASE,
+)
+_PAD_NUM_RE = re.compile(
+    r'\(pad\s+"?(?P<num>[^"\s)]+)"?\s+(?:smd|thru_hole|connect)\b',
+    re.IGNORECASE,
+)
+
+
+def expected_pin_count_from_package(footprint_name: str) -> int | None:
+    """Return the pin count a footprint's package name implies, or ``None``.
+
+    Strips any ``Library:`` prefix. Returns ``None`` for packages whose name does
+    not unambiguously encode a pin count (bare ``SOT-23``, grid-array BGA/LGA,
+    plain chip codes), so the cross-check stays silent unless it is confident.
+    """
+    base = footprint_name.split(":")[-1]
+    code_first = _CODE_FIRST_RE.search(base)
+    if code_first is not None:
+        return int(code_first.group(1))
+    pin_count = _PIN_COUNT_RE.search(base)
+    if pin_count is not None:
+        return int(pin_count.group(1))
+    return None
+
+
+def count_numbered_pads(footprint_text: str) -> int:
+    """Count distinct positive-integer pad numbers (signal pins) in .kicad_mod text.
+
+    Mechanical/unnumbered pads (``np_thru_hole``, pads numbered ``""`` or ``0``)
+    and grid-reference pads (``A1``) are not counted as signal pins.
+    """
+    numbers: set[int] = set()
+    for match in _PAD_NUM_RE.finditer(footprint_text):
+        token = match.group("num")
+        if token.isdigit() and int(token) > 0:
+            numbers.add(int(token))
+    return len(numbers)
+
+
+def check_footprint_pad_count(
+    footprint_name: str,
+    footprint_text: str,
+    *,
+    exposed_pad_tolerance: int = 2,
+) -> FootprintCheck | None:
+    """Cross-check a footprint's numbered-pad count against its package name.
+
+    Returns ``None`` when the package name carries no certifiable pin count.
+    Fewer pads than the package implies is a blocking ``FAIL``; a small surplus
+    (within ``exposed_pad_tolerance``) is treated as an exposed/thermal pad and
+    ``PASS``es with a note; a larger surplus ``WARN``s.
+    """
+    expected = expected_pin_count_from_package(footprint_name)
+    if expected is None:
+        return None
+    actual = count_numbered_pads(footprint_text)
+    package = footprint_name.split(":")[-1]
+
+    if actual == expected:
+        return FootprintCheck(
+            verdict="PASS",
+            summary=(
+                f"Footprint '{package}' has {actual} numbered pads, "
+                f"matching its {expected}-pin package."
+            ),
+        )
+    if actual < expected:
+        return FootprintCheck(
+            verdict="FAIL",
+            summary=(
+                f"Footprint '{package}' has {actual} numbered pads but its package name implies "
+                f"{expected} pins — pins are missing, which will not match the part."
+            ),
+            findings=[f"pad count {actual} < expected {expected}"],
+        )
+    if actual <= expected + exposed_pad_tolerance:
+        extra = actual - expected
+        return FootprintCheck(
+            verdict="PASS",
+            summary=(
+                f"Footprint '{package}' has {actual} numbered pads for a {expected}-pin package; "
+                f"the {extra} extra is likely an exposed/thermal pad."
+            ),
+        )
+    return FootprintCheck(
+        verdict="WARN",
+        summary=(
+            f"Footprint '{package}' has {actual} numbered pads but its package name implies "
+            f"{expected} pins — more pads than expected."
+        ),
+        findings=[f"pad count {actual} > expected {expected} + {exposed_pad_tolerance}"],
+    )
