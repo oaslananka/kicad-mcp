@@ -183,6 +183,11 @@ async def test_library_symbol_footprint_and_generator_surface(
         "lib_validate_footprint_ipc7351",
         {"footprint_path": "generated/R.kicad_mod", "size_code": "0402", "density": "B"},
     )
+    footprint_certify = await call_tool_text(
+        server,
+        "lib_certify_footprint",
+        {"footprint_path": "generated/R.kicad_mod"},
+    )
     derating_ok = await call_tool_text(
         server,
         "lib_check_derating",
@@ -252,6 +257,10 @@ async def test_library_symbol_footprint_and_generator_surface(
     # but FAILs the hard gate when checked against the wrong (0402) size.
     assert "Footprint IPC-7351B validation: PASS" in footprint_validate
     assert "Footprint IPC-7351B validation: FAIL" in footprint_validate_bad
+    # The generated 0805 footprint has courtyard/fab/silk and a recorded density,
+    # so it certifies PASS overall (pad-count is not certifiable for a chip name).
+    assert "Footprint certification: PASS" in footprint_certify
+    assert "IPC-7351 density recorded: B" in footprint_certify
     # A properly-derated part from an approved vendor passes; over-derating an
     # unapproved vendor fails the sourcing-compliance gate.
     assert "Part sourcing compliance: PASS" in derating_ok
