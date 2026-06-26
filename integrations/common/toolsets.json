@@ -52,6 +52,7 @@
         "kicad_list_recent_projects",
         "kicad_list_tool_categories",
         "kicad_set_project",
+        "lib_certify_footprint",
         "lib_check_derating",
         "lib_check_stock_availability",
         "lib_find_alternative_parts",

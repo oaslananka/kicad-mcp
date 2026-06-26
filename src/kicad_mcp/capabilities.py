@@ -354,6 +354,7 @@ def _is_read_tool(name: str, category: str) -> bool:
         "pcb_placement_quality_report",
         "pcb_transfer_quality_gate",
         "pcb_transfer_quality_report",
+        "lib_certify_footprint",
     }:
         return True
     return name.startswith(
