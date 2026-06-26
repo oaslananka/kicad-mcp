@@ -46,7 +46,17 @@ _LAYER_CYARD = "F.CrtYd"
 # ---------------------------------------------------------------------------
 
 
-def _fp_header(name: str, description: str, tags: str) -> list[str]:
+def ipc_density_tag(density: DensityLevel) -> str:
+    """Return the machine-readable IPC-7351 density tag, e.g. ``IPC7351_B``."""
+    return f"IPC7351_{density}"
+
+
+def _fp_header(
+    name: str, description: str, tags: str, density: DensityLevel | None = None
+) -> list[str]:
+    if density is not None:
+        description = f"{description} (IPC-7351 density {density})"
+        tags = f"{tags} {ipc_density_tag(density)}"
     return [
         f"(footprint {_sexpr_string(name)}",
         "\t(version 20250316)",
@@ -199,6 +209,7 @@ def _chip_passive(size_code: str, density: DensityLevel = "B") -> str:
         f"C_{size_code}",
         f"Capacitor {size_code}",
         f"capacitor {size_code}",
+        density,
     )
     lines += _ref_value(-(cyard_y + 0.5), cyard_y + 0.5, 0.0)
     # pads
@@ -228,7 +239,7 @@ def _sot23(density: DensityLevel = "B") -> str:
     pitch = 0.95
     x_l = -1.45
     x_r = 1.45
-    lines = _fp_header("SOT-23-3", "SOT-23 3-lead", "SOT-23 transistor")
+    lines = _fp_header("SOT-23-3", "SOT-23 3-lead", "SOT-23 transistor", density)
     lines += _ref_value(-2.0, 2.0)
     lines.append(_pad_smd(1, x_l, -pitch / 2, pad_w, pad_h))
     lines.append(_pad_smd(2, x_l, pitch / 2, pad_w, pad_h))
@@ -264,7 +275,9 @@ def _soic(
     cyard_x = x_centre + pad_h / 2 + 0.25
     cyard_y = span / 2 + pad_w / 2 + 0.25
     name = f"{family}-{pin_count}_{pitch_mm:.2f}mm"
-    lines = _fp_header(name, f"{family} {pin_count} leads {pitch_mm:.2f}mm pitch", family.lower())
+    lines = _fp_header(
+        name, f"{family} {pin_count} leads {pitch_mm:.2f}mm pitch", family.lower(), density
+    )
     lines += _ref_value(-(cyard_y + 0.6), cyard_y + 0.6)
     for i in range(n_per_side):
         y = -span / 2 + i * pitch_mm
@@ -311,7 +324,9 @@ def _qfp(
     y_centre = body_l_mm / 2 + 0.6 + pad_h / 2
     cyard = max(x_centre, y_centre) + pad_h / 2 + 0.25
     name = f"{family}-{pin_count}_{pitch_mm:.2f}mm_{body_l_mm:.0f}x{body_w:.0f}mm"
-    lines = _fp_header(name, f"{family} {pin_count} leads {pitch_mm:.2f}mm pitch", family.lower())
+    lines = _fp_header(
+        name, f"{family} {pin_count} leads {pitch_mm:.2f}mm pitch", family.lower(), density
+    )
     lines += _ref_value(-(cyard + 0.6), cyard + 0.6)
     # Bottom side (pins 1…n_per_side), going right-to-left
     for i in range(n_per_side):
@@ -367,7 +382,7 @@ def _qfn(
     cyard = xy_centre + pad_h / 2 + 0.25
     ep_size = exposed_pad_mm or (body_size_mm - 1.0)
     name = f"QFN-{pin_count}_{pitch_mm:.2f}mm_{body_size_mm:.1f}x{body_size_mm:.1f}mm"
-    lines = _fp_header(name, f"QFN {pin_count} leads {pitch_mm:.2f}mm pitch", "qfn")
+    lines = _fp_header(name, f"QFN {pin_count} leads {pitch_mm:.2f}mm pitch", "qfn", density)
     lines += _ref_value(-(cyard + 0.6), cyard + 0.6)
     # Bottom side — pins 1…n
     for i in range(n_per_side):
@@ -430,7 +445,7 @@ def _bga(
     total_h = (rows - 1) * pitch_mm
     cyard = max(total_w, total_h) / 2 + pitch_mm / 2 + 0.25
     name = f"BGA-{rows * cols}_{rows}x{cols}_{pitch_mm:.2f}mm"
-    lines = _fp_header(name, f"BGA {rows}×{cols} {pitch_mm:.2f}mm pitch", "bga")
+    lines = _fp_header(name, f"BGA {rows}×{cols} {pitch_mm:.2f}mm pitch", "bga", density)
     lines += _ref_value(-(cyard + 0.6), cyard + 0.6)
 
     for r in range(rows):
