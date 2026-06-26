@@ -86,6 +86,16 @@ _IC_RE = re.compile(r"^(?:U|IC)\d")
 _CRYSTAL_RE = re.compile(r"^(?:Y|X)\d")
 _CONNECTOR_RE = re.compile(r"^(?:J|CN|CON)\d")
 _RESET_TOKENS = frozenset({"RST", "NRST", "RSTN", "POR"})
+_EXTERNAL_PORT_TOKEN_RE = re.compile(
+    r"(?:^|[^A-Z0-9])(?:VBUS|VIN|VBAT|RS[ _-]?485|UART|TXD|RXD|GPIO|IO)(?:[^A-Z0-9]|$)",
+    re.IGNORECASE,
+)
+_PROTECTION_REF_RE = re.compile(r"^(?:ESD|TVS|F|PTC|RV)\d", re.IGNORECASE)
+_PROTECTION_VALUE_RE = re.compile(
+    r"(?:TVS|ESD|PESD|TPD|USBLC|SP[0-9]|SMF|SMAJ|SMBJ|SMCJ|ESDA|"
+    r"PROTECT|POLYFUSE|PTC|FUSE|SCHOTTKY|REVERSE|VARISTOR|MOV|SS[0-9]|1N581)",
+    re.IGNORECASE,
+)
 
 
 def is_ground_name(name: str) -> bool:
@@ -231,6 +241,33 @@ def ethernet_pair_key(name: str) -> tuple[str, str] | None:
     base = match.group(1).upper()
     raw = match.group(2).upper()
     return base, ("P" if raw in {"+", "P"} else "N")
+
+
+def is_external_port_name(name: str) -> bool:
+    """Return whether a net name strongly implies an externally exposed port."""
+    return bool(
+        usb_data_polarity(name)
+        or is_usb_cc_name(name)
+        or is_can_name(name)
+        or ethernet_pair_key(name)
+        or _EXTERNAL_PORT_TOKEN_RE.search(name.strip())
+    )
+
+
+def _pin_value(pin: Mapping[str, Any]) -> str:
+    return str(pin.get("value", "") or "")
+
+
+def _net_has_protection_evidence(net: NetView) -> bool:
+    """Return whether a net carries ESD/TVS/fuse/reverse-protection evidence."""
+    for pin in net.get("pins", []):
+        ref = str(pin.get("reference", ""))
+        value = _pin_value(pin)
+        if _PROTECTION_REF_RE.match(ref):
+            return True
+        if _PROTECTION_VALUE_RE.search(value):
+            return True
+    return False
 
 
 def merge_nets_by_name(nets: Iterable[NetView]) -> list[dict[str, Any]]:
@@ -692,6 +729,37 @@ def _rule_smps_feedback_divider(nets: Sequence[NetView]) -> list[Finding]:
     return findings
 
 
+def _rule_external_port_protection(nets: Sequence[NetView]) -> list[Finding]:
+    """Flag externally exposed connector nets with no ESD/TVS/reverse-protection evidence."""
+    findings: list[Finding] = []
+    for net in nets:
+        external_names = [name for name in _net_names(net) if is_external_port_name(name)]
+        if not external_names:
+            continue
+        connectors = _net_refs(net, _CONNECTOR_RE)
+        if not connectors:
+            continue
+        ics = _net_refs(net, _IC_RE)
+        if not ics:
+            continue
+        if _net_has_protection_evidence(net):
+            continue
+        findings.append(
+            Finding(
+                rule_id="external_port_protection",
+                severity="warning",
+                message=(
+                    f"External port net '{external_names[0]}' reaches connector "
+                    f"{', '.join(connectors)} and IC {', '.join(ics)} with no ESD/TVS, "
+                    "fuse, or reverse-polarity protection evidence. Add appropriate "
+                    "protection at the connector or document why the port is internal."
+                ),
+                refs=tuple([*connectors, *ics]),
+            )
+        )
+    return findings
+
+
 # Registry of active rules. Append new pure ``(nets) -> [Finding]`` callables here.
 DESIGN_RULES: tuple[Callable[[Sequence[NetView]], list[Finding]], ...] = (
     _rule_i2c_pullups,
@@ -708,6 +776,7 @@ DESIGN_RULES: tuple[Callable[[Sequence[NetView]], list[Finding]], ...] = (
     _rule_ethernet_diff_pairs,
     _rule_smps_bootstrap_cap,
     _rule_smps_feedback_divider,
+    _rule_external_port_protection,
 )
 
 

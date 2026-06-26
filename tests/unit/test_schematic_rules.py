@@ -7,6 +7,7 @@ from kicad_mcp.utils.schematic_rules import (
     is_active_low_interrupt_name,
     is_bootstrap_name,
     is_can_name,
+    is_external_port_name,
     is_feedback_name,
     is_ground_name,
     is_i2c_name,
@@ -24,6 +25,13 @@ def _net(names: list[str], pins: list[tuple[str, str]]) -> dict:
     return {
         "names": names,
         "pins": [{"reference": ref, "pin": pin, "value": ""} for ref, pin in pins],
+    }
+
+
+def _net_v(names: list[str], pins: list[tuple[str, str, str]]) -> dict:
+    return {
+        "names": names,
+        "pins": [{"reference": ref, "pin": pin, "value": value} for ref, pin, value in pins],
     }
 
 
@@ -344,6 +352,39 @@ def test_ethernet_incomplete_lane_is_flagged_and_complete_is_clean() -> None:
     # Single-ended UART TX/RX must never be flagged as a half-pair.
     uart = run_schematic_design_rules([_net(["TX"], [("U1", "1")]), _net(["RX"], [("U1", "2")])])
     assert not any(f.rule_id == "ethernet_diff_pair" for f in uart)
+
+
+def test_external_port_name_classification() -> None:
+    for name in ["USB_DP", "CC1", "CANH", "ETH_TX_P", "RS485_A", "UART_TXD", "VBUS", "VIN"]:
+        assert is_external_port_name(name), name
+    for name in ["+3V3", "VCC", "RESET", "LED_A", "SENSOR_SDA"]:
+        assert not is_external_port_name(name), name
+
+
+def test_external_port_without_protection_is_flagged_and_protection_clears_it() -> None:
+    flagged = run_schematic_design_rules([_net(["USB_DP"], [("J1", "3"), ("U1", "10")])])
+    protection = [f for f in flagged if f.rule_id == "external_port_protection"]
+    assert len(protection) == 1
+    assert protection[0].refs == ("J1", "U1")
+    assert "ESD/TVS" in protection[0].message
+
+    with_esd = run_schematic_design_rules(
+        [_net_v(["USB_DP"], [("J1", "3", ""), ("U1", "10", ""), ("D1", "1", "ESD9M5V")])]
+    )
+    assert not any(f.rule_id == "external_port_protection" for f in with_esd)
+
+    with_fuse = run_schematic_design_rules(
+        [_net_v(["VBUS"], [("J1", "1", ""), ("U1", "5", ""), ("F1", "1", "polyfuse")])]
+    )
+    assert not any(f.rule_id == "external_port_protection" for f in with_fuse)
+
+
+def test_external_port_protection_ignores_connector_only_and_internal_nets() -> None:
+    connector_only = run_schematic_design_rules([_net(["USB_DP"], [("J1", "3")])])
+    assert not any(f.rule_id == "external_port_protection" for f in connector_only)
+
+    internal = run_schematic_design_rules([_net(["SENSOR_SDA"], [("U1", "3"), ("U2", "5")])])
+    assert not any(f.rule_id == "external_port_protection" for f in internal)
 
 
 def test_smps_bootstrap_and_feedback_classification() -> None:
