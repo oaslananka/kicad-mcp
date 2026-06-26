@@ -11,9 +11,11 @@ from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp import Context, FastMCP
+from mcp.types import CallToolResult
 
 from ..config import get_config
 from ..discovery import get_cli_capabilities
+from ..mcp_media import image_tool_result, text_tool_result
 from ..models.export import (
     ExportBOMInput,
     ExportGerberInput,
@@ -1135,7 +1137,7 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         light_side: float | None = None,
         light_camera: float | None = None,
         light_side_elevation: float | None = None,
-    ) -> str:
+    ) -> str | tuple[Path, str]:
         pcb_file = _get_pcb_file()
         caps = get_cli_capabilities(get_config().kicad_cli)
         if not caps.supports_render:
@@ -1192,7 +1194,7 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
             return f"3D render failed: {stderr or 'unknown error'}"
         if out_file.exists():
             file_size = _human_size(out_file.stat().st_size)
-            return f"Rendered board image exported to {out_file} ({file_size})"
+            return out_file, f"Rendered board image exported to {out_file} ({file_size})"
         return f"Rendered board image exported to {out_file}"
 
     @headless_compatible
@@ -1217,7 +1219,7 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         light_side: float | None = None,
         light_camera: float | None = None,
         light_side_elevation: float | None = None,
-    ) -> str:
+    ) -> CallToolResult:
         """Render a 3D view of the active PCB board to a PNG image.
 
         Parameters
@@ -1249,29 +1251,46 @@ def register(mcp: FastMCP, *, include_low_level_exports: bool = True) -> None:
         light_side_elevation : float | None
             Side light elevation angle in degrees.
         """
-        return _with_low_level_export_notice(
-            _export_3d_render(
-                output_file=output_file,
-                side=side,
-                zoom=zoom,
-                width=width,
-                height=height,
-                quality=quality,
-                preset=preset,
-                use_board_stackup_colors=use_board_stackup_colors,
-                floor=floor,
-                perspective=perspective,
-                pan_x=pan_x,
-                pan_y=pan_y,
-                rotate_x=rotate_x,
-                rotate_y=rotate_y,
-                rotate_z=rotate_z,
-                light_top=light_top,
-                light_bottom=light_bottom,
-                light_side=light_side,
-                light_camera=light_camera,
-                light_side_elevation=light_side_elevation,
-            )
+        result = _export_3d_render(
+            output_file=output_file,
+            side=side,
+            zoom=zoom,
+            width=width,
+            height=height,
+            quality=quality,
+            preset=preset,
+            use_board_stackup_colors=use_board_stackup_colors,
+            floor=floor,
+            perspective=perspective,
+            pan_x=pan_x,
+            pan_y=pan_y,
+            rotate_x=rotate_x,
+            rotate_y=rotate_y,
+            rotate_z=rotate_z,
+            light_top=light_top,
+            light_bottom=light_bottom,
+            light_side=light_side,
+            light_camera=light_camera,
+            light_side_elevation=light_side_elevation,
+        )
+        if isinstance(result, str):
+            return text_tool_result(_with_low_level_export_notice(result))
+        image_path, summary = result
+        metadata = {
+            "status": "ok",
+            "png_path": str(image_path),
+            "side": side,
+            "zoom": zoom,
+            "width": width,
+            "height": height,
+            "preset": preset,
+        }
+        return image_tool_result(
+            image_path,
+            metadata,
+            text=_with_low_level_export_notice(
+                f"{summary}\n{json.dumps(metadata, indent=2)}",
+            ),
         )
 
     def _export_pick_and_place(

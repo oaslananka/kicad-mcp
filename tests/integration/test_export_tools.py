@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
+from mcp.types import ImageContent
 
 from kicad_mcp.connection import KiCadConnectionError
 from kicad_mcp.discovery import CliCapabilities
 from kicad_mcp.server import build_server
 from kicad_mcp.tools.export import LOW_LEVEL_EXPORT_NOTICE
 from kicad_mcp.tools.validation import GateOutcome
-from tests.conftest import call_tool_text
+from tests.conftest import call_tool_content, call_tool_text, tool_text
 
 
 @pytest.mark.anyio
@@ -62,6 +64,10 @@ async def test_export_gerber_prefers_modern_command_then_legacy_fallback(
     def fake_run(cmd, *args: object, **kwargs: object):
         _ = args, kwargs
         commands.append(list(cmd))
+        if "render" in cmd:
+            output_path = Path(cmd[cmd.index("--output") + 1])
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(b"\x89PNG\r\n\x1a\n")
 
         class Result:
             stdout = ""
@@ -192,7 +198,12 @@ async def test_export_step_and_render_keep_relative_names_under_output_dir(
     step = await call_tool_text(server, "export_step", {"output_path": "board.step"})
     stepz = await call_tool_text(server, "export_stepz", {"output_path": "board.stepz"})
     xao = await call_tool_text(server, "export_xao", {"output_path": "board.xao"})
-    render = await call_tool_text(server, "export_3d_render", {"output_file": "render.png"})
+    render_content = await call_tool_content(
+        server,
+        "export_3d_render",
+        {"output_file": "render.png"},
+    )
+    render = tool_text(render_content)
 
     assert step.startswith(LOW_LEVEL_EXPORT_NOTICE)
     assert stepz.startswith(LOW_LEVEL_EXPORT_NOTICE)
@@ -202,6 +213,9 @@ async def test_export_step_and_render_keep_relative_names_under_output_dir(
     assert "STEPZ model exported" in stepz
     assert "XAO model exported" in xao
     assert "Rendered board image exported" in render
+    image = next(item for item in render_content if isinstance(item, ImageContent))
+    assert image.mimeType == "image/png"
+    assert image.data
     assert str(sample_project / "output" / "3d" / "board.step") in commands[0]
     assert "stpz" in commands[1]
     assert str(sample_project / "output" / "3d" / "board.stepz") in commands[1]

@@ -414,7 +414,7 @@ def _tier_for_tool(name: str, category: str) -> AccessTier:
 
 
 def _runtime_for_tool(name: str, category: str, tier: AccessTier) -> RuntimeRequirement:
-    if name in {"sch_render_png", "sch_set_title_block_info"}:
+    if name in {"sch_render_png", "sch_render_visual_diff", "sch_set_title_block_info"}:
         return RuntimeRequirement.NONE
     if category == "simulation" or name.startswith("sim_"):
         return RuntimeRequirement.NGSPICE

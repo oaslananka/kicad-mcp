@@ -56,6 +56,8 @@ def tool_text(result: object) -> str:
         for item in result:
             if hasattr(item, "text"):
                 parts.append(item.text)
+            elif getattr(item, "type", None) == "image":
+                continue
             else:
                 parts.append(str(item))
         return "\n".join(parts)
@@ -77,6 +79,24 @@ async def call_tool_payload(server: object, name: str, arguments: dict[str, obje
             return structured["result"]
         return structured
     return result
+
+
+async def call_tool_content(
+    server: object,
+    name: str,
+    arguments: dict[str, object],
+) -> list[object]:
+    """Call a FastMCP tool and return its protocol content blocks."""
+    result = await server.call_tool(name, arguments)
+    if hasattr(result, "content"):
+        return list(result.content)
+    if isinstance(result, tuple) and result:
+        content = result[0]
+        if isinstance(content, Iterable) and not isinstance(content, str | bytes | dict):
+            return list(content)
+    if isinstance(result, Iterable) and not isinstance(result, str | bytes | dict):
+        return list(result)
+    return [result]
 
 
 async def read_resource_text(server: object, uri: str) -> str:

@@ -18,10 +18,12 @@ from typing import Any, Literal, Protocol, TypedDict, cast
 
 import structlog
 from mcp.server.fastmcp import FastMCP
+from mcp.types import CallToolResult
 
 from ..config import get_config
 from ..connection import KiCadConnectionError, get_kicad
 from ..discovery import is_numbered_duplicate_kicad_file
+from ..mcp_media import image_tool_result, text_tool_result
 from ..models.schematic import (
     AddBusInput,
     AddBusWireEntryInput,
@@ -1718,6 +1720,84 @@ def _render_svg_to_png(
         }
 
 
+def _render_schematic_png_artifact(
+    sch_file: Path,
+    output_file: Path,
+    *,
+    dpi: int,
+    crop_to_content: bool,
+    include_title_block: bool,
+) -> tuple[Path, dict[str, object]]:
+    svg_dir = output_file.parent / "_svg"
+    svg_dir.mkdir(parents=True, exist_ok=True)
+    known_svg_files = set(svg_dir.glob("*.svg"))
+    code, stdout, stderr = _export_schematic_svg_for_render(
+        sch_file,
+        svg_dir,
+        include_title_block=include_title_block,
+    )
+    if code != 0:
+        reason = stderr or stdout or "unknown error"
+        raise RuntimeError(f"during SVG export: {reason}")
+    svg_file = _latest_svg_file(svg_dir, known_svg_files)
+    if svg_file is None:
+        raise RuntimeError("kicad-cli did not produce an SVG file.")
+    image_metadata = _render_svg_to_png(
+        svg_file,
+        output_file,
+        dpi=dpi,
+        crop_to_content=crop_to_content,
+    )
+    return svg_file, image_metadata
+
+
+def _render_png_visual_diff(
+    before_file: Path,
+    after_file: Path,
+    output_file: Path,
+) -> dict[str, object]:
+    try:
+        from PIL import Image, ImageChops
+    except ImportError as exc:
+        raise RuntimeError(
+            "Visual diff rendering requires Pillow. Install the project dev extras "
+            "or run uv sync --all-extras --frozen."
+        ) from exc
+
+    with Image.open(before_file) as before_source, Image.open(after_file) as after_source:
+        before = before_source.convert("RGBA")
+        after = after_source.convert("RGBA")
+        width = max(before.width, after.width)
+        height = max(before.height, after.height)
+        if before.size != (width, height):
+            padded = Image.new("RGBA", (width, height), (255, 255, 255, 0))
+            padded.alpha_composite(before)
+            before = padded
+        if after.size != (width, height):
+            padded = Image.new("RGBA", (width, height), (255, 255, 255, 0))
+            padded.alpha_composite(after)
+            after = padded
+
+        delta = ImageChops.difference(before, after).convert("L")
+        mask = delta.point(lambda value: 255 if value > 8 else 0)
+        changed_pixels = mask.histogram()[255]
+        faded = Image.blend(
+            after,
+            Image.new("RGBA", after.size, (255, 255, 255, 255)),
+            0.22,
+        )
+        highlight = Image.new("RGBA", after.size, (239, 34, 74, 255))
+        Image.composite(highlight, faded, mask).save(output_file)
+        changed_bbox = mask.getbbox()
+
+    return {
+        "width_px": width,
+        "height_px": height,
+        "changed_pixels": changed_pixels,
+        "changed_bbox_px": list(changed_bbox) if changed_bbox is not None else None,
+    }
+
+
 def _coord_pair_key(x: float, y: float) -> tuple[float, float]:
     return round(float(x), 4), round(float(y), 4)
 
@@ -1916,6 +1996,195 @@ def _parse_label_block(block: str) -> dict[str, Any] | None:
         "y": float(match.group(4)),
         "rotation": int(round(float(match.group(5)))),
     }
+
+
+def _schematic_object_map(content: str) -> dict[str, dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+
+    cursor = 0
+    while cursor < len(content):
+        if content[cursor:].startswith("(symbol"):
+            block, length = _extract_block(content, cursor)
+            if block:
+                parsed = _parse_symbol_block(block)
+                if parsed is not None:
+                    records.append({"kind": "symbol", **parsed})
+                cursor += length
+                continue
+        cursor += 1
+
+    for match in re.finditer(r"\((?:label|global_label|hierarchical_label)\b", content):
+        block, _ = _extract_block(content, match.start())
+        parsed = _parse_label_block(block)
+        if parsed is not None:
+            records.append(
+                {
+                    "kind": "label",
+                    "label_type": parsed["kind"],
+                    "name": parsed["name"],
+                    "x": parsed["x"],
+                    "y": parsed["y"],
+                    "rotation": parsed["rotation"],
+                }
+            )
+
+    for wire in _extract_wires(content):
+        signature = _wire_signature(
+            float(wire["x1"]),
+            float(wire["y1"]),
+            float(wire["x2"]),
+            float(wire["y2"]),
+        )
+        records.append(
+            {
+                "kind": "wire",
+                "start": list(signature[0]),
+                "end": list(signature[1]),
+            }
+        )
+
+    for bus in _extract_buses(content):
+        signature = _wire_signature(bus["x1"], bus["y1"], bus["x2"], bus["y2"])
+        records.append(
+            {
+                "kind": "bus",
+                "start": list(signature[0]),
+                "end": list(signature[1]),
+            }
+        )
+
+    for kind in ("junction", "no_connect"):
+        for match in re.finditer(
+            rf"\({kind}\s+\(at\s+([-\d.]+)\s+([-\d.]+)\)",
+            content,
+        ):
+            records.append(
+                {
+                    "kind": kind,
+                    "x": float(match.group(1)),
+                    "y": float(match.group(2)),
+                }
+            )
+
+    title_block = _find_title_block(content)
+    if title_block is not None:
+        records.append({"kind": "document", "name": "title_block", "value": title_block[1]})
+    paper_match = re.search(r"\(paper\b[^\n]*\)", content)
+    if paper_match is not None:
+        records.append({"kind": "document", "name": "paper", "value": paper_match.group(0)})
+
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for record in records:
+        kind = str(record["kind"])
+        if kind == "symbol":
+            base = f"symbol:{record['reference']}:unit={record['unit']}"
+        elif kind == "label":
+            base = f"label:{record['label_type']}:{record['name']}"
+        elif kind in {"wire", "bus"}:
+            base = f"{kind}:{record['start']}->{record['end']}"
+        elif kind in {"junction", "no_connect"}:
+            base = f"{kind}:{record['x']},{record['y']}"
+        else:
+            base = f"document:{record['name']}"
+        grouped.setdefault(base, []).append(record)
+
+    result: dict[str, dict[str, Any]] = {}
+    for base, items in sorted(grouped.items()):
+        ordered = sorted(items, key=lambda item: json.dumps(item, sort_keys=True))
+        for index, item in enumerate(ordered, start=1):
+            object_id = base if len(ordered) == 1 else f"{base}:occurrence={index}"
+            result[object_id] = item
+    return result
+
+
+def _schematic_object_diff(before: str, after: str) -> list[dict[str, Any]]:
+    before_objects = _schematic_object_map(before)
+    after_objects = _schematic_object_map(after)
+    changes: list[dict[str, Any]] = []
+    for object_id in sorted(set(before_objects) | set(after_objects)):
+        before_object = before_objects.get(object_id)
+        after_object = after_objects.get(object_id)
+        if before_object == after_object:
+            continue
+        if before_object is None:
+            change = "added"
+        elif after_object is None:
+            change = "removed"
+        else:
+            change = "modified"
+        source = after_object or before_object or {}
+        changes.append(
+            {
+                "id": object_id,
+                "kind": source.get("kind", "unknown"),
+                "change": change,
+                "before": before_object,
+                "after": after_object,
+            }
+        )
+    if not changes and before != after:
+        changes.append(
+            {
+                "id": "document:schematic",
+                "kind": "document",
+                "change": "modified",
+                "before": None,
+                "after": None,
+            }
+        )
+    return changes
+
+
+def _visual_diff_state_names(sch_file: Path) -> tuple[str, str]:
+    key = hashlib.sha256(str(sch_file.resolve()).encode("utf-8")).hexdigest()[:16]
+    return f"visual-diff-{key}.json", f"visual-diff-{key}-before.kicad_sch"
+
+
+def _record_schematic_visual_diff(sch_file: Path, before: str, after: str) -> None:
+    state_name, snapshot_name = _visual_diff_state_names(sch_file)
+    snapshot_path = _schematic_state_path(snapshot_name)
+    snapshot_path.write_text(before, encoding="utf-8")
+    changed_objects = _schematic_object_diff(before, after)
+    changed_refs = sorted(
+        {
+            str(item.get("reference"))
+            for change in changed_objects
+            for item in (change.get("before"), change.get("after"))
+            if isinstance(item, dict) and item.get("reference")
+        }
+    )
+    changed_nets = sorted(
+        {
+            str(item.get("name"))
+            for change in changed_objects
+            for item in (change.get("before"), change.get("after"))
+            if isinstance(item, dict)
+            and item.get("kind") == "label"
+            and item.get("name")
+        }
+    )
+    _save_schematic_state(
+        state_name,
+        {
+            "status": "ready",
+            "schematic_path": str(sch_file.resolve()),
+            "before_snapshot": str(snapshot_path),
+            "before_sha256": hashlib.sha256(before.encode("utf-8")).hexdigest(),
+            "after_sha256": hashlib.sha256(after.encode("utf-8")).hexdigest(),
+            "changed_objects": changed_objects,
+            "changed_refs": changed_refs,
+            "changed_nets": changed_nets,
+        },
+    )
+
+
+def _load_schematic_visual_diff(sch_file: Path) -> dict[str, Any] | None:
+    state_name, _ = _visual_diff_state_names(sch_file)
+    state_path = _schematic_state_path(state_name)
+    if not state_path.is_file():
+        return None
+    payload = json.loads(state_path.read_text(encoding="utf-8"))
+    return cast(dict[str, Any], payload)
 
 
 def _get_schematic_file() -> Path:
@@ -3916,6 +4185,15 @@ def _transactional_write_to_schematic_file(sch_file: Path, mutator: Callable[[st
             handle.write(updated)
             temp_path = Path(handle.name)
         temp_path.replace(sch_file)
+        if updated != current:
+            try:
+                _record_schematic_visual_diff(sch_file, current, updated)
+            except (OSError, ValueError, json.JSONDecodeError, AttributeError) as exc:
+                logger.warning(
+                    "schematic_visual_diff_record_failed",
+                    path=str(sch_file),
+                    error=str(exc),
+                )
         clear_ttl_cache()
         return str(sch_file)
 
@@ -6315,7 +6593,7 @@ def register(mcp: FastMCP) -> None:
         dpi: int = 200,
         include_title_block: bool = True,
         output_file: str | None = None,
-    ) -> str:
+    ) -> CallToolResult:
         """Render a schematic sheet to PNG for visual self-checks.
 
         Uses headless ``kicad-cli sch export svg`` followed by SVG-to-PNG
@@ -6323,59 +6601,155 @@ def register(mcp: FastMCP) -> None:
         misleading blank image.
         """
         if dpi < 72 or dpi > 600:
-            return "dpi must be between 72 and 600."
+            return text_tool_result("dpi must be between 72 and 600.")
 
         target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         data = parse_schematic_file(target.path)
         if not _schematic_has_renderable_content(data):
-            return json.dumps(
-                {
-                    "status": "empty_sheet",
-                    "sheet_path": str(target.path),
-                    "message": "No schematic content was available to render.",
-                },
-                indent=2,
+            metadata = {
+                "status": "empty_sheet",
+                "sheet_path": str(target.path),
+                "message": "No schematic content was available to render.",
+            }
+            return text_tool_result(
+                json.dumps(metadata, indent=2),
+                metadata=metadata,
             )
 
         try:
             png_file = _safe_render_output_path(output_file, default_name=f"{target.path.stem}.png")
         except ValueError as exc:
-            return f"Invalid output path: {exc}"
-        svg_dir = png_file.parent / "_svg"
-        svg_dir.mkdir(parents=True, exist_ok=True)
-        known_svg_files = set(svg_dir.glob("*.svg"))
-        code, stdout, stderr = _export_schematic_svg_for_render(
-            target.path,
-            svg_dir,
-            include_title_block=include_title_block,
-        )
-        if code != 0:
-            reason = stderr or stdout or "unknown error"
-            return f"Schematic PNG render failed during SVG export: {reason}"
-        svg_file = _latest_svg_file(svg_dir, known_svg_files)
-        if svg_file is None:
-            return "Schematic PNG render failed: kicad-cli did not produce an SVG file."
+            return text_tool_result(f"Invalid output path: {exc}")
         try:
-            image_metadata = _render_svg_to_png(
-                svg_file,
+            svg_file, image_metadata = _render_schematic_png_artifact(
+                target.path,
                 png_file,
                 dpi=dpi,
                 crop_to_content=crop_to_content,
+                include_title_block=include_title_block,
             )
         except RuntimeError as exc:
-            return f"Schematic PNG render failed: {exc}"
-        return json.dumps(
-            {
-                "status": "ok",
-                "png_path": str(png_file),
-                "svg_path": str(svg_file),
-                "sheet_path": str(target.path),
-                "dpi": dpi,
-                "include_title_block": include_title_block,
-                **image_metadata,
-            },
-            indent=2,
+            return text_tool_result(f"Schematic PNG render failed: {exc}")
+        metadata = {
+            "status": "ok",
+            "png_path": str(png_file),
+            "svg_path": str(svg_file),
+            "sheet_path": str(target.path),
+            "dpi": dpi,
+            "include_title_block": include_title_block,
+            **image_metadata,
+        }
+        return image_tool_result(
+            png_file,
+            metadata,
         )
+
+    @mcp.tool()
+    @headless_compatible
+    def sch_render_visual_diff(
+        sheet: str | None = None,
+        sheet_file: str | None = None,
+        dpi: int = 200,
+        include_title_block: bool = True,
+        output_file: str | None = None,
+    ) -> CallToolResult:
+        """Render the exact visual delta produced by the last schematic mutation.
+
+        The red pixels are the aligned before/after image difference. Metadata lists
+        every changed symbol, label/net, wire, bus, junction, or document object.
+        """
+        if dpi < 72 or dpi > 600:
+            return text_tool_result("dpi must be between 72 and 600.")
+
+        target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
+        state = _load_schematic_visual_diff(target.path)
+        if state is None:
+            metadata = {
+                "status": "no_recorded_mutation",
+                "sheet_path": str(target.path),
+                "message": "No mutation snapshot is available for this schematic.",
+            }
+            return text_tool_result(
+                json.dumps(metadata, indent=2),
+                metadata=metadata,
+            )
+
+        before_snapshot = Path(str(state.get("before_snapshot", "")))
+        if not before_snapshot.is_file():
+            metadata = {
+                "status": "missing_before_snapshot",
+                "sheet_path": str(target.path),
+                "before_snapshot": str(before_snapshot),
+            }
+            return text_tool_result(
+                json.dumps(metadata, indent=2),
+                metadata=metadata,
+            )
+
+        current_content = target.path.read_text(encoding="utf-8")
+        current_sha256 = hashlib.sha256(current_content.encode("utf-8")).hexdigest()
+        if current_sha256 != state.get("after_sha256"):
+            metadata = {
+                "status": "stale_mutation_snapshot",
+                "sheet_path": str(target.path),
+                "recorded_after_sha256": state.get("after_sha256"),
+                "current_sha256": current_sha256,
+                "message": "The schematic changed outside the recorded mutation.",
+            }
+            return text_tool_result(
+                json.dumps(metadata, indent=2),
+                metadata=metadata,
+            )
+
+        try:
+            diff_file = _safe_render_output_path(
+                output_file,
+                default_name=f"{target.path.stem}-visual-diff.png",
+            )
+        except ValueError as exc:
+            return text_tool_result(f"Invalid output path: {exc}")
+
+        artifact_dir = diff_file.parent / "_visual-diff"
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        before_png = artifact_dir / f"{diff_file.stem}-before.png"
+        after_png = artifact_dir / f"{diff_file.stem}-after.png"
+        try:
+            before_svg, before_metadata = _render_schematic_png_artifact(
+                before_snapshot,
+                before_png,
+                dpi=dpi,
+                crop_to_content=False,
+                include_title_block=include_title_block,
+            )
+            after_svg, after_metadata = _render_schematic_png_artifact(
+                target.path,
+                after_png,
+                dpi=dpi,
+                crop_to_content=False,
+                include_title_block=include_title_block,
+            )
+            diff_metadata = _render_png_visual_diff(before_png, after_png, diff_file)
+        except RuntimeError as exc:
+            return text_tool_result(f"Schematic visual diff failed: {exc}")
+
+        metadata = {
+            "status": "ok",
+            "diff_path": str(diff_file),
+            "before_png_path": str(before_png),
+            "after_png_path": str(after_png),
+            "before_svg_path": str(before_svg),
+            "after_svg_path": str(after_svg),
+            "sheet_path": str(target.path),
+            "dpi": dpi,
+            "include_title_block": include_title_block,
+            "before_render": before_metadata,
+            "after_render": after_metadata,
+            "changed_objects": state.get("changed_objects", []),
+            "changed_refs": state.get("changed_refs", []),
+            "changed_nets": state.get("changed_nets", []),
+            **diff_metadata,
+        }
+        return image_tool_result(diff_file, metadata)
 
     @mcp.tool()
     @headless_compatible

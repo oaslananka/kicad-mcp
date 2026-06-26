@@ -6,11 +6,12 @@ from pathlib import Path
 
 import pytest
 import yaml
+from mcp.types import ImageContent
 
 from kicad_mcp.config import get_config
 from kicad_mcp.server import build_server
 from kicad_mcp.tools.schematic import parse_schematic_file
-from tests.conftest import call_tool_text
+from tests.conftest import call_tool_content, call_tool_text, tool_text
 
 
 @pytest.mark.anyio
@@ -2150,8 +2151,9 @@ async def test_schematic_render_png_reports_empty_and_renders_populated_sheet(
     def fake_export(sch_file: Path, out_dir: Path, *, include_title_block: bool):
         assert include_title_block is False
         out_dir.mkdir(parents=True, exist_ok=True)
+        marker = "<text>READY</text>" if "READY" in sch_file.read_text(encoding="utf-8") else ""
         (out_dir / f"{sch_file.stem}.svg").write_text(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"></svg>',
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16">{marker}</svg>',
             encoding="utf-8",
         )
         return 0, "", ""
@@ -2162,7 +2164,10 @@ async def test_schematic_render_png_reports_empty_and_renders_populated_sheet(
         assert crop_to_content is True
         from PIL import Image
 
-        Image.new("RGBA", (32, 16), (0, 0, 0, 0)).save(output_file)
+        image = Image.new("RGBA", (32, 16), (0, 0, 0, 0))
+        if "READY" in svg_file.read_text(encoding="utf-8"):
+            image.putpixel((10, 8), (0, 0, 0, 255))
+        image.save(output_file)
         return {"width_px": 32, "height_px": 16, "cropped": True}
 
     monkeypatch.setattr(
@@ -2171,7 +2176,7 @@ async def test_schematic_render_png_reports_empty_and_renders_populated_sheet(
     )
     monkeypatch.setattr("kicad_mcp.tools.schematic._render_svg_to_png", fake_render)
 
-    rendered = await call_tool_text(
+    content = await call_tool_content(
         server,
         "sch_render_png",
         {
@@ -2181,6 +2186,7 @@ async def test_schematic_render_png_reports_empty_and_renders_populated_sheet(
             "output_file": "agent-check.png",
         },
     )
+    rendered = tool_text(content)
 
     payload = json.loads(rendered)
     assert payload["status"] == "ok"
@@ -2189,6 +2195,30 @@ async def test_schematic_render_png_reports_empty_and_renders_populated_sheet(
     assert payload["cropped"] is True
     assert Path(payload["png_path"]).name == "agent-check.png"
     assert Path(payload["png_path"]).exists()
+    image = next(item for item in content if isinstance(item, ImageContent))
+    assert image.mimeType == "image/png"
+    assert image.data
+
+    diff_content = await call_tool_content(
+        server,
+        "sch_render_visual_diff",
+        {
+            "dpi": 150,
+            "include_title_block": False,
+            "output_file": "agent-diff.png",
+        },
+    )
+    diff_payload = json.loads(tool_text(diff_content))
+    assert diff_payload["status"] == "ok"
+    assert diff_payload["changed_pixels"] == 1
+    assert diff_payload["changed_nets"] == ["READY"]
+    assert any(
+        item["kind"] == "label" and item["change"] == "added"
+        for item in diff_payload["changed_objects"]
+    )
+    diff_image = next(item for item in diff_content if isinstance(item, ImageContent))
+    assert diff_image.mimeType == "image/png"
+    assert diff_image.data
 
 
 @pytest.mark.anyio
