@@ -37,6 +37,7 @@ from ..utils.pdn_mesh import (
     ipc2221_temperature_rise_c,
 )
 from ..utils.solver_seams import (
+    format_solver_verdict,
     ir_drop_method,
     pdn_mesh_method,
     thermal_fd_method,
@@ -287,6 +288,7 @@ def register(mcp: FastMCP) -> None:
         ]
         method = ir_drop_method()
         lines.append(f"- Method: {method['method']} — {method['accuracy']}")
+        lines.append(f"- {format_solver_verdict(method)}")
         if not method["solver_grade"]:
             lines.append(f"- Note: {method['note']}")
         return "\n".join(lines)
@@ -352,6 +354,7 @@ def register(mcp: FastMCP) -> None:
         lines.extend(f"- Recommendation: {item}" for item in result.recommendations)
         mesh_method = pdn_mesh_method()
         lines.append(f"- Method: {mesh_method['method']} — {mesh_method['accuracy']}")
+        lines.append(f"- {format_solver_verdict(mesh_method)}")
         return "\n".join(lines)
 
     @mcp.tool()
@@ -560,6 +563,7 @@ def register(mcp: FastMCP) -> None:
         ]
         method = thermal_method()
         lines.append(f"- Method: {method['method']} — {method['accuracy']}")
+        lines.append(f"- {format_solver_verdict(method)}")
         if not method["solver_grade"]:
             lines.append(f"- Note: {method['note']}")
         return "\n".join(lines)
@@ -664,4 +668,5 @@ def register(mcp: FastMCP) -> None:
         ]
         method = thermal_fd_method()
         lines.append(f"- Method: {method['method']} — {method['accuracy']}")
+        lines.append(f"- {format_solver_verdict(method)}")
         return "\n".join(lines)

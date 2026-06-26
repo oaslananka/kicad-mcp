@@ -66,5 +66,8 @@ def test_invalid_specs_raise() -> None:
 def test_thermal_fd_method_is_solver_grade_but_not_fea() -> None:
     method = thermal_fd_method()
     assert method["solver_grade"] is True
+    assert method["verdict"] == "solver-grade"
+    assert method["release_signoff"] == "eligible"
+    assert method["critic_only"] is False
     assert method["method"] == THERMAL_FD_METHOD
     assert "not a" in method["accuracy"].lower()

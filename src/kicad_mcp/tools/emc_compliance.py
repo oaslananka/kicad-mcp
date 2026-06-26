@@ -20,7 +20,7 @@ from ..connection import get_board
 from ..models.common import _FootprintLike
 from ..utils.impedance import propagation_delay_ps_per_mm
 from ..utils.layers import resolve_layer
-from ..utils.solver_seams import emc_method
+from ..utils.solver_seams import emc_method, format_solver_verdict
 from ..utils.units import _coord_nm, nm_to_mm
 
 
@@ -527,6 +527,8 @@ def register(mcp: FastMCP) -> None:
         method = emc_method()
         lines.append(
             f"- Method: {method['method']} (solver_grade={method['solver_grade']}). "
-            f"{method['note']} Treat results as a critic, not a release sign-off."
+            f"{method['accuracy']}"
         )
+        lines.append(f"- {format_solver_verdict(method)}")
+        lines.append(f"- Note: {method['note']} Treat results as a critic, not a release sign-off.")
         return "\n".join(lines)

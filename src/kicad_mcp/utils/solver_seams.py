@@ -12,7 +12,13 @@ estimate off as a distributed-solver result.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
+
+SOLVER_VERDICT_REQUIRES_EXPERT = "requires-expert-solver"
+SOLVER_VERDICT_SOLVER_GRADE = "solver-grade"
+RELEASE_SIGNOFF_BLOCKED = "blocked"
+RELEASE_SIGNOFF_ELIGIBLE = "eligible"
 
 PDN_CLOSED_FORM_METHOD = "lumped closed-form (R = rho*L/A, single trace)"
 PDN_CLOSED_FORM_ACCURACY = (
@@ -66,6 +72,29 @@ def emc_solver_available() -> bool:
     return False
 
 
+def solver_verdict_metadata(*, solver_grade: bool) -> dict[str, Any]:
+    """Return release-signoff metadata shared by all solver seams."""
+    if solver_grade:
+        return {
+            "verdict": SOLVER_VERDICT_SOLVER_GRADE,
+            "release_signoff": RELEASE_SIGNOFF_ELIGIBLE,
+            "critic_only": False,
+        }
+    return {
+        "verdict": SOLVER_VERDICT_REQUIRES_EXPERT,
+        "release_signoff": RELEASE_SIGNOFF_BLOCKED,
+        "critic_only": True,
+    }
+
+
+def format_solver_verdict(method: Mapping[str, Any]) -> str:
+    """Render the solver/sign-off boundary in a stable, agent-readable form."""
+    return (
+        f"Solver verdict: {method['verdict']} "
+        f"(release_signoff={method['release_signoff']}; critic_only={method['critic_only']})"
+    )
+
+
 def _method(
     *,
     available: bool,
@@ -75,11 +104,17 @@ def _method(
     what: str,
 ) -> dict[str, Any]:
     if available:  # pragma: no cover - no solver integrated yet
-        return {"method": solver_method, "solver_grade": True, "accuracy": "solver-grade"}
+        return {
+            "method": solver_method,
+            "solver_grade": True,
+            "accuracy": "solver-grade",
+            **solver_verdict_metadata(solver_grade=True),
+        }
     return {
         "method": closed_method,
         "solver_grade": False,
         "accuracy": closed_accuracy,
+        **solver_verdict_metadata(solver_grade=False),
         "note": (
             f"No {what} solver is integrated; this is a first-order estimate, not a "
             "solver-grade or sign-off figure."
@@ -110,6 +145,7 @@ def pdn_mesh_method() -> dict[str, Any]:
         "method": PDN_MESH_METHOD,
         "solver_grade": True,
         "accuracy": PDN_MESH_ACCURACY,
+        **solver_verdict_metadata(solver_grade=True),
     }
 
 
@@ -125,11 +161,13 @@ def channel_method(measured: bool) -> dict[str, Any]:
             "method": CHANNEL_SPICE_METHOD,
             "solver_grade": True,
             "accuracy": CHANNEL_SPICE_ACCURACY,
+            **solver_verdict_metadata(solver_grade=True),
         }
     return {
         "method": CHANNEL_CLOSED_FORM_METHOD,
         "solver_grade": False,
         "accuracy": CHANNEL_CLOSED_FORM_ACCURACY,
+        **solver_verdict_metadata(solver_grade=False),
         "note": (
             "No ngspice channel simulation was run; this is a first-order analytic "
             "estimate, not a measured or sign-off figure."
@@ -159,6 +197,7 @@ def thermal_fd_method() -> dict[str, Any]:
         "method": THERMAL_FD_METHOD,
         "solver_grade": True,
         "accuracy": THERMAL_FD_ACCURACY,
+        **solver_verdict_metadata(solver_grade=True),
     }
 
 

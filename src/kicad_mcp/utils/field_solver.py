@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .solver_seams import solver_verdict_metadata
+
 CLOSED_FORM_METHOD = "closed-form (IPC-2141 / Wheeler quasi-static)"
 CLOSED_FORM_ACCURACY = "first-order, typically within ~5-10% of a 2D field solver"
 
@@ -36,11 +38,13 @@ def impedance_method() -> dict[str, Any]:
             "method": "2D field solver",
             "solver_grade": True,
             "accuracy": "solver-grade",
+            **solver_verdict_metadata(solver_grade=True),
         }
     return {
         "method": CLOSED_FORM_METHOD,
         "solver_grade": False,
         "accuracy": CLOSED_FORM_ACCURACY,
+        **solver_verdict_metadata(solver_grade=False),
         "note": (
             "No 2D field solver is integrated; this is a closed-form estimate, not a "
             "solver-grade or sign-off impedance figure."

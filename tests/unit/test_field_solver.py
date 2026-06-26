@@ -8,6 +8,7 @@ from kicad_mcp.utils.field_solver import (
     field_solver_available,
     impedance_method,
 )
+from kicad_mcp.utils.solver_seams import format_solver_verdict
 
 
 def test_no_field_solver_is_integrated_yet() -> None:
@@ -15,8 +16,12 @@ def test_no_field_solver_is_integrated_yet() -> None:
     assert field_solver_available() is False
     method = impedance_method()
     assert method["solver_grade"] is False
+    assert method["verdict"] == "requires-expert-solver"
+    assert method["release_signoff"] == "blocked"
+    assert method["critic_only"] is True
     assert method["method"] == CLOSED_FORM_METHOD
     assert "not a" in method["note"].lower()
+    assert "requires-expert-solver" in format_solver_verdict(method)
 
 
 def test_impedance_result_states_its_method() -> None:
@@ -32,4 +37,6 @@ def test_impedance_result_states_its_method() -> None:
     )
     # A reader can tell from the result alone that this is closed-form, not a solver.
     assert "Method: closed-form" in text
+    assert "Solver verdict: requires-expert-solver" in text
+    assert "release_signoff=blocked" in text
     assert "not a" in text.lower()

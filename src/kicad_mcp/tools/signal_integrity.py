@@ -51,7 +51,7 @@ from ..utils.impedance import (
     via_stub_risk_level,
 )
 from ..utils.ngspice import NgspiceRunner
-from ..utils.solver_seams import channel_method
+from ..utils.solver_seams import channel_method, format_solver_verdict
 from ..utils.units import _coord_nm, nm_to_mm
 from ..verdicts import three_level_verdict, warn_max_from
 from .design_intent_state import resolve_design_intent
@@ -331,6 +331,7 @@ def _format_impedance_result(
         lines.append(f"- Estimated differential impedance: {differential_ohm:.2f} ohm")
     method = impedance_method()
     lines.append(f"- Method: {method['method']} — {method['accuracy']}")
+    lines.append(f"- {format_solver_verdict(method)}")
     if not method["solver_grade"]:
         lines.append(f"- Note: {method['note']}")
     return "\n".join(lines)
@@ -361,6 +362,7 @@ def _format_channel_result(metrics: ChannelMetrics, max_insertion_loss_db: float
     ]
     method = channel_method(metrics.source == "ngspice")
     lines.append(f"- Method: {method['method']} — {method['accuracy']}")
+    lines.append(f"- {format_solver_verdict(method)}")
     lines.extend(f"- {note}" for note in metrics.notes)
     if not method["solver_grade"]:
         lines.append(f"- Note: {method['note']}")
