@@ -129,6 +129,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
         "tools": [
             "kicad_set_project",
             "kicad_get_project_info",
+            "project_design_workflow",
             "project_set_design_intent",
             "project_import_design_spec",
             "project_get_design_intent",

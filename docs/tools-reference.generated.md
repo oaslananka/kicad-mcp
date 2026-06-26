@@ -1,6 +1,6 @@
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 355.
+Total public tools: 356.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -212,6 +212,7 @@ Total public tools: 355.
 | `project_assess_edit_impact` | all | no | no | no | no | yes | no | Scope re-validation after an edit: semantic-diff the design intent and report |
 | `project_auto_fix_loop` | all | no | yes | no | no | yes | no | Run the project quality gate and automatically apply server-side fixes. |
 | `project_design_report` | all | no | no | no | no | yes | no | Generate a comprehensive design-status report. |
+| `project_design_workflow` | all | no | no | no | no | yes | no | Return the professional PCB design workflow as a typed phase state machine. |
 | `project_embed_file` | all | no | no | no | no | yes | no | Embed an external file into the KiCad project as project metadata. |
 | `project_extract_embedded_file` | all | no | no | no | no | yes | no | Extract an embedded file from the project and write it to disk. |
 | `project_full_validation_loop` | all | no | no | no | no | yes | no | Run ERC/DRC/project gates in a bounded fix-and-rerun validation loop. |
@@ -570,6 +571,7 @@ Total public tools: 355.
 - `project_assess_edit_impact`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_auto_fix_loop`: profiles=all; readOnly=no; destructive=yes; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_design_report`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
+- `project_design_workflow`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_embed_file`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_extract_embedded_file`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `project_full_validation_loop`: profiles=all; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.

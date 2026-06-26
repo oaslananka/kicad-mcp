@@ -349,6 +349,7 @@ def _is_read_tool(name: str, category: str) -> bool:
         return True
     if name in {
         "kicad_set_project",
+        "project_design_workflow",
         "pcb_placement_quality_gate",
         "pcb_placement_quality_report",
         "pcb_transfer_quality_gate",
