@@ -4,9 +4,19 @@ from __future__ import annotations
 
 from kicad_mcp.utils.footprint_gen import _chip_passive
 from kicad_mcp.utils.footprint_validate import (
+    check_footprint_pad_count,
+    count_numbered_pads,
+    expected_pin_count_from_package,
     parse_smd_pads,
     validate_chip_footprint,
 )
+
+
+def _pads_text(numbers: list[str], pad_type: str = "smd") -> str:
+    """Build minimal .kicad_mod pad lines for the given pad-number tokens."""
+    return "\n".join(
+        f'(pad "{num}" {pad_type} roundrect (at 0 0) (size 1 1) (layers "F.Cu"))' for num in numbers
+    )
 
 
 def test_generated_chip_footprint_validates_pass() -> None:
@@ -57,3 +67,67 @@ def test_parse_smd_pads_reads_position_and_size() -> None:
     # Pads are mirrored about the origin on the x-axis.
     assert pads[0].x == -pads[1].x
     assert pads[0].w == pads[1].w
+
+
+# --- Pad-count vs package cross-check (issue #201) --------------------------
+
+
+def test_expected_pin_count_from_package_reads_pin_count_families() -> None:
+    assert expected_pin_count_from_package("Package_SO:SOIC-8_3.9x4.9mm_P1.27mm") == 8
+    assert expected_pin_count_from_package("Package_QFP:LQFP-48_7x7mm_P0.5mm") == 48
+    assert expected_pin_count_from_package("Package_DFN_QFN:QFN-32-1EP_5x5mm_P0.5mm") == 32
+    assert expected_pin_count_from_package("Package_SO:TSSOP-20_4.4x6.5mm_P0.65mm") == 20
+    assert expected_pin_count_from_package("Package_DIP:PDIP-16_W7.62mm") == 16
+
+
+def test_expected_pin_count_handles_code_first_packages() -> None:
+    # For SOT/TO the first number is a JEDEC code; the lead count follows it.
+    assert expected_pin_count_from_package("Package_TO_SOT_SMD:SOT-23-5") == 5
+    assert expected_pin_count_from_package("Package_TO_SOT_SMD:SOT-23-3") == 3
+    assert expected_pin_count_from_package("Package_TO_SOT_THT:TO-252-3_TabPin2") == 3
+
+
+def test_expected_pin_count_returns_none_when_ambiguous() -> None:
+    # No explicit lead count, grid arrays, and plain chips are not certifiable here.
+    for name in [
+        "Package_TO_SOT_SMD:SOT-23",
+        "Package_TO_SOT_SMD:SOT-223",
+        "Package_BGA:BGA-256_17x17mm",
+        "Resistor_SMD:R_0805_2012Metric",
+        "Capacitor_SMD:C_0402_1005Metric",
+    ]:
+        assert expected_pin_count_from_package(name) is None, name
+
+
+def test_count_numbered_pads_ignores_mechanical_and_grid_pads() -> None:
+    assert count_numbered_pads(_pads_text(["1", "2", "3", "4"])) == 4
+    # Distinct integers only; an exposed pad numbered "5" counts, "" / "0" do not.
+    assert count_numbered_pads(_pads_text(["1", "2", "5", "", "0"])) == 3
+    # np_thru_hole mounting holes are not signal pins.
+    assert (
+        count_numbered_pads(_pads_text(["1", "2"]) + "\n" + _pads_text([""], "np_thru_hole")) == 2
+    )
+
+
+def test_check_footprint_pad_count_matches_and_misses() -> None:
+    soic8 = "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm"
+    ok = check_footprint_pad_count(soic8, _pads_text(["1", "2", "3", "4", "5", "6", "7", "8"]))
+    assert ok is not None and ok.verdict == "PASS"
+
+    missing = check_footprint_pad_count(soic8, _pads_text(["1", "2", "3", "4", "5", "6"]))
+    assert missing is not None and missing.verdict == "FAIL"
+    assert missing.findings
+
+    # QFN-32 with an exposed thermal pad (33 numbered pads) passes within tolerance.
+    qfn = "Package_DFN_QFN:QFN-32-1EP_5x5mm_P0.5mm"
+    exposed = check_footprint_pad_count(qfn, _pads_text([str(n) for n in range(1, 34)]))
+    assert exposed is not None and exposed.verdict == "PASS"
+
+    # Far too many pads warns.
+    too_many = check_footprint_pad_count(soic8, _pads_text([str(n) for n in range(1, 13)]))
+    assert too_many is not None and too_many.verdict == "WARN"
+
+    # An uncertifiable package name yields no finding.
+    assert (
+        check_footprint_pad_count("Resistor_SMD:R_0805_2012Metric", _pads_text(["1", "2"])) is None
+    )
