@@ -1,9 +1,10 @@
 """Ratchet guard against raw ``.kicad_sch`` / ``.kicad_pcb`` writes (issue #193).
 
-Schematic/PCB files must be mutated through the guarded, atomic transaction
-(``_transactional_write_to_schematic_file`` — lock, normalize, validate, atomic
-``temp.replace(target)``, cache-clear). Direct ``sch_file.write_text(...)`` /
-``pcb_file.write_text(...)`` calls bypass that guard and risk silent corruption.
+Schematic/PCB files must be mutated through the guarded, atomic transactions
+(``_transactional_write_to_schematic_file`` / ``_transactional_board_write`` —
+normalize, validate, atomic ``temp.replace(target)``, cache-clear). Direct
+``sch_file.write_text(...)`` / ``pcb_file.write_text(...)`` calls bypass that
+guard and risk silent corruption.
 
 This test inventories every direct schematic/PCB content write in ``src`` and
 fails when a **new** one appears outside the documented allowlist below. It uses
@@ -32,15 +33,6 @@ _ALLOWLIST: dict[str, str] = {
     # Brand-new project scaffolding: the files do not exist yet, so there is no
     # prior content to transact against — initial creation, not mutation.
     "project.py::kicad_create_new_project": "writes fresh empty .kicad_pcb/.kicad_sch files",
-    # PCB SES routing apply. There is no PCB-side transactional writer yet;
-    # tracked for migration once #193 extends the transaction to .kicad_pcb.
-    "routing.py::route_apply_ses": "applies FreeRouting .ses result to the board",
-    # Full schematic overwrite. Validates before writing but skips the lock +
-    # atomic replace + cache-clear; pending migration to the transaction.
-    "schematic.py::sch_build_circuit": "rebuilds the whole schematic from structured inputs",
-    # Regex paper-size mutation; migration to the transactional writer is in
-    # flight on fix/sch-sheet-size-transactional.
-    "schematic.py::sch_set_sheet_size": "rewrites the (paper ...) declaration",
 }
 
 
@@ -87,6 +79,6 @@ def test_no_new_raw_schematic_or_pcb_writes() -> None:
     assert not unlisted, (
         "New direct .kicad_sch/.kicad_pcb write(s) bypass the guarded transaction "
         f"(issue #193): {unlisted}. Route the mutation through "
-        "_transactional_write_to_schematic_file, or, if the write is genuinely "
-        "exempt, add it to _ALLOWLIST with a justification."
+        "_transactional_write_to_schematic_file/_transactional_board_write, or, "
+        "if the write is genuinely exempt, add it to _ALLOWLIST with a justification."
     )

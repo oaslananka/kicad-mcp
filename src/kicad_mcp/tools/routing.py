@@ -25,6 +25,7 @@ from ..utils.sexpr import _sexpr_string
 from ..utils.units import _coord_nm, mm_to_nm, nm_to_mm
 from .export_support import _get_pcb_file
 from .metadata import headless_compatible, requires_dependency, requires_kicad_running
+from .pcb import _transactional_board_write
 from .routing_rules import _load_rules_content, _mm, _rules_file_path, _upsert_rule, _write_rule
 
 __all__ = [
@@ -431,7 +432,6 @@ def register(mcp: FastMCP) -> None:
         the manual File > Import > Specctra Session step. Run run_drc() afterwards to verify.
         """
         cfg = get_config()
-        pcb_file = _get_pcb_file()
         try:
             resolved_ses = cfg.resolve_within_project(Path(ses_path))
         except (ValueError, OSError) as exc:
@@ -442,18 +442,35 @@ def register(mcp: FastMCP) -> None:
             )
         try:
             ses_text = resolved_ses.read_text(encoding="utf-8", errors="ignore")
-            pcb_text = pcb_file.read_text(encoding="utf-8", errors="ignore")
-            updated, route = apply_ses_to_pcb(pcb_text, ses_text)
         except (ValueError, OSError) as exc:
-            return ToolResult.failure("route_apply_ses", f"Could not apply the SES: {exc}")
+            return ToolResult.failure("route_apply_ses", f"Could not read the SES: {exc}")
 
-        if not route.segments and not route.vias:
+        class _NoRouteInSessionError(ValueError):
+            pass
+
+        class _RouteAlreadyAppliedError(ValueError):
+            pass
+
+        route = None
+
+        def apply_routing(current: str) -> str:
+            nonlocal route
+            updated, route = apply_ses_to_pcb(current, ses_text)
+            if not route.segments and not route.vias:
+                raise _NoRouteInSessionError
+            if updated == current:
+                raise _RouteAlreadyAppliedError
+            return updated
+
+        try:
+            pcb_file = Path(_transactional_board_write(apply_routing))
+        except _NoRouteInSessionError:
             return ToolResult.failure(
                 "route_apply_ses",
                 f"The session at {_relative_project_path(resolved_ses)} contained no routed "
                 "segments or vias.",
             )
-        if updated == pcb_text:
+        except _RouteAlreadyAppliedError:
             return ToolResult.success(
                 "route_apply_ses",
                 changed=False,
@@ -461,7 +478,11 @@ def register(mcp: FastMCP) -> None:
                     summary="Routing already applied; the board is unchanged (idempotent)."
                 ),
             )
-        pcb_file.write_text(updated, encoding="utf-8")
+        except (ValueError, OSError) as exc:
+            return ToolResult.failure("route_apply_ses", f"Could not apply the SES: {exc}")
+
+        if route is None:  # pragma: no cover - set by the mutator on every success path
+            return ToolResult.failure("route_apply_ses", "Routing produced no result to apply.")
         return ToolResult.success(
             "route_apply_ses",
             changed=True,
