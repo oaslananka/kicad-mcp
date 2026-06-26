@@ -269,3 +269,53 @@ def check_footprint_pad_count(
         ),
         findings=[f"pad count {actual} > expected {expected} + {exposed_pad_tolerance}"],
     )
+
+
+# ---------------------------------------------------------------------------
+# Documentation-layer completeness (issue #201)
+# ---------------------------------------------------------------------------
+# A complete footprint carries a courtyard (placement/DRC clearance), a
+# fabrication outline (assembly drawing), and a silkscreen outline (board
+# legend). A missing courtyard is a hard gate because KiCad relies on it for
+# component-to-component clearance; missing fab/silk degrade documentation.
+
+_COURTYARD_RE = re.compile(r"[FB]\.CrtYd", re.IGNORECASE)
+_FAB_RE = re.compile(r"[FB]\.Fab", re.IGNORECASE)
+_SILK_RE = re.compile(r"[FB]\.SilkS", re.IGNORECASE)
+
+
+def check_footprint_documentation_layers(footprint_text: str) -> FootprintCheck:
+    """Verify a footprint has courtyard, fabrication, and silkscreen graphics.
+
+    No courtyard is a blocking ``FAIL`` (KiCad uses it for placement clearance);
+    a missing fab or silkscreen outline ``WARN``s. All three present ``PASS``es.
+    """
+    has_courtyard = bool(_COURTYARD_RE.search(footprint_text))
+    has_fab = bool(_FAB_RE.search(footprint_text))
+    has_silk = bool(_SILK_RE.search(footprint_text))
+
+    findings: list[str] = []
+    if not has_fab:
+        findings.append("no fabrication-layer (F.Fab/B.Fab) outline")
+    if not has_silk:
+        findings.append("no silkscreen-layer (F.SilkS/B.SilkS) outline")
+
+    if not has_courtyard:
+        return FootprintCheck(
+            verdict="FAIL",
+            summary=(
+                "Footprint has no courtyard (F.CrtYd/B.CrtYd) — KiCad needs it for "
+                "component-to-component placement clearance; blocking."
+            ),
+            findings=["no courtyard-layer (F.CrtYd/B.CrtYd) graphics", *findings],
+        )
+    if findings:
+        return FootprintCheck(
+            verdict="WARN",
+            summary="Footprint has a courtyard but is missing documentation graphics.",
+            findings=findings,
+        )
+    return FootprintCheck(
+        verdict="PASS",
+        summary="Footprint has courtyard, fabrication, and silkscreen graphics.",
+    )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from kicad_mcp.utils.footprint_gen import _chip_passive
 from kicad_mcp.utils.footprint_validate import (
+    check_footprint_documentation_layers,
     check_footprint_pad_count,
     count_numbered_pads,
     expected_pin_count_from_package,
@@ -131,3 +132,33 @@ def test_check_footprint_pad_count_matches_and_misses() -> None:
     assert (
         check_footprint_pad_count("Resistor_SMD:R_0805_2012Metric", _pads_text(["1", "2"])) is None
     )
+
+
+_FULL_FP = (
+    '(fp_line (start -1 -1) (end 1 -1) (layer "F.CrtYd"))\n'
+    '(fp_line (start -1 -1) (end 1 -1) (layer "F.Fab"))\n'
+    '(fp_line (start -1 -1) (end 1 -1) (layer "F.SilkS"))\n'
+)
+
+
+def test_documentation_layers_pass_when_all_present() -> None:
+    result = check_footprint_documentation_layers(_FULL_FP)
+    assert result.verdict == "PASS"
+
+
+def test_documentation_layers_fail_without_courtyard() -> None:
+    no_courtyard = (
+        '(fp_line (start -1 -1) (end 1 -1) (layer "F.Fab"))\n'
+        '(fp_line (start -1 -1) (end 1 -1) (layer "F.SilkS"))\n'
+    )
+    result = check_footprint_documentation_layers(no_courtyard)
+    assert result.verdict == "FAIL"
+    assert any("courtyard" in f for f in result.findings)
+
+
+def test_documentation_layers_warn_when_fab_or_silk_missing() -> None:
+    only_courtyard = '(fp_poly (pts (xy 0 0)) (layer "B.CrtYd"))\n'
+    result = check_footprint_documentation_layers(only_courtyard)
+    assert result.verdict == "WARN"
+    assert any("fabrication" in f for f in result.findings)
+    assert any("silkscreen" in f for f in result.findings)
