@@ -1329,6 +1329,64 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @headless_compatible
+    def lib_certify_footprint(footprint_path: str) -> str:
+        """Certify a footprint against package, documentation, and standard checks (#201).
+
+        Reads the .kicad_mod at ``footprint_path`` (relative to the project) and runs
+        package-agnostic certification: pad count vs the package name (SOIC/QFP/QFN/
+        SOT/DIP…), documentation-layer completeness (courtyard/fab/silkscreen), and the
+        recorded IPC-7351 density. Returns one aggregate PASS/WARN/FAIL with per-check
+        findings; a missing courtyard or too-few pads is a blocking FAIL. Headless — no
+        KiCad IPC. For two-terminal chip *geometry* use lib_validate_footprint_ipc7351.
+        """
+        import re as _re
+
+        from ..utils.footprint_validate import (
+            FootprintCheck,
+            check_footprint_documentation_layers,
+            check_footprint_pad_count,
+            parse_ipc_density,
+        )
+
+        cfg = get_config()
+        try:
+            path = cfg.resolve_within_project(footprint_path)
+        except Exception as exc:  # noqa: BLE001 - surface any path-safety rejection
+            return f"Invalid footprint path: {exc}"
+        if not path.exists():
+            return f"Footprint file not found: {path}"
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        name_match = _re.search(r'\(footprint\s+"([^"]+)"', text)
+        footprint_name = name_match.group(1) if name_match else path.stem
+
+        checks: list[tuple[str, FootprintCheck]] = []
+        pad_check = check_footprint_pad_count(footprint_name, text)
+        if pad_check is not None:
+            checks.append(("pad-count", pad_check))
+        checks.append(("documentation-layers", check_footprint_documentation_layers(text)))
+
+        verdicts = {check.verdict for _, check in checks}
+        overall = "FAIL" if "FAIL" in verdicts else "WARN" if "WARN" in verdicts else "PASS"
+
+        density = parse_ipc_density(text)
+        lines = [
+            f"Footprint certification: {overall}",
+            f"- Footprint: {footprint_name}",
+            f"- IPC-7351 density recorded: {density}"
+            if density
+            else "- IPC-7351 density: not recorded",
+        ]
+        if pad_check is None:
+            lines.append(
+                "- [INFO] pad-count: package name does not encode a certifiable pin count."
+            )
+        for label, check in checks:
+            lines.append(f"- [{check.verdict}] {label}: {check.summary}")
+            lines.extend(f"    - {finding}" for finding in check.findings)
+        return "\n".join(lines)
+
+    @mcp.tool()
+    @headless_compatible
     def lib_check_derating(
         kind: str,
         parameter: str,

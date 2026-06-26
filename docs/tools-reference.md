@@ -131,7 +131,7 @@ Built-in prompt helpers for the critic/fixer loop:
 
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 353.
+Total public tools: 355.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -219,6 +219,7 @@ Total public tools: 353.
 | `lib_assign_lcsc_to_symbol` | agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation | no | no | no | no | yes | no | Assign an LCSC part code to a schematic symbol property. |
 | `lib_bind_part_to_symbol` | agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation | no | no | no | no | yes | no | Assign a live part (LCSC/MPN) to a schematic symbol and optionally its footprint. |
 | `lib_bulk_assign_3d_models` | agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation | no | no | no | no | yes | no | Bulk-assign a 3D model to multiple footprints matching a pattern. |
+| `lib_certify_footprint` | agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation | no | no | no | no | yes | no | Certify a footprint against package, documentation, and standard checks (#201). |
 | `lib_check_derating` | agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation | yes | no | no | yes | yes | no | Check a part choice for reliability derating and approved-vendor (AVL) compliance. |
 | `lib_check_stock_availability` | agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation | yes | no | no | yes | yes | no | Check live stock availability for the requested schematic references. This KiCad MCP Pro tool supports production EDA... |
 | `lib_create_custom_symbol` | agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation | no | no | no | no | yes | no | Create a simple custom symbol in the active project directory. |
@@ -576,6 +577,7 @@ Total public tools: 353.
 - `lib_assign_lcsc_to_symbol`: profiles=agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `lib_bind_part_to_symbol`: profiles=agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `lib_bulk_assign_3d_models`: profiles=agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
+- `lib_certify_footprint`: profiles=agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `lib_check_derating`: profiles=agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `lib_check_stock_availability`: profiles=agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `lib_create_custom_symbol`: profiles=agent_full, builder, expert, full, schematic, schematic_authoring, schematic_only, simulation; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.

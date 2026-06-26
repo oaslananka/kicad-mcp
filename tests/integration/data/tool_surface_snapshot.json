@@ -1712,6 +1712,26 @@
     "destructive": false,
     "experimental": false,
     "headless": true,
+    "idempotent": false,
+    "name": "lib_certify_footprint",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "expert",
+      "full",
+      "schematic",
+      "schematic_authoring",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
     "idempotent": true,
     "name": "lib_check_derating",
     "open_world": false,
