@@ -4466,6 +4466,19 @@
     "experimental": false,
     "headless": true,
     "idempotent": false,
+    "name": "project_design_workflow",
+    "open_world": false,
+    "profiles": [
+      "all"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
     "name": "project_embed_file",
     "open_world": false,
     "profiles": [
