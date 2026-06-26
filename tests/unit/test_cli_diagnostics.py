@@ -89,7 +89,7 @@ def test_cli_doctor_json_includes_schema_validated_setup_diagnostics(
     monkeypatch.setenv("KICAD_MCP_PORT", "4173")
     monkeypatch.setenv("KICAD_MCP_MOUNT_PATH", "/custom-mcp")
     monkeypatch.setenv("KICAD_MCP_STATEFUL_HTTP", "true")
-    monkeypatch.setattr("kicad_mcp.diagnostics.find_kicad_version", lambda _path: "KiCad 10.0.3")
+    monkeypatch.setattr("kicad_mcp.diagnostics.find_kicad_version", lambda _path: "KiCad 10.0.4")
     monkeypatch.setattr(
         "kicad_mcp.diagnostics.get_board",
         lambda: (_ for _ in ()).throw(KiCadConnectionError("IPC not reachable token=super-secret")),
@@ -183,7 +183,7 @@ def test_cli_doctor_bundle_writes_redacted_debug_zip(
 ) -> None:
     monkeypatch.setenv("KICAD_MCP_AUTH_TOKEN", "bundle-secret-token")
     monkeypatch.setenv("KICAD_API_TOKEN", "bundle-kicad-token")
-    monkeypatch.setattr("kicad_mcp.diagnostics.find_kicad_version", lambda _path: "KiCad 10.0.3")
+    monkeypatch.setattr("kicad_mcp.diagnostics.find_kicad_version", lambda _path: "KiCad 10.0.4")
     monkeypatch.setattr(
         "kicad_mcp.diagnostics.get_board",
         lambda: (_ for _ in ()).throw(KiCadConnectionError("IPC unavailable")),

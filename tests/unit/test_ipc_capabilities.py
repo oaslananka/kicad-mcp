@@ -19,7 +19,7 @@ class FakeIpcClient:
     def __init__(
         self,
         *,
-        version: str = "KiCad 10.0.3",
+        version: str = "KiCad 10.0.4",
         api_version: str = "10.0.0",
         board_open: bool = True,
         schematic_open: bool = True,
@@ -68,12 +68,12 @@ def test_ipc_capability_matrix_kicad_10_exposes_required_live_editing_tools(
     fake_cli: Path,
 ) -> None:
     state = get_ipc_capability_state(
-        client=FakeIpcClient(version="KiCad 10.0.3", schematic_open=True),
+        client=FakeIpcClient(version="KiCad 10.0.4", schematic_open=True),
         config_factory=lambda: KiCadMCPConfig(kicad_cli=fake_cli),
     )
 
     assert state.reachable is True
-    assert state.version == "KiCad 10.0.3"
+    assert state.version == "KiCad 10.0.4"
     assert state.major_version == 10
     assert state.live_pcb_context is True
     assert state.live_schematic_context is True

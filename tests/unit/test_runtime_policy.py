@@ -48,7 +48,7 @@ def test_vscode_engine_drift_reports_minimum_lag() -> None:
             vscode_stable="1.102.0",
             vscode_insiders="1.103.0-insider",
             python_bugfix_minors=("3.13", "3.14"),
-            kicad_stable="10.0.3",
+            kicad_stable="10.0.4",
         ),
         max_vscode_minor_lag=1,
         python_supported_minor_window=2,
@@ -69,7 +69,7 @@ def test_python_drift_reports_missing_current_supported_window() -> None:
             vscode_stable="1.100.0",
             vscode_insiders="1.101.0-insider",
             python_bugfix_minors=("3.13", "3.14"),
-            kicad_stable="10.0.3",
+            kicad_stable="10.0.4",
         ),
         max_vscode_minor_lag=1,
         python_supported_minor_window=2,
@@ -185,7 +185,7 @@ def test_fetch_current_versions_reads_release_feeds(monkeypatch) -> None:
     monkeypatch.setattr(
         runtime_policy,
         "_fetch_text",
-        lambda url: "<p>Current Version: <strong>    10.0.3  </strong></p>",
+        lambda url: "<p>Current Version: <strong>    10.0.4  </strong></p>",
     )
 
     current = runtime_policy.fetch_current_versions(python_supported_minor_window=2)
@@ -193,5 +193,5 @@ def test_fetch_current_versions_reads_release_feeds(monkeypatch) -> None:
     assert current.vscode_stable == "1.100.0"
     assert current.vscode_insiders == "1.101.0-insider"
     assert current.python_bugfix_minors == ("3.13", "3.14")
-    assert current.kicad_stable == "10.0.3"
+    assert current.kicad_stable == "10.0.4"
     assert current.source_errors == ()

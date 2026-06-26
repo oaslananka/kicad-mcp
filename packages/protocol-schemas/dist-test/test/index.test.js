@@ -132,7 +132,7 @@ const kicad_protocol_schemas_1 = require("@oaslananka/kicad-protocol-schemas");
             type: "streamable-http",
             endpoint: "http://127.0.0.1:3334/mcp",
         },
-        kicad: { cliFound: true, cliVersion: "KiCad 10.0.3", ipcAvailable: true },
+        kicad: { cliFound: true, cliVersion: "KiCad 10.0.4", ipcAvailable: true },
         diagnostics: [],
     }).valid, true);
     strict_1.default.equal((0, kicad_protocol_schemas_1.validateCompatibilityManifest)({
@@ -188,9 +188,9 @@ function serverInfoFixture() {
         kicad: {
             cliFound: true,
             cliPath: "/usr/bin/kicad-cli",
-            cliVersion: "KiCad 10.0.3",
+            cliVersion: "KiCad 10.0.4",
             ipcAvailable: true,
-            ipcVersion: "KiCad 10.0.3",
+            ipcVersion: "KiCad 10.0.4",
             ipcApiVersion: null,
             ipcMajorVersion: 10,
             ipcEndpointSource: "default",

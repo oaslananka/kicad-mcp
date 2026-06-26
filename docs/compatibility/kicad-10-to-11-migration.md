@@ -80,8 +80,8 @@ The canary writes logs, reports, manufacturing outputs, `summary.json`, and
 | Project discovery | `kicad_get_project_info`, `kicad_set_project`                                                   | Version, paths-with-spaces, Unicode paths, project-library tests           |
 | PCB read          | `pcb_get_board_summary`, `pcb_get_tracks`, `pcb_get_footprints`, `pcb_get_nets`                 | Board statistics probes, PCB integration tests, GUI smoke                  |
 | Schematic read    | `sch_get_symbols`, `sch_get_sheet_info`, `sch_get_net_names`                                    | ERC, schematic PDF, BOM, netlist, schematic integration tests              |
-| DRC               | `run_drc`, `validate_design`, `check_design_for_manufacture`                                    | Clean, dirty, and KiCad 10.0.3 status/elapsed report probes                |
-| ERC               | `run_erc`, `validate_design`, `schematic_quality_gate`                                          | Clean, dirty, and KiCad 10.0.3 sheet-shape probes                          |
+| DRC               | `run_drc`, `validate_design`, `check_design_for_manufacture`                                    | Clean, dirty, and KiCad 10.0.4 status/elapsed report probes                |
+| ERC               | `run_erc`, `validate_design`, `schematic_quality_gate`                                          | Clean, dirty, and KiCad 10.0.4 sheet-shape probes                          |
 | Export            | `export_gerber`, `export_drill`, `export_manufacturing_package`, `export_bom`, `export_netlist` | PDF, property-popup suppression, SVG, DXF, Gerber, drill, STEP probes      |
 | Diagnostics       | `kicad_get_version`, `kicad_get_server_info`, `kicad_help`                                      | Version and read-only-output probes, server-info and CLI diagnostics tests |
 

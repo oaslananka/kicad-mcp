@@ -1,6 +1,6 @@
-# KiCad 10.0.3 Gap Audit Report
+# KiCad 10.0.4 Gap Audit Report
 
-This report outlines the feature parity gap analysis between KiCad 10.0.3 headless/CLI surface capabilities and the existing tools offered by the KiCad MCP server.
+This report outlines the feature parity gap analysis between KiCad 10.0.4 headless/CLI surface capabilities and the existing tools offered by the KiCad MCP server.
 
 ## Gap Analysis Matrix
 

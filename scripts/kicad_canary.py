@@ -23,7 +23,7 @@ FIXTURE_ROOT = REPO_ROOT / "packages" / "kicad-fixtures" / "fixtures"
 DEFAULT_TIMEOUT_SECONDS = 180
 KICAD_VIOLATION_EXIT_CODE = 5
 WINDOWS_PRIMARY_RUNNER = "windows-2025-vs2026"
-WINDOWS_PRIMARY_KICAD_VERSION = "10.0.3"
+WINDOWS_PRIMARY_KICAD_VERSION = "10.0.4"
 
 INSTALLERS = {
     "10.0.x": {
@@ -556,6 +556,20 @@ def _command_plan(
                 outputs=(manufacturing / "drill",),
                 skip_reason=manufacturing_skip,
             ),
+            CanaryStep(
+                name="ipc2581",
+                fixture="clean-led-kicad10",
+                args=(
+                    "pcb",
+                    "export",
+                    "ipc2581",
+                    "--output",
+                    str(manufacturing / "board.ipc2581"),
+                    str(clean_board),
+                ),
+                outputs=(manufacturing / "board.ipc2581",),
+                skip_reason=manufacturing_skip,
+            ),
         ]
     )
 
@@ -625,10 +639,9 @@ def _command_plan(
                 args=(
                     "pcb",
                     "export",
-                    "step",
+                    "stpz",
                     "--output",
                     str(graphics / "board.stepz"),
-                    "--compress",
                     str(clean_board),
                 ),
                 outputs=(graphics / "board.stepz",),
@@ -640,6 +653,8 @@ def _command_plan(
                 args=(
                     "sch",
                     "export",
+                    "netlist",
+                    "--format",
                     "spice",
                     "--output",
                     str(reports / "simulation.cir"),

@@ -11,7 +11,7 @@ class MockCapabilityClient:
         self.connected = False
         self.has_board = False
         self.has_schematic = False
-        self.version = "KiCad 10.0.3"
+        self.version = "KiCad 10.0.4"
 
     def probe(self) -> Mapping[str, object]:
         if not self.connected:

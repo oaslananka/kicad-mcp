@@ -1,6 +1,6 @@
-# KiCad 10.0.3 Canary Report
+# KiCad 10.0.4 Canary Report
 
-**Generated:** 2026-06-06  
+**Generated:** 2026-06-26
 **Source:** `kicad_canary.py`
 
 ## Summary
@@ -20,11 +20,11 @@
 ### 1. CLI Presence
 
 ```
-kicad-cli --version  →  10.0.3
+kicad-cli version  →  10.0.4
 ```
 
 All subcommands required for the server profile are present:
-- `kicad-cli pcb export` (gerber, drill, pos, step, glb, etc.)
+- `kicad-cli pcb export` (Gerber, drill, IPC-2581, STEP, GLB, etc.)
 - `kicad-cli sch export` (pdf, svg, bom, python-bom)
 - `kicad-cli sym` / `fp` / `jobset`
 
@@ -50,7 +50,7 @@ IPC (Inter-process Communication) port 54321 is reachable:
 ### 4. Python API
 
 ```
-pcbnew module        ✓  (10.0.3)
+pcbnew module        ✓  (10.0.4)
 Footprint lookup     ✓
 3D model path        ✓
 ```
@@ -80,7 +80,8 @@ Footprint lookup     ✓
 | FAZ 18 – Docs       | 100%      |
 | FAZ 19 – Release    | Pending   |
 
-### 6. Drift Warning
+### 6. Snapshot Drift Gate
 
-**131 discrepancies** exist between `tools-reference.md` and `.generated.md`.
-Reconcile with `generate_tools_reference.py` before the next release.
+The required 10.0.4 canary lane now covers ERC JSON, DRC JSON, Gerber, drill,
+IPC-2581, STEP, PDF/SVG/DXF exports, BOM/netlist output, and capability probes.
+Any missing artifact or KiCad minor-version drift fails the canary summary.

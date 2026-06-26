@@ -36,7 +36,7 @@ def test_server_info_contract_matches_protocol_schema(monkeypatch, sample_projec
     monkeypatch.setattr(
         "kicad_mcp.server_info.get_cli_capabilities",
         lambda _cli: CliCapabilities(
-            version="KiCad 10.0.3",
+            version="KiCad 10.0.4",
             supports_ipc2581=True,
             supports_odb_export=True,
             supports_svg=True,
@@ -85,9 +85,9 @@ def test_server_info_contract_matches_protocol_schema(monkeypatch, sample_projec
     assert payload["kicad"] == {
         "cliFound": True,
         "cliPath": str(sample_project.parent / "kicad-cli"),
-        "cliVersion": "KiCad 10.0.3",
+        "cliVersion": "KiCad 10.0.4",
         "ipcAvailable": True,
-        "ipcVersion": "KiCad 10.0.3",
+        "ipcVersion": "KiCad 10.0.4",
         "ipcApiVersion": None,
         "ipcMajorVersion": 10,
         "ipcEndpointSource": "default",
@@ -274,7 +274,7 @@ def test_server_info_contract_caches_cli_discovery(monkeypatch, sample_project) 
     def fake_capabilities(_cli: Path) -> CliCapabilities:
         nonlocal calls
         calls += 1
-        return CliCapabilities(version="KiCad 10.0.3", supports_svg=True)
+        return CliCapabilities(version="KiCad 10.0.4", supports_svg=True)
 
     monkeypatch.setattr("kicad_mcp.server_info.get_cli_capabilities", fake_capabilities)
     monkeypatch.setattr("kicad_mcp.server_info.get_kicad", lambda: object())
@@ -283,7 +283,7 @@ def test_server_info_contract_caches_cli_discovery(monkeypatch, sample_project) 
     first = get_server_info_contract()
     second = get_server_info_contract()
 
-    assert first["kicad"]["cliVersion"] == "KiCad 10.0.3"
+    assert first["kicad"]["cliVersion"] == "KiCad 10.0.4"
     assert second["capabilities"]["cliExports"]["svg"] is True
     assert calls == 1
 

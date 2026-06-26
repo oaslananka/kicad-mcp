@@ -102,10 +102,11 @@ nav:
       - Variants: kicad10/variants.md
       - Time-Domain Tuning: kicad10/time-domain.md
       - Graphical DRC: kicad10/graphical-drc.md
-      - KiCad 10.0.3 Feature Parity: compatibility/kicad-10-0-3-feature-parity.md
+      - KiCad 10.0.4 Feature Parity: compatibility/kicad-10-0-4-feature-parity.md
+      - KiCad 10.0.4 Baseline: status/kicad-10-0-4-baseline.md
       - KiCad 10 to 11 Migration: compatibility/kicad-10-to-11-migration.md
-      - KiCad 10.0.3 Canary Report: development/kicad-10-0-3-canary-report.md
-      - KiCad 10.0.3 Gap Audit: development/kicad-10-0-3-gap-audit.md
+      - KiCad 10.0.4 Canary Report: development/kicad-10-0-4-canary-report.md
+      - KiCad 10.0.4 Gap Audit: development/kicad-10-0-4-gap-audit.md
   - Workflows:
       - First PCB: workflows/first-pcb.md
       - Schematic to PCB: workflows/schematic-to-pcb.md

@@ -1,9 +1,9 @@
 schemaVersion: 1
-updated: '2026-06-15'
+updated: '2026-06-26'
 source: https://github.com/oaslananka/kicad-mcp
 kicad:
   primary: 10.0.x
-  latestVerified: 10.0.3
+  latestVerified: 10.0.4
   supported:
     - range: 10.0.x
       state: primary
@@ -81,10 +81,10 @@ kicad:
         cliFormat: solidworks
         evidence: KiCad 10 CLI import help advertises the format.
 kicad10FeatureParity:
-  reviewed: '2026-05-27'
-  baseline: 10.0.3
-  primaryIssue: https://github.com/oaslananka/kicad-mcp/issues/177
-  documentation: docs/compatibility/kicad-10-0-3-feature-parity.md
+  reviewed: '2026-06-26'
+  baseline: 10.0.4
+  primaryIssue: https://github.com/oaslananka/kicad-mcp/issues/191
+  documentation: docs/compatibility/kicad-10-0-4-feature-parity.md
   allowedStatuses:
     - supported
     - not-applicable
@@ -92,8 +92,8 @@ kicad10FeatureParity:
     - blocked
     - future
   sources:
-    releaseNotes: https://www.kicad.org/blog/2026/05/KiCad-10.0.3-Release/
-    releaseTag: https://github.com/KiCad/kicad-source-mirror/releases/tag/10.0.3
+    releaseNotes: https://www.kicad.org/blog/2026/06/KiCad-10.0.4-Release/
+    releaseTag: https://github.com/KiCad/kicad-source-mirror/releases/tag/10.0.4
     cliReference: https://docs.kicad.org/10.0/en/cli/cli.html
     pcbEditorReference: https://docs.kicad.org/10.0/en/pcbnew/pcbnew.html
     pcbnewDeprecation: https://dev-docs.kicad.org/en/apis-and-binding/pcbnew/
@@ -121,10 +121,10 @@ kicad10FeatureParity:
           - fixture:kicad-10-0-3-regressions
           - >-
             command:kicad-cli pcb import --help does not advertise allegro in
-            KiCad 10.0.3
+            KiCad 10.0.4
         notes: >-
-          KiCad 10.0.3 documents GUI Allegro import, but the stable CLI surface
-          is not available.
+          KiCad 10.0.4 still documents GUI Allegro import, but the stable CLI
+          surface is not available.
       cadstar:
         status: supported
         nativeSurface: kicad-cli pcb import --format cadstar
@@ -164,15 +164,15 @@ kicad10FeatureParity:
         status: supported
         nativeSurface: kicad-cli pcb import --format pads
         productSurface: >-
-          KiCad Studio extension command, MCP manufacturing import, and KiCad
-          10.0.3 fixture probe
+          KiCad Studio extension command, MCP manufacturing import, and the
+          carried-forward KiCad 10.0.3 fixture probe
         evidence:
           - path:tests/unit/test_kicad_canary.py
           - path:tests/integration/test_manufacturing_tools.py
           - fixture:kicad-10-0-3-regressions
         notes: >-
-          KiCad 10.0.3 PADS importer regressions are covered by canary and
-          fixture metadata.
+          KiCad 10.x PADS importer regressions are covered by canary and
+          carried-forward fixture metadata.
       pcad:
         status: supported
         nativeSurface: kicad-cli pcb import --format pcad
@@ -220,14 +220,14 @@ kicad10FeatureParity:
       pcb_pdf_property_popup_suppression:
         status: supported
         nativeSurface: kicad-cli sch export pdf --exclude-pdf-property-popups
-        productSurface: KiCad 10.0.3 regression canary and fixture metadata
+        productSurface: KiCad 10.x regression canary and fixture metadata
         evidence:
           - path:scripts/kicad_canary.py
           - path:tests/unit/test_kicad_canary.py
           - fixture:kicad-10-0-3-regressions
         notes: >-
-          The KiCad 10.0.3 CLI release note feature has a dedicated canary
-          probe.
+          The KiCad 10.x CLI PDF property-popup flag has a dedicated canary
+          probe backed by the 10.0.3 regression fixture.
       ipc2581:
         status: supported
         nativeSurface: kicad-cli pcb export ipc2581
@@ -378,7 +378,7 @@ kicad10FeatureParity:
         notes: Server-info schema and generated docs are release-gated.
       empty_project_read_tools:
         status: partial
-        nativeSurface: Empty KiCad 10.0.3 project files
+        nativeSurface: Empty KiCad 10.0.4 project files
         productSurface: File-backed MCP read tools and quality gates
         issue: https://github.com/oaslananka/kicad-mcp/issues/228
         evidence:
@@ -434,7 +434,7 @@ kicad10FeatureParity:
         - path:docs/compatibility/kicad-10-to-11-migration.md
         - command:corepack pnpm run test:kicad-cli-contract:future
       notes: >-
-        KiCad 11 is intentionally separate from the KiCad 10.0.3
+        KiCad 11 is intentionally separate from the KiCad 10.0.4
         release-blocking baseline.
     nightly_canary:
       status: supported
