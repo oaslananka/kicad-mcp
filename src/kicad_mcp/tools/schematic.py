@@ -5587,7 +5587,7 @@ def register(mcp: FastMCP) -> None:
         )
         content = _normalize_schematic_wire_connectivity(content)
         _validate_schematic_text(content)
-        sch_file.write_text(content, encoding="utf-8")
+        transactional_write(lambda _current: content, sch_file)
         result = _reload_schematic()
         notes: list[str] = []
         if auto_layout:
@@ -6481,41 +6481,46 @@ def register(mcp: FastMCP) -> None:
             return f"Unknown paper size '{paper}'. Available sizes: {available}."
 
         sch_file = _get_schematic_file()
-        try:
-            text = sch_file.read_text(encoding="utf-8", errors="replace")
-        except Exception as exc:
-            return f"Could not read schematic file: {exc}"
-
-        # Find existing paper declaration
-        old_paper = _read_sheet_paper(sch_file)
-        old_w, old_h = PAPER_SIZES_MM.get(old_paper, (0.0, 0.0))
         new_w, new_h = PAPER_SIZES_MM[paper]
+        old_paper = "A4"
 
-        # Replace or insert paper line
-        if re.search(r'\(paper\s+"[^"]*"', text):
-            new_text = re.sub(
-                r'\(paper\s+"[^"]*"\)',
-                f'(paper "{paper}")',
-                text,
-            )
-        else:
-            # Insert after the kicad_sch opening tag
-            new_text = re.sub(
-                r"(\(kicad_sch[^\n]*\n)",
-                rf'\1  (paper "{paper}")\n',
-                text,
-                count=1,
-            )
+        class _SheetAlreadySetError(Exception):
+            pass
 
-        if new_text == text:
-            return f"Sheet is already '{paper}' ({new_w:.0f} x {new_h:.0f} mm). No change made."
+        def resize_sheet(current: str) -> str:
+            nonlocal old_paper
+            match = re.search(r'\(paper\s+"([^"]+)"(?:\s+[\d.]+\s+[\d.]+)?\)', current)
+            old_paper = match.group(1) if match else "A4"
+
+            if match is not None:
+                new_text = re.sub(
+                    r'\(paper\s+"[^"]+"(?:\s+[\d.]+\s+[\d.]+)?\)',
+                    f'(paper "{paper}")',
+                    current,
+                    count=1,
+                )
+            else:
+                # Insert after the kicad_sch opening tag.
+                new_text = re.sub(
+                    r"(\(kicad_sch[^\n]*\n)",
+                    rf'\1  (paper "{paper}")\n',
+                    current,
+                    count=1,
+                )
+
+            if new_text == current:
+                raise _SheetAlreadySetError
+            return new_text
 
         try:
-            sch_file.write_text(new_text, encoding="utf-8")
+            transactional_write(resize_sheet, sch_file)
+        except _SheetAlreadySetError:
+            return f"Sheet is already '{paper}' ({new_w:.0f} x {new_h:.0f} mm). No change made."
         except Exception as exc:
             return f"Could not write schematic file: {exc}"
 
         result = _reload_schematic()
+        old_w, old_h = PAPER_SIZES_MM.get(old_paper, (0.0, 0.0))
         usable_cols = _sheet_usable_cols(paper)
         usable_rows = _sheet_usable_rows(paper)
         return (
