@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from kicad_mcp.utils.footprint_gen import _chip_passive
+from kicad_mcp.utils.footprint_gen import _chip_passive, generate_footprint, ipc_density_tag
 from kicad_mcp.utils.footprint_validate import (
     check_footprint_documentation_layers,
     check_footprint_pad_count,
     count_numbered_pads,
     expected_pin_count_from_package,
+    parse_ipc_density,
     parse_smd_pads,
     validate_chip_footprint,
 )
@@ -162,3 +163,22 @@ def test_documentation_layers_warn_when_fab_or_silk_missing() -> None:
     assert result.verdict == "WARN"
     assert any("fabrication" in f for f in result.findings)
     assert any("silkscreen" in f for f in result.findings)
+
+
+# --- Generated footprints carry the IPC-7351 density used (issue #201) ------
+
+
+def test_generated_chip_footprint_records_its_density() -> None:
+    for density in ("A", "B", "C"):
+        text = _chip_passive("0805", density)  # type: ignore[arg-type]
+        assert ipc_density_tag(density) in text  # type: ignore[arg-type]
+        assert parse_ipc_density(text) == density
+
+
+def test_generated_qfp_footprint_records_its_density() -> None:
+    text = generate_footprint("QFN", pin_count=32, pitch_mm=0.5, body_l_mm=5.0, density="A")
+    assert parse_ipc_density(text) == "A"
+
+
+def test_parse_ipc_density_is_none_when_absent() -> None:
+    assert parse_ipc_density(_pads_text(["1", "2"])) is None

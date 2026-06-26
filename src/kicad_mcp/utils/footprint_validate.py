@@ -279,6 +279,21 @@ def check_footprint_pad_count(
 # legend). A missing courtyard is a hard gate because KiCad relies on it for
 # component-to-component clearance; missing fab/silk degrade documentation.
 
+_IPC_DENSITY_RE = re.compile(r"IPC[- ]?7351[ _]density[ _]?([ABC])|IPC7351_([ABC])", re.IGNORECASE)
+
+
+def parse_ipc_density(footprint_text: str) -> str | None:
+    """Return the IPC-7351 density level (``A``/``B``/``C``) a footprint records, or ``None``.
+
+    Generated footprints embed the density they were built with in their descr/tags
+    (see ``footprint_gen.ipc_density_tag``); this recovers it for certification.
+    """
+    match = _IPC_DENSITY_RE.search(footprint_text)
+    if match is None:
+        return None
+    return (match.group(1) or match.group(2)).upper()
+
+
 _COURTYARD_RE = re.compile(r"[FB]\.CrtYd", re.IGNORECASE)
 _FAB_RE = re.compile(r"[FB]\.Fab", re.IGNORECASE)
 _SILK_RE = re.compile(r"[FB]\.SilkS", re.IGNORECASE)
