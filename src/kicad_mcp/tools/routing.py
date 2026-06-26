@@ -26,6 +26,7 @@ from ..utils.units import _coord_nm, mm_to_nm, nm_to_mm
 from .export_support import _get_pcb_file
 from .metadata import headless_compatible, requires_dependency, requires_kicad_running
 from .pcb import _transactional_board_write
+from .project import load_design_intent as _load_design_intent
 from .routing_rules import _load_rules_content, _mm, _rules_file_path, _upsert_rule, _write_rule
 
 __all__ = [
@@ -603,8 +604,80 @@ def register(mcp: FastMCP) -> None:
                     ),
                 )
 
+            ignore_text = (
+                ", ".join([*(net_classes_to_ignore or []), *(exclude_nets or [])]) or "none"
+            )
+            route_stats = result
+            apply_error: str | None = None
+            applied_route = None
+            applied_pcb_file: Path | None = None
+
+            # Attempt headless SES apply via the round-trip-safe S-expression layer.
+            # This closes the FreeRouting loop without a GUI step on supported KiCad versions.
+            await _report_progress(ctx, 85, 100, "Applying SES to board headlessly...")
             try:
-                await _report_progress(ctx, 85, 100, "Staging SES session for KiCad import...")
+                ses_text = ses_path_obj.read_text(encoding="utf-8", errors="ignore")
+
+                class _NoRouteError(ValueError):
+                    pass
+
+                class _AlreadyAppliedError(ValueError):
+                    pass
+
+                def _apply_ses(current: str) -> str:
+                    nonlocal applied_route
+                    updated, applied_route = apply_ses_to_pcb(current, ses_text)
+                    if not applied_route.segments and not applied_route.vias:
+                        raise _NoRouteError
+                    if updated == current:
+                        raise _AlreadyAppliedError
+                    return updated
+
+                applied_pcb_file = Path(
+                    await anyio.to_thread.run_sync(lambda: _transactional_board_write(_apply_ses))
+                )
+            except (_NoRouteError, _AlreadyAppliedError, ValueError, OSError) as exc:
+                apply_error = str(exc)
+            except Exception as exc:  # noqa: BLE001
+                apply_error = f"Unexpected error during headless SES apply: {exc}"
+
+            await _report_progress(ctx, 100, 100, "FreeRouting routing complete.")
+
+            if apply_error is None and applied_pcb_file is not None and applied_route is not None:
+                seg_count = len(applied_route.segments)
+                via_count = len(applied_route.vias)
+                net_count = len(applied_route.net_names)
+                return ToolResult.success(
+                    "route_autoroute_freerouting",
+                    changed=True,
+                    artifacts=[
+                        ArtifactRef(path=str(dsn_file), kind="dsn"),
+                        ArtifactRef(path=str(ses_path_obj), kind="ses"),
+                        ArtifactRef(path=str(applied_pcb_file), kind="pcb"),
+                    ],
+                    state_delta=StateDelta(
+                        summary=(
+                            f"FreeRouting routed and applied: {seg_count} segment(s), "
+                            f"{via_count} via(s), {net_count} net(s).\n"
+                            f"Mode: {route_stats.mode}\n"
+                            f"DSN: {_relative_project_path(dsn_file)}\n"
+                            f"SES: {_relative_project_path(ses_path_obj)}\n"
+                            f"Routed: {route_stats.routed_pct:.2f}% ({route_stats.total_nets} "
+                            f"net(s), {len(route_stats.unrouted_nets)} unrouted)\n"
+                            f"Pass count: {route_stats.pass_count}\n"
+                            f"Wall time: {route_stats.wall_seconds:.3f}s\n"
+                            f"Ignored net classes: {ignore_text}\n"
+                            f"Thread count: {thread_count}\n"
+                            "Next step: run run_drc() to verify the routed board, "
+                            "then pcb_fill_all_zones() to fill copper pours.\n"
+                            f"stdout tail: {route_stats.stdout_tail or '(empty)'}"
+                        ),
+                        changed_files=[str(applied_pcb_file)],
+                    ),
+                )
+
+            # Headless apply failed — fall back to staging for the GUI import step.
+            try:
                 staged = await anyio.to_thread.run_sync(lambda: runner.stage_ses(ses_path_obj))
             except (FileNotFoundError, RuntimeError, ValueError) as exc:
                 return ToolResult.failure(
@@ -612,13 +685,7 @@ def register(mcp: FastMCP) -> None:
                     f"FreeRouting autoroute failed while staging the SES file: {exc}",
                 )
 
-            ignore_text = (
-                ", ".join([*(net_classes_to_ignore or []), *(exclude_nets or [])]) or "none"
-            )
-            await _report_progress(ctx, 100, 100, "FreeRouting routed; manual import remains.")
-            # The route ran headlessly, but applying the SES has no headless path in KiCad.
-            # Report changed=False + human_gate_required so the board is never claimed routed.
-            routed = ToolResult.success(
+            fallback = ToolResult.success(
                 "route_autoroute_freerouting",
                 changed=False,
                 artifacts=[
@@ -627,25 +694,27 @@ def register(mcp: FastMCP) -> None:
                 ],
                 state_delta=StateDelta(
                     summary=(
-                        "FreeRouting produced a routed session; apply it in KiCad to finish.\n"
-                        f"Mode: {result.mode}\n"
+                        "FreeRouting produced a routed session; headless apply failed, "
+                        "use File > Import > Specctra Session in KiCad GUI to finish.\n"
+                        f"Headless apply error: {apply_error or 'unknown'}\n"
+                        f"Mode: {route_stats.mode}\n"
                         f"DSN: {_relative_project_path(dsn_file)}\n"
                         f"SES: {_relative_project_path(staged)}\n"
-                        f"Routed: {result.routed_pct:.2f}% ({result.total_nets} net(s), "
-                        f"{len(result.unrouted_nets)} unrouted)\n"
-                        f"Pass count: {result.pass_count}\n"
-                        f"Wall time: {result.wall_seconds:.3f}s\n"
+                        f"Routed: {route_stats.routed_pct:.2f}% ({route_stats.total_nets} "
+                        f"net(s), {len(route_stats.unrouted_nets)} unrouted)\n"
+                        f"Pass count: {route_stats.pass_count}\n"
+                        f"Wall time: {route_stats.wall_seconds:.3f}s\n"
                         f"Ignored net classes: {ignore_text}\n"
                         f"Thread count: {thread_count}\n"
                         "Manual step: open the PCB in KiCad and run "
                         "File > Import > Specctra Session, then save the board.\n"
-                        f"stdout tail: {result.stdout_tail or '(empty)'}"
+                        f"stdout tail: {route_stats.stdout_tail or '(empty)'}"
                     ),
                     changed_files=[str(dsn_file), str(staged)],
                 ),
             )
-            routed.human_gate_required = True
-            return routed
+            fallback.human_gate_required = True
+            return fallback
 
         # Check if the experimental MCP Tasks extension is active
         task_mgr = getattr(ctx.fastmcp, "_task_manager", None) if ctx is not None else None
@@ -953,4 +1022,149 @@ def register(mcp: FastMCP) -> None:
             f"{net_name_n}: {current_n:.3f} mm\n"
             f"Current skew: {skew:.3f} mm\n"
             f"Target length: {target_length_mm:.3f} mm"
+        )
+
+    @mcp.tool()
+    @headless_compatible
+    def generate_board_constraints() -> ToolResult:
+        """Generate .kicad_dru rules and net-class constraints from the project design intent.
+
+        Reads power_rails and interfaces from the stored design intent
+        (project_get_design_spec / import_design_spec) and synthesises:
+        - Minimum trace widths from IPC-2221 current-capacity formula (power rails)
+        - Net-class clearance + width + via rules (per-rail)
+        - Differential-pair skew / length / impedance rules (per interface)
+        - HV creepage/clearance rules for rails above 50 V
+
+        Run drc_check_rule_conflicts() afterwards to surface any conflicts.
+        """
+        intent = _load_design_intent()
+        generated: list[str] = []
+        conflicts: list[str] = []
+        rules_path: Path | None = None
+
+        # IPC-2221 simplified trace width calculator (external, ΔT = 10 °C)
+        def _ipc_width_mm(current_a: float) -> float:
+            if current_a <= 0:
+                return 0.127
+            raw = current_a / (0.048 * (10**0.44))
+            width_mm = raw ** (1.0 / 0.725)
+            return max(0.127, round(width_mm, 4))
+
+        for rail in intent.power_rails:
+            rail_name: str = rail.name
+            current_a: float = rail.current_max_a
+            voltage_v: float = rail.voltage_v
+            width_mm = _ipc_width_mm(current_a)
+            clearance_mm = 0.2
+            if voltage_v > 50:
+                # Basic creepage: 0.5 mm per 100 V for basic insulation (IPC-2221 grade B1)
+                clearance_mm = max(0.5, voltage_v / 100.0 * 0.5)
+            via_dia = max(0.6, width_mm + 0.3)
+            via_drill = max(0.3, via_dia * 0.6)
+            safe_name = re.sub(r"[^A-Za-z0-9_]", "_", rail_name).strip("_") or "RAIL"
+            rule_name = f"pwr_{safe_name}"
+            rule_body = "\n".join(
+                [
+                    f"(rule {_sexpr_string(rule_name)}",
+                    f"  (constraint track_width (min {_mm(width_mm)}) (opt {_mm(width_mm)}))",
+                    f"  (constraint clearance (min {_mm(clearance_mm)}))",
+                    f"  (constraint via_diameter (min {_mm(via_dia)}) (opt {_mm(via_dia)}))",
+                    f"  (constraint via_drill (min {_mm(via_drill)}) (opt {_mm(via_drill)}))",
+                    f'  (condition "A.NetClass == \\"{safe_name}\\"")',
+                    ")",
+                ]
+            )
+            try:
+                rules_path = _write_rule(rule_name, rule_body)
+                generated.append(
+                    f"Rail '{rail_name}': width>={_mm(width_mm)} clearance>={_mm(clearance_mm)} "
+                    f"via={_mm(via_dia)}/drill={_mm(via_drill)}"
+                )
+                if voltage_v > 50:
+                    generated.append(
+                        f"  HV note: {voltage_v}V rail; clearance derived from IPC-2221 creepage"
+                    )
+            except (OSError, ValueError) as exc:
+                conflicts.append(f"Rail '{rail_name}': {exc}")
+
+        # Interface-level differential-pair and impedance constraints
+        for iface in intent.interfaces:
+            kind: str = iface.kind
+            net_prefix: str = iface.net_prefix
+            if not net_prefix:
+                continue
+            dp_name = re.sub(r"[^A-Za-z0-9_]", "_", net_prefix).strip("_") or "IFACE"
+            if iface.differential and iface.impedance_target_ohm:
+                imp = iface.impedance_target_ohm
+                # Approximate differential-pair gap from impedance
+                # 100 Ω diff → ~0.13 mm gap/0.18 mm width on FR4 2-layer
+                gap_mm = round(imp / 750.0, 3)
+                width_mm = round(gap_mm * 1.4, 3)
+                skew_mm = (iface.diff_skew_max_ps or 10.0) * 0.06  # 0.06 mm/ps approx
+                rule_name = f"dp_{dp_name}"
+                rule_body = "\n".join(
+                    [
+                        f"(rule {_sexpr_string(rule_name)}",
+                        f"  (constraint track_width (opt {_mm(max(0.1, width_mm))}))",
+                        f"  (constraint diff_pair_gap (opt {_mm(max(0.1, gap_mm))}))",
+                        f"  (constraint diff_pair_max_uncoupled_length (max {_mm(max(0.5, skew_mm))}))",
+                        f'  (condition "A.NetClass == \\"{dp_name}\\"")',
+                        ")",
+                    ]
+                )
+                try:
+                    rules_path = _write_rule(rule_name, rule_body)
+                    generated.append(
+                        f"Interface '{kind}' ({net_prefix}): diff-pair "
+                        f"width={_mm(max(0.1, width_mm))} gap={_mm(max(0.1, gap_mm))} "
+                        f"skew<={_mm(max(0.5, skew_mm))}"
+                    )
+                except (OSError, ValueError) as exc:
+                    conflicts.append(f"Interface '{kind}': {exc}")
+            elif iface.length_target_mm:
+                rule_name = f"len_{dp_name}"
+                tol = iface.length_match_tolerance_mm
+                rule_body = "\n".join(
+                    [
+                        f"(rule {_sexpr_string(rule_name)}",
+                        f"  (constraint length (min {_mm(max(0, iface.length_target_mm - tol))}) "
+                        f"(max {_mm(iface.length_target_mm + tol)}))",
+                        f'  (condition "A.NetClass == \\"{dp_name}\\"")',
+                        ")",
+                    ]
+                )
+                try:
+                    rules_path = _write_rule(rule_name, rule_body)
+                    generated.append(
+                        f"Interface '{kind}' ({net_prefix}): length "
+                        f"{_mm(iface.length_target_mm)} ±{_mm(tol)}"
+                    )
+                except (OSError, ValueError) as exc:
+                    conflicts.append(f"Interface '{kind}' length: {exc}")
+
+        if not generated and not conflicts:
+            return ToolResult.failure(
+                "generate_board_constraints",
+                "No power_rails or interfaces found in the design intent. "
+                "Call import_design_spec() first to load your design requirements.",
+            )
+
+        lines = ["Generated constraints from design intent:"]
+        lines.extend(f"  {item}" for item in generated)
+        if conflicts:
+            lines.append("Conflicts/errors (review manually):")
+            lines.extend(f"  {item}" for item in conflicts)
+        lines.append(
+            "Run drc_check_rule_conflicts() to surface rule overlaps, "
+            "then run run_drc() to verify all constraints are met."
+        )
+        return ToolResult.success(
+            "generate_board_constraints",
+            changed=True,
+            artifacts=[ArtifactRef(path=str(rules_path), kind="dru")] if rules_path else [],
+            state_delta=StateDelta(
+                summary="\n".join(lines),
+                changed_files=[str(rules_path)] if rules_path else [],
+            ),
         )

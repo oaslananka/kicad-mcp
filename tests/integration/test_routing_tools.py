@@ -87,8 +87,9 @@ async def test_route_autoroute_freerouting_smoke_handles_large_dsn(
         },
     )
 
-    # The route runs headlessly but applying the SES is a manual KiCad step (P1-T7),
-    # so the result is honest about not having changed the board yet.
+    # SES content "ses" is invalid, so headless apply falls through to the
+    # manual-gui-import fallback.
+    assert "headless apply failed" in result
     assert "FreeRouting produced a routed session" in result
     assert "File > Import > Specctra Session" in result
     assert (sample_project / "output" / "routing" / "board.ses").exists()
@@ -239,3 +240,66 @@ async def test_route_apply_ses_reports_empty_session(sample_project: Path) -> No
     )
     assert payload["ok"] is False
     assert any("no routed segments" in error.lower() for error in payload["errors"])
+
+
+@pytest.mark.anyio
+async def test_generate_board_constraints_from_intent(sample_project: Path) -> None:
+    """generate_board_constraints emits .kicad_dru rules from the design intent."""
+    from kicad_mcp.tools.design_intent_state import (
+        InterfaceSpec,
+        PowerRailSpec,
+        ProjectDesignIntent,
+    )
+    from kicad_mcp.tools.project import _persist_project_spec
+
+    intent = ProjectDesignIntent(
+        power_rails=[
+            PowerRailSpec(name="+3V3", voltage_v=3.3, current_max_a=0.5),
+            PowerRailSpec(name="+12V", voltage_v=12.0, current_max_a=2.0),
+        ],
+        interfaces=[
+            InterfaceSpec(
+                kind="usb2",
+                net_prefix="USB_",
+                differential=True,
+                impedance_target_ohm=90.0,
+                diff_skew_max_ps=5.0,
+            ),
+        ],
+    )
+    _persist_project_spec(intent)
+
+    server = build_server("pcb")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    payload = await call_tool_payload(server, "generate_board_constraints", {})
+
+    assert payload["ok"] is True
+    assert payload["changed"] is True
+    summary: str = payload["state_delta"]["summary"]
+    # Power rails
+    assert "+3V3" in summary
+    assert "+12V" in summary
+    assert "width>=" in summary
+    assert "clearance>=" in summary
+    # Differential pair
+    assert "usb" in summary.lower() or "USB_" in summary
+    assert "diff-pair" in summary
+    assert "width=" in summary
+    # The .kicad_dru file was written
+    dru_files = list(Path(sample_project).glob("*.kicad_dru"))
+    assert dru_files
+    dru_text = dru_files[0].read_text(encoding="utf-8")
+    assert "pwr_+3V3" in dru_text or "pwr_" in dru_text
+
+
+@pytest.mark.anyio
+async def test_generate_board_constraints_empty_intent(sample_project: Path) -> None:
+    """Without a saved design intent, generate_board_constraints fails gracefully."""
+    server = build_server("pcb")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    payload = await call_tool_payload(server, "generate_board_constraints", {})
+
+    assert payload["ok"] is False
+    assert any("import_design_spec" in error.lower() for error in payload["errors"])
