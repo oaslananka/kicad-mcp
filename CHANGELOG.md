@@ -10,6 +10,43 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.15.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.14.1...mcp-server-v3.15.0) (2026-06-27)
+
+
+### Features
+
+* **agent:** project_design_workflow phase state machine surface ([#194](https://github.com/oaslananka/kicad-mcp/issues/194), [#195](https://github.com/oaslananka/kicad-mcp/issues/195)) ([#232](https://github.com/oaslananka/kicad-mcp/issues/232)) ([bc2bd1a](https://github.com/oaslananka/kicad-mcp/commit/bc2bd1a6577751d30326f82e1960991a2563421f))
+* **analysis:** expose solver signoff verdicts ([63ab2d4](https://github.com/oaslananka/kicad-mcp/commit/63ab2d42adc90537597823a032cb9fe737c7f1b4))
+* **compat:** refresh KiCad 10.0.4 baseline ([38ae60c](https://github.com/oaslananka/kicad-mcp/commit/38ae60cd24163717f9d631cca13ce1a9dffeb975))
+* **contracts:** enforce tier/side-effect consistency in tool-contract lint ([#196](https://github.com/oaslananka/kicad-mcp/issues/196)) ([#225](https://github.com/oaslananka/kicad-mcp/issues/225)) ([7784f16](https://github.com/oaslananka/kicad-mcp/commit/7784f166a4fc3e52ac23d4233ef178fd12ae5776))
+* **drc:** add drc_check_rule_conflicts to reconcile .kicad_dru rules ([#202](https://github.com/oaslananka/kicad-mcp/issues/202)) ([#221](https://github.com/oaslananka/kicad-mcp/issues/221)) ([5fe9443](https://github.com/oaslananka/kicad-mcp/commit/5fe9443241b45321e740e435a7c24fa700dd3ba0))
+* **emc:** add honest solver seam so EMC results are critic-only ([#206](https://github.com/oaslananka/kicad-mcp/issues/206)) ([#220](https://github.com/oaslananka/kicad-mcp/issues/220)) ([1768fd7](https://github.com/oaslananka/kicad-mcp/commit/1768fd7db1241786bdfe043760a7b298bfe26b42))
+* **evals:** golden project corpus and eval harness ([#210](https://github.com/oaslananka/kicad-mcp/issues/210)) ([1d276fd](https://github.com/oaslananka/kicad-mcp/commit/1d276fd0cde64350fd8963bba077fd8c9100a2c9))
+* expand schematic authoring and PCB quality validation ([#190](https://github.com/oaslananka/kicad-mcp/issues/190)) ([0a6acd6](https://github.com/oaslananka/kicad-mcp/commit/0a6acd6f8d93c279658381f08b164a9850a058a6))
+* **footprint:** documentation-layer completeness check ([#201](https://github.com/oaslananka/kicad-mcp/issues/201)) ([#227](https://github.com/oaslananka/kicad-mcp/issues/227)) ([6d3d3a2](https://github.com/oaslananka/kicad-mcp/commit/6d3d3a288fe95a98b3ab769a1c7fb15b79574ac8))
+* **footprint:** embed IPC-7351 density in generated footprints ([#201](https://github.com/oaslananka/kicad-mcp/issues/201)) ([#228](https://github.com/oaslananka/kicad-mcp/issues/228)) ([2303c20](https://github.com/oaslananka/kicad-mcp/commit/2303c20f562dd83e037ba26f0a28d2e2ca08aaaa))
+* **footprint:** pad-count vs package-name cross-check ([#201](https://github.com/oaslananka/kicad-mcp/issues/201)) ([#226](https://github.com/oaslananka/kicad-mcp/issues/226)) ([32c54c9](https://github.com/oaslananka/kicad-mcp/commit/32c54c9b3d4732ca97dba1e0727184a0de00e88e))
+* **ir:** semantic EDA intermediate representation — data model, KiCad → IR parser, lint, diff, and MCP tool ([#199](https://github.com/oaslananka/kicad-mcp/issues/199)) ([0f4d93a](https://github.com/oaslananka/kicad-mcp/commit/0f4d93a072a6eb01e5b7937cbd8786aff69da313))
+* **library:** enrich component intelligence with lifecycle, RoHS, datasheet URL, and filters ([#200](https://github.com/oaslananka/kicad-mcp/issues/200)) ([74dd089](https://github.com/oaslananka/kicad-mcp/commit/74dd089a19909bb41b579cd558c536cfdd1c16de))
+* **library:** lib_certify_footprint MCP tool surfacing [#201](https://github.com/oaslananka/kicad-mcp/issues/201) checks ([#201](https://github.com/oaslananka/kicad-mcp/issues/201)) ([#229](https://github.com/oaslananka/kicad-mcp/issues/229)) ([cbf464e](https://github.com/oaslananka/kicad-mcp/commit/cbf464eb0207cccaf2c27e135be3efe776d353be))
+* **mcp:** protocol contract tests, progress/cancellation tests, and output-schema evolution policy ([#209](https://github.com/oaslananka/kicad-mcp/issues/209)) ([bb19e5f](https://github.com/oaslananka/kicad-mcp/commit/bb19e5f36ff5eaee273323b1a01ba33b2609e14a))
+* **placement,manufacturing,compat:** placement critic, release evidence bundle, KiCad 11 IPC seam ([#203](https://github.com/oaslananka/kicad-mcp/issues/203), [#208](https://github.com/oaslananka/kicad-mcp/issues/208), [#192](https://github.com/oaslananka/kicad-mcp/issues/192)) ([44b1401](https://github.com/oaslananka/kicad-mcp/commit/44b1401b88142a3a8f11843b17785af7f87bc54d))
+* **routing:** close FreeRouting loop with headless SES apply, add generate_board_constraints ([#204](https://github.com/oaslananka/kicad-mcp/issues/204), [#202](https://github.com/oaslananka/kicad-mcp/issues/202)) ([a2f3722](https://github.com/oaslananka/kicad-mcp/commit/a2f37220fa165d19b2c11b1a213262ad03ac5996))
+* **schematic-rules:** Ethernet diff-pair rule pack ([#205](https://github.com/oaslananka/kicad-mcp/issues/205)) ([#223](https://github.com/oaslananka/kicad-mcp/issues/223)) ([f54f985](https://github.com/oaslananka/kicad-mcp/commit/f54f985c418d016a71144dad7cdfc76eb8e0e0d3))
+* **schematic-rules:** external-port ESD/TVS/protection rule pack ([#205](https://github.com/oaslananka/kicad-mcp/issues/205)) ([#230](https://github.com/oaslananka/kicad-mcp/issues/230)) ([9af9970](https://github.com/oaslananka/kicad-mcp/commit/9af99706dab486f788b12e0f518063edb9d4e072))
+* **schematic-rules:** flag conflicting supply rails on one net ([#197](https://github.com/oaslananka/kicad-mcp/issues/197)) ([#219](https://github.com/oaslananka/kicad-mcp/issues/219)) ([148124b](https://github.com/oaslananka/kicad-mcp/commit/148124b6019060ff80de84c8c09399fc6d10ffe1))
+* **schematic-rules:** SMPS (switching-regulator) rule pack ([#205](https://github.com/oaslananka/kicad-mcp/issues/205)) ([#224](https://github.com/oaslananka/kicad-mcp/issues/224)) ([4d45a4e](https://github.com/oaslananka/kicad-mcp/commit/4d45a4e5dfdad5ef4b14e30bdf50322d035ab0ab))
+* **schematic-rules:** USB domain rule pack (diff-pair + USB-C CC) ([#205](https://github.com/oaslananka/kicad-mcp/issues/205)) ([#222](https://github.com/oaslananka/kicad-mcp/issues/222)) ([476fa59](https://github.com/oaslananka/kicad-mcp/commit/476fa596140a0c63967ba9205caccc85956f1956))
+* **schematic:** reject duplicate-UUID writes ([#216](https://github.com/oaslananka/kicad-mcp/issues/216)) ([430f220](https://github.com/oaslananka/kicad-mcp/commit/430f220d7a82b41fafe4f0800831a01725828670))
+* **schematic:** report native Populate/DNP status ([#186](https://github.com/oaslananka/kicad-mcp/issues/186)) ([#215](https://github.com/oaslananka/kicad-mcp/issues/215)) ([5cec47a](https://github.com/oaslananka/kicad-mcp/commit/5cec47a50e6c081048ff5840de30d92ab0f83add))
+* **visual:** closed-loop visual verification and diff ([#207](https://github.com/oaslananka/kicad-mcp/issues/207)) ([6caf0cd](https://github.com/oaslananka/kicad-mcp/commit/6caf0cd48c5609a5dcaa405bf32d76f9145a325e))
+
+
+### Bug Fixes
+
+* **capabilities:** classify lib_certify_footprint as a READ tool ([#233](https://github.com/oaslananka/kicad-mcp/issues/233)) ([ee98c5b](https://github.com/oaslananka/kicad-mcp/commit/ee98c5be1f49e525effa071c3b0e3ddcc841199e))
+* **tests:** fix 3 integration test failures (visual diff alpha channel, router orphans, toolsets drift, snapshot) ([4f89829](https://github.com/oaslananka/kicad-mcp/commit/4f898297e4a8e3d65e79ead7bcd61bcd7ce29452))
+
 ## [3.14.1](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.14.0...mcp-server-v3.14.1) (2026-06-21)
 
 

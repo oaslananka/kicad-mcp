@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/oaslananka/kicad-mcp/compare/protocol-schemas-v1.2.0...protocol-schemas-v1.3.0) (2026-06-27)
+
+
+### Features
+
+* **compat:** refresh KiCad 10.0.4 baseline ([38ae60c](https://github.com/oaslananka/kicad-mcp/commit/38ae60cd24163717f9d631cca13ce1a9dffeb975))
+
 ## [1.2.0](https://github.com/oaslananka/kicad-mcp/compare/protocol-schemas-v1.1.1...protocol-schemas-v1.2.0) (2026-06-21)
 
 
