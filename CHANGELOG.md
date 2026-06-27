@@ -10,6 +10,27 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.15.0](https://github.com/oaslananka/kicad-mcp/compare/v3.14.1...v3.15.0) (2026-06-27)
+
+### Features
+
+* **placement:** constraint-driven placement critic with 4 rules (PLR-001–PLR-004): decap distance, crystal distance, SMPS hot-loop area, analog/digital separation (#203)
+* **manufacturing:** `mfg_create_release_evidence` bundle with 4 compliance gates (artifact coverage, DRC, ERC, HV safety), stable content hash, machine-readable verdict (#208)
+* **compat:** KiCad 11 headless-IPC strategy — `kicad-ipc-headless` backend, `headless_ipc_available` property, `KICAD_11_HEADLESS_IPC_MIN_VERSION` constant (#192)
+* **ir:** semantic EDA intermediate representation — data model, KiCad → IR parser, lint, diff, and `sch_get_circuit_ir` MCP tool (#199)
+* **library:** enrich component intelligence with lifecycle, RoHS, datasheet URL, and filters (#200)
+* **routing:** close FreeRouting loop with headless SES apply and `generate_board_constraints` tool (#204, #202)
+* **visual:** closed-loop visual verification and diff with alpha-channel fix (#207)
+* **evals:** golden project corpus and eval harness (#210)
+* **mcp:** protocol contract tests, progress/cancellation tests, and output-schema evolution policy (#209)
+* **agent:** project design workflow phase state machine surface (#194, #195)
+
+### Bug Fixes
+
+* fix visual diff alpha-channel bug — flatten RGBA onto white before pixel diff
+* fix 3 integration test failures (router orphans, toolsets drift, snapshot drift)
+* add SWIG guard CI test to block `import pcbnew` in source
+
 ## [3.14.1](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.14.0...mcp-server-v3.14.1) (2026-06-21)
 
 
