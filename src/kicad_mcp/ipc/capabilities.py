@@ -12,7 +12,11 @@ from ..errors import KiCadMcpError
 from .client import KiCadIpcClient
 from .discovery import KiCadIpcDiscovery, KiCadIpcEndpoint
 
-BackendName = Literal["kicad-ipc", "hybrid-file-ipc"]
+BackendName = Literal["kicad-ipc", "kicad-ipc-headless", "hybrid-file-ipc"]
+
+# KiCad 11 introduced `kicad-cli api-server` (headless IPC) — no GUI required.
+# This constant guards version-branching so domain logic stays channel-agnostic.
+KICAD_11_HEADLESS_IPC_MIN_VERSION: int = 11
 
 REQUIRED_LIVE_EDITING_TOOLS = frozenset(
     {
@@ -97,9 +101,24 @@ class KiCadIpcCapabilityState:
     diagnostics: tuple[str, ...]
 
     @property
+    def headless_ipc_available(self) -> bool:
+        """Whether KiCad 11+ headless IPC (kicad-cli api-server) is available.
+
+        KiCad 11 introduced a headless IPC mode that does not require a running
+        KiCad GUI — it exposes the same API via ``kicad-cli api-server``. When this
+        is True, domain logic can rely on IPC without requiring ``live_pcb_context``.
+        """
+        return self.reachable and _major_at_least(self.major_version, KICAD_11_HEADLESS_IPC_MIN_VERSION)
+
+    @property
     def live_pcb_read(self) -> bool:
-        """Whether live PCB reads can use the KiCad IPC API."""
-        return self.reachable and self.live_pcb_context and _major_at_least(self.major_version, 9)
+        """Whether live PCB reads can use the KiCad IPC API.
+
+        Returns True if the GUI has an open board (KiCad 9/10) OR if headless IPC
+        is available (KiCad 11+, no GUI required).
+        """
+        gui_path = self.reachable and self.live_pcb_context and _major_at_least(self.major_version, 9)
+        return gui_path or self.headless_ipc_available
 
     @property
     def live_pcb_write(self) -> bool:
@@ -108,17 +127,28 @@ class KiCadIpcCapabilityState:
 
     @property
     def live_schematic_read(self) -> bool:
-        """Whether live schematic context is visible through KiCad IPC."""
-        return (
+        """Whether live schematic context is visible through KiCad IPC.
+
+        Returns True if the GUI has an open schematic (KiCad 10+) OR if headless
+        IPC is available (KiCad 11+).
+        """
+        gui_path = (
             self.reachable
             and self.live_schematic_context
             and _major_at_least(self.major_version, 10)
         )
+        return gui_path or self.headless_ipc_available
 
     @property
     def live_schematic_write(self) -> bool:
         """Whether schematic writes can use the hybrid file-backed IPC reload path."""
         return self.live_schematic_read
+
+    def ipc_backend(self) -> BackendName:
+        """Return the active IPC backend identifier for telemetry and diagnostics."""
+        if self.headless_ipc_available:
+            return "kicad-ipc-headless"
+        return "kicad-ipc"
 
     def tool_available(self, tool_name: str) -> bool:
         """Return whether a required live editing tool is available."""
@@ -257,13 +287,20 @@ def _operation_states(
     live_pcb_context: bool,
     live_schematic_context: bool,
 ) -> dict[str, KiCadIpcOperationState]:
+    headless = reachable and _major_at_least(major_version, KICAD_11_HEADLESS_IPC_MIN_VERSION)
     states: dict[str, KiCadIpcOperationState] = {}
     for tool_name in sorted(PCB_LIVE_EDITING_TOOLS):
-        available = reachable and live_pcb_context and _major_at_least(major_version, 9)
+        available = headless or (reachable and live_pcb_context and _major_at_least(major_version, 9))
+        if tool_name == "pcb_set_design_rules":
+            backend: BackendName = "hybrid-file-ipc"
+        elif headless:
+            backend = "kicad-ipc-headless"
+        else:
+            backend = "kicad-ipc"
         states[tool_name] = KiCadIpcOperationState(
             name=tool_name,
             available=available,
-            backend="hybrid-file-ipc" if tool_name == "pcb_set_design_rules" else "kicad-ipc",
+            backend=backend,
             reason=None
             if available
             else _reason(
@@ -276,11 +313,13 @@ def _operation_states(
             minimum_kicad_major=10,
         )
     for tool_name in sorted(SCHEMATIC_LIVE_EDITING_TOOLS):
-        available = reachable and live_schematic_context and _major_at_least(major_version, 10)
+        available = headless or (
+            reachable and live_schematic_context and _major_at_least(major_version, 10)
+        )
         states[tool_name] = KiCadIpcOperationState(
             name=tool_name,
             available=available,
-            backend="hybrid-file-ipc",
+            backend="kicad-ipc-headless" if headless else "hybrid-file-ipc",
             reason=None
             if available
             else _reason(

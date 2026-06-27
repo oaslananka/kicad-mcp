@@ -15,6 +15,16 @@ kicad:
       notes: >-
         File-level read and migration support only; removal requires a release
         note.
+  preview:
+    - range: 11.x
+      state: preview
+      ci: none
+      ipcBackend: kicad-ipc-headless
+      notes: >-
+        KiCad 11 introduces kicad-cli api-server (headless IPC) eliminating the
+        GUI requirement for live PCB/schematic mutations. The capability seam in
+        ipc/capabilities.py gates this via KICAD_11_HEADLESS_IPC_MIN_VERSION=11.
+        SWIG pcbnew bindings are forbidden (enforced by test_swig_guard.py).
   dropped:
     - range: 9.x
       reason: >-

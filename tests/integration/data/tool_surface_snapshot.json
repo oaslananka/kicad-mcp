@@ -2294,6 +2294,23 @@
     "experimental": false,
     "headless": true,
     "idempotent": false,
+    "name": "mfg_create_release_evidence",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "expert",
+      "full",
+      "manufacturing",
+      "manufacturing_release"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
     "name": "mfg_generate_release_manifest",
     "open_world": true,
     "profiles": [
@@ -2981,6 +2998,31 @@
       "pcb_only",
       "power",
       "read_only_inspection",
+      "release_manager"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "pcb_critique_placement",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "analysis",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "manufacturing",
+      "manufacturing_release",
+      "pcb",
+      "pcb_layout",
+      "power",
       "release_manager"
     ],
     "read_only": false,

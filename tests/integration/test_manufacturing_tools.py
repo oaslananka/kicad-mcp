@@ -274,3 +274,92 @@ async def test_release_manifest_is_reproducible_with_provenance(
     provenance = manifest_one["provenance"]
     assert provenance["kicad_mcp_version"]
     assert "source_hashes" in provenance
+
+
+@pytest.mark.anyio
+async def test_mfg_create_release_evidence_dry_run_selv(
+    sample_project: Path,
+) -> None:
+    """dry_run=True returns verdict+gates without writing any file."""
+    import json
+
+    server = build_server("manufacturing")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    result = await call_tool_text(
+        server,
+        "mfg_create_release_evidence",
+        {"dry_run": True, "product_domain": "selv", "voltage_v": 3.3},
+    )
+    payload = json.loads(result)
+
+    assert "verdict" in payload
+    assert payload["verdict"] in {"release_approved", "release_blocked"}
+    assert isinstance(payload["gates"], list)
+    assert payload.get("dry_run") is True
+    assert payload.get("evidence_path") is None
+    gate_names = {g["gate"] for g in payload["gates"]}
+    assert {"artifact_coverage", "drc", "erc", "hv_safety"} == gate_names
+    # SELV domain: HV safety gate is not applicable
+    hv_gate = next(g for g in payload["gates"] if g["gate"] == "hv_safety")
+    assert hv_gate["applicable"] is False
+    assert hv_gate["passed"] is True
+
+
+@pytest.mark.anyio
+async def test_mfg_create_release_evidence_hv_gate_fails_without_dru(
+    sample_project: Path,
+) -> None:
+    """HV safety gate blocks release when voltage > 60V and no .kicad_dru exists."""
+    import json
+
+    server = build_server("manufacturing")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    # Remove any .kicad_dru files from the project
+    for dru in sample_project.glob("*.kicad_dru"):
+        dru.unlink()
+
+    result = await call_tool_text(
+        server,
+        "mfg_create_release_evidence",
+        {"dry_run": True, "product_domain": "hazardous_mains", "voltage_v": 230.0},
+    )
+    payload = json.loads(result)
+
+    hv_gate = next(g for g in payload["gates"] if g["gate"] == "hv_safety")
+    assert hv_gate["applicable"] is True
+    assert hv_gate["passed"] is False
+    assert payload["verdict"] == "release_blocked"
+    assert any("creepage" in r.lower() or "kicad_dru" in r.lower() for r in payload["blocking_reasons"])
+
+
+@pytest.mark.anyio
+async def test_mfg_create_release_evidence_writes_evidence_file(
+    sample_project: Path,
+) -> None:
+    """Non-dry-run writes release_evidence.json to the output directory."""
+    import json
+
+    server = build_server("manufacturing")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    output_dir = sample_project / "output"
+    output_dir.mkdir(exist_ok=True)
+    (output_dir / "demo-F_Cu.gbr").write_text("gerber", encoding="utf-8")
+    (output_dir / "demo.drl").write_text("drill", encoding="utf-8")
+
+    result = await call_tool_text(
+        server,
+        "mfg_create_release_evidence",
+        {"dry_run": False, "product_domain": "selv", "voltage_v": 3.3},
+    )
+    payload = json.loads(result)
+    assert "evidence_path" in payload
+    assert payload["evidence_path"] is not None
+    evidence_file = Path(payload["evidence_path"])
+    assert evidence_file.exists()
+    evidence = json.loads(evidence_file.read_text(encoding="utf-8"))
+    assert "content_hash" in evidence
+    assert evidence["content_hash"]
+    assert evidence["product_domain"] == "selv"

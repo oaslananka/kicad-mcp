@@ -4967,3 +4967,79 @@ def register(mcp: FastMCP) -> None:
             return transaction.to_compat_text(f"Title block updated: {updated_fields}.")
         except (KiCadConnectionError, OSError) as exc:
             return f"Failed to set title block info: {exc}"
+
+    @mcp.tool()
+    @headless_compatible
+    def pcb_critique_placement(
+        max_decap_distance_mm: float = 5.0,
+        max_crystal_distance_mm: float = 8.0,
+        max_smps_loop_area_mm2: float = 200.0,
+        analog_digital_separation_mm: float = 5.0,
+    ) -> str:
+        """Analyse PCB component placement for common design-quality issues.
+
+        Runs four constraint-driven rules against the active board file:
+
+        - **PLR-001** Decoupling-cap-to-IC distance — bypass caps should be ≤
+          ``max_decap_distance_mm`` mm from the IC they serve.
+        - **PLR-002** Crystal-to-IC distance — oscillator crystals should be ≤
+          ``max_crystal_distance_mm`` mm from the companion MCU/IC.
+        - **PLR-003** SMPS hot-loop area — the bounding box of a switching IC,
+          its inductor, and nearby caps should not exceed ``max_smps_loop_area_mm2`` mm².
+        - **PLR-004** Analog / digital region mixing — components carrying AGND /
+          AVCC nets should not co-mingle with digital-supply components within
+          ``analog_digital_separation_mm`` mm.
+
+        Returns a JSON summary with per-rule findings and an overall verdict.
+        """
+        from ..utils.placement_rules import PlacementThresholds, critique_placement
+
+        cfg = get_config()
+        if cfg.pcb_file is None or not cfg.pcb_file.exists():
+            return json.dumps(
+                {"status": "error", "message": "No PCB file configured. Call kicad_set_project() first."},
+                indent=2,
+            )
+
+        board_content = cfg.pcb_file.read_text(encoding="utf-8")
+        footprints = _parse_board_footprint_blocks(board_content)
+
+        if not footprints:
+            return json.dumps(
+                {
+                    "status": "empty_board",
+                    "message": "No footprints found in the PCB file.",
+                    "findings": [],
+                    "verdict": "pass",
+                },
+                indent=2,
+            )
+
+        thresholds = PlacementThresholds(
+            decap_max_distance_mm=max_decap_distance_mm,
+            crystal_max_distance_mm=max_crystal_distance_mm,
+            smps_hotloop_max_area_mm2=max_smps_loop_area_mm2,
+            analog_digital_min_separation_mm=analog_digital_separation_mm,
+        )
+        findings = critique_placement(footprints, thresholds)
+
+        errors = [f for f in findings if f.severity == "error"]
+        warnings = [f for f in findings if f.severity == "warning"]
+        verdict = "fail" if errors else ("warn" if warnings else "pass")
+
+        result = {
+            "status": "ok",
+            "footprint_count": len(footprints),
+            "finding_count": len(findings),
+            "error_count": len(errors),
+            "warning_count": len(warnings),
+            "verdict": verdict,
+            "thresholds": {
+                "max_decap_distance_mm": max_decap_distance_mm,
+                "max_crystal_distance_mm": max_crystal_distance_mm,
+                "max_smps_loop_area_mm2": max_smps_loop_area_mm2,
+                "analog_digital_separation_mm": analog_digital_separation_mm,
+            },
+            "findings": [f.to_dict() for f in findings],
+        }
+        return json.dumps(result, indent=2)

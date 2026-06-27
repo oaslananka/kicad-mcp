@@ -425,3 +425,81 @@ async def test_pcb_placement_quality_gate_flags_analog_digital_proximity(
 
     assert "Placement quality gate: FAIL" in gate
     assert "Analog ref 'U1' is only" in gate
+
+
+# ---------------------------------------------------------------------------
+# pcb_critique_placement (issue #203)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_pcb_critique_placement_empty_board(
+    sample_project: Path,
+    mock_kicad,
+) -> None:
+    """Empty board returns pass verdict with no findings."""
+    _ = mock_kicad
+    import json
+
+    _write_board(sample_project)
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    result = await call_tool_text(server, "pcb_critique_placement", {})
+    payload = json.loads(result)
+
+    assert payload["verdict"] in {"pass", "empty_board"}
+    assert payload.get("finding_count", 0) == 0
+
+
+@pytest.mark.anyio
+async def test_pcb_critique_placement_decap_far_from_ic(
+    sample_project: Path,
+    mock_kicad,
+) -> None:
+    """PLR-001 fires when a decoupling cap is > 5 mm from all ICs."""
+    _ = mock_kicad
+    import json
+
+    _write_board(
+        sample_project,
+        _footprint_block("U1", "STM32F4", 0.0, 0.0),
+        _footprint_block("C1", "100nF", 30.0, 0.0),
+    )
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    result = await call_tool_text(server, "pcb_critique_placement", {})
+    payload = json.loads(result)
+
+    assert payload["status"] == "ok"
+    plr001 = [f for f in payload["findings"] if f["rule_id"] == "PLR-001"]
+    assert len(plr001) == 1
+    assert "C1" in plr001[0]["refs"]
+    assert plr001[0]["distance_mm"] > 5.0
+    assert payload["verdict"] == "warn"
+
+
+@pytest.mark.anyio
+async def test_pcb_critique_placement_crystal_far_from_ic(
+    sample_project: Path,
+    mock_kicad,
+) -> None:
+    """PLR-002 fires when a crystal is > 8 mm from all ICs."""
+    _ = mock_kicad
+    import json
+
+    _write_board(
+        sample_project,
+        _footprint_block("U1", "STM32F4", 0.0, 0.0),
+        _footprint_block("Y1", "16MHz", 50.0, 0.0),
+    )
+    server = build_server("full")
+    await call_tool_text(server, "kicad_set_project", {"project_dir": str(sample_project)})
+
+    result = await call_tool_text(server, "pcb_critique_placement", {})
+    payload = json.loads(result)
+
+    plr002 = [f for f in payload["findings"] if f["rule_id"] == "PLR-002"]
+    assert len(plr002) == 1
+    assert "Y1" in plr002[0]["refs"]
