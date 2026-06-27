@@ -22,13 +22,11 @@ from ..tools.schematic import (
     _get_schematic_file,
     _split_lib_id,
     get_pin_metadata,
-    get_pin_positions,
     parse_schematic_file,
 )
 from .circuit_ir import (
     IRCircuit,
     IRComponent,
-    IRConstraint,
     IRInterface,
     IRNet,
     IRPin,
@@ -273,7 +271,6 @@ def _populate_nets(
     for group in connectivity_groups:
         names: list[str] = group.get("names", [])
         pins: list[dict[str, Any]] = group.get("pins", [])
-        no_connect: bool = group.get("no_connect", False)
 
         # Determine net name
         if names:

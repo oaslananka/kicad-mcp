@@ -164,7 +164,8 @@ def _check_crystal_distance(
                     message=(
                         f"Crystal {xtal_ref} is {d:.1f} mm from nearest IC {nearest_ref} "
                         f"(threshold {cfg.crystal_max_distance_mm} mm). "
-                        "Long crystal traces add parasitic inductance and hurt oscillator stability."
+                        "Long crystal traces add parasitic inductance"
+                        " and hurt oscillator stability."
                     ),
                     refs=(xtal_ref, nearest_ref),
                     detail={

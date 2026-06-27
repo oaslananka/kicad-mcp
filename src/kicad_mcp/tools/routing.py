@@ -1108,7 +1108,8 @@ def register(mcp: FastMCP) -> None:
                         f"(rule {_sexpr_string(rule_name)}",
                         f"  (constraint track_width (opt {_mm(max(0.1, width_mm))}))",
                         f"  (constraint diff_pair_gap (opt {_mm(max(0.1, gap_mm))}))",
-                        f"  (constraint diff_pair_max_uncoupled_length (max {_mm(max(0.5, skew_mm))}))",
+                        "  (constraint diff_pair_max_uncoupled_length"
+                        f" (max {_mm(max(0.5, skew_mm))}))",
                         f'  (condition "A.NetClass == \\"{dp_name}\\"")',
                         ")",
                     ]

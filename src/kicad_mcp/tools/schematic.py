@@ -7330,12 +7330,11 @@ def register(mcp: FastMCP) -> None:
         """
         sch_file = _get_schematic_file()
         try:
-            from ..ir import parse_schematic_to_ir, lint_circuit, render_diff_summary
-            from ..ir.diff import circuit_diff
+            from ..ir import lint_circuit, parse_schematic_to_ir
 
             ir = parse_schematic_to_ir(sch_file, load_pin_metadata=True)
         except Exception as exc:
-            _logger.warning("sch_get_circuit_ir parse failed", error=str(exc))
+            logger.warning("sch_get_circuit_ir parse failed", error=str(exc))
             return _with_schematic_diagnostics(
                 f"Could not parse IR: {exc}",
                 sch_file,
@@ -7410,7 +7409,8 @@ def register(mcp: FastMCP) -> None:
                 subject_tag = f" ({f.subject})" if f.subject else ""
                 detail_tag = f" — {f.detail}" if f.detail else ""
                 lines.append(
-                    f"- [{f.severity.value.upper()}] {f.rule_id}{subject_tag}: {f.message}{detail_tag}"
+                    f"- [{f.severity.value.upper()}] {f.rule_id}"
+                    f"{subject_tag}: {f.message}{detail_tag}"
                 )
 
         return "\n".join(lines)

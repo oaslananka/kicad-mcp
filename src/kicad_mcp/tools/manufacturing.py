@@ -907,6 +907,7 @@ def register(mcp: FastMCP) -> None:
         try:
             import os as _os
             import tempfile
+
             from .export_support import _run_cli
 
             cfg2 = get_config()
@@ -959,7 +960,8 @@ def register(mcp: FastMCP) -> None:
                 blocking.append(f"DRC could not run: {drc_error}")
             else:
                 blocking.append(
-                    f"DRC failed: {drc_violations} violation(s), {drc_unconnected} unconnected item(s)."
+                    f"DRC failed: {drc_violations} violation(s),"
+                    f" {drc_unconnected} unconnected item(s)."
                 )
 
         # --- Gate 3: ERC gate ---
@@ -969,6 +971,7 @@ def register(mcp: FastMCP) -> None:
         try:
             import os as _os2
             import tempfile as _tf2
+
             from .export_support import _run_cli as _run_cli2
 
             cfg3 = get_config()

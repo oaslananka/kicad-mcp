@@ -27,9 +27,9 @@ from .circuit_ir import (
     PinElectricalType,
     PinRole,
 )
-from .diff import circuit_diff, render_diff, render_diff_summary, IRDiff, IRDiffKind
+from .diff import IRDiff, IRDiffKind, circuit_diff, render_diff, render_diff_summary
 from .from_kicad import parse_schematic as parse_schematic_to_ir
-from .lint import lint_circuit, IRLintFinding, IRLintSeverity
+from .lint import IRLintFinding, IRLintSeverity, lint_circuit
 
 __all__ = [
     "IRCircuit",

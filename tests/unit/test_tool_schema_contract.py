@@ -212,7 +212,7 @@ def test_destructive_writes_have_destructive_hint() -> None:
     """Write tools (add/create/place/delete/move) must have destructiveHint=True."""
     from kicad_mcp.tools.metadata import infer_tool_annotations
 
-    WRITE_PREFIXES = ("add_", "set_", "delete_", "move_", "create_", "place_", "route_", "update_")
+    write_prefixes = ("add_", "set_", "delete_", "move_", "create_", "place_", "route_", "update_")
 
     server = build_server("agent_full")
     tools = server.list_tools_sync()
@@ -220,7 +220,7 @@ def test_destructive_writes_have_destructive_hint() -> None:
     for tool in tools:
         normalized = tool.name.casefold()
         is_write = any(
-            normalized.startswith(p) or f"_{p.strip('_')}" in normalized for p in WRITE_PREFIXES
+            normalized.startswith(p) or f"_{p.strip('_')}" in normalized for p in write_prefixes
         )
         if not is_write:
             continue

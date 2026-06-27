@@ -50,7 +50,7 @@ def _make_state(
     )
 
 
-def test_kicad11_min_version_constant():
+def test_kicad11_min_version_constant() -> None:
     assert KICAD_11_HEADLESS_IPC_MIN_VERSION == 11
 
 
@@ -59,24 +59,24 @@ def test_kicad11_min_version_constant():
 # ---------------------------------------------------------------------------
 
 
-def test_kicad10_no_gui_context_pcb_read_false():
+def test_kicad10_no_gui_context_pcb_read_false() -> None:
     state = _make_state(major=10, live_pcb_context=False)
     assert state.headless_ipc_available is False
     assert state.live_pcb_read is False
 
 
-def test_kicad10_with_gui_context_pcb_read_true():
+def test_kicad10_with_gui_context_pcb_read_true() -> None:
     state = _make_state(major=10, live_pcb_context=True)
     assert state.headless_ipc_available is False
     assert state.live_pcb_read is True
 
 
-def test_kicad10_no_gui_context_schematic_read_false():
+def test_kicad10_no_gui_context_schematic_read_false() -> None:
     state = _make_state(major=10, live_schematic_context=False)
     assert state.live_schematic_read is False
 
 
-def test_kicad10_with_gui_schematic_read_true():
+def test_kicad10_with_gui_schematic_read_true() -> None:
     state = _make_state(major=10, live_schematic_context=True)
     assert state.live_schematic_read is True
 
@@ -86,37 +86,37 @@ def test_kicad10_with_gui_schematic_read_true():
 # ---------------------------------------------------------------------------
 
 
-def test_kicad11_headless_ipc_available():
+def test_kicad11_headless_ipc_available() -> None:
     state = _make_state(major=11, live_pcb_context=False)
     assert state.headless_ipc_available is True
 
 
-def test_kicad11_pcb_read_without_gui_context():
+def test_kicad11_pcb_read_without_gui_context() -> None:
     state = _make_state(major=11, live_pcb_context=False)
     assert state.live_pcb_read is True
 
 
-def test_kicad11_pcb_write_without_gui_context():
+def test_kicad11_pcb_write_without_gui_context() -> None:
     state = _make_state(major=11, live_pcb_context=False)
     assert state.live_pcb_write is True
 
 
-def test_kicad11_schematic_read_without_gui_context():
+def test_kicad11_schematic_read_without_gui_context() -> None:
     state = _make_state(major=11, live_schematic_context=False)
     assert state.live_schematic_read is True
 
 
-def test_kicad11_schematic_write_without_gui_context():
+def test_kicad11_schematic_write_without_gui_context() -> None:
     state = _make_state(major=11, live_schematic_context=False)
     assert state.live_schematic_write is True
 
 
-def test_kicad11_ipc_backend_label():
+def test_kicad11_ipc_backend_label() -> None:
     state = _make_state(major=11)
     assert state.ipc_backend() == "kicad-ipc-headless"
 
 
-def test_kicad10_ipc_backend_label():
+def test_kicad10_ipc_backend_label() -> None:
     state = _make_state(major=10, live_pcb_context=True)
     assert state.ipc_backend() == "kicad-ipc"
 
@@ -126,7 +126,7 @@ def test_kicad10_ipc_backend_label():
 # ---------------------------------------------------------------------------
 
 
-def test_kicad11_operations_use_headless_backend():
+def test_kicad11_operations_use_headless_backend() -> None:
     ops = _operation_states(
         reachable=True,
         major_version=11,
@@ -135,13 +135,13 @@ def test_kicad11_operations_use_headless_backend():
     )
     pcb_ops = [op for name, op in ops.items() if name != "pcb_set_design_rules"]
     assert all(op.backend == "kicad-ipc-headless" for op in pcb_ops), (
-        f"Expected all PCB ops to use kicad-ipc-headless, got: "
+        "Expected all PCB ops to use kicad-ipc-headless, got: "
         + ", ".join(f"{name}={op.backend}" for name, op in ops.items())
     )
     assert all(op.available for op in ops.values()), "All ops should be available with KiCad 11"
 
 
-def test_kicad10_operations_use_gui_backend():
+def test_kicad10_operations_use_gui_backend() -> None:
     ops = _operation_states(
         reachable=True,
         major_version=10,
@@ -162,7 +162,7 @@ def test_kicad10_operations_use_gui_backend():
 # ---------------------------------------------------------------------------
 
 
-def test_unreachable_headless_ipc_false():
+def test_unreachable_headless_ipc_false() -> None:
     state = _make_state(major=11, reachable=False)
     assert state.headless_ipc_available is False
     assert state.live_pcb_read is False

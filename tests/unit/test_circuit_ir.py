@@ -19,12 +19,10 @@ from kicad_mcp.ir import (
     circuit_diff,
     lint_circuit,
     parse_schematic_to_ir,
-    render_diff,
     render_diff_summary,
 )
 from kicad_mcp.ir.diff import IRDiffKind
 from kicad_mcp.ir.lint import IRLintSeverity
-
 
 # ===========================================================================
 # Data model construction
@@ -269,7 +267,8 @@ def _make_device_sym(sym_path: Path) -> None:
         '    (property "Value" "R" (id 1) (at 0 -2.54 0))\n'
         '    (property "Footprint" "Resistor_SMD:R_0805")\n'
         '    (symbol "R_0_1"\n'
-        "      (rectangle (start -2.54 2.54) (end 2.54 -2.54) (stroke (width 0.254) (type default)) (fill (type background)))\n"
+        "      (rectangle (start -2.54 2.54) (end 2.54 -2.54)"
+        " (stroke (width 0.254) (type default)) (fill (type background)))\n"
         "    )\n"
         '    (symbol "R_1_1"\n'
         '      (pin passive line (at -2.54 0 0) (length 0) (name "1") (number "1"))\n'

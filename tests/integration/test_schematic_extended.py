@@ -1384,7 +1384,6 @@ async def test_sch_get_circuit_ir_returns_ir_on_populated_schematic(
 ) -> None:
     """sch_get_circuit_ir returns a JSON IR with component and net counts."""
     import json
-    from pathlib import Path
 
     _ = mock_kicad
     server = build_server("schematic")
