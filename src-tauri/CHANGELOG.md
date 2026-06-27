@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.15.0](https://github.com/oaslananka/kicad-mcp/compare/kicad-mcp-gui-v3.14.1...kicad-mcp-gui-v3.15.0) (2026-06-27)
+
+
+### Bug Fixes
+
+* **ci:** resolve all workflow issues found in CI/CD audit ([7778fde](https://github.com/oaslananka/kicad-mcp/commit/7778fdec94f215a8ba5f90a265a2c3329e9f5841))
+* **gui:** disable updater signing, fix macOS universal target ([aab53aa](https://github.com/oaslananka/kicad-mcp/commit/aab53aa1cdefdc4bb22b2b7e50c8f41dd8211268))
+* **gui:** pin a working backend version and stop the startup timeout from failing on cold installs ([#97](https://github.com/oaslananka/kicad-mcp/issues/97)) ([8d15056](https://github.com/oaslananka/kicad-mcp/commit/8d15056d032484cd9683f2d9b244758cb907075d))
+* **gui:** restore Rust quality gates ([0345b9c](https://github.com/oaslananka/kicad-mcp/commit/0345b9ced9a1f6b04c1a0f122060ec17e5a23cea))
+* sync GUI app version in tauri.conf.json and auto-bump it on release ([#98](https://github.com/oaslananka/kicad-mcp/issues/98)) ([5c0b6b5](https://github.com/oaslananka/kicad-mcp/commit/5c0b6b563bc3c97fd77676dec1f6c9984e6a1ff8))
+* sync tauri.conf.json version to 3.12.0 ([#102](https://github.com/oaslananka/kicad-mcp/issues/102)) ([90add7a](https://github.com/oaslananka/kicad-mcp/commit/90add7a47e30fa83ac6a984332573a657d5511e1))
+* **tauri:** disable compression feature to exclude brotli, fixing Allocator trait conflict ([6503444](https://github.com/oaslananka/kicad-mcp/commit/650344402e33b4d31ae75cee5c3bf678ab7f951d))
+* **tauri:** force alloc-no-stdlib v3.0.0 via patch to fix Rust 1.85+ Allocator conflict ([e3ebb71](https://github.com/oaslananka/kicad-mcp/commit/e3ebb71d6f3fcb170b1302f1dc8eb45e415a5407))
+* **tauri:** pin Rust 1.84 via rust-toolchain.toml for brotli allocator compatibility ([28f5443](https://github.com/oaslananka/kicad-mcp/commit/28f5443ef47e9e2f87c7d2f9e02851af8f2fd783))
+
 ## [3.14.1](https://github.com/oaslananka/kicad-mcp/compare/kicad-mcp-gui-v3.14.0...kicad-mcp-gui-v3.14.1) (2026-06-21)
 
 
