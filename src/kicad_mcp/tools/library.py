@@ -971,6 +971,8 @@ def register(mcp: FastMCP) -> None:
         source: str = "jlcsearch",
         min_stock: int = 10,
         sort_by: str = "price",
+        rohs_compliant: bool | None = None,
+        lifecycle: str = "",
     ) -> str:
         """Search live component sources for purchasable parts.
 
@@ -979,6 +981,10 @@ def register(mcp: FastMCP) -> None:
         (requires DIGIKEY_CLIENT_ID/DIGIKEY_CLIENT_SECRET), or ``mouser`` (requires
         MOUSER_API_KEY). The authenticated sources are inactive until their
         credentials are configured (loaded from ``.env`` at server startup).
+
+        Set ``rohs_compliant`` to ``true`` to filter to RoHS-compliant parts only.
+        ``lifecycle`` filters to a specific lifecycle status (e.g. ``Active``,
+        ``NRND``, ``EOL``) when the provider reports it.
         """
         if query and keyword:
             return "Provide either query or keyword, not both."
@@ -1004,6 +1010,20 @@ def register(mcp: FastMCP) -> None:
         except (RuntimeError, ValueError, OSError) as exc:
             return f"Live component search failed: {exc}"
 
+        # Apply lifecycle/rohs filters post-search.
+        _filter_notes: list[str] = []
+        if rohs_compliant is True:
+            results = [item for item in results if item.rohs and item.rohs.casefold() in {"yes", "compliant", "rohs compliant"}]
+            _filter_notes.append("RoHS compliant only")
+        if lifecycle:
+            needle = lifecycle.casefold()
+            results = [
+                item for item in results
+                if needle in item.lifecycle.casefold()
+            ]
+            _filter_notes.append(f"lifecycle={lifecycle}")
+        filter_info = f" [{', '.join(_filter_notes)}]" if _filter_notes else ""
+
         filtered = [item for item in results if item.stock >= min_stock]
         if results and not filtered:
             ranked_below_stock, evidence = _rank_passive_parametric_results(results, passive_query)
@@ -1013,7 +1033,8 @@ def register(mcp: FastMCP) -> None:
                 else _sort_component_results(results, sort_by=sort_by)
             )
             heading = (
-                f"Live component matches for '{search_term}' from {source} "
+                f"Live component matches for '{search_term}' from {source}"
+                f"{filter_info} "
                 f"({len(ordered_below_stock)} total below min_stock={min_stock}):\n"
                 "Matches exist, but all are below the requested stock threshold."
             )
@@ -1032,7 +1053,8 @@ def register(mcp: FastMCP) -> None:
         ranked, evidence = _rank_passive_parametric_results(filtered, passive_query)
         ordered = ranked if passive_query else _sort_component_results(filtered, sort_by=sort_by)
         heading = (
-            f"Live component matches for '{search_term}' from {source} ({len(ordered)} total):"
+            f"Live component matches for '{search_term}' from {source}{filter_info} "
+            f"({len(ordered)} total):"
         )
         if passive_query:
             heading += (
@@ -1052,7 +1074,11 @@ def register(mcp: FastMCP) -> None:
     @mcp.tool()
     @headless_compatible
     def lib_get_component_details(lcsc_code_or_mpn: str, source: str = "jlcsearch") -> str:
-        """Return live component detail for a specific LCSC code or MPN."""
+        """Return live component detail for a specific LCSC code or MPN.
+
+        Displays sourcing metadata (lifecycle, RoHS compliance) and a datasheet
+        URL when the provider reports them.
+        """
         try:
             client = _component_search_client(source)
             part = client.get_part(lcsc_code_or_mpn)
@@ -1073,6 +1099,12 @@ def register(mcp: FastMCP) -> None:
             f"- Basic: {'yes' if part.is_basic else 'no'}",
             f"- Preferred: {'yes' if part.is_preferred else 'no'}",
         ]
+        if part.lifecycle:
+            lines.append(f"- Lifecycle: {part.lifecycle}")
+        if part.rohs:
+            lines.append(f"- RoHS: {part.rohs}")
+        if part.datasheet_url:
+            lines.append(f"- Datasheet: {part.datasheet_url}")
         return "\n".join(lines)
 
     @mcp.tool()

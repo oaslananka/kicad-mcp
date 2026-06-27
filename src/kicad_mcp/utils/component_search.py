@@ -38,6 +38,8 @@ class ComponentRecord:
     # Sourcing/compliance metadata (populated when the provider reports it).
     lifecycle: str = ""
     rohs: str = ""
+    # Direct datasheet URL (populated when the provider reports it).
+    datasheet_url: str = ""
 
 
 class ComponentSearchClient(Protocol):
@@ -267,6 +269,7 @@ def _record_from_jlcpcb_detail_page(html: str, lcsc_code: str) -> ComponentRecor
     if lcsc_code not in html:
         return None
     lines = _plain_text_lines(html)
+    full_text = "\n".join(lines)
     title_match = re.search(r"<title>([^|<]+)", html, re.IGNORECASE)
     mpn = _line_after_label(lines, "MFR.Part #") or (
         unescape(title_match.group(1)).strip() if title_match else ""
@@ -274,8 +277,28 @@ def _record_from_jlcpcb_detail_page(html: str, lcsc_code: str) -> ComponentRecor
     package = _line_after_label(lines, "Package")
     description = _line_after_label(lines, "Description")
     library_type = " ".join(lines[:80]).casefold()
-    stock_match = re.search(r"In Stock:\s*([\d,]+)", "\n".join(lines), re.IGNORECASE)
-    price_match = re.search(r"1\+\s*\$([0-9.]+)", "\n".join(lines))
+    stock_match = re.search(r"In Stock:\s*([\d,]+)", full_text, re.IGNORECASE)
+    price_match = re.search(r"1\+\s*\$([0-9.]+)", full_text)
+    lifecycle = ""
+    rohs = ""
+    datasheet_url = ""
+    for line in lines:
+        lower = line.strip().casefold()
+        if not lifecycle and lower.startswith("lifecycle"):
+            lifecycle = line.split(":", 1)[-1].strip()
+        if not rohs and lower.startswith("rohs"):
+            rohs = line.split(":", 1)[-1].strip()
+        if not datasheet_url and lower.startswith("datasheet"):
+            parts = line.split(":", 1)
+            if len(parts) > 1 and parts[1].strip():
+                datasheet_url = parts[1].strip()
+    # Also try to find datasheet URL in HTML href attributes
+    if not datasheet_url:
+        ds_match = re.search(
+            r'href="(https?://[^"]*datasheet[^"]*)"', html, re.IGNORECASE
+        )
+        if ds_match:
+            datasheet_url = ds_match.group(1)
     return ComponentRecord(
         source="jlcpcb-public",
         lcsc_code=normalize_lcsc_code(lcsc_code),
@@ -286,6 +309,9 @@ def _record_from_jlcpcb_detail_page(html: str, lcsc_code: str) -> ComponentRecor
         price=float(price_match.group(1)) if price_match else None,
         is_basic="basic" in library_type and "extended" not in library_type,
         is_preferred=False,
+        lifecycle=lifecycle,
+        rohs=rohs,
+        datasheet_url=datasheet_url,
     )
 
 
@@ -328,6 +354,7 @@ def _record_from_nexar(part: dict[str, Any]) -> ComponentRecord:
     package = ""
     lifecycle = ""
     rohs = ""
+    datasheet_url = ""
     for spec in part.get("specs") or []:
         attribute = str((spec.get("attribute") or {}).get("name", "")).casefold()
         value = str(spec.get("displayValue", ""))
@@ -337,6 +364,11 @@ def _record_from_nexar(part: dict[str, Any]) -> ComponentRecord:
             lifecycle = value
         elif not rohs and ("rohs" in attribute or "reach" in attribute):
             rohs = value
+        elif not datasheet_url and "datasheet" in attribute and value.startswith("http"):
+            datasheet_url = value
+    # Nexar supply API may also provide a bestDatasheet URL at the part level.
+    if not datasheet_url:
+        datasheet_url = str(part.get("bestDatasheet", part.get("datasheet", "")))
     description = str(part.get("shortDescription") or "").strip() or manufacturer
     return ComponentRecord(
         source="nexar",
@@ -350,6 +382,7 @@ def _record_from_nexar(part: dict[str, Any]) -> ComponentRecord:
         is_preferred=False,
         lifecycle=lifecycle,
         rohs=rohs,
+        datasheet_url=datasheet_url,
     )
 
 
@@ -481,6 +514,8 @@ def _record_from_digikey(product: dict[str, Any]) -> ComponentRecord:
         if text in ("package / case", "supplier device package", "package"):
             package = str(param.get("ValueText", ""))
             break
+    # DigiKey may report datasheet URL; try a few common field names.
+    datasheet_url = str(product.get("DatasheetUrl", product.get("PrimaryDatasheetUrl", "")))
     return ComponentRecord(
         source="digikey",
         lcsc_code="",
@@ -491,6 +526,7 @@ def _record_from_digikey(product: dict[str, Any]) -> ComponentRecord:
         price=price,
         is_basic=False,
         is_preferred=False,
+        datasheet_url=datasheet_url,
     )
 
 
@@ -623,6 +659,7 @@ def _record_from_mouser(part: dict[str, Any]) -> ComponentRecord:
         is_preferred=False,
         lifecycle=str(part.get("LifecycleStatus", "")),
         rohs=str(part.get("ROHSStatus", "")),
+        datasheet_url=str(part.get("DataSheetUrl", "")),
     )
 
 
