@@ -170,6 +170,10 @@ async def test_export_step_and_render_keep_relative_names_under_output_dir(
     def fake_run(cmd, *args: object, **kwargs: object):
         _ = args, kwargs
         commands.append(list(cmd))
+        if "render" in cmd and "--output" in cmd:
+            output_path = Path(cmd[cmd.index("--output") + 1])
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 16)
 
         class Result:
             returncode = 0

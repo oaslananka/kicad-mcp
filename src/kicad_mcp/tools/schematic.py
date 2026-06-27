@@ -1778,7 +1778,11 @@ def _render_png_visual_diff(
             padded.alpha_composite(after)
             after = padded
 
-        delta = ImageChops.difference(before, after).convert("L")
+        # Flatten onto white so alpha differences register as RGB differences.
+        white = Image.new("RGBA", (width, height), (255, 255, 255, 255))
+        before_flat = Image.alpha_composite(white.copy(), before).convert("RGB")
+        after_flat = Image.alpha_composite(white.copy(), after).convert("RGB")
+        delta = ImageChops.difference(before_flat, after_flat).convert("L")
         mask = delta.point(lambda value: 255 if value > 8 else 0)
         changed_pixels = mask.histogram()[255]
         faded = Image.blend(

@@ -293,6 +293,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "sch_auto_place_functional",
             "sch_render_png",
             "sch_render_visual_diff",
+            "sch_get_circuit_ir",
             "sch_visual_qa",
             "sch_plan_from_spec",
             "sch_preview_plan",
@@ -504,6 +505,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "route_list_tuning_profiles",
             "route_apply_tuning_profile",
             "route_tune_time_domain",
+            "generate_board_constraints",
         ],
     },
     "signal_integrity": {

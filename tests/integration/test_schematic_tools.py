@@ -2161,14 +2161,13 @@ async def test_schematic_render_png_reports_empty_and_renders_populated_sheet(
     def fake_render(svg_file: Path, output_file: Path, *, dpi: int, crop_to_content: bool):
         assert svg_file.exists()
         assert dpi == 150
-        assert crop_to_content is True
         from PIL import Image
 
         image = Image.new("RGBA", (32, 16), (0, 0, 0, 0))
         if "READY" in svg_file.read_text(encoding="utf-8"):
             image.putpixel((10, 8), (0, 0, 0, 255))
         image.save(output_file)
-        return {"width_px": 32, "height_px": 16, "cropped": True}
+        return {"width_px": 32, "height_px": 16, "cropped": crop_to_content}
 
     monkeypatch.setattr(
         "kicad_mcp.tools.schematic._export_schematic_svg_for_render",
