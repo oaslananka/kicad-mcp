@@ -2705,14 +2705,27 @@ def get_pin_positions(
     return pins
 
 
-def get_pin_metadata(library: str, symbol_name: str, unit: int = 1) -> dict[str, dict[str, str]]:
+def get_pin_metadata(
+    library: str,
+    symbol_name: str,
+    unit: int = 1,
+    *,
+    sch_dir: Path | None = None,
+) -> dict[str, dict[str, str]]:
     """Return ``{pin_number: {"name", "etype"}}`` for a symbol's pins.
 
     Mirrors :func:`get_pin_positions`' block/unit traversal but carries the pin
     name and electrical type so design-rule checks can reason about power, input,
     and no-connect pins rather than only geometry.
+
+    ``sch_dir`` is an optional fallback directory; if the library is not found
+    via the global config, the function also checks ``<sch_dir>/symbols/``.
     """
     sym_file = _symbol_library_file(library)
+    if sym_file is None and sch_dir is not None:
+        fallback = sch_dir / "symbols" / f"{library}.kicad_sym"
+        if fallback.exists():
+            sym_file = fallback
     if sym_file is None:
         return {}
     content = sym_file.read_text(encoding="utf-8", errors="ignore")

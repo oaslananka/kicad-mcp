@@ -223,7 +223,7 @@ def _populate_components(
         if load_pin_metadata:
             library, symbol_name = _split_lib_id(lib_id)
             unit = int(sym.get("unit", 1))
-            pin_meta = get_pin_metadata(library, symbol_name, unit)
+            pin_meta = get_pin_metadata(library, symbol_name, unit, sch_dir=sch_file.parent)
             for pin_num, meta in sorted(pin_meta.items(), key=lambda x: _pin_sort_key(x[0])):
                 pname: str = meta.get("name", "")
                 etype_str: str = meta.get("etype", "unspecified")
