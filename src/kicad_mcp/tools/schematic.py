@@ -7315,6 +7315,106 @@ def register(mcp: FastMCP) -> None:
 
     @mcp.tool()
     @headless_compatible
+    @ttl_cache(ttl_seconds=10)
+    def sch_get_circuit_ir() -> str:
+        """Return the semantic circuit IR for the active schematic.
+
+        The IR decouples 'what the circuit is' (components, nets, pin
+        roles, power domains, interfaces) from 'how KiCad stores it'
+        (geometry, UUIDs, file format).  Wiring is expressed in terms
+        of pin names and roles, not coordinates.
+
+        The output is a structured text summary of the IR.
+        """
+        sch_file = _get_schematic_file()
+        try:
+            from ..ir import parse_schematic_to_ir, lint_circuit, render_diff_summary
+            from ..ir.diff import circuit_diff
+
+            ir = parse_schematic_to_ir(sch_file, load_pin_metadata=True)
+        except Exception as exc:
+            _logger.warning("sch_get_circuit_ir parse failed", error=str(exc))
+            return _with_schematic_diagnostics(
+                f"Could not parse IR: {exc}",
+                sch_file,
+            )
+
+        lines = [
+            f"# Semantic Circuit IR — {ir.title}",
+            f"Source: {ir.source_path}",
+            f"UUID: {ir.source_uuid or 'N/A'}",
+            "",
+            f"**Summary:** {ir.component_count()} components, "
+            f"{ir.pin_count()} pins, "
+            f"{ir.net_count()} nets, "
+            f"{len(ir.power_rails)} rails, "
+            f"{ir.interface_count()} interfaces",
+        ]
+
+        # Components
+        if ir.components:
+            lines += ["", f"## Components ({ir.component_count()})"]
+            for ref in sorted(ir.components):
+                c = ir.components[ref]
+                flags = ""
+                if c.dnp:
+                    flags += " [DNP]"
+                if not c.in_bom:
+                    flags += " [NoBOM]"
+                lines.append(
+                    f"- {ref}: {c.lib_id} = {c.value} "
+                    f"({c.footprint}){flags}"
+                    f"  ({len(c.pins)} pins)"
+                )
+
+        # Nets
+        if ir.nets:
+            power_nets = sum(1 for n in ir.nets.values() if n.is_power)
+            signal_nets = ir.net_count() - power_nets
+            lines += [
+                "",
+                f"## Nets ({ir.net_count()} total: {signal_nets} signal, {power_nets} power)",
+            ]
+            for name in sorted(ir.nets):
+                net = ir.nets[name]
+                pin_count = len(net.connections)
+                power_tag = " [POWER]" if net.is_power else ""
+                voltage_tag = f" {net.voltage}V" if net.voltage is not None else ""
+                lines.append(f"- `{name}`{power_tag}{voltage_tag} ({pin_count} connections)")
+
+        # Power rails
+        if ir.power_rails:
+            lines += ["", f"## Power Rails ({len(ir.power_rails)})"]
+            for name in sorted(ir.power_rails):
+                rail = ir.power_rails[name]
+                nets_str = ", ".join(sorted(rail.net_names)[:5])
+                if len(rail.net_names) > 5:
+                    nets_str += f" … (+{len(rail.net_names) - 5} more)"
+                source = f" from {rail.source_ref}.{rail.source_pin}" if rail.source_ref else ""
+                lines.append(f"- {name}: {rail.voltage}V{source}  nets=[{nets_str}]")
+
+        # Interfaces
+        if ir.interfaces:
+            lines += ["", f"## Interfaces ({ir.interface_count()})"]
+            for name in sorted(ir.interfaces):
+                iface = ir.interfaces[name]
+                refs = ", ".join(sorted(iface.refs)[:3])
+                roles = ", ".join(f"{k}={v}" for k, v in iface.net_roles.items())
+                lines.append(f"- {name} ({iface.kind}): [{roles}]  refs=[{refs}]")
+
+        # Lint findings
+        findings = lint_circuit(ir)
+        if findings:
+            lines += ["", f"## IR Lint Findings ({len(findings)})"]
+            for f in findings:
+                subject_tag = f" ({f.subject})" if f.subject else ""
+                detail_tag = f" — {f.detail}" if f.detail else ""
+                lines.append(f"- [{f.severity.value.upper()}] {f.rule_id}{subject_tag}: {f.message}{detail_tag}")
+
+        return "\n".join(lines)
+
+    @mcp.tool()
+    @headless_compatible
     def sch_instantiate_template(
         template_name: str,
         prefix: str = "",
