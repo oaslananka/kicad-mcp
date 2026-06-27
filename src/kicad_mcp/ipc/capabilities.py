@@ -108,7 +108,9 @@ class KiCadIpcCapabilityState:
         KiCad GUI — it exposes the same API via ``kicad-cli api-server``. When this
         is True, domain logic can rely on IPC without requiring ``live_pcb_context``.
         """
-        return self.reachable and _major_at_least(self.major_version, KICAD_11_HEADLESS_IPC_MIN_VERSION)
+        return self.reachable and _major_at_least(
+            self.major_version, KICAD_11_HEADLESS_IPC_MIN_VERSION
+        )
 
     @property
     def live_pcb_read(self) -> bool:
@@ -117,7 +119,9 @@ class KiCadIpcCapabilityState:
         Returns True if the GUI has an open board (KiCad 9/10) OR if headless IPC
         is available (KiCad 11+, no GUI required).
         """
-        gui_path = self.reachable and self.live_pcb_context and _major_at_least(self.major_version, 9)
+        gui_path = (
+            self.reachable and self.live_pcb_context and _major_at_least(self.major_version, 9)
+        )
         return gui_path or self.headless_ipc_available
 
     @property
@@ -290,7 +294,9 @@ def _operation_states(
     headless = reachable and _major_at_least(major_version, KICAD_11_HEADLESS_IPC_MIN_VERSION)
     states: dict[str, KiCadIpcOperationState] = {}
     for tool_name in sorted(PCB_LIVE_EDITING_TOOLS):
-        available = headless or (reachable and live_pcb_context and _major_at_least(major_version, 9))
+        available = headless or (
+            reachable and live_pcb_context and _major_at_least(major_version, 9)
+        )
         if tool_name == "pcb_set_design_rules":
             backend: BackendName = "hybrid-file-ipc"
         elif headless:

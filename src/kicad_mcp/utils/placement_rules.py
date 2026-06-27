@@ -44,9 +44,7 @@ _SMPS_VALUE_RE = re.compile(
     re.IGNORECASE,
 )
 
-_ANALOG_NET_RE = re.compile(
-    r"(?:^|[^A-Z])(AGND|AVCC|AVDD|AVSS|AREF|VREF|VDDA|GNDA)(?:[^A-Z]|$)"
-)
+_ANALOG_NET_RE = re.compile(r"(?:^|[^A-Z])(AGND|AVCC|AVDD|AVSS|AREF|VREF|VDDA|GNDA)(?:[^A-Z]|$)")
 _DIGITAL_SUPPLY_RE = re.compile(
     r"(?:^|[^A-Z])(DVDD|DVCC|VCORE|VDD_CORE|VCC_CORE|VCC_DIG|VDD_DIG)(?:[^A-Z]|$)"
 )
@@ -185,9 +183,7 @@ def _check_smps_hot_loop(
     smps_ics = {r: fp for r, fp in footprints.items() if _is_smps_ic(r, fp)}
     inductors = {r: fp for r, fp in footprints.items() if _is_inductor(r)}
     caps = {
-        r: fp
-        for r, fp in footprints.items()
-        if _CAP_RE.match(r) and fp.get("x_mm") is not None
+        r: fp for r, fp in footprints.items() if _CAP_RE.match(r) and fp.get("x_mm") is not None
     }
     for ic_ref, ic_fp in smps_ics.items():
         nearby: list[dict[str, Any]] = [ic_fp]

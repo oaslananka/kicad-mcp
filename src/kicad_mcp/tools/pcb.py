@@ -4997,7 +4997,10 @@ def register(mcp: FastMCP) -> None:
         cfg = get_config()
         if cfg.pcb_file is None or not cfg.pcb_file.exists():
             return json.dumps(
-                {"status": "error", "message": "No PCB file configured. Call kicad_set_project() first."},
+                {
+                    "status": "error",
+                    "message": "No PCB file configured. Call kicad_set_project() first.",
+                },
                 indent=2,
             )
 

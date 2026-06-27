@@ -2162,9 +2162,7 @@ def _record_schematic_visual_diff(sch_file: Path, before: str, after: str) -> No
             str(item.get("name"))
             for change in changed_objects
             for item in (change.get("before"), change.get("after"))
-            if isinstance(item, dict)
-            and item.get("kind") == "label"
-            and item.get("name")
+            if isinstance(item, dict) and item.get("kind") == "label" and item.get("name")
         }
     )
     _save_schematic_state(
@@ -7366,9 +7364,7 @@ def register(mcp: FastMCP) -> None:
                 if not c.in_bom:
                     flags += " [NoBOM]"
                 lines.append(
-                    f"- {ref}: {c.lib_id} = {c.value} "
-                    f"({c.footprint}){flags}"
-                    f"  ({len(c.pins)} pins)"
+                    f"- {ref}: {c.lib_id} = {c.value} ({c.footprint}){flags}  ({len(c.pins)} pins)"
                 )
 
         # Nets
@@ -7413,7 +7409,9 @@ def register(mcp: FastMCP) -> None:
             for f in findings:
                 subject_tag = f" ({f.subject})" if f.subject else ""
                 detail_tag = f" — {f.detail}" if f.detail else ""
-                lines.append(f"- [{f.severity.value.upper()}] {f.rule_id}{subject_tag}: {f.message}{detail_tag}")
+                lines.append(
+                    f"- [{f.severity.value.upper()}] {f.rule_id}{subject_tag}: {f.message}{detail_tag}"
+                )
 
         return "\n".join(lines)
 

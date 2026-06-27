@@ -1399,4 +1399,6 @@ async def test_sch_get_circuit_ir_returns_ir_on_populated_schematic(
         assert "status" in payload or "components" in payload or "component_count" in payload
     except json.JSONDecodeError:
         # Tool may return a text description for an empty schematic — that's ok
-        assert "circuit" in result.lower() or "schematic" in result.lower() or "ir" in result.lower()
+        assert (
+            "circuit" in result.lower() or "schematic" in result.lower() or "ir" in result.lower()
+        )

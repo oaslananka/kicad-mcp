@@ -42,7 +42,9 @@ def test_every_tool_has_valid_input_schema() -> None:
 
     for tool in tools:
         schema = tool.inputSchema
-        assert isinstance(schema, dict), f"{tool.name}: inputSchema must be dict, got {type(schema)}"
+        assert isinstance(schema, dict), (
+            f"{tool.name}: inputSchema must be dict, got {type(schema)}"
+        )
         # Validate it's a valid JSON Schema
         Draft202012Validator.check_schema(schema)
 
@@ -67,9 +69,7 @@ def test_every_tool_has_snake_case_name() -> None:
     for tool in tools:
         name = tool.name
         assert "_" in name, f"{name}: tool name must use snake_case"
-        assert name.islower() or name.startswith("kicad_"), (
-            f"{name}: tool name should be lowercase"
-        )
+        assert name.islower() or name.startswith("kicad_"), f"{name}: tool name should be lowercase"
 
 
 def test_every_tool_has_description() -> None:
@@ -220,8 +220,7 @@ def test_destructive_writes_have_destructive_hint() -> None:
     for tool in tools:
         normalized = tool.name.casefold()
         is_write = any(
-            normalized.startswith(p) or f"_{p.strip('_')}" in normalized
-            for p in WRITE_PREFIXES
+            normalized.startswith(p) or f"_{p.strip('_')}" in normalized for p in WRITE_PREFIXES
         )
         if not is_write:
             continue

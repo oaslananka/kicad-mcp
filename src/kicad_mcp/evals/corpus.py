@@ -27,7 +27,9 @@ from typing import Any, Literal
 
 import yaml
 
-_GOLDEN_CORPUS_PATH = Path(__file__).resolve().parent.parent.parent.parent / "evals" / "golden_corpus.yaml"
+_GOLDEN_CORPUS_PATH = (
+    Path(__file__).resolve().parent.parent.parent.parent / "evals" / "golden_corpus.yaml"
+)
 
 GateName = Literal["erc", "drc", "placement", "manufacturing", "project"]
 ViolationSpec = int | str  # exact count, or ">=N"

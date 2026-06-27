@@ -331,7 +331,9 @@ async def test_mfg_create_release_evidence_hv_gate_fails_without_dru(
     assert hv_gate["applicable"] is True
     assert hv_gate["passed"] is False
     assert payload["verdict"] == "release_blocked"
-    assert any("creepage" in r.lower() or "kicad_dru" in r.lower() for r in payload["blocking_reasons"])
+    assert any(
+        "creepage" in r.lower() or "kicad_dru" in r.lower() for r in payload["blocking_reasons"]
+    )
 
 
 @pytest.mark.anyio

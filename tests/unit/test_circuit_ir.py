@@ -269,7 +269,7 @@ def _make_device_sym(sym_path: Path) -> None:
         '    (property "Value" "R" (id 1) (at 0 -2.54 0))\n'
         '    (property "Footprint" "Resistor_SMD:R_0805")\n'
         '    (symbol "R_0_1"\n'
-        '      (rectangle (start -2.54 2.54) (end 2.54 -2.54) (stroke (width 0.254) (type default)) (fill (type background)))\n'
+        "      (rectangle (start -2.54 2.54) (end 2.54 -2.54) (stroke (width 0.254) (type default)) (fill (type background)))\n"
         "    )\n"
         '    (symbol "R_1_1"\n'
         '      (pin passive line (at -2.54 0 0) (length 0) (name "1") (number "1"))\n'
@@ -289,9 +289,7 @@ def sch_with_symbols(tmp_path: Path) -> Path:
     project.mkdir()
 
     # Create empty .kicad_pro so _get_symbol_library_dir etc. work
-    (project / "demo.kicad_pro").write_text(
-        '{"meta": {"version": 1}}', encoding="utf-8"
-    )
+    (project / "demo.kicad_pro").write_text('{"meta": {"version": 1}}', encoding="utf-8")
     sch = project / "demo.kicad_sch"
     _make_minimal_sch(sch)
 
@@ -381,7 +379,7 @@ class TestParseSchematic:
             "\t(version 20250316)\n"
             '\t(generator "pytest")\n'
             '\t(uuid "20000000-0000-0000-0000-200000000001")\n'
-            "\t(paper \"A4\")\n"
+            '\t(paper "A4")\n'
             "\t(lib_symbols)\n"
             "\t(symbol\n"
             '\t\t(lib_id "Device:R")\n'
@@ -544,7 +542,10 @@ class TestLint:
     def test_clean_circuit_no_findings(self) -> None:
         ir = IRCircuit(title="clean")
         ir.components["R1"] = IRComponent(
-            "R1", "Device:R", "10k", "R_0805",
+            "R1",
+            "Device:R",
+            "10k",
+            "R_0805",
             pins=(IRPin("1", "1"), IRPin("2", "2")),
         )
         ir.nets["SIG"] = IRNet("SIG", connections=frozenset({("R1", "1")}))
@@ -573,9 +574,7 @@ class TestLint:
 
     def test_single_net_interface_flagged_as_info(self) -> None:
         ir = IRCircuit(title="partial_iface")
-        ir.interfaces["SPI1"] = IRInterface(
-            "SPI1", "spi", net_roles={"mosi": "SPI1_MOSI"}
-        )
+        ir.interfaces["SPI1"] = IRInterface("SPI1", "spi", net_roles={"mosi": "SPI1_MOSI"})
 
         findings = lint_circuit(ir)
         single = [f for f in findings if f.rule_id == "ir-003"]

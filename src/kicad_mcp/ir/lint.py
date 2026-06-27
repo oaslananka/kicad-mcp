@@ -30,7 +30,7 @@ class IRLintFinding:
     rule_id: str
     severity: IRLintSeverity
     message: str
-    subject: str = ""       # e.g. "VCC", "I2C1", "R1"
+    subject: str = ""  # e.g. "VCC", "I2C1", "R1"
     detail: str = ""
 
 

@@ -97,7 +97,9 @@ def test_progress_notification_accepted_with_session(sample_project: Path) -> No
     with TestClient(server.streamable_http_app(), base_url="http://127.0.0.1:3334") as client:
         init_resp = client.post("/mcp", headers=_headers(), json=_initialize_request())
         session_id = init_resp.headers.get("mcp-session-id")
-        client.post("/mcp", headers=_headers(session_id=str(session_id)), json=_initialized_notification())
+        client.post(
+            "/mcp", headers=_headers(session_id=str(session_id)), json=_initialized_notification()
+        )
 
         progress_payload = {
             "jsonrpc": "2.0",
@@ -133,7 +135,9 @@ def test_progress_token_in_tool_call_is_accepted(sample_project: Path) -> None:
     with TestClient(server.streamable_http_app(), base_url="http://127.0.0.1:3334") as client:
         init_resp = client.post("/mcp", headers=_headers(), json=_initialize_request())
         session_id = init_resp.headers.get("mcp-session-id")
-        client.post("/mcp", headers=_headers(session_id=str(session_id)), json=_initialized_notification())
+        client.post(
+            "/mcp", headers=_headers(session_id=str(session_id)), json=_initialized_notification()
+        )
 
         call_with_progress = {
             "jsonrpc": "2.0",
@@ -201,7 +205,9 @@ def test_cancellation_with_session(sample_project: Path) -> None:
     with TestClient(server.streamable_http_app(), base_url="http://127.0.0.1:3334") as client:
         init_resp = client.post("/mcp", headers=_headers(), json=_initialize_request())
         session_id = init_resp.headers.get("mcp-session-id")
-        client.post("/mcp", headers=_headers(session_id=str(session_id)), json=_initialized_notification())
+        client.post(
+            "/mcp", headers=_headers(session_id=str(session_id)), json=_initialized_notification()
+        )
 
         cancel_payload = {
             "jsonrpc": "2.0",
@@ -289,7 +295,9 @@ def test_progress_token_must_be_string(sample_project: Path) -> None:
         init_resp = client.post("/mcp", headers=_headers(), json=_initialize_request())
         session_id = init_resp.headers.get("mcp-session-id")
         assert session_id is not None
-        client.post("/mcp", headers=_headers(session_id=str(session_id)), json=_initialized_notification())
+        client.post(
+            "/mcp", headers=_headers(session_id=str(session_id)), json=_initialized_notification()
+        )
 
         for token in invalid_tokens:
             payload = {

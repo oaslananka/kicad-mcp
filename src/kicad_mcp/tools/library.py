@@ -1013,14 +1013,15 @@ def register(mcp: FastMCP) -> None:
         # Apply lifecycle/rohs filters post-search.
         _filter_notes: list[str] = []
         if rohs_compliant is True:
-            results = [item for item in results if item.rohs and item.rohs.casefold() in {"yes", "compliant", "rohs compliant"}]
+            results = [
+                item
+                for item in results
+                if item.rohs and item.rohs.casefold() in {"yes", "compliant", "rohs compliant"}
+            ]
             _filter_notes.append("RoHS compliant only")
         if lifecycle:
             needle = lifecycle.casefold()
-            results = [
-                item for item in results
-                if needle in item.lifecycle.casefold()
-            ]
+            results = [item for item in results if needle in item.lifecycle.casefold()]
             _filter_notes.append(f"lifecycle={lifecycle}")
         filter_info = f" [{', '.join(_filter_notes)}]" if _filter_notes else ""
 

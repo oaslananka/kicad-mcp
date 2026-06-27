@@ -884,13 +884,15 @@ def register(mcp: FastMCP) -> None:
             missing_artifacts = list(artifact_patterns.keys())
 
         artifact_passed = not missing_artifacts or waive_missing_artifacts
-        gates.append({
-            "gate": "artifact_coverage",
-            "passed": artifact_passed,
-            "found": found_artifacts,
-            "missing": missing_artifacts,
-            "waived": waive_missing_artifacts and bool(missing_artifacts),
-        })
+        gates.append(
+            {
+                "gate": "artifact_coverage",
+                "passed": artifact_passed,
+                "found": found_artifacts,
+                "missing": missing_artifacts,
+                "waived": waive_missing_artifacts and bool(missing_artifacts),
+            }
+        )
         if not artifact_passed:
             blocking.append(
                 f"Missing required artifacts: {', '.join(missing_artifacts)}. "
@@ -915,9 +917,12 @@ def register(mcp: FastMCP) -> None:
                     tmp_path = tmp.name
                 try:
                     code, stdout, stderr = _run_cli(
-                        "pcb", "drc",
-                        "--output", tmp_path,
-                        "--format", "json",
+                        "pcb",
+                        "drc",
+                        "--output",
+                        tmp_path,
+                        "--format",
+                        "json",
                         "--schematic-parity",
                         str(cfg2.pcb_file),
                     )
@@ -940,13 +945,15 @@ def register(mcp: FastMCP) -> None:
         except Exception as exc:
             drc_error = str(exc)
 
-        gates.append({
-            "gate": "drc",
-            "passed": drc_passed,
-            "violations": drc_violations,
-            "unconnected_items": drc_unconnected,
-            "error": drc_error,
-        })
+        gates.append(
+            {
+                "gate": "drc",
+                "passed": drc_passed,
+                "violations": drc_violations,
+                "unconnected_items": drc_unconnected,
+                "error": drc_error,
+            }
+        )
         if not drc_passed:
             if drc_error:
                 blocking.append(f"DRC could not run: {drc_error}")
@@ -972,9 +979,12 @@ def register(mcp: FastMCP) -> None:
                     tmp2_path = tmp2.name
                 try:
                     code2, stdout2, stderr2 = _run_cli2(
-                        "sch", "erc",
-                        "--output", tmp2_path,
-                        "--format", "json",
+                        "sch",
+                        "erc",
+                        "--output",
+                        tmp2_path,
+                        "--format",
+                        "json",
                         str(cfg3.sch_file),
                     )
                     if code2 == 0 and _os2.path.exists(tmp2_path):
@@ -994,12 +1004,14 @@ def register(mcp: FastMCP) -> None:
         except Exception as exc:
             erc_error = str(exc)
 
-        gates.append({
-            "gate": "erc",
-            "passed": erc_passed,
-            "violations": erc_violations,
-            "error": erc_error,
-        })
+        gates.append(
+            {
+                "gate": "erc",
+                "passed": erc_passed,
+                "violations": erc_violations,
+                "error": erc_error,
+            }
+        )
         if not erc_passed:
             if erc_error:
                 blocking.append(f"ERC could not run: {erc_error}")
@@ -1030,14 +1042,16 @@ def register(mcp: FastMCP) -> None:
                     f"{voltage_v:.0f} V {effective_domain} design. "
                     "Run generate_board_constraints() to create HV safety rules."
                 )
-        gates.append({
-            "gate": "hv_safety",
-            "applicable": hv_gate_applicable,
-            "passed": hv_gate_passed,
-            "detail": hv_gate_detail,
-            "voltage_v": voltage_v,
-            "domain": effective_domain,
-        })
+        gates.append(
+            {
+                "gate": "hv_safety",
+                "applicable": hv_gate_applicable,
+                "passed": hv_gate_passed,
+                "detail": hv_gate_detail,
+                "voltage_v": voltage_v,
+                "domain": effective_domain,
+            }
+        )
         if hv_gate_applicable and not hv_gate_passed:
             blocking.append(hv_gate_detail)
 
