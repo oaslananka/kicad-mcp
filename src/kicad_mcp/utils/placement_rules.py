@@ -80,11 +80,13 @@ class PlacementFinding:
 
 
 def _dist(a: dict[str, Any], b: dict[str, Any]) -> float:
-    ax, ay = a.get("x_mm"), a.get("y_mm")
-    bx, by = b.get("x_mm"), b.get("y_mm")
-    if None in (ax, ay, bx, by):
+    ax: float | None = a.get("x_mm")
+    ay: float | None = a.get("y_mm")
+    bx: float | None = b.get("x_mm")
+    by: float | None = b.get("y_mm")
+    if ax is None or ay is None or bx is None or by is None:
         return float("inf")
-    return math.hypot(float(ax) - float(bx), float(ay) - float(by))
+    return math.hypot(ax - bx, ay - by)
 
 
 def _has_any_net(fp: dict[str, Any], pattern: re.Pattern[str]) -> bool:

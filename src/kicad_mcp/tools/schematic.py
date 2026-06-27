@@ -6608,7 +6608,7 @@ def register(mcp: FastMCP) -> None:
         target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         data = parse_schematic_file(target.path)
         if not _schematic_has_renderable_content(data):
-            metadata = {
+            metadata: dict[str, Any] = {
                 "status": "empty_sheet",
                 "sheet_path": str(target.path),
                 "message": "No schematic content was available to render.",
@@ -6666,7 +6666,7 @@ def register(mcp: FastMCP) -> None:
         target = _resolve_schematic_target(sheet=sheet, sheet_file=sheet_file)
         state = _load_schematic_visual_diff(target.path)
         if state is None:
-            metadata = {
+            metadata: dict[str, Any] = {
                 "status": "no_recorded_mutation",
                 "sheet_path": str(target.path),
                 "message": "No mutation snapshot is available for this schematic.",
@@ -6734,7 +6734,7 @@ def register(mcp: FastMCP) -> None:
         except RuntimeError as exc:
             return text_tool_result(f"Schematic visual diff failed: {exc}")
 
-        metadata = {
+        metadata2: dict[str, Any] = {
             "status": "ok",
             "diff_path": str(diff_file),
             "before_png_path": str(before_png),
@@ -6751,7 +6751,7 @@ def register(mcp: FastMCP) -> None:
             "changed_nets": state.get("changed_nets", []),
             **diff_metadata,
         }
-        return image_tool_result(diff_file, metadata)
+        return image_tool_result(diff_file, metadata2)
 
     @mcp.tool()
     @headless_compatible

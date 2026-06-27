@@ -249,7 +249,7 @@ def _populate_components(
         )
 
 
-def _pin_sort_key(pin_number: str) -> tuple:
+def _pin_sort_key(pin_number: str) -> tuple[int, int | str]:
     """Sort pin numbers sensibly: numeric first, then alpha."""
     try:
         return (0, int(pin_number))

@@ -1047,9 +1047,9 @@ def register(mcp: FastMCP) -> None:
         def _ipc_width_mm(current_a: float) -> float:
             if current_a <= 0:
                 return 0.127
-            raw = current_a / (0.048 * (10**0.44))
-            width_mm = raw ** (1.0 / 0.725)
-            return max(0.127, round(width_mm, 4))
+            raw: float = current_a / (0.048 * float(10**0.44))
+            width_mm: float = raw ** (1.0 / 0.725)
+            return float(max(0.127, round(width_mm, 4)))
 
         for rail in intent.power_rails:
             rail_name: str = rail.name
