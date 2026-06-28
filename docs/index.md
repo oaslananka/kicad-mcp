@@ -70,6 +70,7 @@ The docs are ordered from first setup to operations and maintenance.
 - [Deployment Docker](deployment/docker.md)
 - [HTTP Mode](deployment/http-mode.md)
 - [Release Process](release-process.md)
+- [OpenSSF Best Practices Evidence](openssf-best-practices.md)
 - [Release Notes](release.md)
 
 ### Security and privacy
@@ -78,6 +79,7 @@ The docs are ordered from first setup to operations and maintenance.
 - [Deployment Security](deployment/security.md)
 - [Security Threat Model](security/threat-model.md)
 - [Release Integrity](security/release-integrity.md)
+- [Release and Supply-Chain Security](security/release-security.md)
 - [Workflow Security](workflow-security.md)
 
 ### Submission

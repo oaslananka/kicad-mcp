@@ -2,10 +2,12 @@
 
 Use the channel that best matches the request:
 
-- **Bug reports:** open a GitHub issue with the bug or regression form.
+- **Bug reports:** open a GitHub issue with the bug/regression form. Include a minimal reproduction, environment details, and redacted logs.
+- **Feature requests:** open a GitHub issue with the feature request form when the request has clear acceptance criteria.
+- **Documentation fixes:** use the documentation issue form or open a focused pull request.
 - **Usage questions and ideas:** start a GitHub Discussion.
 - **Security reports:** use GitHub Security Advisories, not public issues.
-- **Documentation fixes:** use the documentation issue form or open a PR.
+- **Conduct concerns:** follow [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
 
 ## Triage SLA
 

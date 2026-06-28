@@ -1,0 +1,75 @@
+name: Bug report
+description: Report a reproducible bug or regression in KiCad MCP Pro.
+title: "fix: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve KiCad MCP Pro. Do not include secrets, private board data, customer files, or active vulnerability details. Security issues must be reported privately through GitHub Security Advisories.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What failed? What should have happened instead?
+      placeholder: The tool returned ... but I expected ...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Provide the smallest command, MCP call, project, or fixture that reproduces the problem.
+      placeholder: |
+        1. Install ...
+        2. Run ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include versions and install details.
+      value: |
+        - KiCad MCP Pro version:
+        - Install method: PyPI / npm / Docker / source / GUI
+        - Operating system:
+        - Python version:
+        - Node.js version:
+        - KiCad version:
+        - MCP client:
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or diagnostics
+      description: Redact tokens, private paths, board names, generated manufacturing files, and customer-specific data.
+      render: text
+  - type: dropdown
+    id: regression
+    attributes:
+      label: Is this a regression?
+      options:
+        - Unknown
+        - No
+        - Yes, last working version is listed below
+    validations:
+      required: true
+  - type: input
+    id: last-working
+    attributes:
+      label: Last working version
+      placeholder: e.g. 3.14.0
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I searched existing issues and discussions.
+          required: true
+        - label: I removed credentials, private board data, and customer-specific information.
+          required: true
+        - label: This is not an active security vulnerability.
+          required: true

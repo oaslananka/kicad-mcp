@@ -124,6 +124,7 @@ nav:
       - Docker Deployment: deployment/docker.md
       - HTTP Mode: deployment/http-mode.md
       - Release Process: release-process.md
+      - OpenSSF Best Practices: openssf-best-practices.md
       - Release Notes: release.md
       - Demo Media: demo-media.md
   - Security and Privacy:
@@ -131,6 +132,7 @@ nav:
       - Deployment Security: deployment/security.md
       - Threat Model: security/threat-model.md
       - Release Integrity: security/release-integrity.md
+      - Release and Supply-Chain Security: security/release-security.md
       - Workflow Security: workflow-security.md
   - Submission:
       - Overview: submission/README.md
