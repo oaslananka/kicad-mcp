@@ -56,10 +56,12 @@ def main() -> int:
             errors.append(f"{path} must expose 3334")
         if 'CMD ["--transport", "streamable-http"]' not in content:
             errors.append(f"{path} must default to streamable HTTP")
-        if "--disable-pip-version-check" not in content:
-            errors.append(f"{path} must disable pip version notices during builds")
-        if "--root-user-action=ignore" not in content:
-            errors.append(f"{path} must silence intentional root pip install warnings")
+        if "ghcr.io/astral-sh/uv:${UV_VERSION}@sha256:" not in content:
+            errors.append(f"{path} must install uv from a digest-pinned image")
+        if "COPY --from=uv-bin /uv /usr/local/bin/uv" not in content:
+            errors.append(f"{path} must copy uv from the pinned uv image")
+        if "uv pip install --system --no-cache --require-hashes" not in content:
+            errors.append(f"{path} must install runtime dependencies with hash enforcement")
 
     dockerfile = dockerfiles["Dockerfile"]
     if "python:3.13.12-alpine3.22@sha256:" not in dockerfile:
