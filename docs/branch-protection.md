@@ -15,8 +15,8 @@ gh api /repos/oaslananka/kicad-mcp/rulesets
 gh api -X PUT /repos/oaslananka/kicad-mcp/rulesets/<id> --input .github/rulesets/main.json
 ```
 
-The current single-maintainer policy requires pull requests, signed commits, linear history, non-fast-forward protection, resolved review threads, and the required CI, Gitleaks, and CodeQL check-run contexts listed in `.github/rulesets/main.json`.
+The current single-maintainer policy requires pull requests, linear history, non-fast-forward protection, resolved review threads, and the required CI, Gitleaks, and CodeQL check-run contexts listed in `.github/rulesets/main.json`.
 
-Enable required approvals and code-owner review after adding a second trusted maintainer.
+Enable required approvals, code-owner review, and verified commit-signing enforcement after adding a second trusted maintainer and configuring signing for all release actors.
 
 When a required workflow job name changes, update the root branch-protection document and `.github/rulesets/main.json` together before applying the ruleset.
