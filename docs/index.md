@@ -80,6 +80,7 @@ The docs are ordered from first setup to operations and maintenance.
 - [Security Threat Model](security/threat-model.md)
 - [Release Integrity](security/release-integrity.md)
 - [Release and Supply-Chain Security](security/release-security.md)
+- [Scorecard Exceptions](security/scorecard-exceptions.md)
 - [Workflow Security](workflow-security.md)
 
 ### Submission

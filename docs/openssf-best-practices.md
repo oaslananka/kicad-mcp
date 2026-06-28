@@ -26,7 +26,7 @@ The immediate target is to make the project pass the OpenSSF Best Practices base
 | Dependency and container scanning | Met | [`scripts/audit_dependencies.py`](https://github.com/oaslananka/kicad-mcp/blob/main/scripts/audit_dependencies.py), Trivy workflow steps, Gitleaks workflow |
 | Release process | Met | [`docs/release-process.md`](release-process.md), release-please workflow, publish workflows |
 | Release integrity | Met | [`docs/security/release-integrity.md`](security/release-integrity.md), SBOM/checksum/attestation release steps |
-| Branch protection policy as code | Met | [`.github/rulesets/main.json`](https://github.com/oaslananka/kicad-mcp/blob/main/.github/rulesets/main.json), [`docs/branch-protection.md`](branch-protection.md) |
+| Branch protection policy as code | Met | [`.github/rulesets/main.json`](https://github.com/oaslananka/kicad-mcp/blob/main/.github/rulesets/main.json), [`docs/branch-protection.md`](branch-protection.md), Scorecard exceptions in [`docs/security/scorecard-exceptions.md`](security/scorecard-exceptions.md) |
 | Branch protection active in GitHub | Met | Repository ruleset `main` is active on `refs/heads/main`; verify with `gh api /repos/oaslananka/kicad-mcp/rulesets` |
 | HTTPS project URLs | Met | GitHub repository, documentation site, package URLs, and badges use HTTPS |
 | English documentation and reports | Met | Repository documentation, issue templates, security policy, and support documents are written in English |
