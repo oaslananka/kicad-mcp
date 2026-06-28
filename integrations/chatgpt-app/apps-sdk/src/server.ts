@@ -19,16 +19,11 @@ import rateLimit from "express-rate-limit";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
 import { readdir } from "node:fs/promises";
 import { isAbsolute, join, normalize, relative, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
-import { createWriteStream } from "node:fs";
-import { statSync, mkdtempSync } from "node:fs";
-import { createUnzip } from "node:zlib";
-import { pipeline } from "node:stream/promises";
-import { createReadStream } from "node:fs";
 
 // ---------------------------------------------------------------------------
 // Security — safe workspace resolution and rate limiting
@@ -56,17 +51,59 @@ const CONFIGURED_UPLOAD_ROOTS = (process.env.KICAD_MCP_UPLOAD_ROOTS || "")
   .map((entry) => entry.trim())
   .filter(Boolean);
 
+type SafeFsPath = string & { readonly __safeFsPath: unique symbol };
+
+function asSafeFsPath(pathValue: string): SafeFsPath {
+  return pathValue as SafeFsPath;
+}
+
 function canonicalizePath(pathValue: string): string {
   return normalize(resolve(pathValue));
 }
 
+function canonicalizeExistingPath(pathValue: string): string {
+  return canonicalizePath(realpathSync(pathValue));
+}
+
 function allowedWorkspaceRoots(): string[] {
-  return [tmpdir(), ...CONFIGURED_UPLOAD_ROOTS].map(canonicalizePath);
+  return [tmpdir(), ...CONFIGURED_UPLOAD_ROOTS]
+    .map(canonicalizePath)
+    .filter((root) => existsSync(root))
+    .map(canonicalizeExistingPath);
 }
 
 function isWithinRoot(root: string, candidate: string): boolean {
   const rel = relative(root, candidate);
   return rel === "" || (rel !== "" && !rel.startsWith("..") && !isAbsolute(rel));
+}
+
+function assertAllowedRealPath(candidate: string, label: string): SafeFsPath {
+  const canonical = canonicalizeExistingPath(candidate);
+  const roots = allowedWorkspaceRoots();
+  if (roots.some((root) => isWithinRoot(root, canonical))) {
+    return asSafeFsPath(canonical);
+  }
+  throw new Error(`${label}: path is outside allowed upload roots`);
+}
+
+function safeReadUtf8(pathValue: SafeFsPath): string {
+  // The SafeFsPath brand is only created after realpath and upload-root checks.
+  return readFileSync(pathValue, "utf-8"); // lgtm[js/path-injection]
+}
+
+async function safeReadDir(pathValue: SafeFsPath) {
+  // The SafeFsPath brand is only created after realpath and upload-root checks.
+  return readdir(pathValue, { withFileTypes: true }); // lgtm[js/path-injection]
+}
+
+async function safeReadDirNames(pathValue: SafeFsPath): Promise<string[]> {
+  // The SafeFsPath brand is only created after realpath and upload-root checks.
+  return readdir(pathValue); // lgtm[js/path-injection]
+}
+
+function safeExists(pathValue: SafeFsPath): boolean {
+  // The SafeFsPath brand is only created after realpath and upload-root checks.
+  return existsSync(pathValue); // lgtm[js/path-injection]
 }
 
 function assertPathSegmentSafe(userPath: string, label: string): void {
@@ -90,28 +127,34 @@ function assertPathSegmentSafe(userPath: string, label: string): void {
  * request parameter.  This keeps CodeQL-visible file access anchored under
  * explicit upload roots and blocks arbitrary absolute path reads.
  */
-function resolveSafeWorkspaceDirectory(userPath: string, label: string): string {
+function resolveSafeWorkspaceDirectory(userPath: string, label: string): SafeFsPath {
   assertPathSegmentSafe(userPath, label);
 
   const roots = allowedWorkspaceRoots();
-  if (isAbsolute(userPath)) {
-    const candidate = canonicalizePath(userPath);
-    if (roots.some((root) => isWithinRoot(root, candidate))) {
-      return candidate;
-    }
-    throw new Error(`${label}: path is outside allowed upload roots`);
+  if (roots.length === 0) {
+    throw new Error(`${label}: no allowed upload roots are available`);
   }
 
-  const root = roots[0];
-  const candidate = canonicalizePath(join(root, userPath));
-  if (isWithinRoot(root, candidate)) {
-    return candidate;
+  const candidate = isAbsolute(userPath)
+    ? canonicalizePath(userPath)
+    : canonicalizePath(join(roots[0], userPath));
+  const safeCandidate = assertAllowedRealPath(candidate, label);
+  if (!lstatSync(safeCandidate).isDirectory()) { // lgtm[js/path-injection]
+    throw new Error(`${label}: path must be a directory`);
   }
-
-  throw new Error(`${label}: path is outside allowed upload roots`);
+  return safeCandidate;
 }
 
-function resolveProjectSibling(projectPath: string, extension: string): string {
+function resolveSafeChild(parent: SafeFsPath, childName: string, label: string): SafeFsPath {
+  assertPathSegmentSafe(childName, label);
+  const candidate = canonicalizePath(join(parent, childName));
+  if (!isWithinRoot(parent, candidate)) {
+    throw new Error(`${label}: child path escapes parent directory`);
+  }
+  return assertAllowedRealPath(candidate, label);
+}
+
+function resolveProjectSibling(projectPath: SafeFsPath, extension: string): SafeFsPath {
   if (!ALLOWED_EXTENSIONS.has(extension)) {
     throw new Error(`Unsupported KiCad project extension: ${extension}`);
   }
@@ -120,7 +163,10 @@ function resolveProjectSibling(projectPath: string, extension: string): string {
   if (!isWithinRoot(projectDir, sibling)) {
     throw new Error("Project sibling path escapes project directory");
   }
-  return sibling;
+  if (!existsSync(sibling)) { // lgtm[js/path-injection]
+    return asSafeFsPath(sibling);
+  }
+  return assertAllowedRealPath(sibling, `project sibling ${extension}`);
 }
 
 const analyzeRateLimiter = rateLimit({
@@ -146,9 +192,9 @@ const STATIC_DIR = resolve(import.meta.dirname, "..", "public");
 
 interface KiCadProject {
   name: string;
-  path: string;
-  boardPath: string | null;
-  schematicPath: string | null;
+  path: SafeFsPath;
+  boardPath: SafeFsPath | null;
+  schematicPath: SafeFsPath | null;
   metadata: Record<string, unknown>;
 }
 
@@ -167,9 +213,9 @@ interface KiCadSchematic {
   sheetCount: number;
 }
 
-function parseKiCadProj(path: string): Record<string, unknown> {
+function parseKiCadProj(path: SafeFsPath): Record<string, unknown> {
   try {
-    return JSON.parse(readFileSync(path, "utf-8"));
+    return JSON.parse(safeReadUtf8(path));
   } catch {
     return {};
   }
@@ -199,8 +245,8 @@ function countBoardVias(pcb: Record<string, unknown>): number {
   return 0;
 }
 
-async function extractProject(dir: string): Promise<string> {
-  const entries = await readdir(dir, { withFileTypes: true });
+async function extractProject(dir: SafeFsPath): Promise<SafeFsPath> {
+  const entries = await safeReadDir(dir);
   const kicadProj = entries.find(
     (e) => e.isFile() && e.name.endsWith(".kicad_proj"),
   );
@@ -208,14 +254,15 @@ async function extractProject(dir: string): Promise<string> {
     // Look for any project file inside a subdirectory
     for (const entry of entries) {
       if (entry.isDirectory()) {
-        const sub = await readdir(join(dir, entry.name));
+        const subdir = resolveSafeChild(dir, entry.name, "nested project directory");
+        const sub = await safeReadDirNames(subdir);
         const nested = sub.find((f) => f.endsWith(".kicad_proj"));
-        if (nested) return join(dir, entry.name, nested);
+        if (nested) return resolveSafeChild(subdir, nested, "nested project file");
       }
     }
     throw new Error("No .kicad_proj file found in archive");
   }
-  return join(dir, kicadProj.name);
+  return resolveSafeChild(dir, kicadProj.name, "project file");
 }
 
 function getBoardThickness(pcb: Record<string, unknown>): number | null {
@@ -224,9 +271,9 @@ function getBoardThickness(pcb: Record<string, unknown>): number | null {
   return typeof thickness === "number" ? thickness : null;
 }
 
-function analyzePcbFile(pcbPath: string): KiCadBoard {
+function analyzePcbFile(pcbPath: SafeFsPath): KiCadBoard {
   try {
-    const raw = readFileSync(pcbPath, "utf-8");
+    const raw = safeReadUtf8(pcbPath);
     const pcb = JSON.parse(raw) as Record<string, unknown>;
     return {
       layers: parseKiCadPcbLayers(pcb),
@@ -373,8 +420,8 @@ app.post("/api/analyze", analyzeRateLimiter, async (req: Request, res: Response)
     const project: KiCadProject = {
       name,
       path: projPath,
-      boardPath: existsSync(boardPath) ? boardPath : null,
-      schematicPath: existsSync(schematicPath) ? schematicPath : null,
+      boardPath: safeExists(boardPath) ? boardPath : null,
+      schematicPath: safeExists(schematicPath) ? schematicPath : null,
       metadata,
     };
     projects.set(name, project);
@@ -461,7 +508,7 @@ function createMcpServer(): McpServer {
         const projPath = await extractProject(safeProjectDir);
         const name = projPath.replace(/\.kicad_proj$/, "").split(/[/\\]/).pop() || "unknown";
         const boardPath = resolveProjectSibling(projPath, ".kicad_pcb");
-        const board = existsSync(boardPath) ? analyzePcbFile(boardPath) : null;
+        const board = safeExists(boardPath) ? analyzePcbFile(boardPath) : null;
         return {
           content: [
             {
