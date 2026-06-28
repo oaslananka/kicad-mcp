@@ -717,8 +717,9 @@ def test_docker_metadata_contains_mcp_oci_label_and_release_image_contract() -> 
     assert "@sha256:" in dockerfile
     assert "EXPOSE 3334" in dockerfile
     assert 'CMD ["--transport", "streamable-http"]' in dockerfile
-    assert "--disable-pip-version-check" in dockerfile
-    assert "--root-user-action=ignore" in dockerfile
+    assert "ghcr.io/astral-sh/uv:${UV_VERSION}@sha256:" in dockerfile
+    assert "COPY --from=uv-bin /uv /usr/local/bin/uv" in dockerfile
+    assert "uv pip install --system --no-cache --require-hashes" in dockerfile
 
     assert "pip install --no-cache-dir uv" not in dockerfile
     assert f"UV_VERSION={uv_version}" in dockerfile

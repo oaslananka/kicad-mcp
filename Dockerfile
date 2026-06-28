@@ -1,5 +1,8 @@
 # syntax=docker/dockerfile:1.7
 ARG KICAD_APPIMAGE_URL
+ARG UV_VERSION=0.10.8
+
+FROM ghcr.io/astral-sh/uv:${UV_VERSION}@sha256:88234bc9e09c2b2f6d176a3daf411419eb0370d450a08129257410de9cfafd2a AS uv-bin
 
 FROM debian:bookworm-slim@sha256:0104b334637a5f19aa9c983a91b54c89887c0984081f2068983107a6f6c21eeb AS kicad-extract
 ARG KICAD_APPIMAGE_URL
@@ -16,22 +19,20 @@ RUN if [ -n "${KICAD_APPIMAGE_URL}" ]; then \
     mkdir -p /opt/kicad-appimage
 
 FROM python:3.13.12-alpine3.22@sha256:41351b07080ccfaa27bf38dde20de79ee6a0ac74a58c00c6d7a7d96ac4e69716 AS builder
-ARG UV_VERSION=0.10.8
 ENV UV_NO_CACHE=1
+COPY --from=uv-bin /uv /usr/local/bin/uv
 WORKDIR /build
-RUN python -m pip install --no-cache-dir --disable-pip-version-check --root-user-action=ignore "uv==${UV_VERSION}"
 COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY src/ src/
-  RUN uv build --wheel --out-dir /dist \
+RUN uv build --wheel --out-dir /dist \
   && uv export --frozen --no-dev --no-emit-project \
     --format requirements.txt \
     --output-file /dist/requirements.txt
 
 FROM python:3.13.12-slim@sha256:f1927c75e81efd1e091dbd64b6c0ecaa5630b38635a3d1c04034ac636e1f94c8 AS builder-kicad10
-ARG UV_VERSION=0.10.8
 ENV UV_NO_CACHE=1
+COPY --from=uv-bin /uv /usr/local/bin/uv
 WORKDIR /app
-RUN python -m pip install --no-cache-dir --disable-pip-version-check --root-user-action=ignore "uv==${UV_VERSION}"
 COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY src/ src/
 RUN uv sync --frozen --extra http --extra simulation --extra freerouting
@@ -45,6 +46,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
   KICAD_MCP_TRANSPORT=streamable-http \
   KICAD_MCP_HOST=0.0.0.0
 WORKDIR /app
+COPY --from=uv-bin /uv /usr/local/bin/uv
 LABEL io.modelcontextprotocol.server.name="io.github.oaslananka/kicad-mcp-pro" \
   org.opencontainers.image.title="kicad-mcp-pro" \
   org.opencontainers.image.description="Professional MCP server for KiCad automation" \
@@ -62,10 +64,8 @@ COPY docker-entrypoint.sh /usr/local/bin/kicad-mcp-pro-entrypoint
 # --require-hashes mode), then the first-party wheel separately with --no-deps. A local
 # wheel has no hash, so installing it on the same command line as the hashed requirements
 # fails hash-mode validation; splitting the steps keeps the supply-chain pinning intact.
-RUN python -m pip install --no-cache-dir --disable-pip-version-check --root-user-action=ignore \
-    --require-hashes --requirement /tmp/dist/requirements.txt \
-  && python -m pip install --no-cache-dir --disable-pip-version-check --root-user-action=ignore \
-    --no-deps /tmp/dist/*.whl \
+RUN uv pip install --system --no-cache --require-hashes --requirement /tmp/dist/requirements.txt \
+  && uv pip install --system --no-cache --no-deps /tmp/dist/*.whl \
   && rm -rf /tmp/dist \
   && chmod 0755 /usr/local/bin/kicad-mcp-pro-entrypoint
 USER kicadmcp
