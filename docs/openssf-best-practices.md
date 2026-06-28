@@ -22,6 +22,7 @@ The immediate target is to make the project pass the OpenSSF Best Practices base
 | Documentation | Met | [`docs/index.md`](index.md), [`docs/tools-reference.generated.md`](tools-reference.generated.md), workflow docs |
 | Automated tests | Met | [`tests/`](https://github.com/oaslananka/kicad-mcp/tree/main/tests), [`package.json`](https://github.com/oaslananka/kicad-mcp/blob/main/package.json), [`.github/workflows/ci.yml`](https://github.com/oaslananka/kicad-mcp/blob/main/.github/workflows/ci.yml) |
 | Static analysis | Met | Ruff, mypy, CodeQL, Bandit, workflow-security checks in [`package.json`](https://github.com/oaslananka/kicad-mcp/blob/main/package.json) and GitHub workflows |
+| Fuzzing | Met | Atheris fuzz target in [`fuzz/fuzz_sexpr.py`](https://github.com/oaslananka/kicad-mcp/blob/main/fuzz/fuzz_sexpr.py) and scheduled fuzz workflow in [`.github/workflows/fuzz.yml`](https://github.com/oaslananka/kicad-mcp/blob/main/.github/workflows/fuzz.yml) |
 | Dependency and container scanning | Met | [`scripts/audit_dependencies.py`](https://github.com/oaslananka/kicad-mcp/blob/main/scripts/audit_dependencies.py), Trivy workflow steps, Gitleaks workflow |
 | Release process | Met | [`docs/release-process.md`](release-process.md), release-please workflow, publish workflows |
 | Release integrity | Met | [`docs/security/release-integrity.md`](security/release-integrity.md), SBOM/checksum/attestation release steps |
@@ -49,6 +50,7 @@ Recommended evidence URLs:
 - `https://github.com/oaslananka/kicad-mcp/blob/main/docs/workflow-security.md`
 - `https://github.com/oaslananka/kicad-mcp/actions/workflows/ci.yml`
 - `https://github.com/oaslananka/kicad-mcp/actions/workflows/codeql.yml`
+- `https://github.com/oaslananka/kicad-mcp/actions/workflows/fuzz.yml`
 - `https://github.com/oaslananka/kicad-mcp/actions/workflows/gitleaks.yml`
 - `https://github.com/oaslananka/kicad-mcp/actions/workflows/scorecard.yml`
 
