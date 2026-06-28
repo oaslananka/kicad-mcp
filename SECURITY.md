@@ -20,7 +20,7 @@ Use GitHub private vulnerability reporting for the canonical repository:
 
 <https://github.com/oaslananka/kicad-mcp/security/advisories/new>
 
-Do **not** open a public issue for an active vulnerability.
+Do not open public issues for active vulnerabilities. Do **not** open a public issue for an active vulnerability.
 
 Include as much of the following as possible:
 
