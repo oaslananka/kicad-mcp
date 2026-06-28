@@ -1,0 +1,24 @@
+name: Documentation issue
+description: Report missing, stale, unclear, or incorrect documentation.
+title: "docs: "
+labels: ["documentation", "needs-triage"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page or section
+      placeholder: docs/installation.md, README Quick Start, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: issue
+    attributes:
+      label: What is wrong or missing?
+      description: Explain the exact ambiguity, stale claim, broken link, or missing example.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Suggested correction
+      description: Optional wording, command, screenshot description, or source of truth.

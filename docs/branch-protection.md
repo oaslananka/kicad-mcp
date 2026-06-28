@@ -1,6 +1,6 @@
 # Branch Protection
 
-Rulesets are stored as code in `.github/rulesets/main.json`.
+Rulesets are stored as code in `.github/rulesets/main.json`. The canonical repository currently has an active repository ruleset named `main` targeting `refs/heads/main`.
 
 Create in the canonical repository:
 

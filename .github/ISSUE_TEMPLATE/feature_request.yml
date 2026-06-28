@@ -1,0 +1,53 @@
+name: Feature request
+description: Propose a new capability, workflow, integration, or quality improvement.
+title: "feat: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or workflow gap
+      description: What professional KiCad / EDA / MCP workflow is blocked or inefficient today?
+      placeholder: Agents cannot currently ...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the smallest useful capability and how an agent or user would invoke it.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Existing tools, KiCad-native flows, scripts, workarounds, or reasons not to implement this.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Schematic
+        - PCB layout
+        - ERC / DRC / validation
+        - DFM / manufacturing export
+        - BOM / sourcing
+        - Simulation / SI / PI / EMC / thermal
+        - MCP protocol / client integration
+        - Packaging / release / supply chain
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      options:
+        - label: The request can be tested with a deterministic fixture or documented manual procedure.
+          required: true
+        - label: The request does not require unsafe automation or undocumented private APIs.
+          required: true
+        - label: I searched existing issues and discussions.
+          required: true

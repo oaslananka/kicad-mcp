@@ -1,7 +1,68 @@
-# Security
+# Security Policy
 
-Report vulnerabilities through GitHub Security Advisories for the canonical repository:
+KiCad MCP Pro is an MCP server and companion toolchain for KiCad EDA workflows. Security reports are handled privately so users are not exposed to unpatched issues.
 
-https://github.com/oaslananka/kicad-mcp/security/advisories/new
+## Supported versions
 
-Do not open public issues for active vulnerabilities. Include the affected package, version, reproduction details, and any known exploitability constraints.
+| Package / artifact | Supported line | Security status |
+| --- | --- | --- |
+| Python package `kicad-mcp-pro` | Latest released minor line | Supported |
+| npm wrapper `kicad-mcp-pro` | Version matching the latest Python package | Supported |
+| Docker image `ghcr.io/oaslananka/kicad-mcp-pro` | Tags matching the latest release | Supported |
+| Tauri GUI installers | Latest GUI release tag | Supported |
+| Old release lines | Best effort only | Upgrade recommended |
+
+Security fixes are normally released in the next patch version. Critical fixes may be released as an out-of-band hotfix.
+
+## Report a vulnerability
+
+Use GitHub private vulnerability reporting for the canonical repository:
+
+<https://github.com/oaslananka/kicad-mcp/security/advisories/new>
+
+Do **not** open a public issue for an active vulnerability.
+
+Include as much of the following as possible:
+
+- affected package or artifact: Python, npm, Docker, GUI, docs, or workflow;
+- affected version, install method, operating system, Python version, Node version, KiCad version, and MCP client;
+- minimal reproduction steps or proof of concept;
+- expected and observed impact;
+- whether credentials, private design files, generated Gerbers, netlists, or board metadata are exposed;
+- any known mitigations or configuration flags that reduce exploitability.
+
+Remove real tokens, API keys, private customer board data, and internal paths from logs before attaching them.
+
+## Response targets
+
+| Severity | Example impact | First response target | Fix / mitigation target |
+| --- | --- | ---: | ---: |
+| Critical | credential exfiltration, arbitrary command execution, destructive board mutation without consent | 24 hours | 7 days |
+| High | unauthorized file access, supply-chain compromise, unsafe default network exposure | 3 business days | 14 days |
+| Medium | denial of service, policy bypass requiring local access, incorrect permission boundary | 7 business days | 30 days |
+| Low | hardening issue, documentation ambiguity, low-impact information disclosure | 14 business days | next normal release when accepted |
+
+Targets depend on maintainer availability. If a target is at risk, maintainers should document the status in the private advisory and, when safe, publish a mitigation note.
+
+## Disclosure process
+
+1. A maintainer acknowledges the private report and assigns an initial severity.
+2. The report is reproduced or scoped. If the report is not a vulnerability, the maintainer explains why.
+3. A fix, mitigation, documentation update, or release-blocking policy change is prepared on a private branch when needed.
+4. Release artifacts are built through GitHub Actions, with checksums, SBOMs, and attestations where the workflow supports them.
+5. The advisory is published after patched artifacts are available or after coordinated disclosure is agreed.
+
+## Security model summary
+
+- Telemetry and error reporting are disabled by default.
+- External API credentials are opt-in and must be provided by the user environment.
+- KiCad-driving tools should route through the adapter and policy seams documented in the architecture and workflow-security docs.
+- Destructive operations must be explicit, documented, and test-covered.
+- Release and publishing workflows should use GitHub-side automation, protected environments, OIDC/trusted publishing where supported, SBOM generation, checksums, and artifact attestations.
+
+See also:
+
+- [`docs/security/threat-model.md`](docs/security/threat-model.md)
+- [`docs/security/release-integrity.md`](docs/security/release-integrity.md)
+- [`docs/security/release-security.md`](docs/security/release-security.md)
+- [`docs/workflow-security.md`](docs/workflow-security.md)

@@ -25,6 +25,7 @@
 [![Docs](https://github.com/oaslananka/kicad-mcp/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/docs.yml)
 [![CodeQL](https://github.com/oaslananka/kicad-mcp/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/oaslananka/kicad-mcp/badge)](https://securityscorecards.dev/viewer/?uri=github.com/oaslananka/kicad-mcp)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15377/badge)](https://www.bestpractices.dev/projects/15377)
 <!-- parity-coverage-badge:start -->
 [![KiCad programmatic parity](https://img.shields.io/badge/KiCad_programmatic_parity-75.0%25-green)](docs/compatibility/capability-parity.generated.md)
 <!-- parity-coverage-badge:end -->

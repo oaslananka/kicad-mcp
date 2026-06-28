@@ -3,6 +3,10 @@
 Thank you for improving KiCad MCP Pro. Keep changes focused, include tests for
 behavioral changes, and use Conventional Commit messages.
 
+## Community standards
+
+By participating, contributors agree to follow [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). Security-sensitive findings must be reported privately through [`SECURITY.md`](SECURITY.md), not through public issues or pull requests.
+
 ## Development Setup
 
 Requirements:
@@ -66,6 +70,10 @@ walkthrough. The short loop:
 Then `task verify` must be green. Honesty rule: if a capability is heuristic,
 approximate, or partial, say so in the tool name, docstring, and verdict — never
 claim a precision the code does not deliver.
+
+## Issue and pull request hygiene
+
+Use the GitHub issue templates for bugs, feature requests, and documentation reports. Keep pull requests focused, include test evidence, update generated docs and metadata when public contracts change, and avoid attaching private board files, credentials, generated manufacturing files, or customer-specific logs.
 
 ## Pull Requests
 
