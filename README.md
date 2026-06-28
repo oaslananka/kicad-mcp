@@ -1,44 +1,50 @@
-<p align="center">
-  <a href="https://www.buymeacoffee.com/oaslananka">
-    <img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=%E2%98%95&slug=oaslananka&button_colour=FFDD00&font_colour=000000&font_family=Arial&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" />
-  </a>
-</p>
-
-# KiCad MCP Pro
-
 <div align="center">
 
-<!-- Badges: release & distribution -->
-[![GUI Release](https://img.shields.io/github/v/release/oaslananka/kicad-mcp?filter=kicad-mcp-gui-v*&label=gui%20release)](https://github.com/oaslananka/kicad-mcp/releases)
-[![PyPI - Version](https://img.shields.io/pypi/v/kicad-mcp-pro?label=pypi)](https://pypi.org/project/kicad-mcp-pro/)
-[![npm - Version](https://img.shields.io/npm/v/kicad-mcp-pro?label=npm)](https://www.npmjs.com/package/kicad-mcp-pro)
-[![Python Version](https://img.shields.io/pypi/pyversions/kicad-mcp-pro?label=python)](https://pypi.org/project/kicad-mcp-pro/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
+<h1>KiCad MCP Pro</h1>
 
-<!-- Badges: downloads -->
-[![PyPI total downloads](https://static.pepy.tech/badge/kicad-mcp-pro)](https://pepy.tech/project/kicad-mcp-pro)
-[![npm total downloads](https://img.shields.io/npm/dt/kicad-mcp-pro?label=npm%20downloads)](https://www.npmjs.com/package/kicad-mcp-pro)
+<p>
+  <strong>Drive KiCad schematic, PCB, DRC/ERC, DFM, and manufacturing review from any MCP-capable AI agent.</strong>
+</p>
 
-<!-- Badges: CI, quality & security -->
-[![CI](https://github.com/oaslananka/kicad-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/ci.yml)
-[![GUI CI](https://github.com/oaslananka/kicad-mcp/actions/workflows/gui-ci.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/gui-ci.yml)
-[![Docs](https://github.com/oaslananka/kicad-mcp/actions/workflows/docs.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/docs.yml)
-[![CodeQL](https://github.com/oaslananka/kicad-mcp/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/oaslananka/kicad-mcp/actions/workflows/codeql.yml)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/oaslananka/kicad-mcp/badge)](https://securityscorecards.dev/viewer/?uri=github.com/oaslananka/kicad-mcp)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/15377/badge)](https://www.bestpractices.dev/projects/15377)
+<p>
+  <a href="https://oaslananka.github.io/kicad-mcp/">Documentation</a> ·
+  <a href="docs/installation.md">Installation</a> ·
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="docs/tools-reference.generated.md">Tool Reference</a> ·
+  <a href="https://oaslananka.github.io/kicad-mcp/agents/">AI Agent Setup</a>
+</p>
+
+<p>
+  <a href="https://github.com/oaslananka/kicad-mcp/releases"><img src="https://img.shields.io/github/v/release/oaslananka/kicad-mcp?filter=kicad-mcp-gui-v*&label=gui%20release" alt="GUI Release" /></a>
+  <a href="https://pypi.org/project/kicad-mcp-pro/"><img src="https://img.shields.io/pypi/v/kicad-mcp-pro?label=pypi" alt="PyPI Version" /></a>
+  <a href="https://www.npmjs.com/package/kicad-mcp-pro"><img src="https://img.shields.io/npm/v/kicad-mcp-pro?label=npm" alt="npm Version" /></a>
+  <a href="https://pypi.org/project/kicad-mcp-pro/"><img src="https://img.shields.io/pypi/pyversions/kicad-mcp-pro?label=python" alt="Python Version" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-yellow.svg" alt="MIT License" /></a>
+</p>
+
+<p>
+  <a href="https://github.com/oaslananka/kicad-mcp/actions/workflows/ci.yml"><img src="https://github.com/oaslananka/kicad-mcp/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
+  <a href="https://github.com/oaslananka/kicad-mcp/actions/workflows/gui-ci.yml"><img src="https://github.com/oaslananka/kicad-mcp/actions/workflows/gui-ci.yml/badge.svg?branch=main" alt="GUI CI" /></a>
+  <a href="https://github.com/oaslananka/kicad-mcp/actions/workflows/docs.yml"><img src="https://github.com/oaslananka/kicad-mcp/actions/workflows/docs.yml/badge.svg?branch=main" alt="Docs" /></a>
+  <a href="https://github.com/oaslananka/kicad-mcp/actions/workflows/codeql.yml"><img src="https://github.com/oaslananka/kicad-mcp/actions/workflows/codeql.yml/badge.svg?branch=main" alt="CodeQL" /></a>
+  <a href="https://securityscorecards.dev/viewer/?uri=github.com/oaslananka/kicad-mcp"><img src="https://api.scorecard.dev/projects/github.com/oaslananka/kicad-mcp/badge" alt="OpenSSF Scorecard" /></a>
+  <a href="docs/openssf-best-practices.md"><img src="https://img.shields.io/badge/OpenSSF_best_practices-evidence-blue" alt="OpenSSF Best Practices evidence" /></a>
+</p>
+
+<p>
+  <a href="https://pepy.tech/project/kicad-mcp-pro"><img src="https://static.pepy.tech/badge/kicad-mcp-pro" alt="PyPI total downloads" /></a>
+  <a href="https://www.npmjs.com/package/kicad-mcp-pro"><img src="https://img.shields.io/npm/dt/kicad-mcp-pro?label=npm%20downloads" alt="npm total downloads" /></a>
+</p>
+
 <!-- parity-coverage-badge:start -->
 [![KiCad programmatic parity](https://img.shields.io/badge/KiCad_programmatic_parity-75.0%25-green)](docs/compatibility/capability-parity.generated.md)
 <!-- parity-coverage-badge:end -->
 
-<!-- Badges: documentation & knowledge base -->
-[![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://oaslananka.github.io/kicad-mcp/)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/oaslananka/kicad-mcp)
-
-<br/>
-
-**Drive KiCad schematic, PCB, DRC/ERC, DFM, and manufacturing review from any MCP-capable AI agent.**
-
-[Documentation](https://oaslananka.github.io/kicad-mcp/) · [Installation](docs/installation.md) · [Quick Start](#quick-start) · [Tool Reference](docs/tools-reference.generated.md) · [AI Agent Setup](https://oaslananka.github.io/kicad-mcp/agents/)
+<p>
+  <a href="https://oaslananka.github.io/kicad-mcp/"><img src="https://img.shields.io/badge/docs-GitHub%20Pages-blue" alt="Documentation" /></a>
+  <a href="https://deepwiki.com/oaslananka/kicad-mcp"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki" /></a>
+  <a href="https://www.buymeacoffee.com/oaslananka"><img src="https://img.shields.io/badge/sponsor-Buy%20me%20a%20coffee-ffdd00?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee" /></a>
+</p>
 
 </div>
 
