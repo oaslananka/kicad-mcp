@@ -119,3 +119,6 @@ DockerHub publishing is not enabled. GHCR is the canonical container registry.
 If DockerHub support is added later, it must be manual or tag gated, protected by
 the `release` environment, and documented with the exact digest and provenance
 verification path.
+
+
+See also [`release-signing.md`](release-signing.md) for artifact-signing and verification policy.

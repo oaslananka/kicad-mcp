@@ -71,6 +71,7 @@ The docs are ordered from first setup to operations and maintenance.
 - [HTTP Mode](deployment/http-mode.md)
 - [Release Process](release-process.md)
 - [OpenSSF Best Practices Evidence](openssf-best-practices.md)
+- [OpenSSF Silver Evidence](openssf-silver-evidence.md)
 - [Release Notes](release.md)
 
 ### Security and privacy
@@ -80,6 +81,10 @@ The docs are ordered from first setup to operations and maintenance.
 - [Security Threat Model](security/threat-model.md)
 - [Release Integrity](security/release-integrity.md)
 - [Release and Supply-Chain Security](security/release-security.md)
+- [Release Signing](security/release-signing.md)
+- [Security Requirements](security/requirements.md)
+- [Input Validation](security/input-validation.md)
+- [Assurance Case](security/assurance-case.md)
 - [Scorecard Exceptions](security/scorecard-exceptions.md)
 - [Workflow Security](workflow-security.md)
 
@@ -104,3 +109,12 @@ The docs are ordered from first setup to operations and maintenance.
 - [2026 Roadmap](development/roadmap-2026.md)
 - [RFCs](rfcs/README.md)
 - [v2 Migration Notes](development/v2-migration.md)
+
+## Silver evidence additions
+
+- [Coding Standards](development/coding-standards.md)
+- [Dependency Management](development/dependency-management.md)
+- [Testing Policy](development/testing-policy.md)
+- [Installation Policy](development/installation-policy.md)
+- [Accessibility](accessibility.md)
+- [Internationalization](internationalization.md)
