@@ -28,7 +28,7 @@
   <a href="https://github.com/oaslananka/kicad-mcp/actions/workflows/docs.yml"><img src="https://github.com/oaslananka/kicad-mcp/actions/workflows/docs.yml/badge.svg?branch=main" alt="Docs" /></a>
   <a href="https://github.com/oaslananka/kicad-mcp/actions/workflows/codeql.yml"><img src="https://github.com/oaslananka/kicad-mcp/actions/workflows/codeql.yml/badge.svg?branch=main" alt="CodeQL" /></a>
   <a href="https://securityscorecards.dev/viewer/?uri=github.com/oaslananka/kicad-mcp"><img src="https://api.scorecard.dev/projects/github.com/oaslananka/kicad-mcp/badge" alt="OpenSSF Scorecard" /></a>
-  <a href="docs/openssf-best-practices.md"><img src="https://img.shields.io/badge/OpenSSF_best_practices-evidence-blue" alt="OpenSSF Best Practices evidence" /></a>
+  <a href="https://www.bestpractices.dev/projects/13377"><img src="https://www.bestpractices.dev/projects/13377/badge" alt="OpenSSF Best Practices: Silver" /></a>
 </p>
 
 <p>
