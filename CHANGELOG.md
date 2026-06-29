@@ -10,6 +10,24 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.15.1](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.15.0...mcp-server-v3.15.1) (2026-06-29)
+
+
+### Bug Fixes
+
+* harden ChatGPT app filesystem paths ([f8603ef](https://github.com/oaslananka/kicad-mcp/commit/f8603ef8af2ed8f41bf5901cc418506928ec0f9b))
+* remove pip installs from container build ([987cc9d](https://github.com/oaslananka/kicad-mcp/commit/987cc9da04e3e609b8b848e985428629091fe7c8))
+* use public links for Silver evidence ([9635b5d](https://github.com/oaslananka/kicad-mcp/commit/9635b5d8e6e04f8b3ae9311e2ce8210f816834ee))
+
+
+### Documentation
+
+* add OpenSSF Silver evidence ([#243](https://github.com/oaslananka/kicad-mcp/issues/243)) ([37bb987](https://github.com/oaslananka/kicad-mcp/commit/37bb98750ea2a77b98da95abbf38309c9aebea02))
+* align Silver coverage evidence ([#245](https://github.com/oaslananka/kicad-mcp/issues/245)) ([e27229d](https://github.com/oaslananka/kicad-mcp/commit/e27229d0dcfc470858ecdb4069fce012235da975))
+* document Scorecard exceptions ([c7e4122](https://github.com/oaslananka/kicad-mcp/commit/c7e4122cc3f5c5c688b5691d2546d74e0336ab79))
+* show OpenSSF Silver badge ([e962369](https://github.com/oaslananka/kicad-mcp/commit/e962369db94363e113f4f584bf66e43d7ec47f49))
+* tidy README header badges ([62cd680](https://github.com/oaslananka/kicad-mcp/commit/62cd6800669eae9330cf98b01e4fb50190adfb0e))
+
 ## [3.15.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.14.1...mcp-server-v3.15.0) (2026-06-27)
 
 
