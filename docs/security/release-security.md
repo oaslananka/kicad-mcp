@@ -64,3 +64,6 @@ If release integrity is in doubt:
 3. Open a private GitHub Security Advisory.
 4. Cut a patched release through the protected pipeline.
 5. Publish a user-facing advisory with affected versions, mitigations, and verification steps.
+
+
+See also [`release-signing.md`](release-signing.md) for artifact-signing and verification policy.

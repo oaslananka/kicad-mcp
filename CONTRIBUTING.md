@@ -7,6 +7,28 @@ behavioral changes, and use Conventional Commit messages.
 
 By participating, contributors agree to follow [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). Security-sensitive findings must be reported privately through [`SECURITY.md`](SECURITY.md), not through public issues or pull requests.
 
+## Developer Certificate of Origin
+
+Contributions use the Developer Certificate of Origin (DCO) 1.1. By contributing, you certify that you have the right to submit the work under this project's license and that the contribution can be included in the project.
+
+Add a `Signed-off-by` line to each commit when practical:
+
+```text
+Signed-off-by: Your Name <you@example.com>
+```
+
+You can create this automatically with:
+
+```bash
+git commit -s
+```
+
+If a contributor cannot use commit sign-off, they must state in the pull request that they have the right to submit the contribution under the project license. Maintainers may ask for the commits to be amended before merge.
+
+## Coding standards
+
+Follow [`docs/development/coding-standards.md`](docs/development/coding-standards.md). In brief: keep changes focused, typed, testable, and honest about heuristic behavior; do not bypass the KiCad adapter seam; avoid direct use of untrusted paths or shell interpolation; and update generated docs when tool contracts change.
+
 ## Development Setup
 
 Requirements:
@@ -43,14 +65,12 @@ Before opening a pull request, run the full local CI equivalent:
 task ci
 ```
 
-See [`docs/testing.md`](docs/testing.md) for the test layers and
-[`docs/repository-operations.md`](docs/repository-operations.md) for release and
-maintenance policies.
+See [`docs/testing.md`](docs/testing.md) and [`docs/development/testing-policy.md`](docs/development/testing-policy.md) for the test layers and test expectations, and [`docs/repository-operations.md`](docs/repository-operations.md) for release and maintenance policies.
 
 ## Add a tool in an afternoon
 
 The server is deliberately structured so that adding a capability is a one-module,
-one-registry-entry change. Start with [`ARCHITECTURE.md`](ARCHITECTURE.md) — the
+one-registry-entry change. Start with [`docs/development/architecture.md`](docs/development/architecture.md) — the
 five-layer map and the **"How to add a new tool"** section are the authoritative
 walkthrough. The short loop:
 

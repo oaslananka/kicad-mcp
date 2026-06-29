@@ -33,6 +33,14 @@ Include as much of the following as possible:
 
 Remove real tokens, API keys, private customer board data, and internal paths from logs before attaching them.
 
+## Response process
+
+1. A maintainer acknowledges the report and keeps the discussion private.
+2. The maintainer scopes affected artifacts and assigns a preliminary severity.
+3. The maintainer creates a mitigation plan, patch branch, public issue placeholder, or advisory depending on impact.
+4. The fix is validated through CI and release evidence before publication.
+5. Users are notified through an advisory, release notes, or documented mitigation when appropriate.
+
 ## Response targets
 
 | Severity | Example impact | First response target | Fix / mitigation target |
@@ -43,6 +51,12 @@ Remove real tokens, API keys, private customer board data, and internal paths fr
 | Low | hardening issue, documentation ambiguity, low-impact information disclosure | 14 business days | next normal release when accepted |
 
 Targets depend on maintainer availability. If a target is at risk, maintainers should document the status in the private advisory and, when safe, publish a mitigation note.
+
+## Vulnerability credit
+
+Reporters who want public credit should include the preferred name, handle, and link in the private report. Maintainers credit reporters in the GitHub Security Advisory, changelog, or release notes unless the reporter requests anonymity or public mention would increase user risk.
+
+Credit is given after the fix or mitigation is available, after coordinated disclosure timing is agreed, or when a report is closed as informational and the reporter agrees to public mention.
 
 ## Disclosure process
 
@@ -63,6 +77,10 @@ Targets depend on maintainer availability. If a target is at risk, maintainers s
 See also:
 
 - [`docs/security/threat-model.md`](docs/security/threat-model.md)
+- [`docs/security/release-signing.md`](docs/security/release-signing.md)
+- [`docs/security/assurance-case.md`](docs/security/assurance-case.md)
+- [`docs/security/input-validation.md`](docs/security/input-validation.md)
+- [`docs/security/requirements.md`](docs/security/requirements.md)
 - [`docs/security/release-integrity.md`](docs/security/release-integrity.md)
 - [`docs/security/release-security.md`](docs/security/release-security.md)
 - [`docs/workflow-security.md`](docs/workflow-security.md)
