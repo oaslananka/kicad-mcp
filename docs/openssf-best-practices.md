@@ -4,7 +4,7 @@ This page maps the repository evidence used for the OpenSSF Best Practices check
 
 ## Current target
 
-The project has a Passing evidence set and now maintains a Silver evidence map. Silver evidence is tracked in [`openssf-silver-evidence.md`](openssf-silver-evidence.md). Baseline Level 1 is a separate OSPS series and is intentionally handled in a separate pass.
+The project has achieved the Silver badge and maintains a Silver evidence map. Silver evidence is tracked in [`openssf-silver-evidence.md`](openssf-silver-evidence.md). Baseline Level 1 is a separate OSPS series and is intentionally handled in a separate pass.
 
 ## Evidence map
 
@@ -28,7 +28,7 @@ The project has a Passing evidence set and now maintains a Silver evidence map. 
 | Release integrity | Met | [`docs/security/release-integrity.md`](security/release-integrity.md), SBOM/checksum/attestation release steps |
 | Branch protection policy as code | Met | [`.github/rulesets/main.json`](https://github.com/oaslananka/kicad-mcp/blob/main/.github/rulesets/main.json), [`docs/branch-protection.md`](branch-protection.md), Scorecard exceptions in [`docs/security/scorecard-exceptions.md`](security/scorecard-exceptions.md) |
 | Branch protection active in GitHub | Met | Repository ruleset `main` is active on `refs/heads/main`; verify with `gh api /repos/oaslananka/kicad-mcp/rulesets` |
-| OpenSSF Silver evidence | In progress | [`docs/openssf-silver-evidence.md`](openssf-silver-evidence.md) |
+| OpenSSF Silver evidence | Met | [`docs/openssf-silver-evidence.md`](openssf-silver-evidence.md), Silver badge for project `13377` |
 | HTTPS project URLs | Met | GitHub repository, documentation site, package URLs, and badges use HTTPS |
 | English documentation and reports | Met | Repository documentation, issue templates, security policy, and support documents are written in English |
 

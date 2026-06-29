@@ -4,13 +4,13 @@ This page maps OpenSSF Silver criteria to repository evidence. It should be upda
 
 ## Status
 
-Passing has been achieved for project `13377`. Silver is the next Metal-series target. Baseline Level 1 is a separate OSPS series and should be handled in a separate hardening pass.
+Silver has been achieved for OpenSSF Best Practices project `13377`. Baseline Level 1 is a separate OSPS series and should be handled in a separate hardening pass.
 
 ## Evidence map
 
 | Criterion area | Proposed status | Evidence |
 | --- | --- | --- |
-| Achieve Passing | Met | OpenSSF project `13377` passing badge page |
+| Achieve Passing | Met | OpenSSF project `13377` has achieved the Silver badge, which includes Passing as a prerequisite |
 | Contribution requirements | Met | [`CONTRIBUTING.md`](https://github.com/oaslananka/kicad-mcp/blob/main/CONTRIBUTING.md), PR template, coding standards |
 | DCO / contribution authorization | Met | [`CONTRIBUTING.md`](https://github.com/oaslananka/kicad-mcp/blob/main/CONTRIBUTING.md) Developer Certificate of Origin section |
 | Governance | Met | [`GOVERNANCE.md`](https://github.com/oaslananka/kicad-mcp/blob/main/GOVERNANCE.md) |
@@ -58,4 +58,4 @@ Use the Silver edit URL:
 https://www.bestpractices.dev/en/projects/13377/silver/edit
 ```
 
-Do not submit Silver claims until the evidence files above are merged to `main` and the documentation site has published successfully.
+Silver claims have been submitted and accepted for project `13377`. Keep this evidence page current before any Silver resubmission or Gold preparation pass.
