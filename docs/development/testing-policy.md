@@ -20,7 +20,7 @@ Bug fixes should include a regression test when the defect is reproducible in un
 
 ## Coverage policy
 
-The project does not currently claim an 80% statement-coverage guarantee. Coverage should increase over time, but critical tool paths are prioritized over raw percentage targets.
+The Python coverage gate is configured in `pyproject.toml` with `tool.coverage.report.fail_under = 83`, which satisfies the OpenSSF Silver 80% statement-coverage target for the Python package. Coverage should continue to increase over time, but critical tool paths remain prioritized over raw percentage targets.
 
 ## Continuous integration
 
