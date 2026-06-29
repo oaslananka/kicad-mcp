@@ -38,7 +38,7 @@ Passing has been achieved for project `13377`. Silver is the next Metal-series t
 | External dependencies | Met | [`docs/development/dependency-management.md`](development/dependency-management.md), lockfiles, dependency audit |
 | Automated integration testing | Met | GitHub Actions CI on pull requests and `main` |
 | Regression testing | Met | [`docs/development/testing-policy.md`](development/testing-policy.md) |
-| Coverage 80% | Unmet with justification | No 80% statement-coverage claim yet; tracked as future quality work |
+| Coverage 80% | Met | Python coverage is configured with `tool.coverage.report.fail_under = 83` in [`pyproject.toml`](https://github.com/oaslananka/kicad-mcp/blob/main/pyproject.toml), and the testing policy documents the 80% Silver target. |
 | Mandatory new functionality tests | Met | [`docs/development/testing-policy.md`](development/testing-policy.md), [`CONTRIBUTING.md`](https://github.com/oaslananka/kicad-mcp/blob/main/CONTRIBUTING.md) |
 | Strict warnings | Met | Ruff, mypy, TypeScript, CodeQL, security jobs, workflow checks |
 | Secure design implementation | Met | [`docs/security/requirements.md`](security/requirements.md), [`docs/security/assurance-case.md`](security/assurance-case.md) |
