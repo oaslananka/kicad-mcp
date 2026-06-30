@@ -1443,6 +1443,80 @@ def _ensure_netlist_terminals(
             existing_labels.add(name)
 
 
+# Room reserved around a symbol body for its terminal stubs + global-label text,
+# so a connected neighbour (and its labels) cannot land on top of this symbol.
+_NETLIST_LABEL_MARGIN_W_MM = 22.0
+_NETLIST_LABEL_MARGIN_H_MM = 12.0
+
+
+def _symbol_local_extent(symbol: dict[str, Any]) -> tuple[float, float, float, float] | None:
+    """Return ``(min_dx, min_dy, width, height)`` of a symbol's pins about its origin.
+
+    Offsets are relative to the placement point, so a caller can align the body
+    inside a reserved grid block. ``None`` when the symbol's pins cannot be read.
+    """
+    library = str(symbol.get("library", "") or "")
+    name = str(symbol.get("symbol_name", "") or "")
+    if not library or not name:
+        return None
+    try:
+        pins = get_pin_positions(
+            library,
+            name,
+            0.0,
+            0.0,
+            int(symbol.get("rotation", 0) or 0),
+            int(symbol.get("unit", 1) or 1),
+        )
+    except (FileNotFoundError, OSError, ValueError):
+        return None
+    if not pins:
+        return None
+    xs = [p[0] for p in pins.values()]
+    ys = [p[1] for p in pins.values()]
+    return (min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys))
+
+
+def _symbol_footprint_cells(
+    extent: tuple[float, float, float, float] | None, cell_w: float, cell_h: float
+) -> tuple[int, int]:
+    """Cells a symbol (body + label margin) needs, at least 1×1."""
+    if extent is None:
+        return (1, 1)
+    _, _, width, height = extent
+    cols = max(1, math.ceil((width + _NETLIST_LABEL_MARGIN_W_MM) / cell_w))
+    rows = max(1, math.ceil((height + _NETLIST_LABEL_MARGIN_H_MM) / cell_h))
+    return (cols, rows)
+
+
+def _next_free_block(
+    occupied: set[tuple[int, int]],
+    fcols: int,
+    frows: int,
+    *,
+    cell_w: float,
+    cell_h: float,
+    paper: str,
+) -> tuple[int, int]:
+    """Reserve a free ``fcols×frows`` block of grid cells; return its ``(col, row)``.
+
+    Row-major first fit. Columns are bounded by the paper so a wide block never
+    overflows the sheet width (the block itself may exceed it for very wide parts,
+    in which case it starts at column 0).
+    """
+    max_cols = max(_sheet_usable_cols(paper, cell_w), fcols)
+    col, row = 0, 0
+    while True:
+        if col + fcols <= max_cols:
+            block = [(col + dc, row + dr) for dc in range(fcols) for dr in range(frows)]
+            if not any(cell in occupied for cell in block):
+                occupied.update(block)
+                return col, row
+        col += 1
+        if col + fcols > max_cols:
+            col, row = 0, row + 1
+
+
 def _apply_netlist_auto_layout(
     symbols: list[dict[str, Any]],
     power_symbols: list[dict[str, Any]],
@@ -1457,38 +1531,56 @@ def _apply_netlist_auto_layout(
     refs = [str(symbol["reference"]) for symbol in laid_out_symbols if symbol.get("reference")]
     ordered_refs = _order_refs_by_connectivity(refs, nets)
 
-    # Grow the sheet so the symbol grid (at the wider netlist pitch) fits; power
-    # and label terminals are then placed relative to the symbols.
+    cell_w = NETLIST_LAYOUT_COLUMN_SPACING_MM
+    cell_h = NETLIST_LAYOUT_ROW_SPACING_MM
+    sym_by_ref = {str(s.get("reference", "")): s for s in laid_out_symbols if s.get("reference")}
+
+    # Size-aware: each symbol reserves a grid block sized to its real pin extent
+    # plus a margin for terminal stubs/labels, so a large multi-pin part (and its
+    # label fan-out) cannot land on top of a neighbour. Footprints are computed
+    # once and reused for sheet sizing and placement.
+    footprints: dict[str, tuple[int, int]] = {}
+    offsets: dict[str, tuple[float, float, float, float] | None] = {}
+    for reference, symbol in sym_by_ref.items():
+        extent = _symbol_local_extent(symbol)
+        offsets[reference] = extent
+        footprints[reference] = _symbol_footprint_cells(extent, cell_w, cell_h)
+
     start_paper = paper if paper in _PAPER_LADDER else "A4"
-    cols = max(1, _sheet_usable_cols(start_paper, NETLIST_LAYOUT_COLUMN_SPACING_MM))
-    required_rows = math.ceil(max(len(laid_out_symbols), 1) / cols) + 1
+    usable_cols = max(1, _sheet_usable_cols(start_paper, cell_w))
+    total_cells = sum(fc * fr for fc, fr in footprints.values()) or 1
+    required_rows = math.ceil(total_cells / usable_cols) + 2
     chosen_paper = select_paper_for_capacity(
-        required_rows,
-        start_paper=start_paper,
-        cell_w=NETLIST_LAYOUT_COLUMN_SPACING_MM,
-        cell_h=NETLIST_LAYOUT_ROW_SPACING_MM,
+        required_rows, start_paper=start_paper, cell_w=cell_w, cell_h=cell_h
     )
 
     # Use occupancy grid to avoid symbol collisions in netlist layout too.
     netlist_occupied: set[tuple[int, int]] = set()
-    # Pre-fill from symbols that already have explicit positions.
     for symbol in laid_out_symbols:
         if _has_point(symbol):
             sx = _coord_value(symbol, "x") or 0.0
             sy = _coord_value(symbol, "y") or 0.0
-            col = int(round((sx - AUTO_LAYOUT_ORIGIN_X_MM) / NETLIST_LAYOUT_COLUMN_SPACING_MM))
-            row = int(round((sy - AUTO_LAYOUT_ORIGIN_Y_MM) / NETLIST_LAYOUT_ROW_SPACING_MM))
+            col = int(round((sx - AUTO_LAYOUT_ORIGIN_X_MM) / cell_w))
+            row = int(round((sy - AUTO_LAYOUT_ORIGIN_Y_MM) / cell_h))
             netlist_occupied.add((col, row))
 
     generated_positions: dict[str, tuple[float, float]] = {}
     for reference in ordered_refs:
-        x, y = _next_free_cell(
-            netlist_occupied,
-            cell_w=NETLIST_LAYOUT_COLUMN_SPACING_MM,
-            cell_h=NETLIST_LAYOUT_ROW_SPACING_MM,
-            paper=chosen_paper,
+        fcols, frows = footprints.get(reference, (1, 1))
+        col, row = _next_free_block(
+            netlist_occupied, fcols, frows, cell_w=cell_w, cell_h=cell_h, paper=chosen_paper
         )
-        generated_positions[reference] = (x, y)
+        cell_x = AUTO_LAYOUT_ORIGIN_X_MM + col * cell_w
+        cell_y = AUTO_LAYOUT_ORIGIN_Y_MM + row * cell_h
+        extent = offsets.get(reference)
+        if extent is not None:
+            min_dx, min_dy, _, _ = extent
+            # Seat the body inside the block with a half-margin gutter for labels.
+            raw_x = cell_x - min_dx + _NETLIST_LABEL_MARGIN_W_MM / 2.0
+            raw_y = cell_y - min_dy + _NETLIST_LABEL_MARGIN_H_MM / 2.0
+            generated_positions[reference] = _snap_point(raw_x, raw_y, True)
+        else:
+            generated_positions[reference] = (cell_x, cell_y)
 
     symbol_positions: dict[str, tuple[float, float]] = {}
     for symbol in laid_out_symbols:
