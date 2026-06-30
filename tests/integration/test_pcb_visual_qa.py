@@ -121,3 +121,29 @@ async def test_pcb_autoplace_reference_text_dry_run(sample_project, mock_kicad) 
     result = await call_tool_text(server, "pcb_autoplace_reference_text", {"dry_run": True})
     assert "Dry run" in result
     assert board.read_text(encoding="utf-8") == before
+
+
+@pytest.mark.anyio
+async def test_pcb_fix_readability_clears_silk_overlap(sample_project, mock_kicad) -> None:
+    board = sample_project / "demo.kicad_pcb"
+    board.write_text(_SILK_BOARD, encoding="utf-8")
+    server = build_server("full")
+
+    assert "ref_silk_overlap" in _silk_codes(await call_tool_text(server, "pcb_visual_qa", {}))
+
+    result = await call_tool_text(server, "pcb_fix_readability", {"allow_open_board": True})
+    assert "PCB readability fix" in result
+    assert "auto-placed reference text" in result
+
+    assert "ref_silk_overlap" not in _silk_codes(await call_tool_text(server, "pcb_visual_qa", {}))
+
+
+@pytest.mark.anyio
+async def test_pcb_fix_readability_reports_offboard(sample_project, mock_kicad) -> None:
+    board = sample_project / "demo.kicad_pcb"
+    board.write_text(_BOARD, encoding="utf-8")  # contains an off-board R3
+    server = build_server("full")
+
+    result = await call_tool_text(server, "pcb_fix_readability", {"allow_open_board": True})
+    # Off-board parts are reported, not auto-moved.
+    assert "offboard_component" in result

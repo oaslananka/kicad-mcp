@@ -1,6 +1,6 @@
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 365.
+Total public tools: 366.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -158,6 +158,7 @@ Total public tools: 365.
 | `pcb_drop_commit` | agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power | no | no | no | no | no | yes | Drop (discard) the current transaction group without applying changes. |
 | `pcb_export_3d_pdf` | agent_full, expert, full, high_speed, minimal, pcb, power, schematic, simulation | no | yes | yes | yes | yes | no | Export the PCB to a 3D PDF. |
 | `pcb_export_stats` | agent_full, expert, full, high_speed, minimal, pcb, power, schematic, simulation | no | yes | yes | yes | yes | no | Export board statistics (net count, component count, layer count, etc.) |
+| `pcb_fix_readability` | agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power | no | no | no | no | yes | no | Iteratively fix headless PCB readability defects until clean or stable. |
 | `pcb_get_board_as_string` | agent_full, analysis, beginner, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, minimal, pcb, pcb_layout, pcb_only, power, read_only_inspection, release_manager | yes | no | no | yes | yes | no | Return the current board as a bounded S-expression string. |
 | `pcb_get_board_summary` | agent_full, analysis, beginner, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, minimal, pcb, pcb_layout, pcb_only, power, read_only_inspection, release_manager | yes | no | no | yes | yes | no | Summarize the current board. This KiCad MCP Pro tool supports production EDA automation workflows for MCP clients. |
 | `pcb_get_design_rules` | agent_full, analysis, beginner, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, minimal, pcb, pcb_layout, pcb_only, power, read_only_inspection, release_manager | yes | no | no | yes | yes | no | Read the active board design rules file when available. This KiCad MCP Pro tool supports production EDA automation wo... |
@@ -526,6 +527,7 @@ Total public tools: 365.
 - `pcb_drop_commit`: profiles=agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=yes.
 - `pcb_export_3d_pdf`: profiles=agent_full, expert, full, high_speed, minimal, pcb, power, schematic, simulation; readOnly=no; destructive=yes; openWorld=yes; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `pcb_export_stats`: profiles=agent_full, expert, full, high_speed, minimal, pcb, power, schematic, simulation; readOnly=no; destructive=yes; openWorld=yes; idempotent=yes; headless=yes; requiresKiCadRunning=no.
+- `pcb_fix_readability`: profiles=agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `pcb_get_board_as_string`: profiles=agent_full, analysis, beginner, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, minimal, pcb, pcb_layout, pcb_only, power, read_only_inspection, release_manager; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `pcb_get_board_summary`: profiles=agent_full, analysis, beginner, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, minimal, pcb, pcb_layout, pcb_only, power, read_only_inspection, release_manager; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `pcb_get_design_rules`: profiles=agent_full, analysis, beginner, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, minimal, pcb, pcb_layout, pcb_only, power, read_only_inspection, release_manager; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.

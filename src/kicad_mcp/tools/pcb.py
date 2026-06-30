@@ -1465,6 +1465,50 @@ def _set_footprint_ref_position(block: str, x_mm: float, y_mm: float) -> str:
     return block[:idx] + new_sub + block[idx + length :]
 
 
+def _build_reference_autoplace_mutator(
+    board_file: Path,
+    references: list[str] | None = None,
+) -> tuple[Callable[[str], str], list[str], list[str]]:
+    """Return ``(mutator, targets, updated)`` for reference-text auto-placement."""
+    content = _normalize_board_content(board_file.read_text(encoding="utf-8", errors="ignore"))
+    plans = plan_reference_placements(_parse_board_footprint_blocks(content))
+    wanted = set(references) if references else None
+    targets = [ref for ref in plans if wanted is None or ref in wanted]
+    updated: list[str] = []
+
+    def mutator(current: str) -> str:
+        footprints = _parse_board_footprint_blocks(current)
+        new_content = current
+        for ref in sorted(
+            targets, key=lambda r: footprints.get(r, {}).get("start", 0), reverse=True
+        ):
+            entry = footprints.get(ref)
+            if entry is None:
+                continue
+            block = str(entry["block"])
+            start = int(entry["start"])
+            end = int(entry["end"])
+            x, y = plans[ref]
+            new_block = _set_footprint_ref_position(block, x, y)
+            if new_block != block:
+                new_content = new_content[:start] + new_block + new_content[end:]
+                updated.append(ref)
+        return new_content
+
+    return mutator, targets, updated
+
+
+def _autoplace_reference_text_apply(
+    board_file: Path, references: list[str] | None = None
+) -> list[str]:
+    """Apply reference-text auto-placement to ``board_file`` and return moved refs."""
+    mutator, targets, updated = _build_reference_autoplace_mutator(board_file, references)
+    if not targets:
+        return []
+    _transactional_board_write(mutator)
+    return updated
+
+
 def _collect_occupied_boxes(
     footprints: dict[str, dict[str, Any]],
     *,
@@ -2548,38 +2592,16 @@ def register(mcp: FastMCP) -> None:
         confirm ``ref_silk_overlap`` clears.
         """
         board_file = _get_pcb_file_for_sync()
-        content = _normalize_board_content(board_file.read_text(encoding="utf-8", errors="ignore"))
-        plans = plan_reference_placements(_parse_board_footprint_blocks(content))
-        wanted = set(references) if references else None
-        targets = [ref for ref in plans if wanted is None or ref in wanted]
+        mutator, targets, updated = _build_reference_autoplace_mutator(board_file, references)
         if not targets:
             return _with_pcb_diagnostics(
                 "No footprints with a measurable body were found to place reference text for."
             )
 
-        updated: list[str] = []
-
-        def mutator(current: str) -> str:
-            footprints = _parse_board_footprint_blocks(current)
-            new_content = current
-            for ref in sorted(
-                targets, key=lambda r: footprints.get(r, {}).get("start", 0), reverse=True
-            ):
-                entry = footprints.get(ref)
-                if entry is None:
-                    continue
-                block = str(entry["block"])
-                start = int(entry["start"])
-                end = int(entry["end"])
-                x, y = plans[ref]
-                new_block = _set_footprint_ref_position(block, x, y)
-                if new_block != block:
-                    new_content = new_content[:start] + new_block + new_content[end:]
-                    updated.append(ref)
-            return new_content
-
         if dry_run:
-            mutator(content)
+            mutator(
+                _normalize_board_content(board_file.read_text(encoding="utf-8", errors="ignore"))
+            )
             return (
                 f"Dry run: would reposition reference text on {len(updated)} footprint(s): "
                 f"{', '.join(updated) if updated else '(none)'}."
@@ -2594,6 +2616,79 @@ def register(mcp: FastMCP) -> None:
             f"Repositioned reference text on {len(updated)} footprint(s)"
             f"{': ' + ', '.join(updated) if updated else ''}."
         )
+
+    @mcp.tool()
+    @headless_compatible
+    def pcb_fix_readability(max_passes: int = 3, allow_open_board: bool = False) -> str:
+        """Iteratively fix headless PCB readability defects until clean or stable.
+
+        Runs ``pcb_visual_qa`` and applies the safe fixer — auto-placing reference
+        designators off overlapping silkscreen — re-checking after each pass until
+        the board passes, no further progress is made, or ``max_passes`` is
+        reached. Off-board components and body overlaps are *reported* for manual
+        follow-up: board size is usually mechanically fixed and re-placing routed
+        parts would break tracks, so those are left to ``pcb_auto_place_force_directed``
+        / DRC. Pass ``allow_open_board`` to write while KiCad has the board open.
+        """
+        board_file = _get_pcb_file_for_sync()
+        if _board_is_open() and not allow_open_board:
+            return (
+                "The board is open in KiCad. Close it (or pass allow_open_board=true) before "
+                "running the readability fixer so unsaved edits are not overwritten."
+            )
+
+        passes = max(1, max_passes)
+        actions: list[str] = []
+        pass_log: list[str] = []
+        initial_status: str | None = None
+        final_status = "PASS"
+        remaining: set[str] = set()
+
+        for pass_index in range(passes):
+            content = _normalize_board_content(
+                board_file.read_text(encoding="utf-8", errors="ignore")
+            )
+            footprints = _parse_board_footprint_blocks(content)
+            bounds = _edge_cuts_bounds(content)
+            report = run_pcb_readability(footprints, bounds)
+            status = str(report["status"])
+            findings = report["findings"]
+            codes = {str(f["code"]) for f in findings} if isinstance(findings, list) else set()
+            if initial_status is None:
+                initial_status = status
+            final_status = status
+            pass_log.append(
+                f"pass {pass_index + 1}: {status} ({', '.join(sorted(codes)) or 'clean'})"
+            )
+            if status == "PASS":
+                break
+
+            changed = False
+            if "ref_silk_overlap" in codes:
+                moved = _autoplace_reference_text_apply(board_file)
+                if moved:
+                    actions.append(f"auto-placed reference text on {len(moved)} footprint(s)")
+                    changed = True
+
+            remaining = codes
+            if not changed:
+                break
+
+        unresolved = sorted(remaining & {"offboard_component", "body_overlap"})
+        summary = [
+            f"PCB readability fix: {initial_status or 'PASS'} -> {final_status} "
+            f"over {len(pass_log)} pass(es).",
+            *pass_log,
+        ]
+        summary.append("Applied: " + "; ".join(actions) + "." if actions else "No fixes applied.")
+        if unresolved:
+            summary.append(
+                "Manual follow-up suggested for: "
+                + ", ".join(unresolved)
+                + " (off-board parts / overlapping bodies — use pcb_auto_place_force_directed "
+                "or adjust the board outline, then DRC)."
+            )
+        return "\n".join(summary)
 
     @mcp.tool()
     @headless_compatible
