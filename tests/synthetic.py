@@ -22,35 +22,47 @@ _RESISTOR_LIB_SYMBOL = """    (symbol "Device:R"
 def generate_resistor_grid(
     n_components: int,
     *,
-    paper: str = "A3",
-    spacing_mm: float = 5.0,
+    paper: str | None = None,
+    spacing_mm: float = 12.7,
     net_prefix: str = "NET",
 ) -> str:
     """Return a schematic of ``n_components`` resistors laid out in a grid.
 
-    Components and their per-net labels are spaced ``spacing_mm`` apart so a clean
-    grid never trips the visual-QA overlap or off-sheet heuristics; this isolates
-    the benchmark to parsing/throughput rather than defect detection.
+    The grid pitch exceeds a resistor's drawn body (~10 mm tall) and per-net
+    labels sit clear of the value text, so a clean grid never trips the visual-QA
+    overlap or off-sheet heuristics; this isolates the benchmark to
+    parsing/throughput rather than defect detection. The sheet is auto-sized to a
+    ``User`` paper that holds the whole grid unless ``paper`` is given explicitly.
     """
 
+    origin = 20.0
+    margin = 20.0
+    columns = max(1, math.isqrt(n_components))
+    rows = max(1, math.ceil(n_components / columns))
+    if paper is None:
+        width = origin + columns * spacing_mm + margin
+        height = origin + rows * spacing_mm + margin
+        paper_decl = f'(paper "User" {width:.1f} {height:.1f})'
+    else:
+        paper_decl = f'(paper "{paper}")'
+
     lines = [
-        f'(kicad_sch (version 20240101) (paper "{paper}")',
+        f"(kicad_sch (version 20240101) {paper_decl}",
         '  (title_block (title "Synthetic Regression Board") (rev "1")'
         ' (date "2026-01-01") (company "Regression Zoo"))',
         "  (lib_symbols",
         _RESISTOR_LIB_SYMBOL,
         "  )",
     ]
-    columns = max(1, math.isqrt(n_components))
     for index in range(n_components):
-        x = 20.0 + (index % columns) * spacing_mm
-        y = 20.0 + (index // columns) * spacing_mm
+        x = origin + (index % columns) * spacing_mm
+        y = origin + (index // columns) * spacing_mm
         lines.append(f'  (symbol (lib_id "Device:R") (at {x} {y} 0)')
-        lines.append(f'    (property "Reference" "R{index + 1}" (at {x + 2} {y - 1} 0))')
-        lines.append(f'    (property "Value" "10k" (at {x + 2} {y + 1} 0))')
+        lines.append(f'    (property "Reference" "R{index + 1}" (at {x + 4} {y - 1} 0))')
+        lines.append(f'    (property "Value" "10k" (at {x + 4} {y + 1} 0))')
         lines.append(f'    (property "Footprint" "Resistor_SMD:R_0402_1005Metric" (at {x} {y} 0))')
         lines.append("  )")
-        lines.append(f'  (label "{net_prefix}{index}" (at {x} {y + 2} 0))')
+        lines.append(f'  (label "{net_prefix}{index}" (at {x} {y + 4} 0))')
     lines.append(")")
     return "\n".join(lines)
 

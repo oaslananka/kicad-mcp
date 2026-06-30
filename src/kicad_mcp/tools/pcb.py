@@ -66,6 +66,7 @@ from ..utils import telemetry as otel
 from ..utils.cache import clear_ttl_cache, ttl_cache
 from ..utils.impedance import TraceType, copper_thickness_mm, trace_impedance
 from ..utils.layers import CANONICAL_LAYER_NAMES, resolve_layer, resolve_layer_name
+from ..utils.pcb_readability import run_pcb_readability
 from ..utils.placement import (
     BGABall,
     ForceDirectedConfig,
@@ -2484,6 +2485,26 @@ def register(mcp: FastMCP) -> None:
             },
             indent=2,
         )
+
+    @mcp.tool()
+    @headless_compatible
+    def pcb_visual_qa() -> str:
+        """Headless PCB readability QA: off-board parts, silk and body overlap.
+
+        A fast, file-backed first pass that runs without a live KiCad: it flags
+        footprints whose body leaves the board outline, reference designators that
+        collide on the silkscreen, and overlapping footprint bodies — directly
+        from the ``.kicad_pcb`` geometry. It complements (does not replace) the
+        authoritative DRC run, which remains the sign-off check for courtyard and
+        silk clipping. Returns JSON with an overall PASS/INFO/WARN status and
+        per-finding refs/positions.
+        """
+        board_file = _get_pcb_file_for_sync()
+        board_content = _normalize_board_content(board_file.read_text(encoding="utf-8"))
+        footprints = _parse_board_footprint_blocks(board_content)
+        bounds = _edge_cuts_bounds(board_content)
+        report = run_pcb_readability(footprints, bounds)
+        return json.dumps(report, indent=2)
 
     @mcp.tool()
     @headless_compatible

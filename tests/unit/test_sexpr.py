@@ -218,7 +218,7 @@ def test_schematic_netlist_helpers_layout_missing_terminals() -> None:
     assert powers == [{"name": "+3V3"}]
     assert labels == [{"name": "OUT"}]
 
-    symbols, laid_powers, laid_labels = _apply_netlist_auto_layout(
+    symbols, laid_powers, laid_labels, netlist_paper = _apply_netlist_auto_layout(
         [{"reference": "U1"}, {"reference": "R1"}],
         [{"name": "GND"}],
         [{"name": "OUT"}],
@@ -229,12 +229,14 @@ def test_schematic_netlist_helpers_layout_missing_terminals() -> None:
     assert _has_point(laid_powers[0])
     assert laid_labels[0]["name"] == "OUT"
     assert _has_point(laid_labels[0])
-    basic_symbols, basic_powers, basic_labels = _apply_basic_auto_layout(
+    assert netlist_paper == "A4"  # a 2-symbol circuit fits the default sheet
+    basic_symbols, basic_powers, basic_labels, basic_paper = _apply_basic_auto_layout(
         [{"reference": "R1"}],
         [{"name": "GND"}, {"name": "+5V"}],
         [{"name": "OUT"}],
     )
     assert all(_has_point(entry) for entry in [*basic_symbols, *basic_powers, *basic_labels])
+    assert basic_paper == "A4"
 
 
 def test_schematic_file_parsers_and_wire_normalization() -> None:
