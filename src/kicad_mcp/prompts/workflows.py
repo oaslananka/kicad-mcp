@@ -34,11 +34,15 @@ Board: {board_size_mm} mm, {layer_count} copper layer(s), target fab {target_fab
    - Run `sch_check_power_flags()` and `run_erc()`
    - Run `schematic_design_rule_check()` and resolve advisory findings
      (decoupling caps, I2C/reset pull-ups, crystal load caps)
+   - Run `sch_visual_qa()` then `sch_fix_readability()` to clear text overlap,
+     off-sheet symbols, and unconnected symbol overlap (readability critic)
 3. PCB transfer and placement:
    - `pcb_set_board_outline()`
    - `pcb_sync_from_schematic()`; the pre-sync gate blocks dirty schematics
    - `pcb_auto_place_force_directed()` or the automatic sync placement result
    - `pcb_place_decoupling_caps()`
+   - `pcb_visual_qa()` then `pcb_fix_readability()` to clear overlapping
+     reference designators and flag any off-board parts
 4. Routing:
    - `route_export_dsn()`
    - `route_autoroute_freerouting()`
@@ -91,16 +95,18 @@ Move a design from schematic capture to PCB layout.
 1. Inspect the active project and schematic.
 2. Add or update symbols, labels, buses, and power flags.
 3. Run ERC, power checks, and `schematic_design_rule_check()` (electrical-correctness critic).
-4. Export the netlist.
-5. Inspect footprints and assign missing ones.
-6. Move footprints, then run the post-placement routing pass (apply the routed
-   session in KiCad when the tool surfaces the manual import step):
+4. Run `sch_visual_qa()` and `sch_fix_readability()` (readability critic: text overlap, off-sheet).
+5. Export the netlist.
+6. Inspect footprints and assign missing ones.
+7. Move footprints, then run `pcb_visual_qa()` and `pcb_fix_readability()` to clear
+   overlapping reference designators, then run the post-placement routing pass
+   (apply the routed session in KiCad when the tool surfaces the manual import step):
    a. `route_export_dsn()`
    b. `route_autoroute_freerouting()` — Docker-first, JAR fallback
    c. `route_import_ses()`
    d. `pcb_refill_zones()`
    e. `run_drc()`
-7. Compare PCB versus schematic footprints.
+8. Compare PCB versus schematic footprints.
 """.strip()
         return [TextContent(type="text", text=text)]
 
@@ -181,7 +187,9 @@ Run a closed-loop design review instead of trusting a single build pass.
    - `pcb_transfer_quality_gate()`
    - `pcb_score_placement()`
    - `pcb_placement_quality_report()`
-3. Fix the highest-severity blocking issue first.
+   - `sch_visual_qa()` / `pcb_visual_qa()` (readability: overlap, off-sheet, silk)
+3. Fix the highest-severity blocking issue first. For advisory readability findings
+   run `sch_fix_readability()` / `pcb_fix_readability()`.
 4. Re-run the relevant gates after every fix.
 5. Repeat until the full project gate is `PASS`.
 6. Only then move on to release exports.
