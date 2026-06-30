@@ -51,7 +51,7 @@ from ..path_safety import resolve_under
 from ..utils.cache import clear_ttl_cache, ttl_cache
 from ..utils.field_placer import FieldSpec, autoplace_fields
 from ..utils.geometry import Box as GeoBox
-from ..utils.geometry import body_box_from_pins
+from ..utils.geometry import body_box_from_pins, text_extent
 from ..utils.schematic_router import RouterBBox, SchematicRouter
 from ..utils.sexpr import (
     _escape_sexpr_string,
@@ -3312,6 +3312,20 @@ def _describe_net_endpoint(endpoint: dict[str, Any]) -> str:
     return "<unresolved-endpoint>"
 
 
+def _terminal_stub_length(net_name: str) -> float:
+    """Grid-snapped terminal-stub length that scales with the net-name width.
+
+    A global label's text extends outward from the stub end, so a long net name
+    on a fixed short stub renders its text on top of the symbol body / pin names.
+    Pushing the label further out (by roughly half the rendered text width, on the
+    2.54 mm grid) keeps it clear. Short names keep the historical 5.08 mm stub.
+    """
+    width_mm, _ = text_extent(net_name)
+    needed = 5.08 + max(0.0, width_mm - 5.08) * 0.5
+    grid = SCHEMATIC_GRID_MM
+    return max(5.08, math.ceil(needed / grid) * grid)
+
+
 def _terminal_rotation_from_vector(ux: float, uy: float) -> int:
     return 0 if ux > 0 else 180 if ux < 0 else 90 if uy < 0 else 270
 
@@ -3462,8 +3476,9 @@ def _plan_netlist_pin_terminals(
 
             all_points = symbol_points.get(reference, {}).values()
             ux, uy = _pin_label_stub_direction(point, symbol_centers[reference], all_points)
-            ex = round(point[0] + ux * 5.08, 4)
-            ey = round(point[1] + uy * 5.08, 4)
+            stub = _terminal_stub_length(net_name)
+            ex = round(point[0] + ux * stub, 4)
+            ey = round(point[1] + uy * stub, 4)
             end_key = _point_key(ex, ey)
             existing_terminal_net = terminal_points.get(end_key)
             if existing_terminal_net is not None and existing_terminal_net != net_name:
