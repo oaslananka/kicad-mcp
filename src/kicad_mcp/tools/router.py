@@ -232,6 +232,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "pcb_place_component",
             "pcb_move_component",
             "pcb_move_footprint",
+            "pcb_autoplace_reference_text",
             "pcb_set_footprint_layer",
             "pcb_sync_from_schematic",
             "pcb_set_origin",

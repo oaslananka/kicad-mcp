@@ -2835,6 +2835,27 @@
   {
     "destructive": false,
     "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "pcb_autoplace_reference_text",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "expert",
+      "full",
+      "high_speed",
+      "pcb",
+      "pcb_layout",
+      "pcb_only",
+      "power"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
     "headless": false,
     "idempotent": false,
     "name": "pcb_begin_commit",

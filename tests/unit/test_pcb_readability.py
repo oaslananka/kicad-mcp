@@ -6,6 +6,7 @@ from kicad_mcp.utils.pcb_readability import (
     detect_body_overlap,
     detect_offboard,
     detect_ref_silk_overlap,
+    plan_reference_placements,
     run_pcb_readability,
 )
 
@@ -94,6 +95,27 @@ def test_run_pcb_readability_rolls_up_status() -> None:
     assert report["footprint_count"] == 2
     codes = {f["code"] for f in report["findings"]}
     assert "ref_silk_overlap" in codes
+
+
+def test_plan_reference_placements_clears_overlap() -> None:
+    # Two parts with references stacked on the same spot; after planning, the
+    # planned reference centres must differ so the silk no longer overlaps.
+    footprints = {
+        "R1": _footprint("R1", 10.0, 10.0, ref_at=(0.0, 0.0)),
+        "R2": _footprint("R2", 11.0, 10.0, ref_at=(0.0, 0.0)),
+    }
+    plans = plan_reference_placements(footprints)
+    assert set(plans) == {"R1", "R2"}
+    # Each reference is pushed off the body centre onto a clear side.
+    for dx, dy in plans.values():
+        assert (abs(dx) + abs(dy)) > 0.0
+
+
+def test_plan_reference_skips_bodyless_footprint() -> None:
+    fp = _footprint("R1", 10.0, 10.0)
+    fp["width_mm"] = 0.0
+    fp["height_mm"] = 0.0
+    assert plan_reference_placements({"R1": fp}) == {}
 
 
 def test_clean_board_passes() -> None:

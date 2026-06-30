@@ -24,6 +24,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from .field_placer import FieldSpec, autoplace_fields
 from .geometry import Box, TextField, boxes_overlap_pairs
 
 FootprintMap = dict[str, dict[str, Any]]
@@ -170,6 +171,65 @@ def detect_ref_silk_overlap(footprints: FootprintMap) -> list[PcbFinding]:
             )
         )
     return findings
+
+
+def _ref_font_mm(block: str) -> float:
+    match = re.search(r"\(size\s+(-?[\d.]+)", block)
+    if match:
+        try:
+            return float(match.group(1)) or DEFAULT_SILK_FONT_MM
+        except ValueError:
+            return DEFAULT_SILK_FONT_MM
+    return DEFAULT_SILK_FONT_MM
+
+
+def plan_reference_placements(
+    footprints: FootprintMap,
+) -> dict[str, tuple[float, float]]:
+    """Plan a clearer **local** reference-text position for each footprint.
+
+    For every footprint the reference designator is placed on the body side with
+    the most clearance from neighbouring footprints, mirroring the schematic field
+    placer. Neighbours are transformed into each footprint's own (un-rotated)
+    local frame, so the returned ``(dx, dy)`` can be written straight into the
+    footprint's ``(property "Reference" (at dx dy))`` — KiCad applies the
+    footprint rotation on render. Positions are the text *centre* (KiCad's default
+    centred justify), so callers need not touch the text effects.
+    """
+    abs_boxes: dict[str, Box] = {}
+    for reference, entry in footprints.items():
+        box = _body_box(entry)
+        if box is not None:
+            abs_boxes[reference] = box
+
+    plans: dict[str, tuple[float, float]] = {}
+    for reference, entry in footprints.items():
+        body = abs_boxes.get(reference)
+        if body is None:
+            continue
+        fx = float(entry["x_mm"])
+        fy = float(entry["y_mm"])
+        foot_rot = float(entry.get("rotation", 0) or 0)
+        local_body = Box(-body.width / 2.0, -body.height / 2.0, body.width / 2.0, body.height / 2.0)
+
+        obstacles: list[Box] = []
+        for other, obox in abs_boxes.items():
+            if other == reference:
+                continue
+            ocx, ocy = obox.center
+            lx, ly = _rotate(ocx - fx, ocy - fy, -foot_rot)
+            obstacles.append(Box.from_center(lx, ly, obox.width, obox.height))
+
+        specs = [
+            FieldSpec("Reference", reference, font_mm=_ref_font_mm(str(entry.get("block", ""))))
+        ]
+        placement = autoplace_fields(local_body, [], obstacles, specs, margin_mm=0.5, pitch_mm=1.2)[
+            0
+        ]
+        box = placement.text_field(reference, specs[0].font_mm).box()
+        cx, cy = box.center
+        plans[reference] = (round(cx, 4), round(cy, 4))
+    return plans
 
 
 def rollup_status(findings: list[PcbFinding]) -> str:

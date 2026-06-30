@@ -66,7 +66,7 @@ from ..utils import telemetry as otel
 from ..utils.cache import clear_ttl_cache, ttl_cache
 from ..utils.impedance import TraceType, copper_thickness_mm, trace_impedance
 from ..utils.layers import CANONICAL_LAYER_NAMES, resolve_layer, resolve_layer_name
-from ..utils.pcb_readability import run_pcb_readability
+from ..utils.pcb_readability import plan_reference_placements, run_pcb_readability
 from ..utils.placement import (
     BGABall,
     ForceDirectedConfig,
@@ -1441,6 +1441,30 @@ def _replace_root_at(block: str, *, x_mm: float, y_mm: float, rotation: int) -> 
     return _inject_root_placement(block, x_mm=x_mm, y_mm=y_mm, rotation=rotation)
 
 
+def _set_footprint_ref_position(block: str, x_mm: float, y_mm: float) -> str:
+    """Rewrite the ``(at ...)`` of a footprint's Reference property (local coords).
+
+    Only the Reference property's own ``at`` is touched; the footprint root ``at``
+    and all other children are left intact. Any rotation token already present is
+    preserved. Returns the block unchanged if the property/``at`` is absent.
+    """
+    marker = '(property "Reference"'
+    idx = block.find(marker)
+    if idx < 0:
+        return block
+    sub, length = _extract_block(block, idx)
+    if not sub:
+        return block
+    at_re = re.compile(r"\(at\s+-?[\d.]+\s+-?[\d.]+(?:\s+(-?[\d.]+))?\)")
+    match = at_re.search(sub)
+    if match is None:
+        return block
+    rot = match.group(1)
+    new_at = f"(at {x_mm:.4f} {y_mm:.4f}{' ' + rot if rot else ''})"
+    new_sub = at_re.sub(new_at, sub, count=1)
+    return block[:idx] + new_sub + block[idx + length :]
+
+
 def _collect_occupied_boxes(
     footprints: dict[str, dict[str, Any]],
     *,
@@ -2505,6 +2529,71 @@ def register(mcp: FastMCP) -> None:
         bounds = _edge_cuts_bounds(board_content)
         report = run_pcb_readability(footprints, bounds)
         return json.dumps(report, indent=2)
+
+    @mcp.tool()
+    @headless_compatible
+    def pcb_autoplace_reference_text(
+        references: list[str] | None = None,
+        dry_run: bool = False,
+        allow_open_board: bool = False,
+    ) -> str:
+        """Reposition footprint reference designators onto a clearer silk side.
+
+        The PCB analogue of ``sch_autoplace_fields``: each reference text is moved
+        to the footprint-body side with the most clearance from neighbouring
+        footprints, so silkscreen designators stop overlapping. Pass ``references``
+        to limit the scope, ``dry_run`` to preview the count, and
+        ``allow_open_board`` to write while KiCad has the board open (off by
+        default to avoid clobbering unsaved edits). Re-run ``pcb_visual_qa`` to
+        confirm ``ref_silk_overlap`` clears.
+        """
+        board_file = _get_pcb_file_for_sync()
+        content = _normalize_board_content(board_file.read_text(encoding="utf-8", errors="ignore"))
+        plans = plan_reference_placements(_parse_board_footprint_blocks(content))
+        wanted = set(references) if references else None
+        targets = [ref for ref in plans if wanted is None or ref in wanted]
+        if not targets:
+            return _with_pcb_diagnostics(
+                "No footprints with a measurable body were found to place reference text for."
+            )
+
+        updated: list[str] = []
+
+        def mutator(current: str) -> str:
+            footprints = _parse_board_footprint_blocks(current)
+            new_content = current
+            for ref in sorted(
+                targets, key=lambda r: footprints.get(r, {}).get("start", 0), reverse=True
+            ):
+                entry = footprints.get(ref)
+                if entry is None:
+                    continue
+                block = str(entry["block"])
+                start = int(entry["start"])
+                end = int(entry["end"])
+                x, y = plans[ref]
+                new_block = _set_footprint_ref_position(block, x, y)
+                if new_block != block:
+                    new_content = new_content[:start] + new_block + new_content[end:]
+                    updated.append(ref)
+            return new_content
+
+        if dry_run:
+            mutator(content)
+            return (
+                f"Dry run: would reposition reference text on {len(updated)} footprint(s): "
+                f"{', '.join(updated) if updated else '(none)'}."
+            )
+        if _board_is_open() and not allow_open_board:
+            return (
+                "The board is open in KiCad. Close it (or pass allow_open_board=true) before "
+                "repositioning reference text so unsaved edits are not overwritten."
+            )
+        _transactional_board_write(mutator)
+        return (
+            f"Repositioned reference text on {len(updated)} footprint(s)"
+            f"{': ' + ', '.join(updated) if updated else ''}."
+        )
 
     @mcp.tool()
     @headless_compatible

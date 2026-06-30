@@ -131,7 +131,7 @@ Built-in prompt helpers for the critic/fixer loop:
 
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 364.
+Total public tools: 365.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -275,6 +275,7 @@ Total public tools: 364.
 | `pcb_align_footprints` | agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power | no | no | no | no | yes | no | Arrange selected footprints into a straight row or column. This KiCad MCP Pro tool supports production EDA automation... |
 | `pcb_auto_place_by_schematic` | agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power | no | yes | no | no | yes | no | Place PCB footprints from the current schematic using deterministic heuristics. |
 | `pcb_auto_place_force_directed` | agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power | no | yes | no | no | yes | no | Run a force-directed spring-embedder placement algorithm on a set of components. |
+| `pcb_autoplace_reference_text` | agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power | no | no | no | no | yes | no | Reposition footprint reference designators onto a clearer silk side. |
 | `pcb_begin_commit` | agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power | no | no | no | no | no | yes | Begin a transaction group for atomic board modifications. |
 | `pcb_bga_fanout` | agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power | no | no | no | no | yes | no | Generate a BGA fanout via-placement plan (dog-ear or inline strategy). |
 | `pcb_block_create_from_selection` | agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power | no | no | no | no | yes | no | Capture a reusable PCB design block from selected footprint references. |
@@ -642,6 +643,7 @@ Total public tools: 364.
 - `pcb_align_footprints`: profiles=agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `pcb_auto_place_by_schematic`: profiles=agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power; readOnly=no; destructive=yes; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `pcb_auto_place_force_directed`: profiles=agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power; readOnly=no; destructive=yes; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
+- `pcb_autoplace_reference_text`: profiles=agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `pcb_begin_commit`: profiles=agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=yes.
 - `pcb_bga_fanout`: profiles=agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `pcb_block_create_from_selection`: profiles=agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
