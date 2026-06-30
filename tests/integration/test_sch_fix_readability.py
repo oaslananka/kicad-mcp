@@ -96,6 +96,72 @@ async def test_fix_readability_grows_sheet_for_offsheet(sample_project, mock_kic
 
 
 @pytest.mark.anyio
+async def test_fix_readability_respaces_unconnected_overlap(sample_project, mock_kicad) -> None:
+    server = build_server("schematic")
+    # Two resistors stacked on the same coordinate, with no wires/labels: a bag of
+    # unconnected symbols that is safe to re-space.
+    for ref in ("R1", "R2"):
+        await call_tool_text(
+            server,
+            "sch_add_symbol",
+            {
+                "library": "Device",
+                "symbol_name": "R",
+                "x_mm": 100.0,
+                "y_mm": 100.0,
+                "reference": ref,
+                "value": "10k",
+            },
+        )
+    # Force exact overlap: move both symbols onto the same point.
+    for ref in ("R1", "R2"):
+        await call_tool_text(
+            server,
+            "sch_move_symbol",
+            {"reference": ref, "x_mm": 100.0, "y_mm": 100.0, "snap_to_grid": False},
+        )
+
+    assert "symbol_overlap" in _qa_codes(await call_tool_text(server, "sch_visual_qa", {}))
+
+    result = await call_tool_text(server, "sch_fix_readability", {})
+    assert "re-spaced" in result
+    assert "symbol_overlap" not in _qa_codes(await call_tool_text(server, "sch_visual_qa", {}))
+
+
+@pytest.mark.anyio
+async def test_fix_readability_keeps_connected_symbols_in_place(sample_project, mock_kicad) -> None:
+    server = build_server("schematic")
+    for ref in ("R1", "R2"):
+        await call_tool_text(
+            server,
+            "sch_add_symbol",
+            {
+                "library": "Device",
+                "symbol_name": "R",
+                "x_mm": 100.0,
+                "y_mm": 100.0,
+                "reference": ref,
+                "value": "10k",
+            },
+        )
+    for ref in ("R1", "R2"):
+        await call_tool_text(
+            server,
+            "sch_move_symbol",
+            {"reference": ref, "x_mm": 100.0, "y_mm": 100.0, "snap_to_grid": False},
+        )
+    # Add a wire so the sheet is "connected" — re-spacing must NOT run.
+    await call_tool_text(
+        server,
+        "sch_add_wire",
+        {"x1_mm": 100.0, "y1_mm": 100.0, "x2_mm": 110.0, "y2_mm": 100.0},
+    )
+
+    result = await call_tool_text(server, "sch_fix_readability", {})
+    assert "re-spaced" not in result
+
+
+@pytest.mark.anyio
 async def test_fix_readability_reports_clean_when_nothing_to_do(sample_project, mock_kicad) -> None:
     server = build_server("schematic")
     await call_tool_text(

@@ -250,7 +250,18 @@ def _instance_body_box(
         rx, ry = _rotate_local(px, py, angle)
         transformed.append((x + rx, y + ry))
     box = _extent_of_points(transformed)
-    return box if box is not None else body_box_from_pins([], center=(x, y))
+    if box is None:
+        return body_box_from_pins([], center=(x, y))
+    # A symbol defined only by collinear pins (e.g. a 2-pin part with no body
+    # rectangle) yields a degenerate zero-width/height line; give it a minimum
+    # extent so overlap checks still see a real footprint.
+    min_full = 2 * DEFAULT_FONT_MM
+    if box.width < min_full or box.height < min_full:
+        cx, cy = box.center
+        half_w = max(box.width, min_full) / 2.0
+        half_h = max(box.height, min_full) / 2.0
+        return Box(cx - half_w, cy - half_h, cx + half_w, cy + half_h)
+    return box
 
 
 def _parse_effects(prop_block: str) -> tuple[float, frozenset[str], bool]:

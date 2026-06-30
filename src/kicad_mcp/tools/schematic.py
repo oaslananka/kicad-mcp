@@ -4524,6 +4524,108 @@ def _resize_sheet_apply(sch_file: Path, paper: str) -> bool:
     return changed
 
 
+def _schematic_has_connections(content: str) -> bool:
+    """Whether the sheet has any geometry/name connections symbols attach to.
+
+    Wires, labels (local/global/hierarchical) and power symbols all pin a
+    symbol's pins to a net by position; moving such a symbol would silently break
+    those connections. When none are present the sheet is a bag of unconnected
+    symbols that can be re-spaced freely.
+    """
+    if _extract_wires(content) or _extract_labels(content):
+        return True
+    if re.search(r"\(bus\b", content):
+        return True
+    # Power symbols (lib_id "power:...") connect pins by name at their position.
+    return bool(re.search(r'\(lib_id\s+"power:', content))
+
+
+def _shift_at_in_block(block: str, dx: float, dy: float) -> str:
+    """Translate every ``(at x y r)`` in a symbol instance block by (dx, dy).
+
+    A placed symbol's root and property positions are all absolute schematic
+    coordinates, so shifting them together moves the symbol and its text as a
+    unit. Pins carry no ``(at)`` in the instance (they live in lib_symbols), so
+    this never disturbs electrical geometry.
+    """
+
+    def repl(match: re.Match[str]) -> str:
+        x = float(match.group(1)) + dx
+        y = float(match.group(2)) + dy
+        rot = match.group(3)
+        return f"(at {_fmt_mm(x)} {_fmt_mm(y)} {rot})"
+
+    return re.sub(r"\(at\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\)", repl, block)
+
+
+def _respace_symbols_apply(sch_file: Path) -> list[str]:
+    """Re-space all symbols onto a body-sized, page-bounded grid; return moved refs.
+
+    Caller must ensure the sheet has no connections (see
+    :func:`_schematic_has_connections`) — this moves symbols freely and is only
+    safe when nothing attaches to their pins. Cell size is the largest symbol
+    body plus clearance so even wide parts do not overlap after the move.
+    """
+    symbols = parse_schematic_file(sch_file)["symbols"]
+    if len(symbols) < 2:
+        return []
+
+    max_w = 0.0
+    max_h = 0.0
+    old_pos: dict[str, tuple[float, float]] = {}
+    for symbol in symbols:
+        ref = str(symbol.get("reference", ""))
+        if not ref:
+            continue
+        body, _pins = _symbol_body_and_pins(symbol)
+        max_w = max(max_w, body.width)
+        max_h = max(max_h, body.height)
+        old_pos[ref] = (float(symbol.get("x", 0.0) or 0.0), float(symbol.get("y", 0.0) or 0.0))
+
+    # Cell adds clearance plus room for the Reference/Value text band below a part.
+    def _grid_ceil(value: float) -> float:
+        return math.ceil(value / SCHEMATIC_GRID_MM) * SCHEMATIC_GRID_MM
+
+    cell_w = max(AUTO_LAYOUT_COLUMN_SPACING_MM, _grid_ceil(max_w + 5.08))
+    cell_h = max(AUTO_LAYOUT_ROW_SPACING_MM, _grid_ceil(max_h + 7.62))
+    cols = max(1, math.ceil(math.sqrt(len(old_pos))))
+    paper = select_paper_for_capacity(
+        math.ceil(len(old_pos) / cols) + 1, cell_w=cell_w, cell_h=cell_h
+    )
+    max_cols = min(cols, _sheet_usable_cols(paper, cell_w))
+
+    occupied: set[tuple[int, int]] = set()
+    new_pos: dict[str, tuple[float, float]] = {}
+    for ref in sorted(old_pos):
+        new_pos[ref] = _next_free_cell(
+            occupied, cell_w=cell_w, cell_h=cell_h, max_cols=max_cols, paper=paper
+        )
+
+    moved: list[str] = []
+
+    def mutator(content: str) -> str:
+        new_content = content
+        for ref in sorted(new_pos):
+            match = _find_placed_symbol_block(new_content, ref)
+            if match is None:
+                continue
+            block, start, end, _parsed = match
+            ox, oy = old_pos[ref]
+            nx, ny = new_pos[ref]
+            dx, dy = nx - ox, ny - oy
+            if abs(dx) < 1e-6 and abs(dy) < 1e-6:
+                continue
+            new_block = _shift_at_in_block(block, dx, dy)
+            new_content = new_content[:start] + new_block + new_content[end:]
+            moved.append(ref)
+        return new_content
+
+    if not new_pos:
+        return []
+    _transactional_write_to_schematic_file(sch_file, mutator)
+    return moved
+
+
 def _update_symbol_property_text_fallback(reference: str, field: str, value: str) -> str:
     """Update a symbol property in the active schematic."""
     payload = UpdatePropertiesInput(reference=reference, field=field, value=value)
@@ -6791,11 +6893,13 @@ def register(mcp: FastMCP) -> None:
 
         - **off-sheet** symbols/labels -> grow the sheet one paper size (A4 -> A3 ...)
         - **text overlap** -> auto-place Reference/Value fields onto clear body sides
+        - **symbol-body overlap** -> re-space the symbols on a body-sized grid, but
+          ONLY when the sheet has no wires, labels or power symbols (moving a
+          connected symbol would break its nets); otherwise it is reported.
 
-        Symbol-body overlaps and dense label clusters are *reported* but not
-        auto-moved (re-placing symbols can undo intentional layout); use
-        ``sch_auto_place_functional`` / ``sch_auto_resize_sheet`` for those. Returns
-        a per-pass log with the before/after QA status so the closing state is
+        Dense label clusters are reported for manual follow-up (label anchors are
+        electrical attachment points and cannot be moved safely). Returns a
+        per-pass log with the before/after QA status so the closing state is
         explicit.
         """
         passes = max(1, max_passes)
@@ -6831,6 +6935,13 @@ def register(mcp: FastMCP) -> None:
                     if _resize_sheet_apply(sch_file, target):
                         actions.append(f"grew sheet to {target}")
                         changed = True
+            if "symbol_overlap" in codes and not _schematic_has_connections(
+                sch_file.read_text(encoding="utf-8", errors="ignore")
+            ):
+                respaced = _respace_symbols_apply(sch_file)
+                if respaced:
+                    actions.append(f"re-spaced {len(respaced)} overlapping symbol(s)")
+                    changed = True
             if "text_overlap" in codes:
                 moved = _autoplace_fields_apply(sch_file)
                 if moved:
