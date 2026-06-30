@@ -46,8 +46,12 @@ from ..models.schematic import (
     UpdatePropertiesInput,
 )
 from ..models.tool_result import MutatingToolResult, TransactionVerification
+from ..models.visual_qa import run_visual_qa as _run_visual_qa
 from ..path_safety import resolve_under
 from ..utils.cache import clear_ttl_cache, ttl_cache
+from ..utils.field_placer import FieldSpec, autoplace_fields
+from ..utils.geometry import Box as GeoBox
+from ..utils.geometry import body_box_from_pins
 from ..utils.schematic_router import RouterBBox, SchematicRouter
 from ..utils.sexpr import (
     _escape_sexpr_string,
@@ -301,6 +305,22 @@ SCHEMATIC_BACKEND_CAPABILITY_MATRIX: dict[str, SchematicCapabilityEntry] = {
         "notes": (
             "Auto-placement is implemented as a deterministic wrapper around component "
             "move helpers."
+        ),
+    },
+    "sch_autoplace_fields": {
+        "kicad_sch_api_support": "wrapper_needed",
+        "verified_surface": ["ComponentCollection.get"],
+        "notes": (
+            "Reference/Value field auto-placement is a deterministic S-expression "
+            "wrapper; kicad-sch-api does not expose KiCad's autoplace_fields."
+        ),
+    },
+    "sch_fix_readability": {
+        "kicad_sch_api_support": "wrapper_needed",
+        "verified_surface": ["ComponentCollection.get"],
+        "notes": (
+            "Closed-loop readability fixer orchestrating headless visual-QA, field "
+            "auto-placement, and sheet resizing; no direct kicad-sch-api surface."
         ),
     },
 }
@@ -985,6 +1005,44 @@ def _sheet_usable_rows(
     return max(1, int(usable_h / cell_h))
 
 
+# Standard ISO-A landscape ladder, smallest first. Auto-layout climbs this ladder
+# when a circuit does not fit the current sheet so generated symbols never spill
+# past the sheet boundary (the off-sheet defect `sch_visual_qa` reports).
+_PAPER_LADDER: tuple[str, ...] = ("A4", "A3", "A2", "A1", "A0")
+
+
+def _paper_capacity_rows(
+    paper: str,
+    *,
+    cell_w: float = AUTO_LAYOUT_COLUMN_SPACING_MM,
+    cell_h: float = AUTO_LAYOUT_ROW_SPACING_MM,
+) -> tuple[int, int]:
+    """Return ``(usable_cols, usable_rows)`` for a paper at a given cell pitch."""
+    return _sheet_usable_cols(paper, cell_w), _sheet_usable_rows(paper, cell_h)
+
+
+def select_paper_for_capacity(
+    required_rows: int,
+    *,
+    start_paper: str = "A4",
+    cell_w: float = AUTO_LAYOUT_COLUMN_SPACING_MM,
+    cell_h: float = AUTO_LAYOUT_ROW_SPACING_MM,
+) -> str:
+    """Return the smallest standard paper (>= ``start_paper``) holding ``required_rows``.
+
+    Never downsizes below ``start_paper`` so an explicit large sheet is preserved.
+    If even the largest ladder entry is too small the largest is returned — the
+    caller still gets a defined, on-ladder size rather than an overflow.
+    """
+    start = start_paper if start_paper in _PAPER_LADDER else "A4"
+    start_index = _PAPER_LADDER.index(start)
+    for paper in _PAPER_LADDER[start_index:]:
+        _, usable_rows = _paper_capacity_rows(paper, cell_w=cell_w, cell_h=cell_h)
+        if usable_rows >= required_rows:
+            return paper
+    return _PAPER_LADDER[-1]
+
+
 def _read_sheet_paper(sch_file: Path) -> str:
     """Read the paper size keyword from a .kicad_sch file, defaulting to 'A4'."""
     try:
@@ -1390,12 +1448,26 @@ def _apply_netlist_auto_layout(
     power_symbols: list[dict[str, Any]],
     labels: list[dict[str, Any]],
     nets: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    *,
+    paper: str = "A4",
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], str]:
     laid_out_symbols = [dict(item) for item in symbols]
     laid_out_powers = [dict(item) for item in power_symbols]
     laid_out_labels = [dict(item) for item in labels]
     refs = [str(symbol["reference"]) for symbol in laid_out_symbols if symbol.get("reference")]
     ordered_refs = _order_refs_by_connectivity(refs, nets)
+
+    # Grow the sheet so the symbol grid (at the wider netlist pitch) fits; power
+    # and label terminals are then placed relative to the symbols.
+    start_paper = paper if paper in _PAPER_LADDER else "A4"
+    cols = max(1, _sheet_usable_cols(start_paper, NETLIST_LAYOUT_COLUMN_SPACING_MM))
+    required_rows = math.ceil(max(len(laid_out_symbols), 1) / cols) + 1
+    chosen_paper = select_paper_for_capacity(
+        required_rows,
+        start_paper=start_paper,
+        cell_w=NETLIST_LAYOUT_COLUMN_SPACING_MM,
+        cell_h=NETLIST_LAYOUT_ROW_SPACING_MM,
+    )
 
     # Use occupancy grid to avoid symbol collisions in netlist layout too.
     netlist_occupied: set[tuple[int, int]] = set()
@@ -1414,6 +1486,7 @@ def _apply_netlist_auto_layout(
             netlist_occupied,
             cell_w=NETLIST_LAYOUT_COLUMN_SPACING_MM,
             cell_h=NETLIST_LAYOUT_ROW_SPACING_MM,
+            paper=chosen_paper,
         )
         generated_positions[reference] = (x, y)
 
@@ -1428,6 +1501,7 @@ def _apply_netlist_auto_layout(
                     netlist_occupied,
                     cell_w=NETLIST_LAYOUT_COLUMN_SPACING_MM,
                     cell_h=NETLIST_LAYOUT_ROW_SPACING_MM,
+                    paper=chosen_paper,
                 )
             _set_point(symbol, x, y)
         point = (_coord_value(symbol, "x"), _coord_value(symbol, "y"))
@@ -1482,28 +1556,64 @@ def _apply_netlist_auto_layout(
             y = center[1] + NETLIST_LABEL_OFFSET_MM
         _set_point(label, x, y)
 
-    return laid_out_symbols, laid_out_powers, laid_out_labels
+    return laid_out_symbols, laid_out_powers, laid_out_labels, chosen_paper
+
+
+def _basic_layout_bottom_row(n_symbols: int, n_gnd: int, n_labels: int, cols: int) -> int:
+    """Return the 0-based index of the lowest row the basic layout will fill.
+
+    Symbols fill rows ``0..symbol_rows-1`` at ``cols`` per row, GND power symbols
+    sit on the next row band, and labels below those. Used to size the sheet so
+    nothing is placed past the bottom margin.
+    """
+    cols = max(1, cols)
+    symbol_rows = max(1, math.ceil(max(n_symbols, 1) / cols))
+    bottom = symbol_rows - 1
+    gnd_row = symbol_rows
+    if n_gnd:
+        bottom = max(bottom, gnd_row + math.ceil(n_gnd / cols) - 1)
+    if n_labels:
+        label_row = gnd_row + 1
+        bottom = max(bottom, label_row + math.ceil(n_labels / cols) - 1)
+    return bottom
 
 
 def _apply_basic_auto_layout(
     symbols: list[dict[str, Any]],
     power_symbols: list[dict[str, Any]],
     labels: list[dict[str, Any]],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    *,
+    paper: str = "A4",
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], str]:
     laid_out_symbols = [dict(item) for item in symbols]
     laid_out_powers = [dict(item) for item in power_symbols]
     laid_out_labels = [dict(item) for item in labels]
 
+    # Grow the sheet up the paper ladder until the whole layout (symbols + GND
+    # band + label band) fits, so nothing is placed off-sheet. Columns are taken
+    # from the chosen paper's usable width.
+    n_gnd = sum(1 for p in laid_out_powers if str(p.get("name", "")).upper().startswith("GND"))
+    chosen_paper = paper if paper in _PAPER_LADDER else "A4"
+    for candidate in _PAPER_LADDER[_PAPER_LADDER.index(chosen_paper) :]:
+        cols = _sheet_usable_cols(candidate)
+        bottom = _basic_layout_bottom_row(len(laid_out_symbols), n_gnd, len(laid_out_labels), cols)
+        # +1 for the GND/label bands' own rows already counted; the positive-rail
+        # band sits at row -1 which the origin margin always accommodates.
+        if bottom < _sheet_usable_rows(candidate):
+            chosen_paper = candidate
+            break
+        chosen_paper = candidate
+    max_cols = _sheet_usable_cols(chosen_paper)
+
     # Use occupancy grid so every symbol gets a unique, non-overlapping slot.
     occupied: set[tuple[int, int]] = set()
-
     for symbol in laid_out_symbols:
-        x, y = _next_free_cell(occupied)
+        x, y = _next_free_cell(occupied, max_cols=max_cols)
         symbol["x_mm"] = x
         symbol["y_mm"] = y
         symbol.setdefault("snap_to_grid", True)
 
-    symbol_rows = max(1, math.ceil(max(len(laid_out_symbols), 1) / AUTO_LAYOUT_COLUMNS))
+    symbol_rows = max(1, math.ceil(max(len(laid_out_symbols), 1) / max_cols))
     gnd_row = symbol_rows
     positive_row = -1  # above origin row
 
@@ -1513,9 +1623,9 @@ def _apply_basic_auto_layout(
     for power_symbol in laid_out_powers:
         name = str(power_symbol.get("name", "")).upper()
         if name.startswith("GND"):
-            x, y = _next_free_cell(pwr_occupied_gnd, start_row=gnd_row)
+            x, y = _next_free_cell(pwr_occupied_gnd, start_row=gnd_row, max_cols=max_cols)
         else:
-            x, y = _next_free_cell(pwr_occupied_pos, start_row=positive_row)
+            x, y = _next_free_cell(pwr_occupied_pos, start_row=positive_row, max_cols=max_cols)
         power_symbol["x_mm"] = x
         power_symbol["y_mm"] = y
         power_symbol.setdefault("snap_to_grid", True)
@@ -1523,12 +1633,12 @@ def _apply_basic_auto_layout(
     label_row = gnd_row + 1
     lbl_occupied: set[tuple[int, int]] = set()
     for label in laid_out_labels:
-        x, y = _next_free_cell(lbl_occupied, start_row=label_row)
+        x, y = _next_free_cell(lbl_occupied, start_row=label_row, max_cols=max_cols)
         label["x_mm"] = x
         label["y_mm"] = y
         label.setdefault("snap_to_grid", True)
 
-    return laid_out_symbols, laid_out_powers, laid_out_labels
+    return laid_out_symbols, laid_out_powers, laid_out_labels, chosen_paper
 
 
 def _read_schematic_compatibility_data(sch_file: Path) -> dict[str, Any]:
@@ -3528,6 +3638,7 @@ def _prepare_build_circuit_inputs(
     snap_to_grid: bool = True,
     auto_layout: bool = False,
     unsafe_routed_wires: bool = False,
+    paper: str = "A4",
 ) -> tuple[
     list[AddSymbolInput],
     list[PowerSymbolInput],
@@ -3537,25 +3648,29 @@ def _prepare_build_circuit_inputs(
     list[dict[str, float | bool]],
     list[dict[str, Any]],
     dict[str, int],
+    str,
 ]:
     raw_symbols = [dict(item) for item in (symbols or [])]
     raw_powers = [dict(item) for item in (power_symbols or [])]
     raw_labels = [dict(item) for item in (labels or [])]
     raw_wires = [dict(item) for item in (wires or [])]
     raw_nets = [dict(item) for item in (nets or [])]
+    chosen_paper = paper if paper in _PAPER_LADDER else "A4"
     if auto_layout:
         if raw_nets:
-            raw_symbols, raw_powers, raw_labels = _apply_netlist_auto_layout(
+            raw_symbols, raw_powers, raw_labels, chosen_paper = _apply_netlist_auto_layout(
                 raw_symbols,
                 raw_powers,
                 raw_labels,
                 raw_nets,
+                paper=chosen_paper,
             )
         else:
-            raw_symbols, raw_powers, raw_labels = _apply_basic_auto_layout(
+            raw_symbols, raw_powers, raw_labels, chosen_paper = _apply_basic_auto_layout(
                 raw_symbols,
                 raw_powers,
                 raw_labels,
+                paper=chosen_paper,
             )
 
     validated_symbols = [AddSymbolInput.model_validate(item) for item in raw_symbols]
@@ -3626,6 +3741,7 @@ def _prepare_build_circuit_inputs(
         generated_wires,
         unresolved_nets,
         resolution_stats,
+        chosen_paper,
     )
 
 
@@ -4264,6 +4380,148 @@ def _update_symbol_property_block(
         "\t\t)\n"
     )
     return block[:insert_point] + property_block + block[insert_point:]
+
+
+def _set_property_position(block: str, field: str, x: float, y: float, angle: float) -> str:
+    """Rewrite the ``(at x y angle)`` of a named property inside a symbol block.
+
+    Returns the block unchanged when the property (or its ``at``) is absent, so
+    callers can apply this defensively. Only the property's own ``at`` is touched
+    — the symbol's placement ``at`` and any nested effects are left intact.
+    """
+    marker = f'(property "{field}"'
+    idx = block.find(marker)
+    if idx < 0:
+        return block
+    prop_block, length = _extract_block(block, idx)
+    if not prop_block:
+        return block
+    at_pattern = re.compile(r"\(at\s+[-\d.]+\s+[-\d.]+\s+[-\d.]+\)")
+    if at_pattern.search(prop_block) is None:
+        return block
+    new_at = f"(at {_fmt_mm(x)} {_fmt_mm(y)} {int(round(angle))})"
+    new_prop = at_pattern.sub(new_at, prop_block, count=1)
+    return block[:idx] + new_prop + block[idx + length :]
+
+
+def _symbol_body_and_pins(parsed: dict[str, Any]) -> tuple[GeoBox, list[tuple[float, float]]]:
+    """Return the body box and absolute pin tips for a parsed placed symbol."""
+    x = float(parsed.get("x", 0.0) or 0.0)
+    y = float(parsed.get("y", 0.0) or 0.0)
+    pin_points: list[tuple[float, float]] = []
+    lib_id = str(parsed.get("lib_id", "") or "")
+    if lib_id:
+        try:
+            library, symbol_name = _split_lib_id(lib_id)
+            pins = get_pin_positions(
+                library=library,
+                symbol_name=symbol_name,
+                sym_x=x,
+                sym_y=y,
+                rotation=int(parsed.get("rotation", 0) or 0),
+                unit=int(parsed.get("unit", 1) or 1),
+            )
+            pin_points = list(pins.values())
+        except (FileNotFoundError, OSError, ValueError) as exc:
+            logger.debug("autoplace_fields_pin_lookup_failed", lib_id=lib_id, error=str(exc))
+    body = body_box_from_pins(pin_points, center=(x, y))
+    return body, pin_points
+
+
+def _build_autoplace_fields_mutator(
+    sch_file: Path,
+    references: list[str] | None = None,
+) -> tuple[Callable[[str], str], list[str], list[str]]:
+    """Return ``(mutator, targets, updated)`` for Reference/Value field placement.
+
+    ``mutator`` rewrites each target symbol's visible field positions; ``updated``
+    is appended to as the mutator runs so callers can report what changed. Shared
+    by the ``sch_autoplace_fields`` tool and the readability fix loop.
+    """
+    symbols = parse_schematic_file(sch_file)["symbols"]
+    wanted = set(references) if references else None
+
+    bodies: dict[str, GeoBox] = {}
+    body_pins: dict[str, tuple[GeoBox, list[tuple[float, float]]]] = {}
+    for symbol in symbols:
+        ref = str(symbol.get("reference", ""))
+        if not ref:
+            continue
+        body, pins = _symbol_body_and_pins(symbol)
+        bodies[ref] = body
+        body_pins[ref] = (body, pins)
+
+    targets = [
+        str(s.get("reference", ""))
+        for s in symbols
+        if str(s.get("reference", "")) and (wanted is None or str(s.get("reference", "")) in wanted)
+    ]
+    updated: list[str] = []
+
+    def mutator(content: str) -> str:
+        new_content = content
+        for ref in targets:
+            match = _find_placed_symbol_block(new_content, ref)
+            if match is None:
+                continue
+            block, start, end, parsed = match
+            body, pins = body_pins.get(ref, _symbol_body_and_pins(parsed))
+            obstacles = [b for other, b in bodies.items() if other != ref]
+            specs = [
+                FieldSpec("Reference", str(parsed.get("reference", ""))),
+                FieldSpec("Value", str(parsed.get("value", ""))),
+            ]
+            placements = autoplace_fields(body, pins, obstacles, specs)
+            new_block = block
+            for spec, placement in zip(specs, placements, strict=True):
+                if not spec.text:
+                    continue
+                new_block = _set_property_position(
+                    new_block, spec.name, placement.x, placement.y, placement.angle
+                )
+            if new_block != block:
+                new_content = new_content[:start] + new_block + new_content[end:]
+                updated.append(ref)
+        return new_content
+
+    return mutator, targets, updated
+
+
+def _autoplace_fields_apply(sch_file: Path, references: list[str] | None = None) -> list[str]:
+    """Apply Reference/Value field auto-placement to ``sch_file`` and return moved refs."""
+    mutator, targets, updated = _build_autoplace_fields_mutator(sch_file, references)
+    if not targets:
+        return []
+    _transactional_write_to_schematic_file(sch_file, mutator)
+    return updated
+
+
+def _resize_sheet_apply(sch_file: Path, paper: str) -> bool:
+    """Set the sheet paper size on ``sch_file``; return whether it changed."""
+    if paper not in PAPER_SIZES_MM:
+        return False
+    changed = False
+
+    def mutator(current: str) -> str:
+        nonlocal changed
+        new_text = re.sub(
+            r'\(paper\s+"[^"]+"(?:\s+[\d.]+\s+[\d.]+)?\)',
+            f'(paper "{paper}")',
+            current,
+            count=1,
+        )
+        if new_text == current and "(paper" not in current:
+            new_text = re.sub(
+                r"(\(kicad_sch[^\n]*\n)",
+                rf'\1\t(paper "{paper}")\n',
+                current,
+                count=1,
+            )
+        changed = new_text != current
+        return new_text
+
+    _transactional_write_to_schematic_file(sch_file, mutator)
+    return changed
 
 
 def _update_symbol_property_text_fallback(reference: str, field: str, value: str) -> str:
@@ -5652,6 +5910,7 @@ def register(mcp: FastMCP) -> None:
             generated_wires,
             unresolved_nets,
             resolution_stats,
+            _chosen_paper,
         ) = _prepare_build_circuit_inputs(
             symbols=symbols,
             wires=wires,
@@ -5715,6 +5974,7 @@ def register(mcp: FastMCP) -> None:
           2. Pass those coordinates in the ``symbols`` list.
           3. OR set ``auto_layout=True`` and omit coordinates entirely.
         """
+        start_paper = _read_sheet_paper(_get_schematic_file())
         (
             validated_symbols,
             validated_powers,
@@ -5724,6 +5984,7 @@ def register(mcp: FastMCP) -> None:
             generated_wires,
             unresolved_nets,
             resolution_stats,
+            chosen_paper,
         ) = _prepare_build_circuit_inputs(
             symbols=symbols,
             wires=wires,
@@ -5733,6 +5994,7 @@ def register(mcp: FastMCP) -> None:
             snap_to_grid=snap_to_grid,
             auto_layout=auto_layout,
             unsafe_routed_wires=unsafe_routed_wires,
+            paper=start_paper,
         )
         if unresolved_nets:
             logger.warning(
@@ -5761,6 +6023,10 @@ def register(mcp: FastMCP) -> None:
 
         sch_file = _get_schematic_file()
         paper_declaration = _read_sheet_paper_declaration(sch_file)
+        # If auto-layout had to grow the sheet to keep every symbol on-page, write
+        # the larger size rather than the (now too small) original declaration.
+        if auto_layout and chosen_paper != start_paper and chosen_paper in PAPER_SIZES_MM:
+            paper_declaration = f'(paper "{chosen_paper}")'
         root_uuid = new_uuid()
         cfg = get_config()
         project_name = cfg.project_file.stem if cfg.project_file is not None else "KiCadMCP"
@@ -6476,6 +6742,126 @@ def register(mcp: FastMCP) -> None:
             f"Overlap-aware placement respected {len(fixed_syms)} fixed obstacle(s)."
             f"{missing_suffix}"
         )
+
+    @mcp.tool()
+    @headless_compatible
+    def sch_autoplace_fields(references: list[str] | None = None, dry_run: bool = False) -> str:
+        """Reposition symbol Reference/Value text onto the clearest body side.
+
+        Mirrors KiCad's ``autoplace_fields``: for each symbol the visible
+        Reference and Value fields are moved to the body side with the most
+        clearance, away from pins and neighbouring symbols, so the rendered sheet
+        stops stacking text on top of other text. Footprint/Datasheet and hidden
+        fields are left untouched. Pass ``references`` to limit the operation to
+        specific designators, or ``dry_run`` to preview the count without writing.
+
+        Run this after ``sch_auto_place_symbols`` (or any bulk placement) and use
+        ``sch_visual_qa`` to confirm the ``text_overlap`` findings clear.
+        """
+        sch_file = _get_schematic_file()
+        mutator, targets, updated = _build_autoplace_fields_mutator(sch_file, references)
+        if not targets:
+            return _with_schematic_diagnostics(
+                "No matching symbols found to auto-place fields for.", sch_file
+            )
+
+        if dry_run:
+            mutator(sch_file.read_text(encoding="utf-8"))
+            return (
+                f"Dry run: would reposition Reference/Value fields on {len(updated)} "
+                f"symbol(s): {', '.join(updated) if updated else '(none)'}."
+            )
+
+        _transactional_write_to_schematic_file(sch_file, mutator)
+        result = _reload_schematic()
+        return (
+            f"{result}\n"
+            f"Auto-placed Reference/Value fields on {len(updated)} symbol(s)"
+            f"{': ' + ', '.join(updated) if updated else ''}."
+        )
+
+    @mcp.tool()
+    @headless_compatible
+    def sch_fix_readability(max_passes: int = 3) -> str:
+        """Iteratively fix schematic readability defects until clean or stable.
+
+        Runs the headless ``sch_visual_qa`` checks, then applies the matching
+        fixer and re-checks, looping until the sheet passes, no further progress
+        is made, or ``max_passes`` is reached:
+
+        - **off-sheet** symbols/labels -> grow the sheet one paper size (A4 -> A3 ...)
+        - **text overlap** -> auto-place Reference/Value fields onto clear body sides
+
+        Symbol-body overlaps and dense label clusters are *reported* but not
+        auto-moved (re-placing symbols can undo intentional layout); use
+        ``sch_auto_place_functional`` / ``sch_auto_resize_sheet`` for those. Returns
+        a per-pass log with the before/after QA status so the closing state is
+        explicit.
+        """
+        passes = max(1, max_passes)
+        sch_file = _get_schematic_file()
+        actions: list[str] = []
+        pass_log: list[str] = []
+        initial_status: str | None = None
+        final_status = "PASS"
+        remaining: set[str] = set()
+
+        for pass_index in range(passes):
+            report = _run_visual_qa(sch_file.read_text(encoding="utf-8", errors="ignore"))
+            status = str(report["status"])
+            findings = report["findings"]
+            codes = {str(f["code"]) for f in findings} if isinstance(findings, list) else set()
+            if initial_status is None:
+                initial_status = status
+            final_status = status
+            pass_log.append(
+                f"pass {pass_index + 1}: {status} ({', '.join(sorted(codes)) or 'clean'})"
+            )
+            if status == "PASS":
+                break
+
+            changed = False
+            if {"offsheet_symbol", "offsheet_label"} & codes:
+                current_paper = _read_sheet_paper(sch_file)
+                ladder_index = (
+                    _PAPER_LADDER.index(current_paper) if current_paper in _PAPER_LADDER else 0
+                )
+                if ladder_index < len(_PAPER_LADDER) - 1:
+                    target = _PAPER_LADDER[ladder_index + 1]
+                    if _resize_sheet_apply(sch_file, target):
+                        actions.append(f"grew sheet to {target}")
+                        changed = True
+            if "text_overlap" in codes:
+                moved = _autoplace_fields_apply(sch_file)
+                if moved:
+                    actions.append(f"auto-placed fields on {len(moved)} symbol(s)")
+                    changed = True
+
+            if not changed:
+                remaining = codes
+                break
+            remaining = codes
+
+        if actions:
+            _reload_schematic()
+
+        unresolved = sorted(remaining & {"symbol_overlap", "label_overlap", "dense_label_fanout"})
+        summary = [
+            f"Readability fix: {initial_status or 'PASS'} -> {final_status} "
+            f"over {len(pass_log)} pass(es).",
+            *pass_log,
+        ]
+        if actions:
+            summary.append("Applied: " + "; ".join(actions) + ".")
+        else:
+            summary.append("No automatic fixes were applied.")
+        if unresolved:
+            summary.append(
+                "Manual follow-up suggested for: "
+                + ", ".join(unresolved)
+                + " (try sch_auto_place_functional / sch_auto_resize_sheet)."
+            )
+        return "\n".join(summary)
 
     # -----------------------------------------------------------------------
     # Spatial awareness tools (v2.1.0)

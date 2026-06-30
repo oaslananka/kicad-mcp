@@ -147,4 +147,6 @@ SCHEMATIC_PUBLIC_TOOL_NAMES = (
     "sch_get_connectivity_graph",
     "sch_trace_net",
     "sch_auto_place_symbols",
+    "sch_autoplace_fields",
+    "sch_fix_readability",
 )

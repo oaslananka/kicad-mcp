@@ -73,6 +73,11 @@
     "verified_surface": [],
     "notes": "No-connect markers remain a compatibility wrapper around the KiCad file format."
   },
+  "sch_add_missing_junctions": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [],
+    "notes": "Missing schematic junctions are repaired from file-level wire geometry."
+  },
   "sch_update_properties": {
     "kicad_sch_api_support": "wrapper_needed",
     "verified_surface": [
@@ -170,11 +175,6 @@
     ],
     "notes": "Pin-to-pin routing is exposed in kicad-sch-api, but the wrapper keeps the current Manhattan-routing contract deterministic."
   },
-  "sch_add_missing_junctions": {
-    "kicad_sch_api_support": "wrapper_needed",
-    "verified_surface": [],
-    "notes": "Missing schematic junctions are repaired from file-level wire geometry."
-  },
   "sch_get_connectivity_graph": {
     "kicad_sch_api_support": "wrapper_needed",
     "verified_surface": [
@@ -201,5 +201,19 @@
       "Schematic.save"
     ],
     "notes": "Auto-placement is implemented as a deterministic wrapper around component move helpers."
+  },
+  "sch_autoplace_fields": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "ComponentCollection.get"
+    ],
+    "notes": "Reference/Value field auto-placement is a deterministic S-expression wrapper; kicad-sch-api does not expose KiCad's autoplace_fields."
+  },
+  "sch_fix_readability": {
+    "kicad_sch_api_support": "wrapper_needed",
+    "verified_surface": [
+      "ComponentCollection.get"
+    ],
+    "notes": "Closed-loop readability fixer orchestrating headless visual-QA, field auto-placement, and sheet resizing; no direct kicad-sch-api surface."
   }
 }

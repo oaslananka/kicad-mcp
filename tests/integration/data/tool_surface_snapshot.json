@@ -5620,6 +5620,29 @@
   {
     "destructive": false,
     "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "sch_autoplace_fields",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "power",
+      "schematic",
+      "schematic_authoring",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
     "headless": false,
     "idempotent": false,
     "name": "sch_build_circuit",
@@ -5761,6 +5784,29 @@
     "headless": true,
     "idempotent": false,
     "name": "sch_find_free_placement",
+    "open_world": false,
+    "profiles": [
+      "agent_full",
+      "builder",
+      "critic",
+      "expert",
+      "full",
+      "high_speed",
+      "power",
+      "schematic",
+      "schematic_authoring",
+      "schematic_only",
+      "simulation"
+    ],
+    "read_only": false,
+    "requires_kicad_running": false
+  },
+  {
+    "destructive": false,
+    "experimental": false,
+    "headless": true,
+    "idempotent": false,
+    "name": "sch_fix_readability",
     "open_world": false,
     "profiles": [
       "agent_full",

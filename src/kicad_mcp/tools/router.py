@@ -284,6 +284,8 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "sch_get_connectivity_graph",
             "sch_trace_net",
             "sch_auto_place_symbols",
+            "sch_autoplace_fields",
+            "sch_fix_readability",
             "sch_check_power_flags",
             "sch_annotate",
             "sch_reload",
