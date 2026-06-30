@@ -2239,3 +2239,55 @@ async def test_schematic_set_title_block_info_dry_run_does_not_write(
     assert "Planned Only" not in after
     assert payload["dry_run"] is True
     assert payload["changed_objects"] == ["title_block.title"]
+
+
+@pytest.mark.anyio
+async def test_sch_add_symbol_rejects_missing_symbol_with_suggestion(
+    sample_project, mock_kicad
+) -> None:
+    server = build_server("schematic")
+    # 'R' exists in the fixture Device library; 'Resistor' does not.
+    result = await call_tool_text(
+        server,
+        "sch_add_symbol",
+        {
+            "library": "Device",
+            "symbol_name": "Resistor",
+            "x_mm": 50.0,
+            "y_mm": 50.0,
+            "reference": "R1",
+            "value": "10k",
+        },
+    )
+    assert "was not found" in result
+
+
+@pytest.mark.anyio
+async def test_build_circuit_rejects_missing_symbol(sample_project, mock_kicad) -> None:
+    server = build_server("schematic")
+    text = await call_tool_text(
+        server,
+        "sch_build_circuit",
+        {
+            "symbols": [
+                {
+                    "library": "Device",
+                    "symbol_name": "DoesNotExist",
+                    "x_mm": 50.0,
+                    "y_mm": 50.0,
+                    "reference": "U1",
+                    "value": "x",
+                }
+            ]
+        },
+    )
+    assert "not found" in text.lower()
+
+
+def test_symbol_existence_validation_is_conservative() -> None:
+    # An unlocatable library returns None so symbols are never false-rejected.
+    from kicad_mcp.tools.schematic import _validate_symbol_resolves, symbol_exists
+
+    assert symbol_exists("NoSuchLibraryXYZ", "Whatever") is None
+    # Must not raise for a library this headless reader cannot locate.
+    _validate_symbol_resolves("NoSuchLibraryXYZ", "Whatever")
