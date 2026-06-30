@@ -179,6 +179,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
             "pcb_get_ratsnest",
             "pcb_get_design_rules",
             "pcb_get_footprint_layers",
+            "pcb_visual_qa",
             "pcb_get_impedance_for_trace",
             "pcb_get_groups",
             "pcb_get_origin",

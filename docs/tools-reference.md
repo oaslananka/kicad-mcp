@@ -131,7 +131,7 @@ Built-in prompt helpers for the critic/fixer loop:
 
 Machine-maintained catalog. Refresh with `pnpm run docs:tools`.
 
-Total public tools: 363.
+Total public tools: 364.
 
 | Tool | Profile(s) | Read-Only | Destructive | Open-World | Idempotent | Headless | Requires KiCad Running | Summary |
 |---|---|---:|---:|---:|---:|---:|---:|---|
@@ -339,6 +339,7 @@ Total public tools: 363.
 | `pcb_sync_from_schematic` | agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power | no | no | no | no | yes | no | Sync missing PCB footprints from schematic footprint assignments. |
 | `pcb_transfer_quality_gate` | agent_full, analysis, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, pcb, pcb_layout, power, release_manager, schematic, schematic_authoring | yes | no | no | yes | yes | no | Evaluate whether named schematic pad nets transferred cleanly onto PCB pads. |
 | `pcb_upgrade` | agent_full, expert, full, manufacturing, manufacturing_release | no | no | no | yes | yes | no | Upgrade a PCB file to the current KiCad file format. |
+| `pcb_visual_qa` | agent_full, analysis, beginner, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, minimal, pcb, pcb_layout, pcb_only, power, read_only_inspection, release_manager | no | no | no | no | yes | no | Headless PCB readability QA: off-board parts, silk and body overlap. |
 | `pdn_calculate_voltage_drop` | agent_full, analysis, critic, expert, full, power | no | no | no | no | no | no | Estimate DC voltage drop, trace resistance, and IPC-2221 current-density fusing. |
 | `pdn_check_copper_weight` | agent_full, analysis, critic, expert, full, power | no | no | no | no | no | no | Check whether the routed copper for a net looks sufficient for the load current. |
 | `pdn_generate_power_plane` | agent_full, analysis, critic, expert, full, power | no | no | no | no | no | no | Generate a rectangular copper plane on the requested copper layer. |
@@ -705,6 +706,7 @@ Total public tools: 363.
 - `pcb_sync_from_schematic`: profiles=agent_full, builder, expert, full, high_speed, pcb, pcb_layout, pcb_only, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `pcb_transfer_quality_gate`: profiles=agent_full, analysis, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, pcb, pcb_layout, power, release_manager, schematic, schematic_authoring; readOnly=yes; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
 - `pcb_upgrade`: profiles=agent_full, expert, full, manufacturing, manufacturing_release; readOnly=no; destructive=no; openWorld=no; idempotent=yes; headless=yes; requiresKiCadRunning=no.
+- `pcb_visual_qa`: profiles=agent_full, analysis, beginner, builder, critic, expert, full, high_speed, manufacturing, manufacturing_release, minimal, pcb, pcb_layout, pcb_only, power, read_only_inspection, release_manager; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=yes; requiresKiCadRunning=no.
 - `pdn_calculate_voltage_drop`: profiles=agent_full, analysis, critic, expert, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `pdn_check_copper_weight`: profiles=agent_full, analysis, critic, expert, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
 - `pdn_generate_power_plane`: profiles=agent_full, analysis, critic, expert, full, power; readOnly=no; destructive=no; openWorld=no; idempotent=no; headless=no; requiresKiCadRunning=no.
