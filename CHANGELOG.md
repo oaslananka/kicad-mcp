@@ -10,6 +10,25 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.16.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.15.1...mcp-server-v3.16.0) (2026-06-30)
+
+
+### Features
+
+* schematic + PCB readability and placement engine ([#247](https://github.com/oaslananka/kicad-mcp/issues/247)) ([d7b9a15](https://github.com/oaslananka/kicad-mcp/commit/d7b9a15a62d5209d92b546bc4fa099f563690716))
+* **schematic:** size-aware netlist auto-layout so large parts get room ([#254](https://github.com/oaslananka/kicad-mcp/issues/254)) ([79664c5](https://github.com/oaslananka/kicad-mcp/commit/79664c5611ef3722be9fc054dbc54e87e9092fc1))
+
+
+### Bug Fixes
+
+* **rules:** recognise suffixed/compound supply-rail names ([#250](https://github.com/oaslananka/kicad-mcp/issues/250)) ([0f0fab1](https://github.com/oaslananka/kicad-mcp/commit/0f0fab1a90f0445a58f6284b1f19cd2c2e4bdf0e))
+* **schematic:** scale terminal-label stub length to the net name ([#253](https://github.com/oaslananka/kicad-mcp/issues/253)) ([1de03cc](https://github.com/oaslananka/kicad-mcp/commit/1de03ccf8053daa8cb1aa7dc751389037a032363))
+
+
+### Documentation
+
+* **prompts:** wire readability QA into design workflows ([#249](https://github.com/oaslananka/kicad-mcp/issues/249)) ([4e4067c](https://github.com/oaslananka/kicad-mcp/commit/4e4067c0bfa222a0fc0cf3f5b9def0bc75b9b560))
+
 ## [3.15.1](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.15.0...mcp-server-v3.15.1) (2026-06-29)
 
 
