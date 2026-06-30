@@ -57,3 +57,25 @@ def test_small_basic_layout_stays_on_a4() -> None:
     )
     assert paper == "A4"
     assert all(float(s["y_mm"]) <= PAPER_SIZES_MM["A4"][1] for s in laid_sym)
+
+
+def test_symbol_footprint_cells_scales_with_extent() -> None:
+    from kicad_mcp.tools.schematic import _symbol_footprint_cells
+
+    # Unknown extent -> a single cell.
+    assert _symbol_footprint_cells(None, 38.1, 35.56) == (1, 1)
+    # A tall multi-pin part (extent height 40 mm + margin) needs >1 row.
+    cols, rows = _symbol_footprint_cells((0.0, 0.0, 6.0, 40.0), 38.1, 35.56)
+    assert rows >= 2 and cols >= 1
+
+
+def test_next_free_block_reserves_non_overlapping_blocks() -> None:
+    from kicad_mcp.tools.schematic import _next_free_block
+
+    occupied: set[tuple[int, int]] = set()
+    first = _next_free_block(occupied, 2, 2, cell_w=20.0, cell_h=20.0, paper="A2")
+    assert first == (0, 0)
+    # The 2x2 block (0,0)-(1,1) is now reserved.
+    assert {(0, 0), (1, 0), (0, 1), (1, 1)} <= occupied
+    second = _next_free_block(occupied, 1, 1, cell_w=20.0, cell_h=20.0, paper="A2")
+    assert second not in {(0, 0), (1, 0), (0, 1), (1, 1)}
