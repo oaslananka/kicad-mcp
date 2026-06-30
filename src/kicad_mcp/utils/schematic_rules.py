@@ -50,6 +50,19 @@ _SUPPLY_TOKENS = (
 
 # e.g. +3V3, 3V3, +5V, 5V, +1V8, +12V, 3.3V
 _VOLTAGE_RAIL_RE = re.compile(r"^\+?\d+(?:[V.]\d+)?V?$", re.IGNORECASE)
+
+# A voltage token embedded in a suffixed/compound rail name: the ``3V3`` in
+# ``3V3_DIG``/``3V3_ANA``, the ``5V`` in ``5V_SYS``/``VBUS_5V``/``VPOE_5V``. The
+# ``V`` is required so plain numeric domain suffixes (``BANK_12``, ``GPIO_5``) are
+# not mistaken for rails.
+_VOLTAGE_TOKEN_RE = re.compile(r"^\d+V\d*$", re.IGNORECASE)
+
+
+def _has_voltage_token(token: str) -> bool:
+    """Whether any ``_``/``-`` delimited part of ``token`` encodes a voltage."""
+    return any(_VOLTAGE_TOKEN_RE.match(part) for part in re.split(r"[_-]", token) if part)
+
+
 _I2C_TOKEN_RE = re.compile(r"(?:^|[^A-Z])(SDA|SCL)(?:[^A-Z]|\d|$)")
 
 
@@ -111,6 +124,8 @@ def is_supply_rail_name(name: str) -> bool:
         return True
     if any(supply in token for supply in _SUPPLY_TOKENS):
         return True
+    if _has_voltage_token(token):
+        return True
     return bool(_VOLTAGE_RAIL_RE.match(token)) and token not in {"0V"}
 
 
@@ -125,7 +140,15 @@ def rail_voltage(name: str) -> float | None:
     rails without an explicit number (``VCC``, ``VDD``, ``VBUS``) return ``None``
     so they are never compared by value.
     """
-    match = _RAIL_VOLTAGE_RE.match(name.strip().upper())
+    token = name.strip().upper()
+    match = _RAIL_VOLTAGE_RE.match(token)
+    if match is None:
+        # Suffixed/compound names (3V3_DIG, 5V_SYS, VBUS_5V): parse the embedded
+        # voltage token so value-conflict checks still apply.
+        for part in re.split(r"[_-]", token):
+            if _VOLTAGE_TOKEN_RE.match(part):
+                match = _RAIL_VOLTAGE_RE.match(part)
+                break
     if match is None:
         return None
     whole, frac = match.group(1), match.group(2)

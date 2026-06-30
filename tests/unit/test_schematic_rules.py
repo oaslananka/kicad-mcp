@@ -42,6 +42,26 @@ def test_supply_rail_classification() -> None:
         assert not is_supply_rail_name(name), name
 
 
+def test_supply_rail_classification_suffixed_and_compound_names() -> None:
+    # Common project naming with a domain suffix or an embedded voltage token
+    # (e.g. SismoSmart's rails) must still read as supply rails.
+    for name in ["3V3_DIG", "3V3_ANA", "5V_SYS", "VBUS_5V", "VPOE_5V", "3V3-DIG"]:
+        assert is_supply_rail_name(name), name
+    # A plain numeric domain suffix is not a rail (no V token).
+    for name in ["GPIO_5", "BANK_12", "SPI_SCLK", "CS_ADXL", "DATA0"]:
+        assert not is_supply_rail_name(name), name
+
+
+def test_rail_voltage_parses_embedded_voltage_token() -> None:
+    assert rail_voltage("3V3_DIG") == 3.3
+    assert rail_voltage("3V3_ANA") == 3.3
+    assert rail_voltage("5V_SYS") == 5.0
+    assert rail_voltage("VBUS_5V") == 5.0
+    assert rail_voltage("VPOE_5V") == 5.0
+    assert rail_voltage("VBAT") is None  # named rail, no explicit voltage
+    assert rail_voltage("GPIO_5") is None
+
+
 def test_ground_and_i2c_classification() -> None:
     assert is_ground_name("GND") and is_ground_name("agnd")
     assert is_i2c_name("SDA") and is_i2c_name("I2C_SCL") and is_i2c_name("SENSOR_SDA")
