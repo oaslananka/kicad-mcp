@@ -381,3 +381,23 @@ def test_terminal_stub_length_scales_with_net_name() -> None:
     long_stub = _terminal_stub_length("VBUS_5V")
     assert long_stub > 5.08
     assert abs(long_stub / 2.54 - round(long_stub / 2.54)) < 1e-6  # grid-aligned
+
+
+def test_pin_alias_resolves_diff_pair_and_duplicate_contacts() -> None:
+    from kicad_mcp.tools.schematic import _pin_alias_positions
+
+    # A connector-like block: D+ appears on two contacts (same signal), D- once.
+    # Differential +/- names must stay distinct; the duplicated D+ must not drop.
+    block = (
+        '(symbol "X_1_1"'
+        ' (pin passive line (at 0 5.08 0) (length 2.54) (name "D+") (number "1"))'
+        ' (pin passive line (at 0 -5.08 0) (length 2.54) (name "D-") (number "2"))'
+        ' (pin passive line (at 0 7.62 0) (length 2.54) (name "D+") (number "3")))'
+    )
+    aliases = _pin_alias_positions(block, 0.0, 0.0, 0)
+    assert "D+" in aliases and "D-" in aliases
+    assert aliases["D+"] != aliases["D-"]
+    # The normalized "d" (D+ vs D- collision) is ambiguous and must be dropped.
+    assert "d" not in aliases
+    # Pin numbers still resolve.
+    assert aliases["1"] == aliases["D+"]  # keep-first contact for D+
