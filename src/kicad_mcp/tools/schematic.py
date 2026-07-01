@@ -3095,6 +3095,71 @@ def get_symbol_available_units(library: str, symbol_name: str) -> set[int]:
     return _available_units_from_blocks(blocks)
 
 
+def symbol_exists(library: str, symbol_name: str) -> bool | None:
+    """Return whether ``library:symbol_name`` is present in the library.
+
+    ``None`` means the library file itself could not be located by this headless
+    reader, so callers must NOT treat the symbol as missing (it may resolve via a
+    library table this reader does not see). ``False`` means the library was found
+    but does not contain the symbol — a genuine "not found".
+    """
+    sym_file = _symbol_library_file(library)
+    if sym_file is None:
+        return None
+    content = sym_file.read_text(encoding="utf-8", errors="ignore")
+    return bool(_collect_symbol_blocks(content, symbol_name))
+
+
+def suggest_symbol_names(library: str, symbol_name: str, *, limit: int = 3) -> list[str]:
+    """Return up to ``limit`` close top-level symbol names from ``library``.
+
+    Used to turn a wrong/non-existent symbol name into an actionable hint (e.g.
+    ``USB_C_Receptacle_USB2.0`` -> ``USB_C_Receptacle_USB2.0_16P``).
+    """
+    sym_file = _symbol_library_file(library)
+    if sym_file is None:
+        return []
+    content = sym_file.read_text(encoding="utf-8", errors="ignore")
+    tops = [
+        name
+        for name in re.findall(r'\(symbol\s+"([^"]+)"', content)
+        if not re.search(r"_\d+_\d+$", name)  # drop graphic child-unit symbols
+    ]
+    target = symbol_name.lower()
+
+    def _score(name: str) -> int:
+        low = name.lower()
+        if low == target:
+            return 0
+        if low.startswith(target) or target.startswith(low):
+            return 1
+        # longest shared prefix length (higher = closer); negate for ascending sort
+        shared = 0
+        for a, b in zip(low, target, strict=False):
+            if a != b:
+                break
+            shared += 1
+        return 100 - shared if shared >= 4 else 999
+
+    scored = sorted(((_score(n), n) for n in tops), key=lambda t: (t[0], t[1]))
+    return [name for score, name in scored if score < 999][:limit]
+
+
+def _validate_symbol_resolves(library: str, symbol_name: str) -> None:
+    """Raise a clear error if ``library:symbol_name`` is provably missing.
+
+    No-op when the library cannot be located (``symbol_exists`` returns ``None``)
+    so symbols from library tables this reader does not see are not false-rejected.
+    """
+    if symbol_exists(library, symbol_name) is False:
+        suggestions = suggest_symbol_names(library, symbol_name)
+        hint = f" Did you mean: {', '.join(suggestions)}?" if suggestions else ""
+        raise ValueError(
+            f"Symbol '{library}:{symbol_name}' was not found in library '{library}'. "
+            f"Search with lib_search_symbols and use the exact symbol name.{hint}"
+        )
+
+
 def _format_available_units(units: set[int]) -> str:
     return ", ".join(str(unit) for unit in sorted(units)) if units else "unknown"
 
@@ -3793,6 +3858,7 @@ def _prepare_build_circuit_inputs(
     validated_wires = [AddWireInput.model_validate(item) for item in raw_wires]
     validated_labels = [AddLabelInput.model_validate(item) for item in raw_labels]
     for symbol in validated_symbols:
+        _validate_symbol_resolves(symbol.library, symbol.symbol_name)
         available_units = get_symbol_available_units(symbol.library, symbol.symbol_name)
         if available_units and symbol.unit not in available_units:
             raise ValueError(
@@ -5154,7 +5220,9 @@ def register(mcp: FastMCP) -> None:
         snap_note = _snap_notice((payload.x_mm, payload.y_mm), (symbol_x, symbol_y))
         lib_def = load_lib_symbol(payload.library, payload.symbol_name)
         if lib_def is None:
-            return f"Symbol '{payload.library}:{payload.symbol_name}' was not found."
+            suggestions = suggest_symbol_names(payload.library, payload.symbol_name)
+            hint = f" Did you mean: {', '.join(suggestions)}?" if suggestions else ""
+            return f"Symbol '{payload.library}:{payload.symbol_name}' was not found.{hint}"
         available_units = get_symbol_available_units(payload.library, payload.symbol_name)
         if available_units and payload.unit not in available_units:
             return (
