@@ -369,3 +369,15 @@ def test_schematic_routing_endpoint_helpers_cover_fallbacks() -> None:
     assert _describe_net_endpoint({"power": "GND"}) == "power:GND"
     assert _describe_net_endpoint({"label": "OUT"}) == "label:OUT"
     assert _describe_net_endpoint({}) == "<unresolved-endpoint>"
+
+
+def test_terminal_stub_length_scales_with_net_name() -> None:
+    from kicad_mcp.tools.schematic import _terminal_stub_length
+
+    # Short names keep the historical 5.08 mm stub; long names are pushed out so
+    # the global-label text clears the symbol body, snapped to the 2.54 mm grid.
+    assert _terminal_stub_length("GND") == 5.08
+    assert _terminal_stub_length("3V3") == 5.08
+    long_stub = _terminal_stub_length("VBUS_5V")
+    assert long_stub > 5.08
+    assert abs(long_stub / 2.54 - round(long_stub / 2.54)) < 1e-6  # grid-aligned
