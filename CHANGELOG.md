@@ -10,6 +10,14 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.16.1](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.16.0...mcp-server-v3.16.1) (2026-07-01)
+
+
+### Bug Fixes
+
+* **schematic:** reject non-existent symbols instead of placing them silently ([#252](https://github.com/oaslananka/kicad-mcp/issues/252)) ([d00958a](https://github.com/oaslananka/kicad-mcp/commit/d00958a74307941a1d85a464ce766e21548ba07a))
+* **schematic:** resolve +/- differential-pin names in net endpoints ([#255](https://github.com/oaslananka/kicad-mcp/issues/255)) ([1866228](https://github.com/oaslananka/kicad-mcp/commit/1866228394b4265c5f02e558cab9e124ff201114))
+
 ## [3.16.0](https://github.com/oaslananka/kicad-mcp/compare/mcp-server-v3.15.1...mcp-server-v3.16.0) (2026-06-30)
 
 
