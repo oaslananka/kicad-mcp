@@ -2815,25 +2815,33 @@ def _pin_alias_positions(
     sym_y: float,
     rotation: int,
 ) -> dict[str, tuple[float, float]]:
-    aliases: dict[str, tuple[float, float]] = {}
-    conflicts: set[str] = set()
+    """Return ``{alias: position}`` for a symbol block's pins.
+
+    Exact identifiers (pin number, pin name, and their case-folds) use *keep the
+    first occurrence* semantics: a connector that repeats a name across contacts
+    of the same signal (a USB-C receptacle exposes ``D+``/``D-`` on two contacts
+    each) still resolves that name instead of being dropped as ambiguous. Only
+    the *normalized* aliases (which fold ``D+`` and ``D-`` both to ``d``) are
+    conflict-dropped, so a genuinely ambiguous fuzzy match never mis-resolves.
+    """
+    exact: dict[str, tuple[float, float]] = {}
+    fuzzy: dict[str, tuple[float, float]] = {}
+    fuzzy_conflicts: set[str] = set()
     for record in _extract_pin_records(block):
         rx, ry = rotate_point(float(record["x"]), -float(record["y"]), rotation)
         point = (round(sym_x + rx, 4), round(sym_y + ry, 4))
         number = str(record["number"])
         name = str(record["name"])
-        for alias in {
-            number,
-            name,
-            number.casefold(),
-            name.casefold(),
-            _normalize_pin_alias(number),
-            _normalize_pin_alias(name),
-        }:
-            _merge_pin_alias(aliases, conflicts, alias, point)
-    for alias in conflicts:
-        aliases.pop(alias, None)
-    return aliases
+        for identifier in (number, name, number.casefold(), name.casefold()):
+            if identifier:
+                exact.setdefault(identifier, point)
+        for alias in (_normalize_pin_alias(number), _normalize_pin_alias(name)):
+            _merge_pin_alias(fuzzy, fuzzy_conflicts, alias, point)
+    for alias in fuzzy_conflicts:
+        fuzzy.pop(alias, None)
+    merged = dict(fuzzy)
+    merged.update(exact)  # exact identifiers win over normalized aliases
+    return merged
 
 
 def _available_units_from_blocks(blocks: list[str]) -> set[int]:
@@ -3041,8 +3049,10 @@ def get_pin_alias_positions(
     if available_units and unit not in available_units:
         return {}
 
+    # Each block already resolves its own exact/normalized aliases; merge blocks
+    # with keep-first so a name resolved in one block is not dropped by a repeat
+    # in another.
     aliases: dict[str, tuple[float, float]] = {}
-    conflicts: set[str] = set()
     for block in blocks:
         for alias, point in _pin_alias_positions(
             _strip_child_symbol_blocks(block),
@@ -3050,7 +3060,7 @@ def get_pin_alias_positions(
             sym_y,
             rotation,
         ).items():
-            _merge_pin_alias(aliases, conflicts, alias, point)
+            aliases.setdefault(alias, point)
 
         block_name = _symbol_block_name(block)
         if block_name is None:
@@ -3067,10 +3077,8 @@ def get_pin_alias_positions(
                 sym_y,
                 rotation,
             ).items():
-                _merge_pin_alias(aliases, conflicts, alias, point)
+                aliases.setdefault(alias, point)
 
-    for alias in conflicts:
-        aliases.pop(alias, None)
     return aliases
 
 
