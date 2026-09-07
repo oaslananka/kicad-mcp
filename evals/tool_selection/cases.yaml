@@ -645,7 +645,7 @@ cases:
   category: mutation
   safety: write
   expected_behavior: tool_calls
-  prompt: Assign the specified 0603 footprint to R1.
+  prompt: Assign the Resistor_SMD:R_0603_1608Metric footprint to R1.
   expected_tools:
   - lib_assign_footprint
   max_calls: 2

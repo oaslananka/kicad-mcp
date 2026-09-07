@@ -148,3 +148,12 @@ def test_load_cases_requires_tool_list_items_to_be_strings(tmp_path: Path) -> No
 
     with pytest.raises(EvalDatasetError, match="forbidden_tools.*string"):
         load_cases(bad)
+
+
+def test_assign_footprint_case_supplies_required_tool_arguments() -> None:
+    cases = {case.id: case for case in load_cases(CASES_PATH)}
+    prompt = cases["assign_footprint"].prompt
+
+    assert "R1" in prompt
+    assert "Resistor_SMD" in prompt
+    assert "R_0603_1608Metric" in prompt
