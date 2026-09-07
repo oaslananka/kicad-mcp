@@ -15,13 +15,13 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "dotenv": "^17.4.2",
     "express": "4.22.2",
-    "express-rate-limit": "^8.6.2",
-    "zod": "^4.4.3"
+    "express-rate-limit": "^8.7.0",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
-    "@types/node": "^26.4.0",
-    "tsx": "^4.23.12",
+    "@types/node": "^26.4.1",
+    "tsx": "^4.23.13",
     "typescript": "^7.0.2"
   },
   "overrides": {
