@@ -147,7 +147,7 @@ jobs:
   benchmark:
     needs: smoke
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    timeout-minutes: 240
     environment: live-model-evals
     strategy:
       fail-fast: false
@@ -207,29 +207,32 @@ jobs:
           )
           PY
           set +e
-          uv run --all-extras python scripts/run_live_model_eval.py \
-            --config evals/live/configurations.yaml \
-            --configuration "$CONFIGURATION_ID" \
-            --repeats "$REPEATS" \
-            --source-revision "$GITHUB_SHA" \
-            --output artifacts/live-model-eval/evidence.json
+          timeout --signal=TERM --kill-after=30s 225m \
+            uv run --all-extras python scripts/run_live_model_eval.py \
+              --config evals/live/configurations.yaml \
+              --configuration "$CONFIGURATION_ID" \
+              --repeats "$REPEATS" \
+              --source-revision "$GITHUB_SHA" \
+              --output artifacts/live-model-eval/evidence.json
           exit_code=$?
           set -e
           python - "$CONFIGURATION_ID" "$exit_code" <<'PY'
           import json
           import pathlib
           import sys
-          pathlib.Path("artifacts/live-model-eval/status.json").write_text(
-              json.dumps(
-                  {
-                      "configuration_id": sys.argv[1],
-                      "state": "completed",
-                      "runner_exit_code": int(sys.argv[2]),
-                  },
-                  sort_keys=True,
-              ) + "\n",
-              encoding="utf-8",
-          )
+          exit_code = int(sys.argv[2])
+          if exit_code not in (124, 137):
+              pathlib.Path("artifacts/live-model-eval/status.json").write_text(
+                  json.dumps(
+                      {
+                          "configuration_id": sys.argv[1],
+                          "state": "completed",
+                          "runner_exit_code": exit_code,
+                      },
+                      sort_keys=True,
+                  ) + "\n",
+                  encoding="utf-8",
+              )
           PY
       - name: Upload sanitized configuration evidence
         if: always()

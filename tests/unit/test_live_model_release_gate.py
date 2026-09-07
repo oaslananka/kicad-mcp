@@ -407,7 +407,11 @@ def test_release_gate_workflow_is_main_only_protected_and_sequential() -> None:
     assert "live-model-smoke-${{ matrix.configuration }}-${{ github.run_id }}" in workflow
     assert "name: Enforce smoke result" in workflow
     assert "needs: smoke" in workflow
-    assert "timeout-minutes: 180" in workflow
+    # Slow blocking providers must have enough bounded wall-clock budget to finish
+    # all three repeats while still leaving time to upload fail-closed evidence.
+    assert "timeout-minutes: 240" in benchmark_block
+    assert "timeout --signal=TERM --kill-after=30s 225m" in benchmark_block
+    assert "if exit_code not in (124, 137):" in benchmark_block
     assert '"state": "running"' in workflow
     assert '"runner_exit_code": None' in workflow
     assert "Upload sanitized configuration evidence\n        if: always()" in workflow
