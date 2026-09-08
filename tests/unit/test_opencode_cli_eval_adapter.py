@@ -225,6 +225,26 @@ def test_request_classifies_missing_binary_timeout_nonzero_and_invalid_output() 
     )
 
 
+def test_request_nonzero_provider_failure_returns_bounded_retry_hint() -> None:
+    def nonzero(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 1, stdout="", stderr="private-provider-error")
+
+    result = request_opencode_cli(
+        model="nemotron-3-ultra-free",
+        prompt="Inspect.",
+        api_key="test-key",
+        catalog=(),
+        run_process=nonzero,
+    )
+
+    assert result == {
+        "schema_version": 1,
+        "status": "error",
+        "failure_kind": "provider_unavailable",
+        "retry_after_seconds": 15.0,
+    }
+
+
 def test_request_rejects_unreviewed_model_and_missing_key() -> None:
     with pytest.raises(ValueError, match="reviewed OpenCode Zen free model"):
         request_opencode_cli(model="big-pickle", prompt="Inspect.", api_key="x", catalog=())

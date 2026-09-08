@@ -1116,7 +1116,16 @@ def _unique_direct_tool_match(
             continue
         domain_score = len(tool_tokens & prompt_domains)
         semantic_object_score = len(matched_objects - {"reference"})
-        scored.append((intent_score * 100 + domain_score * 20 + semantic_object_score, name))
+        name_overlap_score = len(_normalized_tokens(name) & prompt_tokens)
+        scored.append(
+            (
+                intent_score * 100
+                + domain_score * 20
+                + name_overlap_score * 10
+                + semantic_object_score,
+                name,
+            )
+        )
     if not scored:
         return None
     best_score = max(score for score, _name in scored)

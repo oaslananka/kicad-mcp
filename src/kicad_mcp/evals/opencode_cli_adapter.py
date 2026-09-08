@@ -24,6 +24,7 @@ OPENCODE_CLI_VERSION = "1.18.10"
 OPENCODE_CLI_AGENT_ID = "kicad-eval"
 OPENCODE_CLI_PROVIDER_ID = "kicad-eval-zen"
 OPENCODE_ZEN_BASE_URL = "https://opencode.ai/zen/v1"
+_OPENCODE_PROVIDER_RETRY_AFTER_SECONDS = 15.0
 
 _SAFE_PARENT_ENV = frozenset(
     {
@@ -244,7 +245,12 @@ def request_opencode_cli(
     except OSError:
         return {"schema_version": 1, "status": "error", "failure_kind": "adapter_unavailable"}
     if completed.returncode != 0:
-        return {"schema_version": 1, "status": "error", "failure_kind": "provider_unavailable"}
+        return {
+            "schema_version": 1,
+            "status": "error",
+            "failure_kind": "provider_unavailable",
+            "retry_after_seconds": _OPENCODE_PROVIDER_RETRY_AFTER_SECONDS,
+        }
     try:
         event = parse_opencode_events(completed.stdout)
         return normalize_classifier_text(

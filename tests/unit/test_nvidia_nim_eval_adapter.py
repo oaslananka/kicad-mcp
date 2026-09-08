@@ -1052,6 +1052,27 @@ def test_output_postcondition_recovers_exact_dsn_case_with_generated_catalog() -
     _assert_decision(result, response_kind="tool_calls", called_tools=["route_export_dsn"])
 
 
+def test_output_postcondition_recovers_project_creation_with_generated_catalog() -> None:
+    root = Path(__file__).resolve().parents[2]
+    catalog = load_eval_tool_catalog(
+        root / "evals/tool_selection/cases.yaml",
+        root / "docs/tools-reference.generated.md",
+    )
+
+    result = _request_postcondition_result(
+        prompt="Create a new KiCad project named sensor-node.",
+        model_response="tool_calls",
+        selected_tools=("create_project",),
+        catalog=tuple(tool.as_dict() for tool in catalog),
+    )
+
+    _assert_decision(
+        result,
+        response_kind="tool_calls",
+        called_tools=["kicad_create_new_project"],
+    )
+
+
 def test_output_postcondition_rejects_ambiguous_unknown_tool_recovery() -> None:
     result = _request_postcondition_result(
         prompt="Export a Specctra DSN for external routing.",
