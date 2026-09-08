@@ -1481,7 +1481,9 @@ def test_live_model_release_readiness_checkouts_fetch_full_history() -> None:
                     ),
                     None,
                 )
-                assert checkout is not None, f"{path.name}:{job_name} has no checkout before readiness"
+                assert checkout is not None, (
+                    f"{path.name}:{job_name} has no checkout before readiness"
+                )
                 checkout_with = checkout.get("with", {})
                 assert checkout_with.get("fetch-depth") == 0, (
                     f"{path.name}:{job_name} must fetch full history before live-model readiness"

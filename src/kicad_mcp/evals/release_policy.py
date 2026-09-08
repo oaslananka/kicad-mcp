@@ -303,7 +303,7 @@ def resolve_previous_release_ref(
 ) -> str:
     """Resolve the latest reachable server release before the candidate commit."""
     root = Path(repo_root)
-    candidate_commit = cast(str, _git(root, "rev-parse", f"{candidate_ref}^{{commit}}" )).strip()
+    candidate_commit = cast(str, _git(root, "rev-parse", f"{candidate_ref}^{{commit}}")).strip()
     tags = cast(
         str,
         _git(
@@ -320,7 +320,7 @@ def resolve_previous_release_ref(
         tag = tag.strip()
         if not tag:
             continue
-        tag_commit = cast(str, _git(root, "rev-parse", f"{tag}^{{commit}}" )).strip()
+        tag_commit = cast(str, _git(root, "rev-parse", f"{tag}^{{commit}}")).strip()
         if tag_commit == candidate_commit:
             continue
         return tag
@@ -410,13 +410,9 @@ def evaluate_release_readiness(
     """Require live evidence only when the release changes the agent contract."""
     policy = load_release_policy(policy_path)
     baseline = load_baseline_metadata(baseline_path)
-    release_base_ref = resolve_previous_release_ref(
-        repo_root, policy, candidate_ref=ref
-    )
+    release_base_ref = resolve_previous_release_ref(repo_root, policy, candidate_ref=ref)
     current_digest = compute_agent_contract_digest(repo_root, policy, ref=ref)
-    release_digest = compute_agent_contract_digest(
-        repo_root, policy, ref=release_base_ref
-    )
+    release_digest = compute_agent_contract_digest(repo_root, policy, ref=release_base_ref)
     release_contract_changed = current_digest != release_digest
 
     if not release_contract_changed:

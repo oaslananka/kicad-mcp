@@ -70,9 +70,7 @@ def _tag_server_release(repo: Path, version: str = "1.0.0") -> str:
 
 
 def _commit_contract(repo: Path, value: int) -> str:
-    (repo / "src/kicad_mcp/evals/selector.py").write_text(
-        f"VALUE = {value}\n", encoding="utf-8"
-    )
+    (repo / "src/kicad_mcp/evals/selector.py").write_text(f"VALUE = {value}\n", encoding="utf-8")
     _git(repo, "add", ".")
     _git(repo, "commit", "--no-verify", "-m", f"contract {value}")
     return _git(repo, "rev-parse", "HEAD")
@@ -134,7 +132,6 @@ def _baseline(
     return path
 
 
-
 def test_release_policy_requires_release_tag_pattern(tmp_path: Path) -> None:
     policy_path = tmp_path / "policy-missing-release-tag.yaml"
     policy_path.write_text(
@@ -191,6 +188,7 @@ def test_previous_release_resolver_fails_closed_without_prior_release(tmp_path: 
 
     with pytest.raises(ReleasePolicyError, match="previous.*release"):
         resolve_previous_release_ref(repo, policy, candidate_ref="HEAD")
+
 
 def test_release_policy_allows_unapproved_baseline_when_release_contract_is_unchanged(
     tmp_path: Path,

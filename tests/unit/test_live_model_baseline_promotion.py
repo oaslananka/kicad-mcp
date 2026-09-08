@@ -68,6 +68,7 @@ def _policy(path: Path) -> Path:
                 "schema_version": 1,
                 "baseline_max_age_days": 30,
                 "release_pull_request_head": "release-please--branches--main",
+                "release_tag_pattern": "mcp-server-v*",
                 "minimum_smoke_configurations": 2,
                 "agent_contract_paths": ["src/kicad_mcp/evals/**"],
             },
