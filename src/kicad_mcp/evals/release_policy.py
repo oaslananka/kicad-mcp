@@ -86,6 +86,8 @@ class ReleasePolicyDecision:
     current_contract_digest: str
     baseline_contract_digest: str | None
     required_configurations: tuple[str, ...]
+    release_base_ref: str | None
+    release_contract_changed: bool | None
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -95,6 +97,8 @@ class ReleasePolicyDecision:
             "current_contract_digest": self.current_contract_digest,
             "baseline_contract_digest": self.baseline_contract_digest,
             "required_configurations": list(self.required_configurations),
+            "release_base_ref": self.release_base_ref,
+            "release_contract_changed": self.release_contract_changed,
         }
 
 
@@ -368,6 +372,8 @@ def evaluate_push_assurance(
         current_contract_digest=current_digest,
         baseline_contract_digest=baseline.agent_contract_digest,
         required_configurations=baseline.required_configurations,
+        release_base_ref=None,
+        release_contract_changed=None,
     )
 
 
@@ -388,6 +394,8 @@ def evaluate_noop_assurance(
         current_contract_digest=compute_agent_contract_digest(repo_root, policy, ref=ref),
         baseline_contract_digest=baseline.agent_contract_digest,
         required_configurations=baseline.required_configurations,
+        release_base_ref=None,
+        release_contract_changed=None,
     )
 
 
@@ -399,10 +407,29 @@ def evaluate_release_readiness(
     ref: str = "HEAD",
     today: date | None = None,
 ) -> ReleasePolicyDecision:
-    """Require a full gate only when an approved reusable baseline is unavailable."""
+    """Require live evidence only when the release changes the agent contract."""
     policy = load_release_policy(policy_path)
     baseline = load_baseline_metadata(baseline_path)
+    release_base_ref = resolve_previous_release_ref(
+        repo_root, policy, candidate_ref=ref
+    )
     current_digest = compute_agent_contract_digest(repo_root, policy, ref=ref)
+    release_digest = compute_agent_contract_digest(
+        repo_root, policy, ref=release_base_ref
+    )
+    release_contract_changed = current_digest != release_digest
+
+    if not release_contract_changed:
+        return ReleasePolicyDecision(
+            mode="none",
+            reason="no_agent_contract_change_since_release",
+            baseline_age_days=None,
+            current_contract_digest=current_digest,
+            baseline_contract_digest=baseline.agent_contract_digest,
+            required_configurations=baseline.required_configurations,
+            release_base_ref=release_base_ref,
+            release_contract_changed=False,
+        )
 
     if not baseline.approved:
         return ReleasePolicyDecision(
@@ -412,6 +439,8 @@ def evaluate_release_readiness(
             current_contract_digest=current_digest,
             baseline_contract_digest=None,
             required_configurations=baseline.required_configurations,
+            release_base_ref=release_base_ref,
+            release_contract_changed=True,
         )
 
     approved_at = baseline.approved_at
@@ -428,6 +457,8 @@ def evaluate_release_readiness(
             current_contract_digest=current_digest,
             baseline_contract_digest=baseline_digest,
             required_configurations=baseline.required_configurations,
+            release_base_ref=release_base_ref,
+            release_contract_changed=True,
         )
     if age_days > policy.baseline_max_age_days:
         return ReleasePolicyDecision(
@@ -437,6 +468,8 @@ def evaluate_release_readiness(
             current_contract_digest=current_digest,
             baseline_contract_digest=baseline_digest,
             required_configurations=baseline.required_configurations,
+            release_base_ref=release_base_ref,
+            release_contract_changed=True,
         )
     if current_digest != baseline.agent_contract_digest:
         return ReleasePolicyDecision(
@@ -446,6 +479,8 @@ def evaluate_release_readiness(
             current_contract_digest=current_digest,
             baseline_contract_digest=baseline_digest,
             required_configurations=baseline.required_configurations,
+            release_base_ref=release_base_ref,
+            release_contract_changed=True,
         )
     return ReleasePolicyDecision(
         mode="smoke",
@@ -454,6 +489,8 @@ def evaluate_release_readiness(
         current_contract_digest=current_digest,
         baseline_contract_digest=baseline_digest,
         required_configurations=baseline.required_configurations,
+        release_base_ref=release_base_ref,
+        release_contract_changed=True,
     )
 
 

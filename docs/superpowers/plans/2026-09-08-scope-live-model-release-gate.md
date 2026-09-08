@@ -103,7 +103,7 @@ git commit -m "feat(evals): resolve prior server release for assurance"
 - Consumes: `resolve_previous_release_ref(...)`, `compute_agent_contract_digest(...)`, existing baseline metadata.
 - Produces: `ReleasePolicyDecision.release_base_ref: str | None` and `ReleasePolicyDecision.release_contract_changed: bool | None`; updated `evaluate_release_readiness(...)` semantics.
 
-- [ ] **Step 1: Add failing decision tests** for these exact cases:
+- [x] **Step 1: Add failing decision tests** for these exact cases:
   - unapproved baseline + unchanged contract since previous release => `mode="none"`, `reason="no_agent_contract_change_since_release"`;
   - stale baseline + unchanged contract => same successful `none` decision;
   - unapproved baseline + changed contract => existing `full/baseline_unapproved`;
@@ -112,11 +112,11 @@ git commit -m "feat(evals): resolve prior server release for assurance"
 
 Each release decision must expose the selected base tag and boolean changed flag.
 
-- [ ] **Step 2: Add regression tests** asserting push/noop decisions set `release_base_ref is None` and `release_contract_changed is None`.
+- [x] **Step 2: Add regression tests** asserting push/noop decisions set `release_base_ref is None` and `release_contract_changed is None`.
 
-- [ ] **Step 3: Run the focused tests and confirm RED.**
+- [x] **Step 3: Run the focused tests and confirm RED.**
 
-- [ ] **Step 4: Extend `ReleasePolicyDecision`.**
+- [x] **Step 4: Extend `ReleasePolicyDecision`.**
 
 Required fields:
 ```python
@@ -126,7 +126,7 @@ release_contract_changed: bool | None
 
 `as_dict()` must emit both fields without removing existing output keys.
 
-- [ ] **Step 5: Implement the two-stage release decision.**
+- [x] **Step 5: Implement the two-stage release decision.**
 
 At the start of `evaluate_release_readiness()`:
 1. load policy and baseline;
@@ -137,9 +137,9 @@ At the start of `evaluate_release_readiness()`:
 
 All changed-contract return branches must preserve their existing `mode` and `reason` strings and include the release-base audit fields.
 
-- [ ] **Step 6: Run focused tests and confirm GREEN.**
+- [x] **Step 6: Run focused tests and confirm GREEN.**
 
-- [ ] **Step 7: Commit Task 2.**
+- [x] **Step 7: Commit Task 2.**
 
 ```bash
 git add src/kicad_mcp/evals/release_policy.py tests/unit/test_live_model_release_policy.py
