@@ -143,6 +143,16 @@ def test_release_policy_rejects_duplicate_required_configurations(tmp_path: Path
         load_baseline_metadata(baseline_path)
 
 
+def test_release_policy_rejects_fewer_than_two_required_configurations(tmp_path: Path) -> None:
+    baseline_path = _baseline(tmp_path / "baseline.yaml", approved=False)
+    baseline = yaml.safe_load(baseline_path.read_text(encoding="utf-8"))
+    baseline["required_configurations"] = ["alpha"]
+    baseline_path.write_text(yaml.safe_dump(baseline, sort_keys=False), encoding="utf-8")
+
+    with pytest.raises(ReleasePolicyError, match="at least two"):
+        load_baseline_metadata(baseline_path)
+
+
 def test_release_policy_accepts_two_required_configurations(tmp_path: Path) -> None:
     repo = _repository(tmp_path)
     release_tag = _tag_server_release(repo)
