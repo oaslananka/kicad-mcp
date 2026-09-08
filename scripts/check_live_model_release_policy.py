@@ -68,6 +68,12 @@ def _write_outputs(path: Path, decision: ReleasePolicyDecision) -> None:
         else str(decision.baseline_age_days),
         "current_contract_digest": decision.current_contract_digest,
         "baseline_contract_digest": decision.baseline_contract_digest or "",
+        "release_base_ref": decision.release_base_ref or "",
+        "release_contract_changed": (
+            ""
+            if decision.release_contract_changed is None
+            else str(decision.release_contract_changed).lower()
+        ),
         "required_configurations": json.dumps(
             list(decision.required_configurations), separators=(",", ":")
         ),

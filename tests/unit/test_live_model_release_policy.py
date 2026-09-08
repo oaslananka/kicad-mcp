@@ -63,6 +63,26 @@ def _repository(tmp_path: Path) -> Path:
     return repo
 
 
+def _tag_server_release(repo: Path, version: str = "1.0.0") -> str:
+    tag = f"mcp-server-v{version}"
+    _git(repo, "tag", tag)
+    return tag
+
+
+def _commit_contract(repo: Path, value: int) -> str:
+    (repo / "src/kicad_mcp/evals/selector.py").write_text(f"VALUE = {value}\n", encoding="utf-8")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "--no-verify", "-m", f"contract {value}")
+    return _git(repo, "rev-parse", "HEAD")
+
+
+def _commit_docs(repo: Path, text: str = "# candidate") -> str:
+    (repo / "docs/notes.md").write_text(f"{text}\n", encoding="utf-8")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "--no-verify", "-m", "docs candidate")
+    return _git(repo, "rev-parse", "HEAD")
+
+
 def _policy(path: Path, *, max_age_days: int = 30) -> Path:
     path.write_text(
         yaml.safe_dump(
@@ -70,6 +90,7 @@ def _policy(path: Path, *, max_age_days: int = 30) -> Path:
                 "schema_version": 1,
                 "baseline_max_age_days": max_age_days,
                 "release_pull_request_head": "release-please--branches--main",
+                "release_tag_pattern": "mcp-server-v*",
                 "minimum_smoke_configurations": 2,
                 "agent_contract_paths": ["src/kicad_mcp/evals/**"],
             },
@@ -111,41 +132,70 @@ def _baseline(
     return path
 
 
-def test_release_policy_allows_smoke_for_fresh_matching_approved_baseline(
+def test_release_policy_requires_release_tag_pattern(tmp_path: Path) -> None:
+    policy_path = tmp_path / "policy-missing-release-tag.yaml"
+    policy_path.write_text(
+        yaml.safe_dump(
+            {
+                "schema_version": 1,
+                "baseline_max_age_days": 30,
+                "release_pull_request_head": "release-please--branches--main",
+                "minimum_smoke_configurations": 2,
+                "agent_contract_paths": ["src/kicad_mcp/evals/**"],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReleasePolicyError, match="release_tag_pattern"):
+        load_release_policy(policy_path)
+
+
+def test_release_policy_rejects_empty_release_tag_pattern(tmp_path: Path) -> None:
+    policy_path = _policy(tmp_path / "policy.yaml")
+    raw = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    raw["release_tag_pattern"] = "   "
+    policy_path.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
+
+    with pytest.raises(ReleasePolicyError, match="release_tag_pattern must be a non-empty string"):
+        load_release_policy(policy_path)
+
+
+def test_previous_release_resolver_skips_current_tag_and_version_sorts(tmp_path: Path) -> None:
+    from kicad_mcp.evals.release_policy import resolve_previous_release_ref
+
+    repo = _repository(tmp_path)
+    policy = load_release_policy(_policy(tmp_path / "policy.yaml"))
+    _git(repo, "tag", "mcp-server-v1.2.9")
+    (repo / "docs/notes.md").write_text("# release 1.10\n", encoding="utf-8")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "--no-verify", "-m", "release 1.10")
+    _git(repo, "tag", "-a", "mcp-server-v1.10.0", "-m", "release 1.10.0")
+    (repo / "docs/notes.md").write_text("# candidate\n", encoding="utf-8")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "--no-verify", "-m", "candidate")
+    _git(repo, "tag", "mcp-server-v1.11.0")
+
+    assert resolve_previous_release_ref(repo, policy, candidate_ref="HEAD") == "mcp-server-v1.10.0"
+
+
+def test_previous_release_resolver_fails_closed_without_prior_release(tmp_path: Path) -> None:
+    from kicad_mcp.evals.release_policy import resolve_previous_release_ref
+
+    repo = _repository(tmp_path)
+    policy = load_release_policy(_policy(tmp_path / "policy.yaml"))
+
+    with pytest.raises(ReleasePolicyError, match="previous.*release"):
+        resolve_previous_release_ref(repo, policy, candidate_ref="HEAD")
+
+
+def test_release_policy_allows_unapproved_baseline_when_release_contract_is_unchanged(
     tmp_path: Path,
 ) -> None:
     repo = _repository(tmp_path)
-    policy_path = _policy(tmp_path / "policy.yaml")
-    policy = load_release_policy(policy_path)
-    source_revision = _git(repo, "rev-parse", "HEAD")
-
-    from kicad_mcp.evals.release_policy import compute_agent_contract_digest
-
-    digest = compute_agent_contract_digest(repo, policy, ref=source_revision)
-    baseline_path = _baseline(
-        tmp_path / "baseline.yaml",
-        approved=True,
-        approved_at="2026-08-01",
-        source_revision=source_revision,
-        agent_contract_digest=digest,
-    )
-
-    decision = evaluate_release_readiness(
-        repo_root=repo,
-        policy_path=policy_path,
-        baseline_path=baseline_path,
-        ref="HEAD",
-        today=date(2026, 8, 2),
-    )
-
-    assert decision.mode == "smoke"
-    assert decision.reason == "approved_baseline_reusable"
-    assert decision.baseline_age_days == 1
-    assert decision.current_contract_digest == digest
-
-
-def test_release_policy_requires_full_gate_for_unapproved_baseline(tmp_path: Path) -> None:
-    repo = _repository(tmp_path)
+    release_tag = _tag_server_release(repo)
+    _commit_docs(repo)
     policy_path = _policy(tmp_path / "policy.yaml")
     baseline_path = _baseline(tmp_path / "baseline.yaml", approved=False)
 
@@ -157,18 +207,23 @@ def test_release_policy_requires_full_gate_for_unapproved_baseline(tmp_path: Pat
         today=date(2026, 8, 2),
     )
 
-    assert decision.mode == "full"
-    assert decision.reason == "baseline_unapproved"
+    assert decision.mode == "none"
+    assert decision.reason == "no_agent_contract_change_since_release"
+    assert decision.release_base_ref == release_tag
+    assert decision.release_contract_changed is False
 
 
-def test_release_policy_requires_full_gate_for_stale_baseline(tmp_path: Path) -> None:
-    repo = _repository(tmp_path)
-    policy_path = _policy(tmp_path / "policy.yaml", max_age_days=30)
-    policy = load_release_policy(policy_path)
-    source_revision = _git(repo, "rev-parse", "HEAD")
-
+def test_release_policy_allows_stale_baseline_when_release_contract_is_unchanged(
+    tmp_path: Path,
+) -> None:
     from kicad_mcp.evals.release_policy import compute_agent_contract_digest
 
+    repo = _repository(tmp_path)
+    source_revision = _git(repo, "rev-parse", "HEAD")
+    release_tag = _tag_server_release(repo)
+    _commit_docs(repo)
+    policy_path = _policy(tmp_path / "policy.yaml", max_age_days=30)
+    policy = load_release_policy(policy_path)
     digest = compute_agent_contract_digest(repo, policy, ref=source_revision)
     baseline_path = _baseline(
         tmp_path / "baseline.yaml",
@@ -186,32 +241,20 @@ def test_release_policy_requires_full_gate_for_stale_baseline(tmp_path: Path) ->
         today=date(2026, 8, 2),
     )
 
-    assert decision.mode == "full"
-    assert decision.reason == "baseline_stale"
-    assert decision.baseline_age_days == 62
+    assert decision.mode == "none"
+    assert decision.reason == "no_agent_contract_change_since_release"
+    assert decision.release_base_ref == release_tag
+    assert decision.release_contract_changed is False
 
 
-def test_release_policy_requires_full_gate_when_agent_contract_digest_changes(
+def test_release_policy_requires_full_gate_for_unapproved_changed_contract(
     tmp_path: Path,
 ) -> None:
     repo = _repository(tmp_path)
+    release_tag = _tag_server_release(repo)
+    _commit_contract(repo, 2)
     policy_path = _policy(tmp_path / "policy.yaml")
-    policy = load_release_policy(policy_path)
-    source_revision = _git(repo, "rev-parse", "HEAD")
-
-    from kicad_mcp.evals.release_policy import compute_agent_contract_digest
-
-    digest = compute_agent_contract_digest(repo, policy, ref=source_revision)
-    baseline_path = _baseline(
-        tmp_path / "baseline.yaml",
-        approved=True,
-        approved_at="2026-08-01",
-        source_revision=source_revision,
-        agent_contract_digest=digest,
-    )
-    (repo / "src/kicad_mcp/evals/selector.py").write_text("VALUE = 2\n", encoding="utf-8")
-    _git(repo, "add", ".")
-    _git(repo, "commit", "--no-verify", "-m", "change agent contract")
+    baseline_path = _baseline(tmp_path / "baseline.yaml", approved=False)
 
     decision = evaluate_release_readiness(
         repo_root=repo,
@@ -222,8 +265,78 @@ def test_release_policy_requires_full_gate_when_agent_contract_digest_changes(
     )
 
     assert decision.mode == "full"
-    assert decision.reason == "agent_contract_changed"
-    assert decision.current_contract_digest != digest
+    assert decision.reason == "baseline_unapproved"
+    assert decision.release_base_ref == release_tag
+    assert decision.release_contract_changed is True
+
+
+def test_release_policy_requires_full_gate_for_stale_changed_contract(
+    tmp_path: Path,
+) -> None:
+    from kicad_mcp.evals.release_policy import compute_agent_contract_digest
+
+    repo = _repository(tmp_path)
+    release_tag = _tag_server_release(repo)
+    candidate = _commit_contract(repo, 2)
+    policy_path = _policy(tmp_path / "policy.yaml", max_age_days=30)
+    policy = load_release_policy(policy_path)
+    digest = compute_agent_contract_digest(repo, policy, ref=candidate)
+    baseline_path = _baseline(
+        tmp_path / "baseline.yaml",
+        approved=True,
+        approved_at="2026-06-01",
+        source_revision=candidate,
+        agent_contract_digest=digest,
+    )
+
+    decision = evaluate_release_readiness(
+        repo_root=repo,
+        policy_path=policy_path,
+        baseline_path=baseline_path,
+        ref="HEAD",
+        today=date(2026, 8, 2),
+    )
+
+    assert decision.mode == "full"
+    assert decision.reason == "baseline_stale"
+    assert decision.baseline_age_days == 62
+    assert decision.release_base_ref == release_tag
+    assert decision.release_contract_changed is True
+
+
+def test_release_policy_allows_smoke_for_fresh_matching_baseline_after_contract_change(
+    tmp_path: Path,
+) -> None:
+    from kicad_mcp.evals.release_policy import compute_agent_contract_digest
+
+    repo = _repository(tmp_path)
+    release_tag = _tag_server_release(repo)
+    candidate = _commit_contract(repo, 2)
+    policy_path = _policy(tmp_path / "policy.yaml")
+    policy = load_release_policy(policy_path)
+    digest = compute_agent_contract_digest(repo, policy, ref=candidate)
+    baseline_path = _baseline(
+        tmp_path / "baseline.yaml",
+        approved=True,
+        approved_at="2026-08-01",
+        source_revision=candidate,
+        agent_contract_digest=digest,
+    )
+
+    decision = evaluate_release_readiness(
+        repo_root=repo,
+        policy_path=policy_path,
+        baseline_path=baseline_path,
+        ref="HEAD",
+        today=date(2026, 8, 2),
+    )
+
+    assert decision.mode == "smoke"
+    assert decision.reason == "approved_baseline_reusable"
+    assert decision.baseline_age_days == 1
+    assert decision.current_contract_digest == digest
+    assert decision.release_base_ref == release_tag
+    assert decision.release_contract_changed is True
 
 
 def test_contract_change_detection_ignores_non_agent_files(tmp_path: Path) -> None:
@@ -247,6 +360,8 @@ def test_contract_change_detection_ignores_non_agent_files(tmp_path: Path) -> No
 
 def test_approved_baseline_requires_auditable_metadata(tmp_path: Path) -> None:
     repo = _repository(tmp_path)
+    _tag_server_release(repo)
+    _commit_contract(repo, 2)
     policy_path = _policy(tmp_path / "policy.yaml")
     baseline_path = _baseline(tmp_path / "baseline.yaml", approved=True)
 
@@ -265,6 +380,7 @@ def test_committed_release_policy_tracks_model_facing_inputs_only() -> None:
 
     assert policy.baseline_max_age_days == 30
     assert policy.release_pull_request_head == "release-please--branches--main"
+    assert policy.release_tag_pattern == "mcp-server-v*"
     assert policy.minimum_smoke_configurations == 2
     assert "docs/tools-reference.generated.md" in policy.agent_contract_paths
     assert "evals/tool_selection/**" in policy.agent_contract_paths
@@ -306,6 +422,8 @@ def test_push_assurance_runs_smoke_only_for_agent_contract_changes(tmp_path: Pat
     )
     assert docs_decision.mode == "none"
     assert docs_decision.reason == "no_agent_contract_change"
+    assert docs_decision.release_base_ref is None
+    assert docs_decision.release_contract_changed is None
 
     (repo / "src/kicad_mcp/evals/selector.py").write_text("VALUE = 4\n", encoding="utf-8")
     _git(repo, "add", ".")
@@ -321,12 +439,30 @@ def test_push_assurance_runs_smoke_only_for_agent_contract_changes(tmp_path: Pat
     )
     assert agent_decision.mode == "smoke"
     assert agent_decision.reason == "agent_contract_changed_on_main"
+    assert agent_decision.release_base_ref is None
+    assert agent_decision.release_contract_changed is None
+
+
+def test_noop_assurance_has_no_release_comparison_context(tmp_path: Path) -> None:
+    from kicad_mcp.evals.release_policy import evaluate_noop_assurance
+
+    repo = _repository(tmp_path)
+    decision = evaluate_noop_assurance(
+        repo_root=repo,
+        policy_path=_policy(tmp_path / "policy.yaml"),
+        baseline_path=_baseline(tmp_path / "baseline.yaml", approved=False),
+    )
+
+    assert decision.release_base_ref is None
+    assert decision.release_contract_changed is None
 
 
 def test_release_policy_cli_writes_machine_readable_outputs(tmp_path: Path) -> None:
     from scripts import check_live_model_release_policy as cli
 
     repo = _repository(tmp_path)
+    _tag_server_release(repo)
+    _commit_contract(repo, 2)
     policy_path = _policy(tmp_path / "policy.yaml")
     baseline_path = _baseline(tmp_path / "baseline.yaml", approved=False)
     output = tmp_path / "github-output.txt"
@@ -358,7 +494,50 @@ def test_release_policy_cli_writes_machine_readable_outputs(tmp_path: Path) -> N
     assert values["mode"] == "full"
     assert values["reason"] == "baseline_unapproved"
     assert values["required_configurations"] == '["alpha","beta","gamma"]'
+    assert values["release_base_ref"] == "mcp-server-v1.0.0"
+    assert values["release_contract_changed"] == "true"
     assert len(values["current_contract_digest"]) == 64
+
+
+def test_release_policy_cli_allows_unchanged_release_with_unapproved_baseline(
+    tmp_path: Path,
+) -> None:
+    from scripts import check_live_model_release_policy as cli
+
+    repo = _repository(tmp_path)
+    release_tag = _tag_server_release(repo)
+    _commit_docs(repo)
+    output = tmp_path / "github-output.txt"
+
+    exit_code = cli.main(
+        [
+            "--repo-root",
+            str(repo),
+            "--policy",
+            str(_policy(tmp_path / "policy.yaml")),
+            "--baseline",
+            str(_baseline(tmp_path / "baseline.yaml", approved=False)),
+            "--github-output",
+            str(output),
+            "--require-ready",
+            "release",
+            "--ref",
+            "HEAD",
+            "--today",
+            "2026-08-02",
+        ]
+    )
+
+    values = dict(
+        line.split("=", 1)
+        for line in output.read_text(encoding="utf-8").splitlines()
+        if "=" in line
+    )
+    assert exit_code == 0
+    assert values["mode"] == "none"
+    assert values["reason"] == "no_agent_contract_change_since_release"
+    assert values["release_base_ref"] == release_tag
+    assert values["release_contract_changed"] == "false"
 
 
 def test_live_model_assurance_workflow_is_risk_based_and_secret_safe() -> None:
@@ -450,6 +629,8 @@ def test_release_policy_cli_can_fail_closed_for_release_readiness(tmp_path: Path
     from scripts import check_live_model_release_policy as cli
 
     repo = _repository(tmp_path)
+    _tag_server_release(repo)
+    _commit_contract(repo, 2)
     policy_path = _policy(tmp_path / "release-policy.yaml")
     baseline_path = _baseline(tmp_path / "baseline-unapproved.yaml", approved=False)
 

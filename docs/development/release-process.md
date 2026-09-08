@@ -29,6 +29,25 @@ If the full suite exceeds local time limits, run the same underlying pytest suit
 
 `.github/workflows/release.yml` is a low-risk validation workflow. It checks release metadata and package build behavior without publishing artifacts or requiring secrets.
 
+## Live-model release readiness
+
+Live Model Release Gate is scope-aware rather than a universal provider-availability gate.
+The release policy resolves the previous reachable `mcp-server-v*` tag and compares the
+versioned `agent_contract_paths` at that release with the release candidate.
+
+- If the contract is unchanged, live-model readiness succeeds with
+  `no_agent_contract_change_since_release`; an old or temporarily unapproved live baseline
+  does not block an unrelated release.
+- If the contract changed, the existing fail-closed baseline rules apply. Unapproved,
+  stale, future-dated, or digest-mismatched evidence requires the protected full gate and
+  reviewed baseline promotion before publishing.
+- If the previous server release tag/history cannot be resolved, readiness fails closed.
+  Release and publish workflows therefore check out full Git history (`fetch-depth: 0`).
+
+This rule is based on the actual model-facing contract diff, not on whether the version is
+a patch, minor, or major release. Deterministic CI, security, packaging, metadata, and
+required-status checks remain mandatory in every case.
+
 ## Post-release checks
 
 After a release is published:
