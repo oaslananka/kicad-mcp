@@ -37,8 +37,8 @@ def evaluate_smoke_assurance(
 ) -> dict[str, object]:
     """Allow infrastructure-only degradation when enough configurations pass cleanly."""
     required = tuple(required_configurations)
-    if len(required) < 3 or len(required) != len(set(required)):
-        raise ValueError("Smoke assurance requires at least three unique configurations.")
+    if len(required) < 2 or len(required) != len(set(required)):
+        raise ValueError("Smoke assurance requires at least two unique configurations.")
     if not 1 <= minimum_successful_configurations <= len(required):
         raise ValueError("minimum_successful_configurations is outside the required set.")
 

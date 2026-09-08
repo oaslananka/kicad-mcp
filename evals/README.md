@@ -418,15 +418,14 @@ workflows. Release-policy code, smoke aggregation code, and the baseline file it
 are intentionally excluded so governance-only edits do not invalidate model behavior
 that has not changed.
 
-Routine smoke evaluates all three configurations independently with a 14-minute
+Routine smoke evaluates both required provider paths independently with a 14-minute
 provider-command bound inside a 17-minute per-configuration cleanup and artifact-upload
-envelope. It may pass in a
-**degraded** state only when at least two configurations complete cleanly and every
-remaining problem is infrastructure-only, such as timeout, provider unavailability,
-or missing checkpoint evidence. Artifact-integrity failures, tool-selection quality
-failures, safety or forbidden calls, call-limit violations, and insufficient clean
-configurations always block. Provider availability is therefore not mislabeled as
-model quality, while safety remains fail-closed.
+envelope. With two required configurations and `minimum_smoke_configurations: 2`, both
+paths must complete cleanly; infrastructure degradation is still classified separately
+from model quality but does not count as a passing required configuration. Artifact-
+integrity failures, tool-selection quality failures, safety or forbidden calls, and
+call-limit violations always block. Provider availability is therefore not mislabeled
+as model quality, while safety remains fail-closed.
 
 The full 65-case, minimum-three-repeat workflow remains mandatory when a release changes
 the agent contract and reusable approved evidence is unavailable—for example after a new
@@ -451,8 +450,8 @@ run ID, aggregate artifact SHA-256, host/model identities, reviewed metrics, and
 approval date. The baseline change is reviewed and merged through a normal pull
 request; no workflow writes directly to the repository.
 
-`.github/workflows/live-model-release-gate.yml` runs two reviewed NVIDIA NIM records
-and the sandboxed OpenCode CLI record sequentially from protected `main`. The protected
+`.github/workflows/live-model-release-gate.yml` runs one reviewed NVIDIA NIM record
+and one sandboxed OpenCode CLI record sequentially from protected `main`. The protected
 environment supplies `NVIDIA_API_KEY` or `OPENCODE_ZEN_API_KEY` only to the bounded
 step that validates the selected configuration. Before any full-corpus work, each
 configuration must pass one bounded `live-smoke` repetition selected from the same

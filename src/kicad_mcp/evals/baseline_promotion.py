@@ -88,9 +88,9 @@ def generate_approved_baseline(
     ):
         raise BaselinePromotionError("Baseline template minimum_repeats must be >= 2.")
     required = _string_list(template.get("required_configurations"), "Required configurations")
-    if len(required) < 3 or len(required) != len(set(required)):
+    if len(required) < 2 or len(required) != len(set(required)):
         raise BaselinePromotionError(
-            "Required configurations must contain at least three unique ids."
+            "Required configurations must contain at least two unique ids."
         )
 
     classifications = _mapping(report.get("classifications"), "Aggregate classifications")

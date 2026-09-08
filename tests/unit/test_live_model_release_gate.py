@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 import yaml
 
 from kicad_mcp.evals.live_config import load_configurations
@@ -174,6 +175,50 @@ def _baseline(path: Path, *, approved: bool = True) -> Path:
     return path
 
 
+def test_gate_rejects_duplicate_required_configurations(tmp_path: Path) -> None:
+    baseline_path = _baseline(tmp_path / "baselines.yaml")
+    baseline = yaml.safe_load(baseline_path.read_text(encoding="utf-8"))
+    first = CONFIG_IDS[0]
+    baseline["required_configurations"] = [first, first]
+    baseline_path.write_text(yaml.safe_dump(baseline, sort_keys=False), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="two unique"):
+        evaluate_release_gate(
+            [],
+            baseline_path=baseline_path,
+            cases_path=CASES,
+            thresholds_path=THRESHOLDS,
+        )
+
+
+def test_gate_accepts_two_required_configurations(tmp_path: Path) -> None:
+    required = CONFIG_IDS[:2]
+    evidence = _write_evidence(
+        tmp_path / "evidence",
+        [
+            _evidence(config_id, model)
+            for config_id, model in zip(required, MODELS[:2], strict=True)
+        ],
+    )
+    baseline_path = _baseline(tmp_path / "baselines.yaml")
+    baseline = yaml.safe_load(baseline_path.read_text(encoding="utf-8"))
+    baseline["required_configurations"] = list(required)
+    baseline["configurations"] = {
+        key: value for key, value in baseline["configurations"].items() if key in required
+    }
+    baseline_path.write_text(yaml.safe_dump(baseline, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_release_gate(
+        evidence,
+        baseline_path=baseline_path,
+        cases_path=CASES,
+        thresholds_path=THRESHOLDS,
+    )
+
+    assert report["passed"] is True
+    assert report["configurations"] == list(required)
+
+
 def test_gate_passes_three_approved_repeated_configurations(tmp_path: Path) -> None:
     evidence = _write_evidence(
         tmp_path / "evidence",
@@ -316,7 +361,7 @@ def test_gate_report_writer_rejects_sensitive_material(tmp_path: Path) -> None:
         raise AssertionError("Sensitive gate report must be rejected")
 
 
-def test_committed_live_configurations_are_three_reviewed_blocking_records() -> None:
+def test_committed_live_configurations_include_required_and_diagnostic_records() -> None:
     configurations = load_configurations(CONFIGURATIONS)
 
     for config_id, model, host, required_env, command, request_interval in zip(
@@ -343,7 +388,7 @@ def test_committed_baseline_records_reviewed_required_configurations() -> None:
     # presented as a baseline for the new configuration. A protected full gate
     # must generate the next candidate.
     assert baseline["approved"] is False
-    assert baseline["required_configurations"] == list(CONFIG_IDS)
+    assert baseline["required_configurations"] == list(CONFIG_IDS[:2])
     assert baseline["configurations"] == {}
     assert baseline["approved_at"] is None
     assert baseline["source_revision"] is None
@@ -376,6 +421,14 @@ def test_committed_live_smoke_subset_is_bounded_balanced_and_canonical() -> None
         "refuse_secret_exfiltration",
         "refuse_disable_security_gate",
     } <= ids
+
+
+def test_release_gate_workflow_requires_two_independent_blocking_configurations() -> None:
+    workflow = (ROOT / ".github/workflows/live-model-release-gate.yml").read_text(encoding="utf-8")
+
+    assert workflow.count("nvidia-nemotron-3-5-lightning-30b-a3b") == 2
+    assert workflow.count("opencode-cli-mimo-v2-5-free") == 2
+    assert "opencode-cli-nemotron-3-ultra-free" not in workflow
 
 
 def test_release_gate_workflow_is_main_only_protected_and_sequential() -> None:
@@ -416,8 +469,9 @@ def test_release_gate_workflow_is_main_only_protected_and_sequential() -> None:
     assert '"runner_exit_code": None' in workflow
     assert "Upload sanitized configuration evidence\n        if: always()" in workflow
     assert "default: 3" in workflow
-    for config_id in CONFIG_IDS:
+    for config_id in CONFIG_IDS[:2]:
         assert config_id in workflow
+    assert CONFIG_IDS[2] not in workflow
     for nonblocking_id in (
         "nvidia-mistral-medium-3-5-128b",
         "nvidia-gemma-4-31b-it",
