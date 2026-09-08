@@ -15,6 +15,7 @@ from kicad_mcp.evals.release_policy import (
     ReleasePolicyError,
     contract_changed_between,
     evaluate_release_readiness,
+    load_baseline_metadata,
     load_release_policy,
 )
 
@@ -130,6 +131,49 @@ def _baseline(
         encoding="utf-8",
     )
     return path
+
+
+def test_release_policy_rejects_duplicate_required_configurations(tmp_path: Path) -> None:
+    baseline_path = _baseline(tmp_path / "baseline.yaml", approved=False)
+    baseline = yaml.safe_load(baseline_path.read_text(encoding="utf-8"))
+    baseline["required_configurations"] = ["alpha", "alpha"]
+    baseline_path.write_text(yaml.safe_dump(baseline, sort_keys=False), encoding="utf-8")
+
+    with pytest.raises(ReleasePolicyError, match="duplicates"):
+        load_baseline_metadata(baseline_path)
+
+
+def test_release_policy_rejects_fewer_than_two_required_configurations(tmp_path: Path) -> None:
+    baseline_path = _baseline(tmp_path / "baseline.yaml", approved=False)
+    baseline = yaml.safe_load(baseline_path.read_text(encoding="utf-8"))
+    baseline["required_configurations"] = ["alpha"]
+    baseline_path.write_text(yaml.safe_dump(baseline, sort_keys=False), encoding="utf-8")
+
+    with pytest.raises(ReleasePolicyError, match="at least two"):
+        load_baseline_metadata(baseline_path)
+
+
+def test_release_policy_accepts_two_required_configurations(tmp_path: Path) -> None:
+    repo = _repository(tmp_path)
+    release_tag = _tag_server_release(repo)
+    _commit_contract(repo, 2)
+    baseline_path = _baseline(tmp_path / "baseline.yaml", approved=False)
+    baseline = yaml.safe_load(baseline_path.read_text(encoding="utf-8"))
+    baseline["required_configurations"] = ["alpha", "beta"]
+    baseline_path.write_text(yaml.safe_dump(baseline, sort_keys=False), encoding="utf-8")
+
+    decision = evaluate_release_readiness(
+        repo_root=repo,
+        policy_path=_policy(tmp_path / "policy.yaml"),
+        baseline_path=baseline_path,
+        ref="HEAD",
+        today=date(2026, 8, 2),
+    )
+
+    assert decision.mode == "full"
+    assert decision.reason == "baseline_unapproved"
+    assert decision.release_base_ref == release_tag
+    assert decision.required_configurations == ("alpha", "beta")
 
 
 def test_release_policy_requires_release_tag_pattern(tmp_path: Path) -> None:

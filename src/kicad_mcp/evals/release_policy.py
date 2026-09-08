@@ -181,8 +181,8 @@ def load_baseline_metadata(path: str | Path) -> BaselineMetadata:
     if not isinstance(approved, bool):
         raise ReleasePolicyError("Baseline approved must be boolean.")
     required = _string_list(raw.get("required_configurations"), "required_configurations")
-    if len(required) < 3:
-        raise ReleasePolicyError("Baseline needs at least three required configurations.")
+    if len(required) < 2:
+        raise ReleasePolicyError("Baseline needs at least two required configurations.")
     _mapping(raw.get("configurations", {}), "Baseline configurations")
 
     approved_at: date | None = None

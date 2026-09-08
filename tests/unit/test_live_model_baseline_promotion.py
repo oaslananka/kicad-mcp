@@ -180,6 +180,36 @@ def test_generate_approved_baseline_from_clean_full_gate_evidence(tmp_path: Path
     }
 
 
+def test_generate_approved_baseline_accepts_two_required_configurations(tmp_path: Path) -> None:
+    repo, revision = _repo(tmp_path)
+    policy = _policy(tmp_path / "policy.yaml")
+    template = _baseline(tmp_path / "baseline.yaml")
+    template_payload = yaml.safe_load(template.read_text(encoding="utf-8"))
+    template_payload["required_configurations"] = ["alpha", "beta"]
+    template.write_text(yaml.safe_dump(template_payload, sort_keys=False), encoding="utf-8")
+    aggregate = _aggregate(tmp_path / "aggregate.json", revision)
+    aggregate_payload = json.loads(aggregate.read_text(encoding="utf-8"))
+    aggregate_payload["configurations"] = ["alpha", "beta"]
+    aggregate_payload["observed"] = {
+        key: value
+        for key, value in aggregate_payload["observed"].items()
+        if key in {"alpha", "beta"}
+    }
+    aggregate.write_text(json.dumps(aggregate_payload), encoding="utf-8")
+
+    baseline = generate_approved_baseline(
+        aggregate_report_path=aggregate,
+        baseline_template_path=template,
+        policy_path=policy,
+        repo_root=repo,
+        workflow_run_id=987654,
+        approved_at=date(2026, 8, 2),
+    )
+
+    assert baseline["required_configurations"] == ["alpha", "beta"]
+    assert list(baseline["configurations"]) == ["alpha", "beta"]
+
+
 def test_generate_approved_baseline_rejects_safety_quality_or_infrastructure_failures(
     tmp_path: Path,
 ) -> None:

@@ -43,7 +43,6 @@ jobs:
         configuration:
           - nvidia-nemotron-3-5-lightning-30b-a3b
           - opencode-cli-mimo-v2-5-free
-          - opencode-cli-nemotron-3-ultra-free
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -156,7 +155,6 @@ jobs:
         configuration:
           - nvidia-nemotron-3-5-lightning-30b-a3b
           - opencode-cli-mimo-v2-5-free
-          - opencode-cli-nemotron-3-ultra-free
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:

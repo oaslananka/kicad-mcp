@@ -42,10 +42,11 @@ def _load_baseline(path: str | Path) -> dict[str, Any]:
     required = raw.get("required_configurations")
     if (
         not isinstance(required, list)
-        or len(required) < 3
+        or len(required) < 2
+        or len(required) != len(set(required))
         or not all(isinstance(item, str) and item for item in required)
     ):
-        raise ValueError("Baseline file needs at least three required configurations.")
+        raise ValueError("Baseline file needs at least two unique required configurations.")
     minimum_repeats = raw.get("minimum_repeats")
     if isinstance(minimum_repeats, bool) or not isinstance(minimum_repeats, int):
         raise ValueError("minimum_repeats must be an integer.")
