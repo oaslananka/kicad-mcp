@@ -1135,6 +1135,7 @@ def test_committed_opencode_cli_blocking_record_is_key_scoped() -> None:
         "--timeout-seconds",
         "65",
     )
+    assert configuration.limits.max_retries == 4
 
 
 def test_committed_paid_opencode_minimax_candidate_is_nonblocking_and_bounded() -> None:

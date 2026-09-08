@@ -30,7 +30,7 @@ def test_mimo_cli_configuration_is_current_bounded_key_scoped_and_blocking() -> 
         "65",
     )
     assert configuration.limits.timeout_seconds == 70
-    assert configuration.limits.max_retries == 2
+    assert configuration.limits.max_retries == 4
     assert configuration.limits.max_total_cost_micros == 0
     assert "opencode-cli-deepseek-v4-flash-free" not in configurations
 
