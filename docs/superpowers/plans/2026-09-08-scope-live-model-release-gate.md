@@ -213,19 +213,19 @@ git commit -m "feat(evals): report release contract comparison"
 - Consumes: Git-history requirement of `resolve_previous_release_ref(...)`.
 - Produces: full-history checkout before every `check_live_model_release_policy.py ... release` invocation.
 
-- [ ] **Step 1: Add failing workflow tests** that parse/inspect every workflow containing `--require-ready release` and assert the checkout feeding that readiness step has `fetch-depth: 0`.
+- [x] **Step 1: Add failing workflow tests** that parse/inspect every workflow containing `--require-ready release` and assert the checkout feeding that readiness step has `fetch-depth: 0`.
 
 The test must cover all current release/publish workflows listed above and fail if a future readiness workflow is added without full history.
 
-- [ ] **Step 2: Run the workflow tests and confirm RED.**
+- [x] **Step 2: Run the workflow tests and confirm RED.**
 
-- [ ] **Step 3: Add `fetch-depth: 0` to the relevant `actions/checkout` blocks.**
+- [x] **Step 3: Add `fetch-depth: 0` to the relevant `actions/checkout` blocks.**
 
 Keep `persist-credentials: false`, existing `ref:` expressions, permissions, environments, and job ordering unchanged.
 
-- [ ] **Step 4: Run release-policy and release-hardening tests and confirm GREEN.**
+- [x] **Step 4: Run release-policy and release-hardening tests and confirm GREEN.**
 
-- [ ] **Step 5: Run workflow validation.**
+- [x] **Step 5: Run workflow validation.**
 
 ```bash
 corepack pnpm run workflows:policy
@@ -234,7 +234,7 @@ corepack pnpm run workflows:security
 ```
 Expected: all pass.
 
-- [ ] **Step 6: Commit Task 4.**
+- [x] **Step 6: Commit Task 4.**
 
 ```bash
 git add .github/workflows/ci.yml .github/workflows/release.yml .github/workflows/gui-release.yml \

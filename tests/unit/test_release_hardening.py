@@ -9,6 +9,7 @@ from typing import Any
 
 import anyio
 import pytest
+import yaml
 from mcp.types import CallToolResult
 from starlette.testclient import TestClient
 
@@ -1449,3 +1450,40 @@ def test_external_release_workflows_fail_closed_on_live_model_readiness() -> Non
         workflow = _workflow(name)
         assert "Enforce live-model release readiness" in workflow, name
         assert "check_live_model_release_policy.py --require-ready release" in workflow, name
+
+
+def test_live_model_release_readiness_checkouts_fetch_full_history() -> None:
+    workflows_dir = Path(__file__).resolve().parents[2] / ".github" / "workflows"
+    readiness_command = "check_live_model_release_policy.py --require-ready release"
+    workflow_paths = sorted(
+        path
+        for path in workflows_dir.glob("*.yml")
+        if readiness_command in path.read_text(encoding="utf-8")
+    )
+
+    assert workflow_paths
+    for path in workflow_paths:
+        document = yaml.safe_load(path.read_text(encoding="utf-8"))
+        jobs = document.get("jobs", {})
+        matched = False
+        for job_name, job in jobs.items():
+            steps = job.get("steps", []) if isinstance(job, dict) else []
+            for index, step in enumerate(steps):
+                if not isinstance(step, dict) or readiness_command not in str(step.get("run", "")):
+                    continue
+                matched = True
+                checkout = next(
+                    (
+                        previous
+                        for previous in reversed(steps[:index])
+                        if isinstance(previous, dict)
+                        and str(previous.get("uses", "")).startswith("actions/checkout@")
+                    ),
+                    None,
+                )
+                assert checkout is not None, f"{path.name}:{job_name} has no checkout before readiness"
+                checkout_with = checkout.get("with", {})
+                assert checkout_with.get("fetch-depth") == 0, (
+                    f"{path.name}:{job_name} must fetch full history before live-model readiness"
+                )
+        assert matched, f"{path.name} readiness command was not found in parsed steps"
