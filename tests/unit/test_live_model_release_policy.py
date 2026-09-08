@@ -70,6 +70,7 @@ def _policy(path: Path, *, max_age_days: int = 30) -> Path:
                 "schema_version": 1,
                 "baseline_max_age_days": max_age_days,
                 "release_pull_request_head": "release-please--branches--main",
+                "release_tag_pattern": "mcp-server-v*",
                 "minimum_smoke_configurations": 2,
                 "agent_contract_paths": ["src/kicad_mcp/evals/**"],
             },
@@ -110,6 +111,64 @@ def _baseline(
     )
     return path
 
+
+
+def test_release_policy_requires_release_tag_pattern(tmp_path: Path) -> None:
+    policy_path = tmp_path / "policy-missing-release-tag.yaml"
+    policy_path.write_text(
+        yaml.safe_dump(
+            {
+                "schema_version": 1,
+                "baseline_max_age_days": 30,
+                "release_pull_request_head": "release-please--branches--main",
+                "minimum_smoke_configurations": 2,
+                "agent_contract_paths": ["src/kicad_mcp/evals/**"],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ReleasePolicyError, match="release_tag_pattern"):
+        load_release_policy(policy_path)
+
+
+def test_release_policy_rejects_empty_release_tag_pattern(tmp_path: Path) -> None:
+    policy_path = _policy(tmp_path / "policy.yaml")
+    raw = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    raw["release_tag_pattern"] = "   "
+    policy_path.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
+
+    with pytest.raises(ReleasePolicyError, match="release_tag_pattern must be a non-empty string"):
+        load_release_policy(policy_path)
+
+
+def test_previous_release_resolver_skips_current_tag_and_version_sorts(tmp_path: Path) -> None:
+    from kicad_mcp.evals.release_policy import resolve_previous_release_ref
+
+    repo = _repository(tmp_path)
+    policy = load_release_policy(_policy(tmp_path / "policy.yaml"))
+    _git(repo, "tag", "mcp-server-v1.2.9")
+    (repo / "docs/notes.md").write_text("# release 1.10\n", encoding="utf-8")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "--no-verify", "-m", "release 1.10")
+    _git(repo, "tag", "-a", "mcp-server-v1.10.0", "-m", "release 1.10.0")
+    (repo / "docs/notes.md").write_text("# candidate\n", encoding="utf-8")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "--no-verify", "-m", "candidate")
+    _git(repo, "tag", "mcp-server-v1.11.0")
+
+    assert resolve_previous_release_ref(repo, policy, candidate_ref="HEAD") == "mcp-server-v1.10.0"
+
+
+def test_previous_release_resolver_fails_closed_without_prior_release(tmp_path: Path) -> None:
+    from kicad_mcp.evals.release_policy import resolve_previous_release_ref
+
+    repo = _repository(tmp_path)
+    policy = load_release_policy(_policy(tmp_path / "policy.yaml"))
+
+    with pytest.raises(ReleasePolicyError, match="previous.*release"):
+        resolve_previous_release_ref(repo, policy, candidate_ref="HEAD")
 
 def test_release_policy_allows_smoke_for_fresh_matching_approved_baseline(
     tmp_path: Path,
@@ -265,6 +324,7 @@ def test_committed_release_policy_tracks_model_facing_inputs_only() -> None:
 
     assert policy.baseline_max_age_days == 30
     assert policy.release_pull_request_head == "release-please--branches--main"
+    assert policy.release_tag_pattern == "mcp-server-v*"
     assert policy.minimum_smoke_configurations == 2
     assert "docs/tools-reference.generated.md" in policy.agent_contract_paths
     assert "evals/tool_selection/**" in policy.agent_contract_paths

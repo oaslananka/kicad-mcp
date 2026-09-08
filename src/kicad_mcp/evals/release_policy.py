@@ -28,6 +28,7 @@ _POLICY_KEYS = frozenset(
         "schema_version",
         "baseline_max_age_days",
         "release_pull_request_head",
+        "release_tag_pattern",
         "minimum_smoke_configurations",
         "agent_contract_paths",
     }
@@ -57,6 +58,7 @@ class ReleasePolicyConfig:
 
     baseline_max_age_days: int
     release_pull_request_head: str
+    release_tag_pattern: str
     minimum_smoke_configurations: int
     agent_contract_paths: tuple[str, ...]
 
@@ -135,6 +137,13 @@ def load_release_policy(path: str | Path) -> ReleasePolicyConfig:
     release_head = raw.get("release_pull_request_head")
     if not isinstance(release_head, str) or not release_head.strip():
         raise ReleasePolicyError("release_pull_request_head must be a non-empty string.")
+    release_tag_pattern = raw.get("release_tag_pattern")
+    if not isinstance(release_tag_pattern, str) or not release_tag_pattern.strip():
+        raise ReleasePolicyError("release_tag_pattern must be a non-empty string.")
+    release_tag_pattern = release_tag_pattern.strip()
+    if any(character.isspace() for character in release_tag_pattern):
+        raise ReleasePolicyError("release_tag_pattern must not contain whitespace.")
+
     minimum_smoke = raw.get("minimum_smoke_configurations")
     if isinstance(minimum_smoke, bool) or not isinstance(minimum_smoke, int) or minimum_smoke < 1:
         raise ReleasePolicyError("minimum_smoke_configurations must be an integer >= 1.")
@@ -146,6 +155,7 @@ def load_release_policy(path: str | Path) -> ReleasePolicyConfig:
     return ReleasePolicyConfig(
         baseline_max_age_days=max_age,
         release_pull_request_head=release_head.strip(),
+        release_tag_pattern=release_tag_pattern,
         minimum_smoke_configurations=minimum_smoke,
         agent_contract_paths=paths,
     )
@@ -279,6 +289,40 @@ def compute_agent_contract_digest(
         digest.update(content)
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def resolve_previous_release_ref(
+    repo_root: str | Path,
+    policy: ReleasePolicyConfig,
+    *,
+    candidate_ref: str = "HEAD",
+) -> str:
+    """Resolve the latest reachable server release before the candidate commit."""
+    root = Path(repo_root)
+    candidate_commit = cast(str, _git(root, "rev-parse", f"{candidate_ref}^{{commit}}" )).strip()
+    tags = cast(
+        str,
+        _git(
+            root,
+            "tag",
+            "--merged",
+            candidate_ref,
+            "--list",
+            policy.release_tag_pattern,
+            "--sort=-version:refname",
+        ),
+    )
+    for tag in tags.splitlines():
+        tag = tag.strip()
+        if not tag:
+            continue
+        tag_commit = cast(str, _git(root, "rev-parse", f"{tag}^{{commit}}" )).strip()
+        if tag_commit == candidate_commit:
+            continue
+        return tag
+    raise ReleasePolicyError(
+        f"Unable to resolve previous server release matching {policy.release_tag_pattern!r}."
+    )
 
 
 def contract_changed_between(
@@ -425,4 +469,5 @@ __all__ = [
     "evaluate_release_readiness",
     "load_baseline_metadata",
     "load_release_policy",
+    "resolve_previous_release_ref",
 ]

@@ -33,13 +33,13 @@
 - Consumes: `ReleasePolicyConfig`, local Git history, candidate ref.
 - Produces: `ReleasePolicyConfig.release_tag_pattern: str` and `resolve_previous_release_ref(repo_root, policy, candidate_ref="HEAD") -> str`.
 
-- [ ] **Step 1: Add failing schema/config tests** asserting `release_tag_pattern` is required, the committed value is `mcp-server-v*`, unsafe/empty patterns are rejected, and `load_release_policy()` exposes the field.
+- [x] **Step 1: Add failing schema/config tests** asserting `release_tag_pattern` is required, the committed value is `mcp-server-v*`, unsafe/empty patterns are rejected, and `load_release_policy()` exposes the field.
 
-- [ ] **Step 2: Add failing Git fixture tests** that create lightweight and annotated `mcp-server-v*` tags and assert the resolver selects the highest version-sorted reachable tag whose commit differs from the candidate commit, including the case where the current release tag points at the candidate and must be skipped.
+- [x] **Step 2: Add failing Git fixture tests** that create lightweight and annotated `mcp-server-v*` tags and assert the resolver selects the highest version-sorted reachable tag whose commit differs from the candidate commit, including the case where the current release tag points at the candidate and must be skipped.
 
-- [ ] **Step 3: Add a fail-closed test** asserting `ReleasePolicyError` when no prior matching reachable release tag exists.
+- [x] **Step 3: Add a fail-closed test** asserting `ReleasePolicyError` when no prior matching reachable release tag exists.
 
-- [ ] **Step 4: Run the new tests and confirm RED.**
+- [x] **Step 4: Run the new tests and confirm RED.**
 
 Run:
 ```bash
@@ -47,7 +47,7 @@ Run:
 ```
 Expected: failures for missing `release_tag_pattern` / resolver behavior.
 
-- [ ] **Step 5: Implement the minimal policy schema and resolver.**
+- [x] **Step 5: Implement the minimal policy schema and resolver.**
 
 Implementation requirements:
 ```python
@@ -75,16 +75,16 @@ def resolve_previous_release_ref(
 
 Use local Git only. Resolve `candidate_ref` to a commit SHA, enumerate `git tag --merged <candidate_ref> --list <pattern> --sort=-version:refname`, peel each tag with `<tag>^{commit}`, skip tags resolving to the candidate commit, return the first remaining tag, and raise `ReleasePolicyError` when none is usable.
 
-- [ ] **Step 6: Set the committed policy field.**
+- [x] **Step 6: Set the committed policy field.**
 
 `evals/live/release-policy.yaml` must contain:
 ```yaml
 release_tag_pattern: mcp-server-v*
 ```
 
-- [ ] **Step 7: Run the focused tests and confirm GREEN.**
+- [x] **Step 7: Run the focused tests and confirm GREEN.**
 
-- [ ] **Step 8: Commit Task 1.**
+- [x] **Step 8: Commit Task 1.**
 
 ```bash
 git add src/kicad_mcp/evals/release_policy.py evals/live/release-policy.yaml tests/unit/test_live_model_release_policy.py
