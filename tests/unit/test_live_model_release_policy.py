@@ -496,7 +496,50 @@ def test_release_policy_cli_writes_machine_readable_outputs(tmp_path: Path) -> N
     assert values["mode"] == "full"
     assert values["reason"] == "baseline_unapproved"
     assert values["required_configurations"] == '["alpha","beta","gamma"]'
+    assert values["release_base_ref"] == "mcp-server-v1.0.0"
+    assert values["release_contract_changed"] == "true"
     assert len(values["current_contract_digest"]) == 64
+
+
+def test_release_policy_cli_allows_unchanged_release_with_unapproved_baseline(
+    tmp_path: Path,
+) -> None:
+    from scripts import check_live_model_release_policy as cli
+
+    repo = _repository(tmp_path)
+    release_tag = _tag_server_release(repo)
+    _commit_docs(repo)
+    output = tmp_path / "github-output.txt"
+
+    exit_code = cli.main(
+        [
+            "--repo-root",
+            str(repo),
+            "--policy",
+            str(_policy(tmp_path / "policy.yaml")),
+            "--baseline",
+            str(_baseline(tmp_path / "baseline.yaml", approved=False)),
+            "--github-output",
+            str(output),
+            "--require-ready",
+            "release",
+            "--ref",
+            "HEAD",
+            "--today",
+            "2026-08-02",
+        ]
+    )
+
+    values = dict(
+        line.split("=", 1)
+        for line in output.read_text(encoding="utf-8").splitlines()
+        if "=" in line
+    )
+    assert exit_code == 0
+    assert values["mode"] == "none"
+    assert values["reason"] == "no_agent_contract_change_since_release"
+    assert values["release_base_ref"] == release_tag
+    assert values["release_contract_changed"] == "false"
 
 
 def test_live_model_assurance_workflow_is_risk_based_and_secret_safe() -> None:

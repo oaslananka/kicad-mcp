@@ -158,18 +158,18 @@ git commit -m "fix(evals): scope release readiness to contract changes"
 - Consumes: extended `ReleasePolicyDecision`.
 - Produces GitHub outputs `release_base_ref` and `release_contract_changed`.
 
-- [ ] **Step 1: Extend the CLI output test** so a release decision writes:
+- [x] **Step 1: Extend the CLI output test** so a release decision writes:
 ```text
 release_base_ref=mcp-server-v1.0.0
 release_contract_changed=false
 ```
 for an unchanged fixture.
 
-- [ ] **Step 2: Add/adjust CLI fail-closed coverage** so changed contract + unapproved baseline still returns exit 1 with `--require-ready`, while unchanged contract + unapproved baseline returns exit 0.
+- [x] **Step 2: Add/adjust CLI fail-closed coverage** so changed contract + unapproved baseline still returns exit 1 with `--require-ready`, while unchanged contract + unapproved baseline returns exit 0.
 
-- [ ] **Step 3: Run the CLI-focused tests and confirm RED.**
+- [x] **Step 3: Run the CLI-focused tests and confirm RED.**
 
-- [ ] **Step 4: Update `_write_outputs()`.**
+- [x] **Step 4: Update `_write_outputs()`.**
 
 Serialize:
 ```python
@@ -182,9 +182,9 @@ Serialize:
 
 Do not change `--require-ready`: it must continue to fail only when `decision.mode == "full"`.
 
-- [ ] **Step 5: Run the release-policy unit file and confirm GREEN.**
+- [x] **Step 5: Run the release-policy unit file and confirm GREEN.**
 
-- [ ] **Step 6: Commit Task 3.**
+- [x] **Step 6: Commit Task 3.**
 
 ```bash
 git add scripts/check_live_model_release_policy.py tests/unit/test_live_model_release_policy.py
