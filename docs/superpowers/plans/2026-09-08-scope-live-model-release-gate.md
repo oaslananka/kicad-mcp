@@ -258,15 +258,15 @@ git commit -m "ci: fetch release history for live assurance"
 **Interfaces:**
 - Produces: one protected PR with auditable policy semantics and regression coverage.
 
-- [ ] **Step 1: Document the release boundary**: Live Model Release Gate is blocking only when the configured contract differs from the previous published `mcp-server` release; unchanged releases do not require an approved live baseline; missing prior release history fails closed.
+- [x] **Step 1: Document the release boundary**: Live Model Release Gate is blocking only when the configured contract differs from the previous published `mcp-server` release; unchanged releases do not require an approved live baseline; missing prior release history fails closed.
 
-- [ ] **Step 2: Run focused verification.**
+- [x] **Step 2: Run focused verification.**
 
 ```bash
 .venv/bin/python -m pytest tests/unit/test_live_model_release_policy.py tests/unit/test_release_hardening.py -q
 ```
 
-- [ ] **Step 3: Run formatting/lint/type checks.**
+- [x] **Step 3: Run formatting/lint/type checks.**
 
 ```bash
 corepack pnpm run format:check
@@ -274,14 +274,14 @@ corepack pnpm run lint
 corepack pnpm run typecheck
 ```
 
-- [ ] **Step 4: Run the full unit suite.**
+- [x] **Step 4: Run the full unit suite.**
 
 ```bash
 .venv/bin/python scripts/run_pytest.py unit
 ```
 Expected: exit 0; only pre-existing skips/warnings are acceptable.
 
-- [ ] **Step 5: Run final repository checks.**
+- [x] **Step 5: Run final repository checks.**
 
 ```bash
 git diff --check
@@ -289,15 +289,15 @@ git status --short --branch
 ```
 Review the complete branch diff against `origin/main` and confirm there are no unrelated changes.
 
-- [ ] **Step 6: Verify the current release remains correctly blocked.**
+- [x] **Step 6: Verify the current release remains correctly blocked.**
 
 With full history available, run the policy on current branch/repository and confirm the previous release is `mcp-server-v3.34.0`, `release_contract_changed=true`, and the unapproved baseline still yields `mode=full` / `reason=baseline_unapproved`.
 
-- [ ] **Step 7: Verify an unchanged fixture release is allowed.**
+- [x] **Step 7: Verify an unchanged fixture release is allowed.**
 
 Use the unit fixture or a temporary Git fixture with prior tag and byte-identical contract; confirm unapproved baseline yields `mode=none` / `reason=no_agent_contract_change_since_release` and `--require-ready` exits 0.
 
-- [ ] **Step 8: Commit docs and plan checkbox updates.**
+- [x] **Step 8: Commit docs and plan checkbox updates.**
 
 ```bash
 git add docs/development/release-process.md evals/README.md docs/superpowers/plans/2026-09-08-scope-live-model-release-gate.md

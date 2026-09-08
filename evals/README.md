@@ -399,15 +399,17 @@ boundaries:
 
 - a `main` push that changes the versioned model-facing contract runs one 11-case
   smoke repetition for every required configuration;
-- the same-repository Release Please pull request reuses an approved baseline only
-  when it is at most 30 days old and its `agent_contract_digest` matches the release
-  candidate, then runs the same bounded smoke set;
-- an unapproved or stale baseline, or any model-facing digest change, fails the stable
-  `Live Model Release Policy` check with an instruction to run the full protected gate
-  and promote a new baseline;
+- a Release Please candidate is first compared with the previous reachable published
+  `mcp-server-v*` release. If the configured agent contract is byte-identical, live-model
+  readiness returns `none` and does not block the release merely because the baseline is
+  stale or temporarily unapproved;
+- when the release contract changed, the existing evidence rules remain fail-closed: an
+  unapproved, stale, future-dated, or digest-mismatched baseline requires the full
+  protected gate and reviewed baseline promotion; a fresh approved baseline matching the
+  candidate contract is reusable;
 - ordinary pull requests do not receive protected provider credentials. Their
-  deterministic CI remains the review gate, and any model-facing change is exercised
-  by protected smoke after merge to `main`.
+  deterministic CI remains the review gate, and model-facing changes are exercised by
+  protected assurance after merge to `main`.
 
 The contract digest covers the generated public tool catalog, the canonical eval
 corpus and thresholds, blocking host/model configuration, classifier and matcher
@@ -426,10 +428,13 @@ failures, safety or forbidden calls, call-limit violations, and insufficient cle
 configurations always block. Provider availability is therefore not mislabeled as
 model quality, while safety remains fail-closed.
 
-The full 65-case, minimum-three-repeat workflow remains mandatory for a new model or
-host, prompt/matcher/safety change, tool catalog or schema change, adapter/retry/timeout
-change, corpus or threshold change, expired baseline, or baseline promotion. A compact
-approved baseline is generated only from a sanitized aggregate with complete evidence
+The full 65-case, minimum-three-repeat workflow remains mandatory when a release changes
+the agent contract and reusable approved evidence is unavailable—for example after a new
+model or host, prompt/matcher/safety change, tool catalog or schema change,
+adapter/retry/timeout change, corpus or threshold change, or baseline promotion. Baseline
+expiry by itself does not block a release whose agent contract is unchanged from the
+previous published server release. A compact approved baseline is generated only from a
+sanitized aggregate with complete evidence
 for every required configuration and no safety, quality, infrastructure, telemetry,
 or per-case failure:
 
