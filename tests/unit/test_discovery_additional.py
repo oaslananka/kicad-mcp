@@ -138,3 +138,78 @@ def test_get_cli_capabilities_and_recent_projects_cover_fallbacks(
         "pcb": None,
         "schematic": None,
     }
+
+
+def _fake_kipy(monkeypatch, reported_path: Path) -> None:
+    """Install a fake kipy that reports ``reported_path`` as the kicad-cli location."""
+    fake_pkg = types.ModuleType("kipy")
+    fake_module = types.ModuleType("kipy.kicad")
+
+    class FakeKiCad:
+        def __init__(self, timeout_ms: int = 0) -> None:
+            self.timeout_ms = timeout_ms
+
+        def get_kicad_binary_path(self, name: str) -> str:
+            return str(reported_path)
+
+        def close(self) -> None:
+            return None
+
+    fake_module.KiCad = FakeKiCad  # type: ignore[attr-defined]
+    fake_pkg.kicad = fake_module  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "kipy", fake_pkg)
+    monkeypatch.setitem(sys.modules, "kipy.kicad", fake_module)
+
+
+def test_discover_via_kipy_returns_none_when_reported_cli_missing(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """A kipy-reported path that no longer exists (stale cache, closed KiCad) is rejected."""
+    missing = tmp_path / "kicad-cli"
+    _fake_kipy(monkeypatch, missing)
+    assert discovery._discover_via_kipy() is None
+
+
+def test_is_ephemeral_cli_path_flags_appimage_mounts(tmp_path: Path) -> None:
+    ephemeral = "/tmp/.mount_kicadAbC123/usr/bin/kicad-cli"  # noqa: S108 - test data, not created
+    assert discovery._is_ephemeral_cli_path(Path(ephemeral))
+    assert discovery._is_ephemeral_cli_path(Path("/run/user/1000/.mount_x/usr/bin/kicad-cli"))
+    assert not discovery._is_ephemeral_cli_path(Path("/usr/bin/kicad-cli"))
+    assert not discovery._is_ephemeral_cli_path(tmp_path / "kicad-cli")
+
+
+def test_discover_via_kipy_rejects_ephemeral_appimage_mount(monkeypatch, tmp_path: Path) -> None:
+    """A running AppImage reports its own FUSE mount, which dies when KiCad exits."""
+    mount = tmp_path / ".mount_kicadZz9" / "usr" / "bin"
+    mount.mkdir(parents=True)
+    cli = mount / "kicad-cli"
+    cli.write_text("", encoding="utf-8")
+
+    _fake_kipy(monkeypatch, cli)
+    monkeypatch.setattr(discovery, "_EPHEMERAL_CLI_PREFIXES", (tmp_path.as_posix(),))
+
+    debug_events: list[str] = []
+    monkeypatch.setattr(discovery.logger, "debug", lambda event, **kw: debug_events.append(event))
+
+    assert discovery._discover_via_kipy() is None
+    assert "kipy_cli_discovery_ephemeral" in debug_events
+
+
+def test_discover_kicad_cli_falls_through_to_path_when_kipy_is_ephemeral(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """The stable kicad-cli on PATH must win over a path inside a transient mount."""
+    stable = tmp_path / "stable" / "kicad-cli"
+    stable.parent.mkdir(parents=True)
+    stable.write_text("", encoding="utf-8")
+
+    mount = tmp_path / ".mount_kicadZz9" / "usr" / "bin"
+    mount.mkdir(parents=True)
+    ephemeral = mount / "kicad-cli"
+    ephemeral.write_text("", encoding="utf-8")
+
+    _fake_kipy(monkeypatch, ephemeral)
+    monkeypatch.setattr(discovery, "_EPHEMERAL_CLI_PREFIXES", (mount.parent.as_posix(),))
+    monkeypatch.setattr(discovery.shutil, "which", lambda name: str(stable))
+
+    assert discovery.discover_kicad_cli() == stable

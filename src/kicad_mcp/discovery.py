@@ -97,6 +97,21 @@ def _candidate_cli_paths() -> list[Path]:
     ]
 
 
+# Prefixes under which a reported kicad-cli lives only for the lifetime of the
+# process that mounted it. An AppImage mounts itself at /tmp/.mount_<random>/ (or
+# under $XDG_RUNTIME_DIR) and unmounts on exit, so a path discovered there passes
+# exists() while KiCad is open and is dead the moment it closes.
+_EPHEMERAL_CLI_PREFIXES = ("/tmp/.mount_", "/run/user/")  # noqa: S108 - matched, never created
+
+
+def _is_ephemeral_cli_path(cli: Path) -> bool:
+    """Report whether ``cli`` lives under a mount that disappears with its owner."""
+    # These prefixes are POSIX paths; compare against the POSIX form so a
+    # WindowsPath (backslash-separated str()) still matches when kipy reports
+    # a path that was captured on a POSIX host.
+    return cli.as_posix().startswith(_EPHEMERAL_CLI_PREFIXES)
+
+
 def _discover_via_kipy() -> Path | None:
     try:
         from kipy.kicad import KiCad
@@ -111,7 +126,14 @@ def _discover_via_kipy() -> Path | None:
         else:
             kicad = KiCad(timeout_ms=1000)
         cli = Path(kicad.get_kicad_binary_path("kicad-cli"))
-        return cli if cli.exists() else None
+        if not cli.exists():
+            return None
+        if _is_ephemeral_cli_path(cli):
+            # Fall through to PATH/candidate discovery rather than caching a path
+            # that stops resolving as soon as the running KiCad exits.
+            logger.debug("kipy_cli_discovery_ephemeral", path=str(cli))
+            return None
+        return cli
     except Exception as exc:
         logger.debug("kipy_cli_discovery_failed", error=str(exc))
         return None
