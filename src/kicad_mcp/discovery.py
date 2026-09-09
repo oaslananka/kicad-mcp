@@ -97,19 +97,12 @@ def _candidate_cli_paths() -> list[Path]:
     ]
 
 
-# Prefixes under which a reported kicad-cli lives only for the lifetime of the
-# process that mounted it. An AppImage mounts itself at /tmp/.mount_<random>/ (or
-# under $XDG_RUNTIME_DIR) and unmounts on exit, so a path discovered there passes
-# exists() while KiCad is open and is dead the moment it closes.
-_EPHEMERAL_CLI_PREFIXES = ("/tmp/.mount_", "/run/user/")  # noqa: S108 - matched, never created
-
-
 def _is_ephemeral_cli_path(cli: Path) -> bool:
-    """Report whether ``cli`` lives under a mount that disappears with its owner."""
-    # These prefixes are POSIX paths; compare against the POSIX form so a
-    # WindowsPath (backslash-separated str()) still matches when kipy reports
-    # a path that was captured on a POSIX host.
-    return cli.as_posix().startswith(_EPHEMERAL_CLI_PREFIXES)
+    """Report whether ``cli`` lives under a transient AppImage FUSE mount."""
+    # AppImage mount roots are named ``.mount_<random>``. Match that semantic
+    # component rather than trusting a particular temporary-directory prefix:
+    # the mount may live under /tmp, XDG_RUNTIME_DIR, or another runtime root.
+    return any(part.startswith(".mount_") for part in cli.parts)
 
 
 def _discover_via_kipy() -> Path | None:
