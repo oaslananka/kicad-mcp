@@ -10,6 +10,14 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.34.2](https://github.com/oaslananka/kicad-mcp-pro/compare/mcp-server-v3.34.1...mcp-server-v3.34.2) (2026-09-09)
+
+
+### Bug Fixes
+
+* **lib:** require footprint documentation geometry ([#875](https://github.com/oaslananka/kicad-mcp-pro/issues/875)) ([71af1ef](https://github.com/oaslananka/kicad-mcp-pro/commit/71af1ef096c7efe43fe15198a3aea82cacb9177d))
+* **release:** verify published KiCad PCM tag ([#874](https://github.com/oaslananka/kicad-mcp-pro/issues/874)) ([2c7a35a](https://github.com/oaslananka/kicad-mcp-pro/commit/2c7a35a0b16e0492c5800cd4e2500483b2288845))
+
 ## [3.34.1](https://github.com/oaslananka/kicad-mcp-pro/compare/mcp-server-v3.34.0...mcp-server-v3.34.1) (2026-09-09)
 
 
