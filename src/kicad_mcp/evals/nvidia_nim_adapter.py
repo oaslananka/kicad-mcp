@@ -667,7 +667,13 @@ def normalize_classifier_text(
 
     unknown_tools = [name for name in raw_tools if name not in catalog_names]
     if unknown_tools:
-        if response_kind != "tool_calls" or len(raw_tools) != 1:
+        if response_kind != "tool_calls":
+            raise _ModelOutputValidationError("unknown_tool")
+        known_tools = [name for name in raw_tools if name in catalog_names]
+        mixed_canonical_alias = (
+            len(raw_tools) == 2 and len(known_tools) == 1 and len(unknown_tools) == 1
+        )
+        if len(raw_tools) != 1 and not mixed_canonical_alias:
             raise _ModelOutputValidationError("unknown_tool")
         provisional: dict[str, object] = {
             "schema_version": 1,
@@ -686,6 +692,11 @@ def normalize_classifier_text(
             return gated
         recovered = _unique_direct_tool_match(prompt=prompt, catalog=catalog_values)
         if recovered is None:
+            raise _ModelOutputValidationError("unknown_tool")
+        if known_tools and (
+            known_tools[0] != recovered
+            or not _is_constrained_tool_alias(unknown_tools[0], recovered)
+        ):
             raise _ModelOutputValidationError("unknown_tool")
         normalized = [recovered]
     else:
@@ -757,6 +768,16 @@ def _normalized_token_sequence(text: str) -> tuple[str, ...]:
 
 def _normalized_tokens(text: str) -> frozenset[str]:
     return frozenset(_normalized_token_sequence(text))
+
+
+def _is_constrained_tool_alias(alias: str, canonical: str) -> bool:
+    """Accept only shortened token-preserving aliases for a canonical tool name."""
+    alias_tokens = _normalized_token_sequence(alias)
+    canonical_tokens = _normalized_token_sequence(canonical)
+    if len(alias_tokens) < 2 or len(alias_tokens) >= len(canonical_tokens):
+        return False
+    canonical_iter = iter(canonical_tokens)
+    return all(any(candidate == token for candidate in canonical_iter) for token in alias_tokens)
 
 
 def _is_informational_request(prompt: str) -> bool:

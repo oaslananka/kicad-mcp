@@ -1100,15 +1100,174 @@ def test_output_postcondition_rejects_ambiguous_unknown_tool_recovery() -> None:
     }
 
 
-def test_output_postcondition_rejects_mixed_known_and_unknown_tool_names() -> None:
+def test_output_postcondition_rejects_unknown_tools_for_non_tool_response() -> None:
+    result = _request_postcondition_result(
+        prompt="Answer without using a tool.",
+        model_response="answer",
+        selected_tools=("unknown_answer_tool",),
+        catalog=(),
+    )
+
+    assert result == {
+        "schema_version": 1,
+        "status": "error",
+        "failure_kind": "model_output_invalid",
+        "failure_detail": "unknown_tool",
+    }
+
+
+def test_output_postcondition_rejects_single_token_alias_next_to_canonical_tool() -> None:
     result = _request_postcondition_result(
         prompt="Export a Specctra DSN for external routing.",
         model_response="tool_calls",
-        selected_tools=("route_export_dsn", "pcb_export_dsn"),
+        selected_tools=("route_export_dsn", "dsn"),
         catalog=(
             {
                 "name": "route_export_dsn",
                 "summary": "Export a Specctra DSN for FreeRouting.",
+                "data_loss_risk": False,
+            },
+        ),
+    )
+
+    assert result == {
+        "schema_version": 1,
+        "status": "error",
+        "failure_kind": "model_output_invalid",
+        "failure_detail": "unknown_tool",
+    }
+
+
+def test_output_postcondition_recovers_mixed_known_and_shortened_alias_when_match_agrees() -> None:
+    result = _request_postcondition_result(
+        prompt="Export a Specctra DSN for external routing.",
+        model_response="tool_calls",
+        selected_tools=("route_export_dsn", "export_dsn"),
+        catalog=(
+            {
+                "name": "route_export_dsn",
+                "summary": "Export a Specctra DSN for FreeRouting.",
+                "data_loss_risk": False,
+            },
+        ),
+    )
+
+    _assert_decision(result, response_kind="tool_calls", called_tools=["route_export_dsn"])
+
+
+def test_output_postcondition_recovers_gate_cases_with_matching_canonical_and_alias() -> None:
+    root = Path(__file__).resolve().parents[2]
+    catalog = load_eval_tool_catalog(
+        root / "evals/tool_selection/cases.yaml",
+        root / "docs/tools-reference.generated.md",
+    )
+    catalog_values = tuple(tool.as_dict() for tool in catalog)
+
+    project = _request_postcondition_result(
+        prompt="Create a new KiCad project named sensor-node.",
+        model_response="tool_calls",
+        selected_tools=("kicad_create_new_project", "create_project"),
+        catalog=catalog_values,
+    )
+    component = _request_postcondition_result(
+        prompt="Look up the library details for component R1.",
+        model_response="tool_calls",
+        selected_tools=("lib_get_component_details", "get_component_details"),
+        catalog=catalog_values,
+    )
+
+    _assert_decision(
+        project,
+        response_kind="tool_calls",
+        called_tools=["kicad_create_new_project"],
+    )
+    _assert_decision(
+        component,
+        response_kind="tool_calls",
+        called_tools=["lib_get_component_details"],
+    )
+
+
+def test_output_postcondition_rejects_multiple_unknown_aliases_without_canonical_tool() -> None:
+    result = _request_postcondition_result(
+        prompt="Export a Specctra DSN for external routing.",
+        model_response="tool_calls",
+        selected_tools=("pcb_export_dsn", "legacy_export_dsn"),
+        catalog=(
+            {
+                "name": "route_export_dsn",
+                "summary": "Export a Specctra DSN for FreeRouting.",
+                "data_loss_risk": False,
+            },
+        ),
+    )
+
+    assert result == {
+        "schema_version": 1,
+        "status": "error",
+        "failure_kind": "model_output_invalid",
+        "failure_detail": "unknown_tool",
+    }
+
+
+def test_output_postcondition_rejects_canonical_with_multiple_unknown_aliases() -> None:
+    result = _request_postcondition_result(
+        prompt="Export a Specctra DSN for external routing.",
+        model_response="tool_calls",
+        selected_tools=("route_export_dsn", "pcb_export_dsn", "legacy_export_dsn"),
+        catalog=(
+            {
+                "name": "route_export_dsn",
+                "summary": "Export a Specctra DSN for FreeRouting.",
+                "data_loss_risk": False,
+            },
+        ),
+    )
+
+    assert result == {
+        "schema_version": 1,
+        "status": "error",
+        "failure_kind": "model_output_invalid",
+        "failure_detail": "unknown_tool",
+    }
+
+
+def test_output_postcondition_rejects_arbitrary_unknown_name_next_to_canonical_tool() -> None:
+    result = _request_postcondition_result(
+        prompt="Export a Specctra DSN for external routing.",
+        model_response="tool_calls",
+        selected_tools=("route_export_dsn", "delete_project"),
+        catalog=(
+            {
+                "name": "route_export_dsn",
+                "summary": "Export a Specctra DSN for FreeRouting.",
+                "data_loss_risk": False,
+            },
+        ),
+    )
+
+    assert result == {
+        "schema_version": 1,
+        "status": "error",
+        "failure_kind": "model_output_invalid",
+        "failure_detail": "unknown_tool",
+    }
+
+
+def test_output_postcondition_rejects_mixed_unknown_alias_with_conflicting_known_tool() -> None:
+    result = _request_postcondition_result(
+        prompt="Export a Specctra DSN for external routing.",
+        model_response="tool_calls",
+        selected_tools=("export_gerber", "pcb_export_dsn"),
+        catalog=(
+            {
+                "name": "route_export_dsn",
+                "summary": "Export a Specctra DSN for FreeRouting.",
+                "data_loss_risk": False,
+            },
+            {
+                "name": "export_gerber",
+                "summary": "Export Gerber manufacturing files.",
                 "data_loss_risk": False,
             },
         ),
