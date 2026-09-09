@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from .footprint_gen import DensityLevel, chip_pad_geometry
+from .sexpr import _extract_block
 
 FootprintVerdict = Literal["PASS", "WARN", "FAIL"]
 
@@ -308,9 +309,48 @@ def parse_ipc_density(footprint_text: str) -> str | None:
     return (match.group(1) or match.group(2)).upper()
 
 
-_COURTYARD_RE = re.compile(r"[FB]\.CrtYd", re.IGNORECASE)
-_FAB_RE = re.compile(r"[FB]\.Fab", re.IGNORECASE)
-_SILK_RE = re.compile(r"[FB]\.SilkS", re.IGNORECASE)
+_FOOTPRINT_GEOMETRY_TOKENS = frozenset(
+    {"fp_line", "fp_rect", "fp_circle", "fp_arc", "fp_poly", "fp_curve"}
+)
+_SEXPR_TOKEN_RE = re.compile(r"\(\s*([a-z_][a-z0-9_]*)\b", re.IGNORECASE)
+_DOCUMENTATION_LAYER_RE = re.compile(
+    r'\(layer\s+"?(?P<layer>[FB]\.(?:CrtYd|Fab|SilkS))"?\s*\)', re.IGNORECASE
+)
+
+
+def _footprint_geometry_layers(footprint_text: str) -> set[str]:
+    """Return documentation layers used by actual footprint geometry elements."""
+    layers: set[str] = set()
+    index = 0
+    in_string = False
+    escaped = False
+    while index < len(footprint_text):
+        char = footprint_text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            index += 1
+            continue
+        if char == '"':
+            in_string = True
+            index += 1
+            continue
+        if char == "(":
+            token_match = _SEXPR_TOKEN_RE.match(footprint_text, index)
+            if token_match and token_match.group(1).lower() in _FOOTPRINT_GEOMETRY_TOKENS:
+                block, length = _extract_block(footprint_text, index)
+                if block and length:
+                    layer_match = _DOCUMENTATION_LAYER_RE.search(block)
+                    if layer_match:
+                        layers.add(layer_match.group("layer").lower())
+                    index += length
+                    continue
+        index += 1
+    return layers
 
 
 def check_footprint_documentation_layers(footprint_text: str) -> FootprintCheck:
@@ -319,9 +359,10 @@ def check_footprint_documentation_layers(footprint_text: str) -> FootprintCheck:
     No courtyard is a blocking ``FAIL`` (KiCad uses it for placement clearance);
     a missing fab or silkscreen outline ``WARN``s. All three present ``PASS``es.
     """
-    has_courtyard = bool(_COURTYARD_RE.search(footprint_text))
-    has_fab = bool(_FAB_RE.search(footprint_text))
-    has_silk = bool(_SILK_RE.search(footprint_text))
+    geometry_layers = _footprint_geometry_layers(footprint_text)
+    has_courtyard = bool({"f.crtyd", "b.crtyd"} & geometry_layers)
+    has_fab = bool({"f.fab", "b.fab"} & geometry_layers)
+    has_silk = bool({"f.silks", "b.silks"} & geometry_layers)
 
     findings: list[str] = []
     if not has_fab:

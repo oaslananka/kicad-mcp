@@ -184,6 +184,22 @@ def test_certify_footprint_reports_fail_for_missing_required_pads(tmp_path: Path
     assert "pad-count" in result
 
 
+def test_certify_footprint_rejects_documentation_layer_names_without_geometry(
+    tmp_path: Path,
+) -> None:
+    service, _ = _service(tmp_path)
+    path = tmp_path / "substring-only.kicad_mod"
+    path.write_text(
+        '(footprint "X" (descr "mentions F.CrtYd and F.Fab and F.SilkS in prose"))\n',
+        encoding="utf-8",
+    )
+
+    result = service.certify_footprint("substring-only.kicad_mod")
+
+    assert result.startswith("Footprint certification: FAIL")
+    assert "no courtyard-layer" in result
+
+
 def test_certify_footprint_reports_warn_for_missing_documentation_graphics(
     tmp_path: Path,
 ) -> None:

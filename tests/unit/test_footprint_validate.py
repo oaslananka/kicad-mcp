@@ -148,6 +148,40 @@ def test_documentation_layers_pass_when_all_present() -> None:
     assert result.verdict == "PASS"
 
 
+def test_documentation_layers_accept_supported_geometry_primitives() -> None:
+    geometry = (
+        '(fp_curve (pts (xy 0 0) (xy 1 0) (xy 1 1) (xy 0 1)) (layer "F.CrtYd"))\n'
+        '(fp_rect (start -1 -1) (end 1 1) (layer "F.Fab"))\n'
+        '(fp_circle (center 0 0) (end 1 0) (layer "F.SilkS"))\n'
+    )
+
+    result = check_footprint_documentation_layers(geometry)
+
+    assert result.verdict == "PASS"
+
+
+def test_documentation_layers_ignore_layer_names_in_descriptive_text() -> None:
+    fake = '(footprint "X" (descr "mentions F.CrtYd and F.Fab and F.SilkS in prose"))'
+
+    result = check_footprint_documentation_layers(fake)
+
+    assert result.verdict == "FAIL"
+    assert any("courtyard" in finding for finding in result.findings)
+
+
+def test_documentation_layers_ignore_non_geometry_items_on_documentation_layers() -> None:
+    text_only = (
+        '(fp_text reference "REF**" (at 0 0) (layer "F.SilkS"))\n'
+        '(fp_text user "F.Fab" (at 0 0) (layer "F.Fab"))\n'
+        '(fp_text user "F.CrtYd" (at 0 0) (layer "F.CrtYd"))\n'
+    )
+
+    result = check_footprint_documentation_layers(text_only)
+
+    assert result.verdict == "FAIL"
+    assert any("courtyard" in finding for finding in result.findings)
+
+
 def test_documentation_layers_fail_without_courtyard() -> None:
     no_courtyard = (
         '(fp_line (start -1 -1) (end 1 -1) (layer "F.Fab"))\n'
