@@ -70,6 +70,7 @@ def _policy(path: Path) -> Path:
                 "release_pull_request_head": "release-please--branches--main",
                 "release_tag_pattern": "mcp-server-v*",
                 "minimum_smoke_configurations": 2,
+                "smoke_configurations": ["alpha", "beta"],
                 "agent_contract_paths": ["src/kicad_mcp/evals/**"],
             },
             sort_keys=False,
@@ -178,6 +179,61 @@ def test_generate_approved_baseline_from_clean_full_gate_evidence(tmp_path: Path
             "mean_tokens": 200.0,
         },
     }
+
+
+def test_generate_approved_baseline_accepts_one_required_configuration_at_two_repeats(
+    tmp_path: Path,
+) -> None:
+    repo, revision = _repo(tmp_path)
+    policy = _policy(tmp_path / "policy.yaml")
+    template = _baseline(tmp_path / "baseline.yaml")
+    template_payload = yaml.safe_load(template.read_text(encoding="utf-8"))
+    template_payload["minimum_repeats"] = 2
+    template_payload["required_configurations"] = ["alpha"]
+    template.write_text(yaml.safe_dump(template_payload, sort_keys=False), encoding="utf-8")
+    aggregate = _aggregate(tmp_path / "aggregate.json", revision)
+    aggregate_payload = json.loads(aggregate.read_text(encoding="utf-8"))
+    aggregate_payload["configurations"] = ["alpha"]
+    aggregate_payload["observed"] = {"alpha": aggregate_payload["observed"]["alpha"]}
+    aggregate_payload["observed"]["alpha"]["repeats"] = 2
+    aggregate.write_text(json.dumps(aggregate_payload), encoding="utf-8")
+
+    baseline = generate_approved_baseline(
+        aggregate_report_path=aggregate,
+        baseline_template_path=template,
+        policy_path=policy,
+        repo_root=repo,
+        workflow_run_id=987654,
+        approved_at=date(2026, 8, 2),
+    )
+
+    assert baseline["minimum_repeats"] == 2
+    assert baseline["required_configurations"] == ["alpha"]
+    assert list(baseline["configurations"]) == ["alpha"]
+
+
+def test_generate_approved_baseline_rejects_empty_required_configurations(tmp_path: Path) -> None:
+    repo, revision = _repo(tmp_path)
+    policy = _policy(tmp_path / "policy.yaml")
+    template = _baseline(tmp_path / "baseline.yaml")
+    template_payload = yaml.safe_load(template.read_text(encoding="utf-8"))
+    template_payload["minimum_repeats"] = 2
+    template_payload["required_configurations"] = []
+    template.write_text(yaml.safe_dump(template_payload, sort_keys=False), encoding="utf-8")
+    aggregate = _aggregate(tmp_path / "aggregate.json", revision)
+
+    with pytest.raises(
+        BaselinePromotionError,
+        match="Required configurations must contain at least one unique id",
+    ):
+        generate_approved_baseline(
+            aggregate_report_path=aggregate,
+            baseline_template_path=template,
+            policy_path=policy,
+            repo_root=repo,
+            workflow_run_id=987654,
+            approved_at=date(2026, 8, 2),
+        )
 
 
 def test_generate_approved_baseline_accepts_two_required_configurations(tmp_path: Path) -> None:

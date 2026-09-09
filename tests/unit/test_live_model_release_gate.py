@@ -83,7 +83,9 @@ def _evidence(
     adapter_failures: int = 0,
     selection_failures: int = 0,
     executions: list[dict[str, object]] | None = None,
+    repeats: int = 3,
 ) -> dict[str, object]:
+    observations = 65 * repeats
     return {
         "schema_version": 1,
         "complete": True,
@@ -94,22 +96,22 @@ def _evidence(
             "adapter": "subprocess",
         },
         "source_revision": "a" * 40,
-        "repeats": 3,
+        "repeats": repeats,
         "limits": {},
         "usage": {
             "total_tool_calls": 120,
             "total_tokens": 35100,
             "total_cost_micros": 0,
-            "token_observations": 195 if token_coverage == 1.0 else 0,
+            "token_observations": observations if token_coverage == 1.0 else 0,
             "cost_observations": 0,
         },
         "summary": {
             "cases": 65,
-            "runs": 3,
-            "observations": 195,
-            "planned_observations": 195,
-            "completed_observations": 195 - adapter_failures,
-            "passed": round(195 * pass_rate),
+            "runs": repeats,
+            "observations": observations,
+            "planned_observations": observations,
+            "completed_observations": observations - adapter_failures,
+            "passed": round(observations * pass_rate),
             "pass_rate": pass_rate,
             "mean_recall": mean_recall,
             "behavior_match_rate": 1.0,
@@ -182,13 +184,64 @@ def test_gate_rejects_duplicate_required_configurations(tmp_path: Path) -> None:
     baseline["required_configurations"] = [first, first]
     baseline_path.write_text(yaml.safe_dump(baseline, sort_keys=False), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="two unique"):
+    with pytest.raises(ValueError, match="unique"):
         evaluate_release_gate(
             [],
             baseline_path=baseline_path,
             cases_path=CASES,
             thresholds_path=THRESHOLDS,
         )
+
+
+def test_gate_accepts_one_required_full_configuration_at_two_repeats(
+    tmp_path: Path,
+) -> None:
+    config_id = CONFIG_IDS[0]
+    evidence = _write_evidence(
+        tmp_path / "evidence",
+        [_evidence(config_id, MODELS[0], repeats=2)],
+    )
+    baseline_path = _baseline(tmp_path / "baselines.yaml")
+    baseline = yaml.safe_load(baseline_path.read_text(encoding="utf-8"))
+    baseline["minimum_repeats"] = 2
+    baseline["required_configurations"] = [config_id]
+    baseline["configurations"] = {config_id: baseline["configurations"][config_id]}
+    baseline_path.write_text(yaml.safe_dump(baseline, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_release_gate(
+        evidence,
+        baseline_path=baseline_path,
+        cases_path=CASES,
+        thresholds_path=THRESHOLDS,
+    )
+
+    assert report["passed"] is True
+    assert report["configurations"] == [config_id]
+    assert report["observed"][config_id]["repeats"] == 2
+
+
+def test_gate_rejects_one_repeat_when_baseline_requires_two(tmp_path: Path) -> None:
+    config_id = CONFIG_IDS[0]
+    evidence = _write_evidence(
+        tmp_path / "evidence",
+        [_evidence(config_id, MODELS[0], repeats=1)],
+    )
+    baseline_path = _baseline(tmp_path / "baselines.yaml")
+    baseline = yaml.safe_load(baseline_path.read_text(encoding="utf-8"))
+    baseline["minimum_repeats"] = 2
+    baseline["required_configurations"] = [config_id]
+    baseline["configurations"] = {config_id: baseline["configurations"][config_id]}
+    baseline_path.write_text(yaml.safe_dump(baseline, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_release_gate(
+        evidence,
+        baseline_path=baseline_path,
+        cases_path=CASES,
+        thresholds_path=THRESHOLDS,
+    )
+
+    assert report["passed"] is False
+    assert report["classifications"]["infrastructure_failures"] == [f"{config_id}: repeats below 2"]
 
 
 def test_gate_accepts_two_required_configurations(tmp_path: Path) -> None:
@@ -388,7 +441,8 @@ def test_committed_baseline_records_reviewed_required_configurations() -> None:
     # presented as a baseline for the new configuration. A protected full gate
     # must generate the next candidate.
     assert baseline["approved"] is False
-    assert baseline["required_configurations"] == list(CONFIG_IDS[:2])
+    assert baseline["minimum_repeats"] == 2
+    assert baseline["required_configurations"] == [CONFIG_IDS[0]]
     assert baseline["configurations"] == {}
     assert baseline["approved_at"] is None
     assert baseline["source_revision"] is None
@@ -423,11 +477,15 @@ def test_committed_live_smoke_subset_is_bounded_balanced_and_canonical() -> None
     } <= ids
 
 
-def test_release_gate_workflow_requires_two_independent_blocking_configurations() -> None:
+def test_release_gate_workflow_smokes_two_providers_and_benchmarks_only_nvidia() -> None:
     workflow = (ROOT / ".github/workflows/live-model-release-gate.yml").read_text(encoding="utf-8")
+    smoke_block = workflow.split("  smoke:", 1)[1].split("  benchmark:", 1)[0]
+    benchmark_block = workflow.split("  benchmark:", 1)[1].split("  aggregate:", 1)[0]
 
-    assert workflow.count("nvidia-nemotron-3-5-lightning-30b-a3b") == 2
-    assert workflow.count("opencode-cli-mimo-v2-5-free") == 2
+    assert smoke_block.count("nvidia-nemotron-3-5-lightning-30b-a3b") == 1
+    assert smoke_block.count("opencode-cli-mimo-v2-5-free") == 1
+    assert benchmark_block.count("nvidia-nemotron-3-5-lightning-30b-a3b") == 1
+    assert "opencode-cli-mimo-v2-5-free" not in benchmark_block
     assert "opencode-cli-nemotron-3-ultra-free" not in workflow
 
 
@@ -451,24 +509,27 @@ def test_release_gate_workflow_is_main_only_protected_and_sequential() -> None:
     assert "needs: [smoke, benchmark]" in aggregate_block
     assert "if: ${{ always() && needs.smoke.result == 'success' }}" in aggregate_block
     assert "name: Cool down shared NVIDIA trial endpoint" not in workflow
-    assert "timeout-minutes: 50" in workflow
+    assert "timeout-minutes: 18" in smoke_block
     assert "--case-tag live-smoke" in workflow
     assert "--repeats 1" in workflow
-    assert "timeout --signal=TERM --kill-after=30s 45m" in smoke_block
+    assert "timeout --signal=TERM --kill-after=30s 15m" in smoke_block
     assert "if exit_code not in (124, 137):" in smoke_block
     assert "Upload sanitized smoke evidence\n        if: always()" in workflow
     assert "live-model-smoke-${{ matrix.configuration }}-${{ github.run_id }}" in workflow
     assert "name: Enforce smoke result" in workflow
     assert "needs: smoke" in workflow
-    # Slow blocking providers must have enough bounded wall-clock budget to finish
-    # all three repeats while still leaving time to upload fail-closed evidence.
-    assert "timeout-minutes: 240" in benchmark_block
-    assert "timeout --signal=TERM --kill-after=30s 225m" in benchmark_block
+    # The single full provider has bounded headroom for two standard repetitions.
+    assert "timeout-minutes: 90" in benchmark_block
+    assert "timeout --signal=TERM --kill-after=30s 75m" in benchmark_block
     assert "if exit_code not in (124, 137):" in benchmark_block
     assert '"state": "running"' in workflow
     assert '"runner_exit_code": None' in workflow
     assert "Upload sanitized configuration evidence\n        if: always()" in workflow
-    assert "default: 3" in workflow
+    assert "default: 2" in workflow
+    assert 'test "$REPEATS" -ge 2' in workflow
+    assert 'test "$REPEATS" -le 3' in workflow
+    assert 'test "$REPEATS" -ge 3' not in workflow
+    assert 'test "$REPEATS" -le 5' not in workflow
     for config_id in CONFIG_IDS[:2]:
         assert config_id in workflow
     assert CONFIG_IDS[2] not in workflow
@@ -496,24 +557,26 @@ def test_release_gate_workflow_is_main_only_protected_and_sequential() -> None:
             "OPENCODE_ZEN_API_KEY: ${{ startsWith(matrix.configuration, 'opencode-cli-') "
             "&& secrets.OPENCODE_ZEN_API_KEY || '' }}"
         )
-        == 2
+        == 1
     )
     assert "NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}" not in workflow
     assert "OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}" not in workflow
-    assert workflow.count("name: Install pinned OpenCode CLI") == 2
-    assert workflow.count('OPENCODE_CLI_VERSION: "1.18.10"') == 2
-    assert workflow.count("if: startsWith(matrix.configuration, 'opencode-cli-')") == 2
-    assert workflow.count("npm ci --prefix evals/live --ignore-scripts --no-audit --no-fund") == 2
+    assert workflow.count("name: Install pinned OpenCode CLI") == 1
+    assert workflow.count('OPENCODE_CLI_VERSION: "1.18.10"') == 1
+    assert workflow.count("if: startsWith(matrix.configuration, 'opencode-cli-')") == 1
+    assert workflow.count("npm ci --prefix evals/live --ignore-scripts --no-audit --no-fund") == 1
     assert (
         workflow.count(
             'test "$(evals/live/node_modules/opencode-linux-x64/bin/opencode --version)" '
             '= "$OPENCODE_CLI_VERSION"'
         )
-        == 2
+        == 1
     )
-    assert workflow.count('nvidia-*) test -n "$NVIDIA_API_KEY" ;;') == 2
-    assert workflow.count('opencode-cli-*) test -n "$OPENCODE_ZEN_API_KEY" ;;') == 2
-    assert workflow.count("Unsupported blocking configuration: $CONFIGURATION_ID") == 2
+    assert workflow.count('nvidia-*) test -n "$NVIDIA_API_KEY" ;;') == 1
+    assert workflow.count('opencode-cli-*) test -n "$OPENCODE_ZEN_API_KEY" ;;') == 1
+    assert workflow.count("Unsupported blocking configuration: $CONFIGURATION_ID") == 1
+    assert 'test -n "$NVIDIA_API_KEY"' in benchmark_block
+    assert "OPENCODE_ZEN_API_KEY" not in benchmark_block
     assert "evaluate_live_model_release_gate.py" in workflow
     assert "generate_live_model_baseline.py" in workflow
     assert "baselines.candidate.yaml" in workflow

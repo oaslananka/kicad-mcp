@@ -77,6 +77,9 @@ def _write_outputs(path: Path, decision: ReleasePolicyDecision) -> None:
         "required_configurations": json.dumps(
             list(decision.required_configurations), separators=(",", ":")
         ),
+        "smoke_configurations": json.dumps(
+            list(decision.smoke_configurations), separators=(",", ":")
+        ),
     }
     with path.open("a", encoding="utf-8", newline="\n") as handle:
         for key, value in values.items():

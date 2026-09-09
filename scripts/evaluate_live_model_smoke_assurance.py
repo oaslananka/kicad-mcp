@@ -7,7 +7,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from kicad_mcp.evals.release_policy import load_baseline_metadata, load_release_policy
+from kicad_mcp.evals.release_policy import load_release_policy
 from kicad_mcp.evals.smoke_assurance import (
     evaluate_smoke_assurance,
     write_smoke_assurance_report,
@@ -30,14 +30,13 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         policy = load_release_policy(args.policy)
-        baseline = load_baseline_metadata(args.baseline)
         evidence = sorted(args.evidence_root.glob("**/evidence.json"))
         statuses = sorted(args.evidence_root.glob("**/status.json"))
         report = evaluate_smoke_assurance(
             evidence,
             status_paths=statuses,
             require_status=True,
-            required_configurations=baseline.required_configurations,
+            required_configurations=policy.smoke_configurations,
             minimum_successful_configurations=policy.minimum_smoke_configurations,
             expected_source_revision=args.source_revision,
         )

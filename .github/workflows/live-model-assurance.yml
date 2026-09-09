@@ -18,6 +18,7 @@ jobs:
       mode: ${{ steps.policy.outputs.mode }}
       reason: ${{ steps.policy.outputs.reason }}
       required_configurations: ${{ steps.policy.outputs.required_configurations }}
+      smoke_configurations: ${{ steps.policy.outputs.smoke_configurations }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -51,7 +52,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        configuration: ${{ fromJSON(needs.classify.outputs.required_configurations) }}
+        configuration: ${{ fromJSON(needs.classify.outputs.smoke_configurations) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:

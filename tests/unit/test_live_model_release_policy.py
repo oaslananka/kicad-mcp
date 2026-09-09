@@ -93,6 +93,7 @@ def _policy(path: Path, *, max_age_days: int = 30) -> Path:
                 "release_pull_request_head": "release-please--branches--main",
                 "release_tag_pattern": "mcp-server-v*",
                 "minimum_smoke_configurations": 2,
+                "smoke_configurations": ["alpha", "beta"],
                 "agent_contract_paths": ["src/kicad_mcp/evals/**"],
             },
             sort_keys=False,
@@ -143,14 +144,36 @@ def test_release_policy_rejects_duplicate_required_configurations(tmp_path: Path
         load_baseline_metadata(baseline_path)
 
 
-def test_release_policy_rejects_fewer_than_two_required_configurations(tmp_path: Path) -> None:
+def test_release_policy_rejects_empty_required_configurations(tmp_path: Path) -> None:
+    baseline_path = _baseline(tmp_path / "baseline.yaml", approved=False)
+    baseline = yaml.safe_load(baseline_path.read_text(encoding="utf-8"))
+    baseline["required_configurations"] = []
+    baseline_path.write_text(yaml.safe_dump(baseline, sort_keys=False), encoding="utf-8")
+
+    with pytest.raises(ReleasePolicyError, match="non-empty"):
+        load_baseline_metadata(baseline_path)
+
+
+def test_release_policy_accepts_one_required_full_configuration(tmp_path: Path) -> None:
+    repo = _repository(tmp_path)
+    _tag_server_release(repo)
+    _commit_contract(repo, 2)
     baseline_path = _baseline(tmp_path / "baseline.yaml", approved=False)
     baseline = yaml.safe_load(baseline_path.read_text(encoding="utf-8"))
     baseline["required_configurations"] = ["alpha"]
     baseline_path.write_text(yaml.safe_dump(baseline, sort_keys=False), encoding="utf-8")
 
-    with pytest.raises(ReleasePolicyError, match="at least two"):
-        load_baseline_metadata(baseline_path)
+    decision = evaluate_release_readiness(
+        repo_root=repo,
+        policy_path=_policy(tmp_path / "policy.yaml"),
+        baseline_path=baseline_path,
+        ref="HEAD",
+        today=date(2026, 8, 2),
+    )
+
+    assert decision.mode == "full"
+    assert decision.required_configurations == ("alpha",)
+    assert decision.smoke_configurations == ("alpha", "beta")
 
 
 def test_release_policy_accepts_two_required_configurations(tmp_path: Path) -> None:
@@ -174,6 +197,7 @@ def test_release_policy_accepts_two_required_configurations(tmp_path: Path) -> N
     assert decision.reason == "baseline_unapproved"
     assert decision.release_base_ref == release_tag
     assert decision.required_configurations == ("alpha", "beta")
+    assert decision.smoke_configurations == ("alpha", "beta")
 
 
 def test_release_policy_requires_release_tag_pattern(tmp_path: Path) -> None:
@@ -185,6 +209,7 @@ def test_release_policy_requires_release_tag_pattern(tmp_path: Path) -> None:
                 "baseline_max_age_days": 30,
                 "release_pull_request_head": "release-please--branches--main",
                 "minimum_smoke_configurations": 2,
+                "smoke_configurations": ["alpha", "beta"],
                 "agent_contract_paths": ["src/kicad_mcp/evals/**"],
             },
             sort_keys=False,
@@ -203,6 +228,34 @@ def test_release_policy_rejects_empty_release_tag_pattern(tmp_path: Path) -> Non
     policy_path.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
 
     with pytest.raises(ReleasePolicyError, match="release_tag_pattern must be a non-empty string"):
+        load_release_policy(policy_path)
+
+
+def test_release_policy_loads_smoke_configurations(tmp_path: Path) -> None:
+    policy = load_release_policy(_policy(tmp_path / "policy.yaml"))
+
+    assert policy.smoke_configurations == ("alpha", "beta")
+
+
+def test_release_policy_rejects_duplicate_smoke_configurations(tmp_path: Path) -> None:
+    policy_path = _policy(tmp_path / "policy.yaml")
+    raw = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    raw["smoke_configurations"] = ["alpha", "alpha"]
+    policy_path.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
+
+    with pytest.raises(ReleasePolicyError, match="smoke_configurations.*duplicates"):
+        load_release_policy(policy_path)
+
+
+def test_release_policy_rejects_minimum_above_smoke_configuration_count(
+    tmp_path: Path,
+) -> None:
+    policy_path = _policy(tmp_path / "policy.yaml")
+    raw = yaml.safe_load(policy_path.read_text(encoding="utf-8"))
+    raw["minimum_smoke_configurations"] = 3
+    policy_path.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
+
+    with pytest.raises(ReleasePolicyError, match="cannot exceed smoke_configurations"):
         load_release_policy(policy_path)
 
 
@@ -426,6 +479,10 @@ def test_committed_release_policy_tracks_model_facing_inputs_only() -> None:
     assert policy.release_pull_request_head == "release-please--branches--main"
     assert policy.release_tag_pattern == "mcp-server-v*"
     assert policy.minimum_smoke_configurations == 2
+    assert policy.smoke_configurations == (
+        "nvidia-nemotron-3-5-lightning-30b-a3b",
+        "opencode-cli-mimo-v2-5-free",
+    )
     assert "docs/tools-reference.generated.md" in policy.agent_contract_paths
     assert "evals/tool_selection/**" in policy.agent_contract_paths
     assert "evals/live/configurations.yaml" in policy.agent_contract_paths
@@ -538,6 +595,7 @@ def test_release_policy_cli_writes_machine_readable_outputs(tmp_path: Path) -> N
     assert values["mode"] == "full"
     assert values["reason"] == "baseline_unapproved"
     assert values["required_configurations"] == '["alpha","beta","gamma"]'
+    assert values["smoke_configurations"] == '["alpha","beta"]'
     assert values["release_base_ref"] == "mcp-server-v1.0.0"
     assert values["release_contract_changed"] == "true"
     assert len(values["current_contract_digest"]) == 64
@@ -584,6 +642,13 @@ def test_release_policy_cli_allows_unchanged_release_with_unapproved_baseline(
     assert values["release_contract_changed"] == "false"
 
 
+def test_smoke_assurance_cli_uses_policy_smoke_configurations() -> None:
+    script = (ROOT / "scripts/evaluate_live_model_smoke_assurance.py").read_text(encoding="utf-8")
+
+    assert "required_configurations=policy.smoke_configurations" in script
+    assert "required_configurations=baseline.required_configurations" not in script
+
+
 def test_live_model_assurance_workflow_is_risk_based_and_secret_safe() -> None:
     workflow = (ROOT / ".github/workflows/live-model-assurance.yml").read_text(encoding="utf-8")
 
@@ -605,7 +670,9 @@ def test_live_model_assurance_workflow_is_risk_based_and_secret_safe() -> None:
     assert "timeout --signal=TERM --kill-after=30s 14m" in workflow
     assert '[ "$exit_code" -ne 124 ] && [ "$exit_code" -ne 137 ]' in workflow
     assert '"state": "running"' in workflow
-    assert "fromJSON(needs.classify.outputs.required_configurations)" in workflow
+    assert "smoke_configurations: ${{ steps.policy.outputs.smoke_configurations }}" in workflow
+    assert "fromJSON(needs.classify.outputs.smoke_configurations)" in workflow
+    assert "fromJSON(needs.classify.outputs.required_configurations)" not in workflow
     assert "evaluate_live_model_smoke_assurance.py" in workflow
     assert "name: Live Model Smoke Assurance" in workflow
     assert "name: Live Model Release Policy" in workflow

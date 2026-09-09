@@ -42,11 +42,11 @@ def _load_baseline(path: str | Path) -> dict[str, Any]:
     required = raw.get("required_configurations")
     if (
         not isinstance(required, list)
-        or len(required) < 2
+        or len(required) < 1
         or len(required) != len(set(required))
         or not all(isinstance(item, str) and item for item in required)
     ):
-        raise ValueError("Baseline file needs at least two unique required configurations.")
+        raise ValueError("Baseline file needs at least one unique required configuration.")
     minimum_repeats = raw.get("minimum_repeats")
     if isinstance(minimum_repeats, bool) or not isinstance(minimum_repeats, int):
         raise ValueError("minimum_repeats must be an integer.")
@@ -146,7 +146,7 @@ def evaluate_release_gate(
     cases_path: str | Path,
     thresholds_path: str | Path,
 ) -> dict[str, Any]:
-    """Evaluate three or more sanitized configuration reports against approved baselines."""
+    """Evaluate required sanitized configuration reports against approved baselines."""
     baseline = _load_baseline(baseline_path)
     required = cast(list[str], baseline["required_configurations"])
     report = _empty_report(required)
