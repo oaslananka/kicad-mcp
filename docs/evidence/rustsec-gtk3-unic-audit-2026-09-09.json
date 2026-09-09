@@ -113,8 +113,21 @@
     ]
   },
   "platformGating": {
-    "conclusion": "gtk/glib/webkit2gtk/wry/proc-macro-error chain resolves only under cfg(target_os = \"linux\") in tauri/wry; not present in the macOS (WKWebView) or Windows (WebView2) dependency graph.",
-    "evidence": "cargo tree -i glib (default target) printed no matches; cargo tree -i glib --target all resolved the chain, confirming the dependency is target-gated."
+    "cargoVersion": "cargo 1.97.1 (c980f4866 2026-06-30)",
+    "commands": {
+      "linux": "cargo tree -i glib@0.18.5 --target x86_64-unknown-linux-gnu --edges normal",
+      "macos": "cargo tree -i glib@0.18.5 --target aarch64-apple-darwin --edges normal",
+      "windows": "cargo tree -i glib@0.18.5 --target x86_64-pc-windows-msvc --edges normal",
+      "linuxProcMacro": "cargo tree -i proc-macro-error@1.0.4 --target x86_64-unknown-linux-gnu --edges normal",
+      "macosProcMacro": "cargo tree -i proc-macro-error@1.0.4 --target aarch64-apple-darwin --edges normal",
+      "windowsProcMacro": "cargo tree -i proc-macro-error@1.0.4 --target x86_64-pc-windows-msvc --edges normal"
+    },
+    "results": {
+      "linux": "glib 0.18.5 and proc-macro-error 1.0.4 both resolve through GTK/WebKitGTK/Tauri.",
+      "macos": "cargo tree reports nothing to print for both glib 0.18.5 and proc-macro-error 1.0.4.",
+      "windows": "cargo tree reports nothing to print for both glib 0.18.5 and proc-macro-error 1.0.4."
+    },
+    "conclusion": "The active glib/proc-macro-error chain is Linux-target-only in the resolved Tauri dependency graph; explicit macOS and Windows target resolution contains neither package."
   },
   "upstreamTracking": {
     "tauriRuntimeWryGtk4Tracking": {
