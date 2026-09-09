@@ -437,17 +437,19 @@ def test_committed_live_configurations_include_required_and_diagnostic_records()
 def test_committed_baseline_records_reviewed_required_configurations() -> None:
     baseline = yaml.safe_load((ROOT / "evals/live/baselines.yaml").read_text(encoding="utf-8"))
 
-    # Blocking-provider identities changed, so no stale model metrics may be
-    # presented as a baseline for the new configuration. A protected full gate
-    # must generate the next candidate.
-    assert baseline["approved"] is False
+    assert baseline["approved"] is True
     assert baseline["minimum_repeats"] == 2
     assert baseline["required_configurations"] == [CONFIG_IDS[0]]
-    assert baseline["configurations"] == {}
-    assert baseline["approved_at"] is None
-    assert baseline["source_revision"] is None
-    assert baseline["agent_contract_digest"] is None
-    assert baseline["evidence"] == {}
+    assert list(baseline["configurations"]) == [CONFIG_IDS[0]]
+    assert isinstance(baseline["approved_at"], str) and baseline["approved_at"]
+    assert len(baseline["source_revision"]) == 40
+    assert len(baseline["agent_contract_digest"]) == 64
+    assert isinstance(baseline["evidence"]["workflow_run_id"], int)
+    assert len(baseline["evidence"]["aggregate_sha256"]) == 64
+    configuration = baseline["configurations"][CONFIG_IDS[0]]
+    assert configuration["host"] == HOSTS[0]
+    assert configuration["model"] == MODELS[0]
+    assert configuration["token_metrics_required"] is True
 
 
 def test_committed_live_smoke_subset_is_bounded_balanced_and_canonical() -> None:
