@@ -30,6 +30,7 @@ _POLICY_KEYS = frozenset(
         "release_pull_request_head",
         "release_tag_pattern",
         "minimum_smoke_configurations",
+        "smoke_configurations",
         "agent_contract_paths",
     }
 )
@@ -60,6 +61,7 @@ class ReleasePolicyConfig:
     release_pull_request_head: str
     release_tag_pattern: str
     minimum_smoke_configurations: int
+    smoke_configurations: tuple[str, ...]
     agent_contract_paths: tuple[str, ...]
 
 
@@ -86,6 +88,7 @@ class ReleasePolicyDecision:
     current_contract_digest: str
     baseline_contract_digest: str | None
     required_configurations: tuple[str, ...]
+    smoke_configurations: tuple[str, ...]
     release_base_ref: str | None
     release_contract_changed: bool | None
 
@@ -97,6 +100,7 @@ class ReleasePolicyDecision:
             "current_contract_digest": self.current_contract_digest,
             "baseline_contract_digest": self.baseline_contract_digest,
             "required_configurations": list(self.required_configurations),
+            "smoke_configurations": list(self.smoke_configurations),
             "release_base_ref": self.release_base_ref,
             "release_contract_changed": self.release_contract_changed,
         }
@@ -151,6 +155,13 @@ def load_release_policy(path: str | Path) -> ReleasePolicyConfig:
     minimum_smoke = raw.get("minimum_smoke_configurations")
     if isinstance(minimum_smoke, bool) or not isinstance(minimum_smoke, int) or minimum_smoke < 1:
         raise ReleasePolicyError("minimum_smoke_configurations must be an integer >= 1.")
+    smoke_configurations = _string_list(
+        raw.get("smoke_configurations"), "smoke_configurations"
+    )
+    if minimum_smoke > len(smoke_configurations):
+        raise ReleasePolicyError(
+            "minimum_smoke_configurations cannot exceed smoke_configurations."
+        )
     paths = _string_list(raw.get("agent_contract_paths"), "agent_contract_paths")
     for pattern in paths:
         if pattern.startswith("/") or ".." in Path(pattern).parts:
@@ -161,6 +172,7 @@ def load_release_policy(path: str | Path) -> ReleasePolicyConfig:
         release_pull_request_head=release_head.strip(),
         release_tag_pattern=release_tag_pattern,
         minimum_smoke_configurations=minimum_smoke,
+        smoke_configurations=smoke_configurations,
         agent_contract_paths=paths,
     )
 
@@ -372,6 +384,7 @@ def evaluate_push_assurance(
         current_contract_digest=current_digest,
         baseline_contract_digest=baseline.agent_contract_digest,
         required_configurations=baseline.required_configurations,
+        smoke_configurations=policy.smoke_configurations,
         release_base_ref=None,
         release_contract_changed=None,
     )
@@ -394,6 +407,7 @@ def evaluate_noop_assurance(
         current_contract_digest=compute_agent_contract_digest(repo_root, policy, ref=ref),
         baseline_contract_digest=baseline.agent_contract_digest,
         required_configurations=baseline.required_configurations,
+        smoke_configurations=policy.smoke_configurations,
         release_base_ref=None,
         release_contract_changed=None,
     )
@@ -423,6 +437,7 @@ def evaluate_release_readiness(
             current_contract_digest=current_digest,
             baseline_contract_digest=baseline.agent_contract_digest,
             required_configurations=baseline.required_configurations,
+            smoke_configurations=policy.smoke_configurations,
             release_base_ref=release_base_ref,
             release_contract_changed=False,
         )
@@ -435,6 +450,7 @@ def evaluate_release_readiness(
             current_contract_digest=current_digest,
             baseline_contract_digest=None,
             required_configurations=baseline.required_configurations,
+            smoke_configurations=policy.smoke_configurations,
             release_base_ref=release_base_ref,
             release_contract_changed=True,
         )
@@ -453,6 +469,7 @@ def evaluate_release_readiness(
             current_contract_digest=current_digest,
             baseline_contract_digest=baseline_digest,
             required_configurations=baseline.required_configurations,
+            smoke_configurations=policy.smoke_configurations,
             release_base_ref=release_base_ref,
             release_contract_changed=True,
         )
@@ -464,6 +481,7 @@ def evaluate_release_readiness(
             current_contract_digest=current_digest,
             baseline_contract_digest=baseline_digest,
             required_configurations=baseline.required_configurations,
+            smoke_configurations=policy.smoke_configurations,
             release_base_ref=release_base_ref,
             release_contract_changed=True,
         )
@@ -475,6 +493,7 @@ def evaluate_release_readiness(
             current_contract_digest=current_digest,
             baseline_contract_digest=baseline_digest,
             required_configurations=baseline.required_configurations,
+            smoke_configurations=policy.smoke_configurations,
             release_base_ref=release_base_ref,
             release_contract_changed=True,
         )
@@ -485,6 +504,7 @@ def evaluate_release_readiness(
         current_contract_digest=current_digest,
         baseline_contract_digest=baseline_digest,
         required_configurations=baseline.required_configurations,
+        smoke_configurations=policy.smoke_configurations,
         release_base_ref=release_base_ref,
         release_contract_changed=True,
     )
