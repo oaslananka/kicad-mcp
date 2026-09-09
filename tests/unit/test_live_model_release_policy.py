@@ -620,6 +620,15 @@ def test_release_policy_cli_allows_unchanged_release_with_unapproved_baseline(
     assert values["release_contract_changed"] == "false"
 
 
+def test_smoke_assurance_cli_uses_policy_smoke_configurations() -> None:
+    script = (ROOT / "scripts/evaluate_live_model_smoke_assurance.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "required_configurations=policy.smoke_configurations" in script
+    assert "required_configurations=baseline.required_configurations" not in script
+
+
 def test_live_model_assurance_workflow_is_risk_based_and_secret_safe() -> None:
     workflow = (ROOT / ".github/workflows/live-model-assurance.yml").read_text(encoding="utf-8")
 
@@ -641,7 +650,9 @@ def test_live_model_assurance_workflow_is_risk_based_and_secret_safe() -> None:
     assert "timeout --signal=TERM --kill-after=30s 14m" in workflow
     assert '[ "$exit_code" -ne 124 ] && [ "$exit_code" -ne 137 ]' in workflow
     assert '"state": "running"' in workflow
-    assert "fromJSON(needs.classify.outputs.required_configurations)" in workflow
+    assert "smoke_configurations: ${{ steps.policy.outputs.smoke_configurations }}" in workflow
+    assert "fromJSON(needs.classify.outputs.smoke_configurations)" in workflow
+    assert "fromJSON(needs.classify.outputs.required_configurations)" not in workflow
     assert "evaluate_live_model_smoke_assurance.py" in workflow
     assert "name: Live Model Smoke Assurance" in workflow
     assert "name: Live Model Release Policy" in workflow
