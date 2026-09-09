@@ -494,12 +494,11 @@ def test_committed_release_policy_tracks_model_facing_inputs_only() -> None:
     assert "evals/live/baselines.yaml" not in policy.agent_contract_paths
 
     baseline = yaml.safe_load(BASELINE_PATH.read_text(encoding="utf-8"))
-    # #711 dropped the rate-limited nvidia-minimax-m3 slot for a free OpenCode Zen
-    # model. approved stays false (and the stale approved_at/source_revision/
-    # agent_contract_digest/evidence fields go unvalidated per release_policy.py) until
-    # a real Live Model Release Gate run produces a fresh reviewed baseline candidate.
-    assert baseline["approved"] is False
-    assert set(baseline["configurations"]) < set(baseline["required_configurations"])
+    assert baseline["approved"] is True
+    assert set(baseline["configurations"]) == set(baseline["required_configurations"])
+    assert len(baseline["source_revision"]) == 40
+    assert len(baseline["agent_contract_digest"]) == 64
+    assert isinstance(baseline["evidence"]["workflow_run_id"], int)
 
 
 def test_push_assurance_runs_smoke_only_for_agent_contract_changes(tmp_path: Path) -> None:
