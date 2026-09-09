@@ -1100,6 +1100,44 @@ def test_output_postcondition_rejects_ambiguous_unknown_tool_recovery() -> None:
     }
 
 
+def test_output_postcondition_rejects_unknown_tools_for_non_tool_response() -> None:
+    result = _request_postcondition_result(
+        prompt="Answer without using a tool.",
+        model_response="answer",
+        selected_tools=("unknown_answer_tool",),
+        catalog=(),
+    )
+
+    assert result == {
+        "schema_version": 1,
+        "status": "error",
+        "failure_kind": "model_output_invalid",
+        "failure_detail": "unknown_tool",
+    }
+
+
+def test_output_postcondition_rejects_single_token_alias_next_to_canonical_tool() -> None:
+    result = _request_postcondition_result(
+        prompt="Export a Specctra DSN for external routing.",
+        model_response="tool_calls",
+        selected_tools=("route_export_dsn", "dsn"),
+        catalog=(
+            {
+                "name": "route_export_dsn",
+                "summary": "Export a Specctra DSN for FreeRouting.",
+                "data_loss_risk": False,
+            },
+        ),
+    )
+
+    assert result == {
+        "schema_version": 1,
+        "status": "error",
+        "failure_kind": "model_output_invalid",
+        "failure_detail": "unknown_tool",
+    }
+
+
 def test_output_postcondition_recovers_mixed_known_and_shortened_alias_when_match_agrees() -> None:
     result = _request_postcondition_result(
         prompt="Export a Specctra DSN for external routing.",
