@@ -71,7 +71,9 @@ jobs:
       - name: Install test dependencies
         run: uv sync --group dev --frozen
       - name: Install Playwright browsers
-        run: uv run playwright install --with-deps chromium
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.{list,sources}
+          uv run playwright install --with-deps chromium
       - name: Run dashboard E2E tests
         run: E2E=1 uv run pytest tests/e2e/test_web_dashboard.py -v
 
@@ -89,6 +91,7 @@ jobs:
       - name: Install Linux Tauri dependencies
         if: runner.os == 'Linux'
         run: |
+          sudo rm -f /etc/apt/sources.list.d/google-chrome.{list,sources}
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
       - name: Cargo check Tauri bridge
