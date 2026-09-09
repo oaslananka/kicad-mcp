@@ -129,6 +129,7 @@ jobs:
           VERSION: ${{ steps.release.outputs.version }}
         run: |
           set -euo pipefail
+          release_tag="$RELEASE_TAG"
           for attempt in $(seq 1 6); do
             rm -rf published-kicad-pcm
             mkdir -p published-kicad-pcm

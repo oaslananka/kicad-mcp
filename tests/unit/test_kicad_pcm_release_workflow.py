@@ -38,7 +38,9 @@ def test_pcm_release_workflow_verifies_source_builds_attests_and_rechecks_publis
     )
     assert 'gh release upload "$release_tag" release-assets/kicad-pcm/* --clobber' in workflow
     assert "Verify published PCM digest" in workflow
-    assert 'gh release download "$release_tag"' in workflow
+    verify_block = workflow.split("- name: Verify published PCM digest", 1)[1]
+    assert 'release_tag="$RELEASE_TAG"' in verify_block
+    assert 'gh release download "$release_tag"' in verify_block
     assert "for attempt in $(seq 1 6)" in workflow
     assert 'if [ "$attempt" -eq 6 ]; then' in workflow
     assert "sleep 5" in workflow
