@@ -83,7 +83,9 @@ def _evidence(
     adapter_failures: int = 0,
     selection_failures: int = 0,
     executions: list[dict[str, object]] | None = None,
+    repeats: int = 3,
 ) -> dict[str, object]:
+    observations = 65 * repeats
     return {
         "schema_version": 1,
         "complete": True,
@@ -94,22 +96,22 @@ def _evidence(
             "adapter": "subprocess",
         },
         "source_revision": "a" * 40,
-        "repeats": 3,
+        "repeats": repeats,
         "limits": {},
         "usage": {
             "total_tool_calls": 120,
             "total_tokens": 35100,
             "total_cost_micros": 0,
-            "token_observations": 195 if token_coverage == 1.0 else 0,
+            "token_observations": observations if token_coverage == 1.0 else 0,
             "cost_observations": 0,
         },
         "summary": {
             "cases": 65,
-            "runs": 3,
-            "observations": 195,
-            "planned_observations": 195,
-            "completed_observations": 195 - adapter_failures,
-            "passed": round(195 * pass_rate),
+            "runs": repeats,
+            "observations": observations,
+            "planned_observations": observations,
+            "completed_observations": observations - adapter_failures,
+            "passed": round(observations * pass_rate),
             "pass_rate": pass_rate,
             "mean_recall": mean_recall,
             "behavior_match_rate": 1.0,
@@ -182,13 +184,66 @@ def test_gate_rejects_duplicate_required_configurations(tmp_path: Path) -> None:
     baseline["required_configurations"] = [first, first]
     baseline_path.write_text(yaml.safe_dump(baseline, sort_keys=False), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="two unique"):
+    with pytest.raises(ValueError, match="unique"):
         evaluate_release_gate(
             [],
             baseline_path=baseline_path,
             cases_path=CASES,
             thresholds_path=THRESHOLDS,
         )
+
+
+def test_gate_accepts_one_required_full_configuration_at_two_repeats(
+    tmp_path: Path,
+) -> None:
+    config_id = CONFIG_IDS[0]
+    evidence = _write_evidence(
+        tmp_path / "evidence",
+        [_evidence(config_id, MODELS[0], repeats=2)],
+    )
+    baseline_path = _baseline(tmp_path / "baselines.yaml")
+    baseline = yaml.safe_load(baseline_path.read_text(encoding="utf-8"))
+    baseline["minimum_repeats"] = 2
+    baseline["required_configurations"] = [config_id]
+    baseline["configurations"] = {config_id: baseline["configurations"][config_id]}
+    baseline_path.write_text(yaml.safe_dump(baseline, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_release_gate(
+        evidence,
+        baseline_path=baseline_path,
+        cases_path=CASES,
+        thresholds_path=THRESHOLDS,
+    )
+
+    assert report["passed"] is True
+    assert report["configurations"] == [config_id]
+    assert report["observed"][config_id]["repeats"] == 2
+
+
+def test_gate_rejects_one_repeat_when_baseline_requires_two(tmp_path: Path) -> None:
+    config_id = CONFIG_IDS[0]
+    evidence = _write_evidence(
+        tmp_path / "evidence",
+        [_evidence(config_id, MODELS[0], repeats=1)],
+    )
+    baseline_path = _baseline(tmp_path / "baselines.yaml")
+    baseline = yaml.safe_load(baseline_path.read_text(encoding="utf-8"))
+    baseline["minimum_repeats"] = 2
+    baseline["required_configurations"] = [config_id]
+    baseline["configurations"] = {config_id: baseline["configurations"][config_id]}
+    baseline_path.write_text(yaml.safe_dump(baseline, sort_keys=False), encoding="utf-8")
+
+    report = evaluate_release_gate(
+        evidence,
+        baseline_path=baseline_path,
+        cases_path=CASES,
+        thresholds_path=THRESHOLDS,
+    )
+
+    assert report["passed"] is False
+    assert report["classifications"]["infrastructure_failures"] == [
+        f"{config_id}: repeats below 2"
+    ]
 
 
 def test_gate_accepts_two_required_configurations(tmp_path: Path) -> None:
@@ -388,7 +443,8 @@ def test_committed_baseline_records_reviewed_required_configurations() -> None:
     # presented as a baseline for the new configuration. A protected full gate
     # must generate the next candidate.
     assert baseline["approved"] is False
-    assert baseline["required_configurations"] == list(CONFIG_IDS[:2])
+    assert baseline["minimum_repeats"] == 2
+    assert baseline["required_configurations"] == [CONFIG_IDS[0]]
     assert baseline["configurations"] == {}
     assert baseline["approved_at"] is None
     assert baseline["source_revision"] is None
