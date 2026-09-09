@@ -155,13 +155,9 @@ def load_release_policy(path: str | Path) -> ReleasePolicyConfig:
     minimum_smoke = raw.get("minimum_smoke_configurations")
     if isinstance(minimum_smoke, bool) or not isinstance(minimum_smoke, int) or minimum_smoke < 1:
         raise ReleasePolicyError("minimum_smoke_configurations must be an integer >= 1.")
-    smoke_configurations = _string_list(
-        raw.get("smoke_configurations"), "smoke_configurations"
-    )
+    smoke_configurations = _string_list(raw.get("smoke_configurations"), "smoke_configurations")
     if minimum_smoke > len(smoke_configurations):
-        raise ReleasePolicyError(
-            "minimum_smoke_configurations cannot exceed smoke_configurations."
-        )
+        raise ReleasePolicyError("minimum_smoke_configurations cannot exceed smoke_configurations.")
     paths = _string_list(raw.get("agent_contract_paths"), "agent_contract_paths")
     for pattern in paths:
         if pattern.startswith("/") or ".." in Path(pattern).parts:

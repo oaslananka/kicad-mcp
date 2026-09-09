@@ -241,9 +241,7 @@ def test_gate_rejects_one_repeat_when_baseline_requires_two(tmp_path: Path) -> N
     )
 
     assert report["passed"] is False
-    assert report["classifications"]["infrastructure_failures"] == [
-        f"{config_id}: repeats below 2"
-    ]
+    assert report["classifications"]["infrastructure_failures"] == [f"{config_id}: repeats below 2"]
 
 
 def test_gate_accepts_two_required_configurations(tmp_path: Path) -> None:

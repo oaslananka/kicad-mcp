@@ -44,6 +44,12 @@ versioned `agent_contract_paths` at that release with the release candidate.
 - If the previous server release tag/history cannot be resolved, readiness fails closed.
   Release and publish workflows therefore check out full Git history (`fetch-depth: 0`).
 
+- Protected live evidence is intentionally asymmetric for runtime cost: NVIDIA Nemotron
+  Lightning and OpenCode MiMo must both pass the bounded smoke corpus, but only NVIDIA
+  Nemotron Lightning runs the full 65-case baseline benchmark. The standard full evidence
+  floor is two repetitions; MiMo remains available for manual diagnostics without adding
+  an hour-scale full benchmark to release readiness.
+
 This rule is based on the actual model-facing contract diff, not on whether the version is
 a patch, minor, or major release. Deterministic CI, security, packaging, metadata, and
 required-status checks remain mandatory in every case.

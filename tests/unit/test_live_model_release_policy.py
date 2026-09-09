@@ -643,9 +643,7 @@ def test_release_policy_cli_allows_unchanged_release_with_unapproved_baseline(
 
 
 def test_smoke_assurance_cli_uses_policy_smoke_configurations() -> None:
-    script = (ROOT / "scripts/evaluate_live_model_smoke_assurance.py").read_text(
-        encoding="utf-8"
-    )
+    script = (ROOT / "scripts/evaluate_live_model_smoke_assurance.py").read_text(encoding="utf-8")
 
     assert "required_configurations=policy.smoke_configurations" in script
     assert "required_configurations=baseline.required_configurations" not in script

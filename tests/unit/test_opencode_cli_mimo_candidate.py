@@ -9,10 +9,11 @@ from kicad_mcp.evals.live_runner import load_configurations
 ROOT = Path(__file__).resolve().parents[2]
 CONFIGURATIONS = ROOT / "evals/live/configurations.yaml"
 BASELINES = ROOT / "evals/live/baselines.yaml"
+RELEASE_POLICY = ROOT / "evals/live/release-policy.yaml"
 RELEASE_GATE = ROOT / ".github/workflows/live-model-release-gate.yml"
 
 
-def test_mimo_cli_configuration_is_current_bounded_key_scoped_and_blocking() -> None:
+def test_mimo_cli_configuration_is_current_bounded_key_scoped_and_smoke_blocking() -> None:
     configurations = load_configurations(CONFIGURATIONS)
     configuration = configurations["opencode-cli-mimo-v2-5-free"]
 
@@ -38,7 +39,12 @@ def test_mimo_cli_configuration_is_current_bounded_key_scoped_and_blocking() -> 
     assert "opencode-cli-mimo-v2-5-free" in release_gate
     assert "opencode-cli-deepseek-v4-flash-free" not in release_gate
 
+    release_policy = yaml.safe_load(RELEASE_POLICY.read_text(encoding="utf-8"))
+    smoke_required = release_policy["smoke_configurations"]
+    assert "opencode-cli-mimo-v2-5-free" in smoke_required
+    assert "opencode-cli-deepseek-v4-flash-free" not in smoke_required
+
     baselines = yaml.safe_load(BASELINES.read_text(encoding="utf-8"))
-    required = baselines["required_configurations"]
-    assert "opencode-cli-mimo-v2-5-free" in required
-    assert "opencode-cli-deepseek-v4-flash-free" not in required
+    full_required = baselines["required_configurations"]
+    assert "opencode-cli-mimo-v2-5-free" not in full_required
+    assert full_required == ["nvidia-nemotron-3-5-lightning-30b-a3b"]
