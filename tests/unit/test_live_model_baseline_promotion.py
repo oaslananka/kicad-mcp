@@ -212,6 +212,30 @@ def test_generate_approved_baseline_accepts_one_required_configuration_at_two_re
     assert list(baseline["configurations"]) == ["alpha"]
 
 
+def test_generate_approved_baseline_rejects_empty_required_configurations(tmp_path: Path) -> None:
+    repo, revision = _repo(tmp_path)
+    policy = _policy(tmp_path / "policy.yaml")
+    template = _baseline(tmp_path / "baseline.yaml")
+    template_payload = yaml.safe_load(template.read_text(encoding="utf-8"))
+    template_payload["minimum_repeats"] = 2
+    template_payload["required_configurations"] = []
+    template.write_text(yaml.safe_dump(template_payload, sort_keys=False), encoding="utf-8")
+    aggregate = _aggregate(tmp_path / "aggregate.json", revision)
+
+    with pytest.raises(
+        BaselinePromotionError,
+        match="Required configurations must contain at least one unique id",
+    ):
+        generate_approved_baseline(
+            aggregate_report_path=aggregate,
+            baseline_template_path=template,
+            policy_path=policy,
+            repo_root=repo,
+            workflow_run_id=987654,
+            approved_at=date(2026, 8, 2),
+        )
+
+
 def test_generate_approved_baseline_accepts_two_required_configurations(tmp_path: Path) -> None:
     repo, revision = _repo(tmp_path)
     policy = _policy(tmp_path / "policy.yaml")
