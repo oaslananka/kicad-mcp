@@ -10,6 +10,13 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.34.3](https://github.com/oaslananka/kicad-mcp-pro/compare/mcp-server-v3.34.2...mcp-server-v3.34.3) (2026-09-09)
+
+
+### Documentation
+
+* **security:** refresh RustSec advisory tracking ([#878](https://github.com/oaslananka/kicad-mcp-pro/issues/878)) ([19dc856](https://github.com/oaslananka/kicad-mcp-pro/commit/19dc85611c892166003edf54a1c2b68e7a4db527))
+
 ## [3.34.2](https://github.com/oaslananka/kicad-mcp-pro/compare/mcp-server-v3.34.1...mcp-server-v3.34.2) (2026-09-09)
 
 
