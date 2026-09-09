@@ -10,6 +10,21 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.34.1](https://github.com/oaslananka/kicad-mcp-pro/compare/mcp-server-v3.34.0...mcp-server-v3.34.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* **discovery:** reject ephemeral AppImage mount paths for kicad-cli ([#866](https://github.com/oaslananka/kicad-mcp-pro/issues/866)) ([ab1ecf8](https://github.com/oaslananka/kicad-mcp-pro/commit/ab1ecf81862baf4bf86ff20ddb02183dc9336643))
+* enforce release readiness before publish ([#847](https://github.com/oaslananka/kicad-mcp-pro/issues/847)) ([7c9280a](https://github.com/oaslananka/kicad-mcp-pro/commit/7c9280a1920930f44e90b257eacb0e5c823b5f33))
+* **evals:** harden live release gate recovery ([#868](https://github.com/oaslananka/kicad-mcp-pro/issues/868)) ([c48eba7](https://github.com/oaslananka/kicad-mcp-pro/commit/c48eba79f892bbb1b6c7405031d0960e3c8d8f36))
+* **evals:** recover canonical tool aliases safely ([#871](https://github.com/oaslananka/kicad-mcp-pro/issues/871)) ([e29c0a3](https://github.com/oaslananka/kicad-mcp-pro/commit/e29c0a36010a54e8b742d49d3a5b52a810369be9))
+* **evals:** require two stable live gate providers ([#870](https://github.com/oaslananka/kicad-mcp-pro/issues/870)) ([9caaf1b](https://github.com/oaslananka/kicad-mcp-pro/commit/9caaf1bacd51d651db81c8a380d032eecb5885f5))
+* **evals:** scope live model release gate to contract changes ([#869](https://github.com/oaslananka/kicad-mcp-pro/issues/869)) ([f4a5c8c](https://github.com/oaslananka/kicad-mcp-pro/commit/f4a5c8c77bb804d15657f7336cd06ecbe8b11583))
+* **evals:** shorten protected live release gate ([#872](https://github.com/oaslananka/kicad-mcp-pro/issues/872)) ([4697253](https://github.com/oaslananka/kicad-mcp-pro/commit/4697253ec73bf8cea1de12196ad69ea206747b73))
+* **library:** report through-hole footprints as out of scope for IPC-7351 ([#867](https://github.com/oaslananka/kicad-mcp-pro/issues/867)) ([f36c7a2](https://github.com/oaslananka/kicad-mcp-pro/commit/f36c7a2cbfd66b0812209305058e4f5634dd924d)), closes [#865](https://github.com/oaslananka/kicad-mcp-pro/issues/865)
+* prefer minimal live model tool selection ([#852](https://github.com/oaslananka/kicad-mcp-pro/issues/852)) ([1b4e77d](https://github.com/oaslananka/kicad-mcp-pro/commit/1b4e77d8e2b252be890e835357ff526a547d5fc5))
+
 ## [3.34.0](https://github.com/oaslananka/kicad-mcp-pro/compare/mcp-server-v3.33.3...mcp-server-v3.34.0) (2026-09-04)
 
 
