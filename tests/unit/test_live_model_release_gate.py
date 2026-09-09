@@ -479,11 +479,15 @@ def test_committed_live_smoke_subset_is_bounded_balanced_and_canonical() -> None
     } <= ids
 
 
-def test_release_gate_workflow_requires_two_independent_blocking_configurations() -> None:
+def test_release_gate_workflow_smokes_two_providers_and_benchmarks_only_nvidia() -> None:
     workflow = (ROOT / ".github/workflows/live-model-release-gate.yml").read_text(encoding="utf-8")
+    smoke_block = workflow.split("  smoke:", 1)[1].split("  benchmark:", 1)[0]
+    benchmark_block = workflow.split("  benchmark:", 1)[1].split("  aggregate:", 1)[0]
 
-    assert workflow.count("nvidia-nemotron-3-5-lightning-30b-a3b") == 2
-    assert workflow.count("opencode-cli-mimo-v2-5-free") == 2
+    assert smoke_block.count("nvidia-nemotron-3-5-lightning-30b-a3b") == 1
+    assert smoke_block.count("opencode-cli-mimo-v2-5-free") == 1
+    assert benchmark_block.count("nvidia-nemotron-3-5-lightning-30b-a3b") == 1
+    assert "opencode-cli-mimo-v2-5-free" not in benchmark_block
     assert "opencode-cli-nemotron-3-ultra-free" not in workflow
 
 
@@ -507,24 +511,27 @@ def test_release_gate_workflow_is_main_only_protected_and_sequential() -> None:
     assert "needs: [smoke, benchmark]" in aggregate_block
     assert "if: ${{ always() && needs.smoke.result == 'success' }}" in aggregate_block
     assert "name: Cool down shared NVIDIA trial endpoint" not in workflow
-    assert "timeout-minutes: 50" in workflow
+    assert "timeout-minutes: 18" in smoke_block
     assert "--case-tag live-smoke" in workflow
     assert "--repeats 1" in workflow
-    assert "timeout --signal=TERM --kill-after=30s 45m" in smoke_block
+    assert "timeout --signal=TERM --kill-after=30s 15m" in smoke_block
     assert "if exit_code not in (124, 137):" in smoke_block
     assert "Upload sanitized smoke evidence\n        if: always()" in workflow
     assert "live-model-smoke-${{ matrix.configuration }}-${{ github.run_id }}" in workflow
     assert "name: Enforce smoke result" in workflow
     assert "needs: smoke" in workflow
-    # Slow blocking providers must have enough bounded wall-clock budget to finish
-    # all three repeats while still leaving time to upload fail-closed evidence.
-    assert "timeout-minutes: 240" in benchmark_block
-    assert "timeout --signal=TERM --kill-after=30s 225m" in benchmark_block
+    # The single full provider has bounded headroom for two standard repetitions.
+    assert "timeout-minutes: 90" in benchmark_block
+    assert "timeout --signal=TERM --kill-after=30s 75m" in benchmark_block
     assert "if exit_code not in (124, 137):" in benchmark_block
     assert '"state": "running"' in workflow
     assert '"runner_exit_code": None' in workflow
     assert "Upload sanitized configuration evidence\n        if: always()" in workflow
-    assert "default: 3" in workflow
+    assert "default: 2" in workflow
+    assert 'test "$REPEATS" -ge 2' in workflow
+    assert 'test "$REPEATS" -le 3' in workflow
+    assert 'test "$REPEATS" -ge 3' not in workflow
+    assert 'test "$REPEATS" -le 5' not in workflow
     for config_id in CONFIG_IDS[:2]:
         assert config_id in workflow
     assert CONFIG_IDS[2] not in workflow
@@ -552,24 +559,26 @@ def test_release_gate_workflow_is_main_only_protected_and_sequential() -> None:
             "OPENCODE_ZEN_API_KEY: ${{ startsWith(matrix.configuration, 'opencode-cli-') "
             "&& secrets.OPENCODE_ZEN_API_KEY || '' }}"
         )
-        == 2
+        == 1
     )
     assert "NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}" not in workflow
     assert "OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}" not in workflow
-    assert workflow.count("name: Install pinned OpenCode CLI") == 2
-    assert workflow.count('OPENCODE_CLI_VERSION: "1.18.10"') == 2
-    assert workflow.count("if: startsWith(matrix.configuration, 'opencode-cli-')") == 2
-    assert workflow.count("npm ci --prefix evals/live --ignore-scripts --no-audit --no-fund") == 2
+    assert workflow.count("name: Install pinned OpenCode CLI") == 1
+    assert workflow.count('OPENCODE_CLI_VERSION: "1.18.10"') == 1
+    assert workflow.count("if: startsWith(matrix.configuration, 'opencode-cli-')") == 1
+    assert workflow.count("npm ci --prefix evals/live --ignore-scripts --no-audit --no-fund") == 1
     assert (
         workflow.count(
             'test "$(evals/live/node_modules/opencode-linux-x64/bin/opencode --version)" '
             '= "$OPENCODE_CLI_VERSION"'
         )
-        == 2
+        == 1
     )
-    assert workflow.count('nvidia-*) test -n "$NVIDIA_API_KEY" ;;') == 2
-    assert workflow.count('opencode-cli-*) test -n "$OPENCODE_ZEN_API_KEY" ;;') == 2
-    assert workflow.count("Unsupported blocking configuration: $CONFIGURATION_ID") == 2
+    assert workflow.count('nvidia-*) test -n "$NVIDIA_API_KEY" ;;') == 1
+    assert workflow.count('opencode-cli-*) test -n "$OPENCODE_ZEN_API_KEY" ;;') == 1
+    assert workflow.count("Unsupported blocking configuration: $CONFIGURATION_ID") == 1
+    assert 'test -n "$NVIDIA_API_KEY"' in benchmark_block
+    assert "OPENCODE_ZEN_API_KEY" not in benchmark_block
     assert "evaluate_live_model_release_gate.py" in workflow
     assert "generate_live_model_baseline.py" in workflow
     assert "baselines.candidate.yaml" in workflow
