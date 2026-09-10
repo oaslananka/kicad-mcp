@@ -7,7 +7,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 
 const DEFAULT_REGISTRY_URL = "https://registry.npmjs.org";
-const DEFAULT_RETRIES = 6;
+const DEFAULT_RETRIES = 36;
 const DEFAULT_RETRY_DELAY_MS = 10_000;
 const TRUSTED_REGISTRY_ORIGIN = new URL(DEFAULT_REGISTRY_URL).origin;
 
@@ -138,7 +138,11 @@ export async function verifyPublishedNpmDigest({
   validatePublishedTarballMetadata(rawTarballUrl);
 
   const tarballUrl = packageTarballUrl(packageName, version);
-  const tarball = await fetchBytes(tarballUrl);
+  const tarball = await retry(
+    () => fetchBytes(tarballUrl),
+    retries,
+    retryDelayMs,
+  );
   const tarballName = basename(new URL(tarballUrl).pathname);
   let expected = checksums.get(tarballName);
   if (expected === undefined) {
