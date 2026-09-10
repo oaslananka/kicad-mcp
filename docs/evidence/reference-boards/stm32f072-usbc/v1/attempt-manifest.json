@@ -4,6 +4,11 @@
       "attempt_id": "attempt-001",
       "directory": "attempts/attempt-001",
       "evidence_digest": "sha256:bfb76303b2860ce27a06f6022e84cb17aab7233146d40cc85b4763c16ca523d9"
+    },
+    {
+      "attempt_id": "attempt-002",
+      "directory": "attempts/attempt-002",
+      "evidence_digest": "sha256:b737356ba06d17396acfb5c46341aa51d4803ac7b017f65b651acdceb916905e"
     }
   ],
   "benchmark_id": "stm32f072-usbc-reference-board",
