@@ -190,6 +190,9 @@ def test_build_mcp_config_pins_phase_and_current_python(tmp_path) -> None:
     assert server["command"] == sys.executable
     assert server["args"] == ["-m", "kicad_mcp.server"]
     assert server["env"] == {
+        "PYTHONPATH": str(workspace.checkout_dir / "src"),
+        "KICAD_MCP_TRANSPORT": "stdio",
+        "KICAD_MCP_PROTOCOL_LANE": "stable",
         "KICAD_MCP_PROJECT_DIR": str(workspace.project_dir),
         "KICAD_MCP_PROFILE": "pcb_layout",
         "KICAD_MCP_OPERATING_MODE": "write",

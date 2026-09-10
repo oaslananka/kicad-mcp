@@ -413,6 +413,9 @@ def build_mcp_config(
                 "command": sys.executable,
                 "args": ["-m", "kicad_mcp.server"],
                 "env": {
+                    "PYTHONPATH": str(workspace.checkout_dir / "src"),
+                    "KICAD_MCP_TRANSPORT": "stdio",
+                    "KICAD_MCP_PROTOCOL_LANE": "stable",
                     "KICAD_MCP_PROJECT_DIR": str(workspace.project_dir),
                     "KICAD_MCP_PROFILE": phase.profile,
                     "KICAD_MCP_OPERATING_MODE": phase.mode,
