@@ -10,6 +10,13 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.34.4](https://github.com/oaslananka/kicad-mcp-pro/compare/mcp-server-v3.34.3...mcp-server-v3.34.4) (2026-09-10)
+
+
+### Bug Fixes
+
+* **eval:** pin reference-agent MCP runtime ([#881](https://github.com/oaslananka/kicad-mcp-pro/issues/881)) ([c7a58d6](https://github.com/oaslananka/kicad-mcp-pro/commit/c7a58d64a2ca22fe4dfc03e596e3ae5cf594880f))
+
 ## [3.34.3](https://github.com/oaslananka/kicad-mcp-pro/compare/mcp-server-v3.34.2...mcp-server-v3.34.3) (2026-09-09)
 
 
