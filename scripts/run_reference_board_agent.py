@@ -1,14 +1,20 @@
 import argparse
 import json
+from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 
 from kicad_mcp.evals.reference_agent_runner import (
     ReferenceAgentPhase,
     ReferenceAgentWorkspace,
+    append_reference_manufacturing_approval_instruction,
     build_mcp_config,
     catalog_mcp_tools,
     discover_reference_kicad_cli,
+    discover_reference_source_revision,
     load_phase_prompt,
+    load_reference_manufacturing_approval,
+    reference_manufacturing_approval_event,
     reviewed_mcp_tools,
     run_claude_session,
     write_agent_log,
@@ -43,6 +49,15 @@ def main(argv: list[str] | None = None) -> int:
     prompt = load_phase_prompt(workspace, phase)
     workspace.scratch_dir.mkdir(parents=True, exist_ok=True)
     workspace.project_dir.mkdir(parents=True, exist_ok=True)
+    manufacturing_approval = None
+    manufacturing_handoff_at = None
+    if phase.name == "manufacturing":
+        source_revision = discover_reference_source_revision(workspace.checkout_dir)
+        manufacturing_approval = load_reference_manufacturing_approval(
+            workspace, source_revision=source_revision
+        )
+        manufacturing_handoff_at = datetime.now(UTC)
+        prompt = append_reference_manufacturing_approval_instruction(prompt, manufacturing_approval)
     settings_path = workspace.phase_settings_path(phase)
     mcp_config_path = workspace.phase_mcp_config_path(phase)
     settings_path.write_text("{}\n", encoding="utf-8")
@@ -62,6 +77,11 @@ def main(argv: list[str] | None = None) -> int:
         catalog_mcp_tools=catalog_tools,
         allowed_mcp_tools=execution_tools,
     )
+    if manufacturing_approval is not None:
+        approval_event = reference_manufacturing_approval_event(
+            workspace, manufacturing_approval, handoff_at=manufacturing_handoff_at
+        )
+        summary = replace(summary, events=(approval_event, *summary.events))
     write_agent_log(workspace, summary, append=args.append_agent_log)
     print(
         json.dumps(
