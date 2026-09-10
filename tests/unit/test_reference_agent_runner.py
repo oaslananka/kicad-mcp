@@ -1087,3 +1087,140 @@ def test_reference_manufacturing_approval_event_uses_handoff_time_not_approval_t
     event = reference_manufacturing_approval_event(workspace, approval, handoff_at=handoff_at)
     assert event.timestamp == handoff_at
     assert event.details["approved_at_utc"] == "2026-09-10T16:00:00+00:00"
+
+
+def test_reference_source_revision_fail_closed_error_paths(tmp_path, monkeypatch) -> None:
+    import kicad_mcp.evals.reference_agent_runner as runner
+
+    monkeypatch.setattr(runner.shutil, "which", lambda _name: None)
+    with pytest.raises(runner.ReferenceAgentRunnerError, match="source revision"):
+        runner.discover_reference_source_revision(tmp_path)
+
+    monkeypatch.setattr(runner.shutil, "which", lambda _name: "/usr/bin/git")
+
+    def raise_oserror(*_args: object, **_kwargs: object) -> None:
+        raise OSError("boom")
+
+    monkeypatch.setattr(runner.subprocess, "run", raise_oserror)
+    with pytest.raises(runner.ReferenceAgentRunnerError, match="source revision"):
+        runner.discover_reference_source_revision(tmp_path)
+
+    class Result:
+        def __init__(self, returncode: int, stdout: str) -> None:
+            self.returncode = returncode
+            self.stdout = stdout
+
+    monkeypatch.setattr(runner.subprocess, "run", lambda *_args, **_kwargs: Result(1, "not-a-sha"))
+    with pytest.raises(runner.ReferenceAgentRunnerError, match="source revision"):
+        runner.discover_reference_source_revision(tmp_path)
+
+    calls = iter((Result(0, "a" * 40), Result(1, "")))
+    monkeypatch.setattr(runner.subprocess, "run", lambda *_args, **_kwargs: next(calls))
+    with pytest.raises(runner.ReferenceAgentRunnerError, match="runtime source status"):
+        runner.discover_reference_source_revision(tmp_path)
+
+
+def test_reference_project_state_fail_closed_structure_paths(tmp_path) -> None:
+    from kicad_mcp.evals.reference_agent_runner import (
+        ReferenceAgentRunnerError,
+        compute_reference_project_state_digest,
+    )
+
+    workspace = _workspace(tmp_path, attempt_id="attempt-003")
+    with pytest.raises(ReferenceAgentRunnerError, match="state directory is missing"):
+        compute_reference_project_state_digest(workspace)
+
+    workspace.project_dir.mkdir(parents=True)
+    (workspace.project_dir / "nested").mkdir()
+    (workspace.project_dir / "demo.kicad_sch").write_text("schematic\n", encoding="utf-8")
+    with pytest.raises(ReferenceAgentRunnerError, match="requires schematic and PCB"):
+        compute_reference_project_state_digest(workspace)
+
+    board = workspace.project_dir / "demo.kicad_pcb"
+    board.write_text("board\n", encoding="utf-8")
+    link = workspace.project_dir / "linked.kicad_dru"
+    try:
+        link.symlink_to(board.name)
+    except OSError:
+        pytest.skip("symlinks are not available")
+    with pytest.raises(ReferenceAgentRunnerError, match="must not contain symlinks"):
+        compute_reference_project_state_digest(workspace)
+
+
+def test_reference_manufacturing_approval_rejects_malformed_evidence_variants(tmp_path) -> None:
+    from kicad_mcp.evals.reference_agent_runner import (
+        ReferenceAgentRunnerError,
+        compute_reference_project_state_digest,
+        load_reference_manufacturing_approval,
+    )
+
+    workspace = _workspace(tmp_path, attempt_id="attempt-003")
+    workspace.project_dir.mkdir(parents=True)
+    (workspace.project_dir / "demo.kicad_sch").write_text("schematic\n", encoding="utf-8")
+    (workspace.project_dir / "demo.kicad_pcb").write_text("board\n", encoding="utf-8")
+    source_revision = "6" * 40
+    digest = compute_reference_project_state_digest(workspace)
+
+    workspace.manufacturing_approval_path.write_text("{bad json\n", encoding="utf-8")
+    with pytest.raises(ReferenceAgentRunnerError, match="evidence is invalid"):
+        load_reference_manufacturing_approval(workspace, source_revision=source_revision)
+
+    workspace.manufacturing_approval_path.write_text("[]\n", encoding="utf-8")
+    with pytest.raises(ReferenceAgentRunnerError, match="must be an object"):
+        load_reference_manufacturing_approval(workspace, source_revision=source_revision)
+
+    def valid_payload() -> dict[str, object]:
+        _write_reference_manufacturing_approval(
+            workspace, source_revision=source_revision, digest=digest
+        )
+        return json.loads(workspace.manufacturing_approval_path.read_text())
+
+    cases = [
+        ("reviewer", lambda p: p.__setitem__("approved_by", ""), "reviewer is invalid"),
+        ("timestamp-type", lambda p: p.__setitem__("approved_at_utc", 123), "timestamp is invalid"),
+        (
+            "timestamp-value",
+            lambda p: p.__setitem__("approved_at_utc", "not-a-date"),
+            "timestamp is invalid",
+        ),
+        (
+            "timestamp-naive",
+            lambda p: p.__setitem__("approved_at_utc", "2026-09-10T16:00:00"),
+            "timezone-aware",
+        ),
+        (
+            "files-type",
+            lambda p: p.__setitem__("approved_project_files", "bad"),
+            "approved project files",
+        ),
+        (
+            "files-item",
+            lambda p: p.__setitem__("approved_project_files", ["bad"]),
+            "approved project files",
+        ),
+        (
+            "files-value-type",
+            lambda p: p.__setitem__("approved_project_files", [{"path": 1, "sha256": "0" * 64}]),
+            "approved project files",
+        ),
+        (
+            "files-digest",
+            lambda p: p.__setitem__(
+                "approved_project_files", [{"path": "demo.kicad_pcb", "sha256": "bad"}]
+            ),
+            "approved project files",
+        ),
+        (
+            "tree-digest",
+            lambda p: p.__setitem__("project_state_digest", "sha256:" + "0" * 64),
+            "project state",
+        ),
+    ]
+    for _label, mutate, message in cases:
+        payload = valid_payload()
+        mutate(payload)
+        workspace.manufacturing_approval_path.write_text(
+            json.dumps(payload) + "\n", encoding="utf-8"
+        )
+        with pytest.raises(ReferenceAgentRunnerError, match=message):
+            load_reference_manufacturing_approval(workspace, source_revision=source_revision)

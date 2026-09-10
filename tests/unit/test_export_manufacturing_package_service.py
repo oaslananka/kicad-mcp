@@ -319,3 +319,103 @@ async def test_reference_approval_filename_requires_project_state_bindings(tmp_p
 
     assert "reference approval requires bound project state" in result
     assert all(not calls[name] for name in ("gerber", "drill", "bom", "pick", "ipc", "odb"))
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "approved_files, expected",
+    [
+        ([], "approved project files are invalid"),
+        (["bad"], "approved project files are invalid"),
+        ([{"path": 1, "sha256": "0" * 64}], "approved project files are invalid"),
+        ([{"path": "board.kicad_pcb", "sha256": "bad"}], "approved project files are invalid"),
+        (
+            [
+                {"path": "board.kicad_pcb", "sha256": "0" * 64},
+                {"path": "board.kicad_pcb", "sha256": "0" * 64},
+            ],
+            "approved project files are invalid",
+        ),
+    ],
+)
+async def test_package_rejects_malformed_bound_file_manifests(
+    tmp_path: Path, approved_files: object, expected: str
+) -> None:
+    service, calls, _output_root = _service(tmp_path)
+    evidence_path = tmp_path / "approval.json"
+    evidence_path.write_text(
+        json.dumps(_approval_payload() | {"approved_project_files": approved_files}),
+        encoding="utf-8",
+    )
+
+    result, _progress, _rendered = await _run_export(
+        service, approval_evidence_path="approval.json"
+    )
+
+    assert expected in result
+    assert all(not calls[name] for name in ("gerber", "drill", "bom", "pick", "ipc", "odb"))
+
+
+@pytest.mark.anyio
+async def test_package_rejects_invalid_bound_state_digest(tmp_path: Path) -> None:
+    import hashlib
+
+    service, calls, _output_root = _service(tmp_path)
+    board = tmp_path / "board.kicad_pcb"
+    board.write_text("board\n", encoding="utf-8")
+    approved_files = [
+        {"path": board.name, "sha256": hashlib.sha256(board.read_bytes()).hexdigest()}
+    ]
+    evidence_path = tmp_path / "approval.json"
+    evidence_path.write_text(
+        json.dumps(
+            _approval_payload()
+            | {"approved_project_files": approved_files, "project_state_digest": "not-a-digest"}
+        ),
+        encoding="utf-8",
+    )
+
+    result, _progress, _rendered = await _run_export(
+        service, approval_evidence_path="approval.json"
+    )
+
+    assert "approved project state digest is invalid" in result
+    assert all(not calls[name] for name in ("gerber", "drill", "bom", "pick", "ipc", "odb"))
+
+
+@pytest.mark.anyio
+async def test_package_rejects_invalid_project_root_for_bound_manifest(tmp_path: Path) -> None:
+    import hashlib
+
+    service, calls, _output_root = _service(tmp_path)
+    board = tmp_path / "board.kicad_pcb"
+    board.write_text("board\n", encoding="utf-8")
+    evidence_path = tmp_path / "approval.json"
+    evidence_path.write_text(
+        json.dumps(
+            _approval_payload()
+            | {
+                "approved_project_files": [
+                    {"path": board.name, "sha256": hashlib.sha256(board.read_bytes()).hexdigest()}
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    original_resolver = service.resolve_project_path
+    object.__setattr__(
+        service,
+        "resolve_project_path",
+        lambda text: (
+            (_ for _ in ()).throw(ValueError("root unavailable"))
+            if text == "."
+            else original_resolver(text)
+        ),
+    )
+
+    result, _progress, _rendered = await _run_export(
+        service, approval_evidence_path="approval.json"
+    )
+
+    assert "project root is invalid" in result
+    assert all(not calls[name] for name in ("gerber", "drill", "bom", "pick", "ipc", "odb"))
