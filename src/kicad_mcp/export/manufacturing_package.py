@@ -20,6 +20,9 @@ VariantExport = Callable[[str | None], str]
 _MISSING_APPROVAL_EVIDENCE = (
     "Manufacturing package export is hard-blocked until approval_evidence_path is supplied."
 )
+_APPROVED_PROJECT_SUFFIXES = frozenset({".kicad_pro", ".kicad_sch", ".kicad_pcb", ".kicad_dru"})
+_APPROVED_PROJECT_SPEC = ".kicad-mcp/project_spec.json"
+_REFERENCE_APPROVAL_FILENAME = "reference-manufacturing-approval.json"
 
 
 @dataclass(frozen=True)
@@ -65,6 +68,15 @@ class ExportManufacturingPackageService:
                 ]
             )
         evidence_path, evidence_payload = evidence
+        approved_files_error = self._verify_approved_project_files(evidence_path, evidence_payload)
+        if approved_files_error is not None:
+            return "\n".join(
+                [
+                    approved_files_error,
+                    "- Manufacturing export stopped before artifact generation.",
+                    "- Obtain fresh human approval for the current project state.",
+                ]
+            )
 
         await report_progress(25, 100, "Exporting Gerbers...")
         results = [
@@ -131,6 +143,82 @@ class ExportManufacturingPackageService:
         if missing:
             return "Manufacturing evidence is missing: " + ", ".join(missing)
         return path, dict(payload)
+
+    def _verify_approved_project_files(
+        self, evidence_path: Path, payload: dict[str, Any]
+    ) -> str | None:
+        """Revalidate reference file-level approval bindings at the export boundary."""
+        bound_reference_approval = evidence_path.name == _REFERENCE_APPROVAL_FILENAME
+        raw_files = payload.get("approved_project_files")
+        expected_state = payload.get("project_state_digest")
+        if bound_reference_approval and (raw_files is None or expected_state is None):
+            return "Manufacturing reference approval requires bound project state evidence."
+        if raw_files is None:
+            return None
+        if not isinstance(raw_files, list) or not raw_files:
+            return "Manufacturing evidence approved project files are invalid."
+        seen: set[str] = set()
+        approved_files: list[tuple[str, str]] = []
+        for item in raw_files:
+            if not isinstance(item, dict) or set(item) != {"path", "sha256"}:
+                return "Manufacturing evidence approved project files are invalid."
+            relative = item.get("path")
+            expected = item.get("sha256")
+            if not isinstance(relative, str) or not isinstance(expected, str):
+                return "Manufacturing evidence approved project files are invalid."
+            invalid_digest = len(expected) != 64 or any(
+                character not in "0123456789abcdef" for character in expected
+            )
+            if relative in seen or invalid_digest:
+                return "Manufacturing evidence approved project files are invalid."
+            seen.add(relative)
+            approved_files.append((relative, expected))
+
+        current_files = self._current_approved_project_files()
+        if isinstance(current_files, str):
+            return current_files
+        approved_paths = tuple(relative for relative, _digest in approved_files)
+        current_paths = tuple(relative for relative, _digest in current_files)
+        if approved_paths != current_paths:
+            return "Manufacturing evidence approved project state digest mismatch."
+        if tuple(approved_files) != current_files:
+            return "Manufacturing evidence approved project file digest mismatch."
+
+        if expected_state is not None:
+            if not isinstance(expected_state, str) or not expected_state.startswith("sha256:"):
+                return "Manufacturing evidence approved project state digest is invalid."
+            tree = hashlib.sha256()
+            for relative, digest in current_files:
+                tree.update(relative.encode("utf-8"))
+                tree.update(b"\0")
+                tree.update(digest.encode("ascii"))
+                tree.update(b"\n")
+            if expected_state != f"sha256:{tree.hexdigest()}":
+                return "Manufacturing evidence approved project state digest mismatch."
+        return None
+
+    def _current_approved_project_files(self) -> tuple[tuple[str, str], ...] | str:
+        try:
+            root = self.resolve_project_path(".")
+        except ValueError:
+            return "Manufacturing evidence project root is invalid."
+        if root.is_symlink() or not root.is_dir():
+            return "Manufacturing evidence project root is invalid."
+        files: list[Path] = []
+        for path in root.rglob("*"):
+            relative = path.relative_to(root).as_posix()
+            relevant = (
+                path.suffix in _APPROVED_PROJECT_SUFFIXES or relative == _APPROVED_PROJECT_SPEC
+            )
+            if not relevant:
+                continue
+            if path.is_symlink() or not path.is_file():
+                return "Manufacturing evidence approved project file is invalid."
+            files.append(path)
+        return tuple(
+            (path.relative_to(root).as_posix(), self._file_sha256(path))
+            for path in sorted(files, key=lambda item: item.relative_to(root).as_posix())
+        )
 
     @staticmethod
     def _file_sha256(path: Path) -> str:

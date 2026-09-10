@@ -77,6 +77,31 @@ prompt, and required successful text artifacts use the same secret/private-path 
 publish raw provider responses, environment dumps, credentials, secret-bearing strings,
 unrelated absolute user paths, or arbitrary nested provider/debug payloads.
 
+## Human manufacturing approval handoff
+
+Reference-board agents do not bypass the production manufacturing human gate. The schematic
+and PCB phases remain autonomous, but the manufacturing phase starts only after a reviewer has
+approved the exact project state. The runner looks for the fixed project-local file
+`reference-manufacturing-approval.json`; arbitrary approval paths are not accepted by the
+benchmark harness.
+
+The approval object uses schema `pcb-reference-manufacturing-approval.v1` and binds the reviewer
+to the board id, benchmark version, attempt id, exact source revision, and a deterministic SHA-256
+over the KiCad schematic/PCB/project/rule files. It also carries the production-required
+`approved_by`, `approved_at_utc`, and `approval_scope=manufacturing_release` fields. If the file is
+missing, symlinked, malformed, belongs to another attempt/source revision, or the design changed
+after review, the manufacturing phase fails before the provider session starts. The same approved
+project-file SHA-256 manifest is revalidated by the manufacturing export service immediately before
+artifact generation, so state drift during the provider session also fails closed.
+
+The runner also requires the runtime `src/`, `scripts/`, `pyproject.toml`, and `uv.lock` state to be
+clean before accepting the source revision as exact. On a valid handoff it adds only the fixed
+relative approval path to the manufacturing prompt and records a sanitized
+`human_manufacturing_approval` workflow event containing the reviewer, source revision, approval
+time, and approved project-state digest. The manufacturing profile does not
+expose design-mutation tools, so a post-approval design change requires a new review rather than
+reusing stale approval evidence.
+
 ## Validate before publication
 
 Run the validator from a clean checkout with the repository's pinned environment:

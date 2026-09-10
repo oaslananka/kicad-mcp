@@ -732,3 +732,358 @@ def test_reference_agent_phase_rejects_unknown_name() -> None:
 
     with pytest.raises(ReferenceAgentRunnerError, match="unsupported reference-agent phase"):
         ReferenceAgentPhase.for_name("unknown")
+
+
+def _write_reference_manufacturing_approval(
+    workspace, *, source_revision: str, digest: str
+) -> None:
+    import json
+
+    workspace.project_dir.mkdir(parents=True, exist_ok=True)
+    workspace.manufacturing_approval_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "pcb-reference-manufacturing-approval.v1",
+                "approved_by": "benchmark-reviewer",
+                "approved_at_utc": "2026-09-10T16:00:00Z",
+                "approval_scope": "manufacturing_release",
+                "board_id": workspace.board_id,
+                "benchmark_version": workspace.version,
+                "attempt_id": workspace.attempt_id,
+                "source_revision": source_revision,
+                "project_state_digest": digest,
+                "approved_project_files": [
+                    {
+                        "path": path.relative_to(workspace.project_dir).as_posix(),
+                        "sha256": __import__("hashlib").sha256(path.read_bytes()).hexdigest(),
+                    }
+                    for path in sorted(workspace.project_dir.rglob("*"))
+                    if path.is_file()
+                    and (
+                        path.suffix in {".kicad_pro", ".kicad_sch", ".kicad_pcb", ".kicad_dru"}
+                        or path.relative_to(workspace.project_dir).as_posix()
+                        == ".kicad-mcp/project_spec.json"
+                    )
+                ],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def test_reference_manufacturing_approval_is_required_and_bound_to_project_state(tmp_path) -> None:
+    from kicad_mcp.evals.reference_agent_runner import (
+        ReferenceAgentRunnerError,
+        compute_reference_project_state_digest,
+        load_reference_manufacturing_approval,
+    )
+
+    workspace = _workspace(tmp_path, attempt_id="attempt-003")
+    workspace.project_dir.mkdir(parents=True)
+    (workspace.project_dir / "demo.kicad_sch").write_text("schematic\n", encoding="utf-8")
+    (workspace.project_dir / "demo.kicad_pcb").write_text("board\n", encoding="utf-8")
+    source_revision = "a" * 40
+    digest = compute_reference_project_state_digest(workspace)
+
+    with pytest.raises(
+        ReferenceAgentRunnerError, match="manufacturing approval evidence is missing"
+    ):
+        load_reference_manufacturing_approval(workspace, source_revision=source_revision)
+
+    _write_reference_manufacturing_approval(
+        workspace, source_revision=source_revision, digest=digest
+    )
+    approval = load_reference_manufacturing_approval(workspace, source_revision=source_revision)
+    assert approval.project_state_digest == digest
+    assert approval.approved_by == "benchmark-reviewer"
+
+
+def test_reference_manufacturing_approval_rejects_source_or_state_drift(tmp_path) -> None:
+    from kicad_mcp.evals.reference_agent_runner import (
+        ReferenceAgentRunnerError,
+        compute_reference_project_state_digest,
+        load_reference_manufacturing_approval,
+    )
+
+    workspace = _workspace(tmp_path, attempt_id="attempt-003")
+    workspace.project_dir.mkdir(parents=True)
+    (workspace.project_dir / "demo.kicad_sch").write_text("schematic\n", encoding="utf-8")
+    board = workspace.project_dir / "demo.kicad_pcb"
+    board.write_text("board-v1\n", encoding="utf-8")
+    source_revision = "b" * 40
+    digest = compute_reference_project_state_digest(workspace)
+    _write_reference_manufacturing_approval(
+        workspace, source_revision=source_revision, digest=digest
+    )
+
+    with pytest.raises(ReferenceAgentRunnerError, match="source revision"):
+        load_reference_manufacturing_approval(workspace, source_revision="c" * 40)
+
+    board.write_text("board-v2\n", encoding="utf-8")
+    with pytest.raises(ReferenceAgentRunnerError, match="project state"):
+        load_reference_manufacturing_approval(workspace, source_revision=source_revision)
+
+
+def test_reference_manufacturing_prompt_uses_fixed_project_local_approval_path(tmp_path) -> None:
+    from kicad_mcp.evals.reference_agent_runner import (
+        append_reference_manufacturing_approval_instruction,
+        compute_reference_project_state_digest,
+        load_reference_manufacturing_approval,
+    )
+
+    workspace = _workspace(tmp_path, attempt_id="attempt-003")
+    workspace.project_dir.mkdir(parents=True)
+    (workspace.project_dir / "demo.kicad_sch").write_text("schematic\n", encoding="utf-8")
+    (workspace.project_dir / "demo.kicad_pcb").write_text("board\n", encoding="utf-8")
+    source_revision = "d" * 40
+    _write_reference_manufacturing_approval(
+        workspace,
+        source_revision=source_revision,
+        digest=compute_reference_project_state_digest(workspace),
+    )
+    approval = load_reference_manufacturing_approval(workspace, source_revision=source_revision)
+    prompt = append_reference_manufacturing_approval_instruction("Manufacture.\n", approval)
+
+    assert 'approval_evidence_path="reference-manufacturing-approval.json"' in prompt
+    assert str(workspace.project_dir) not in prompt
+
+
+def test_reference_manufacturing_approval_event_is_sanitized(tmp_path) -> None:
+    from kicad_mcp.evals.reference_agent_runner import (
+        compute_reference_project_state_digest,
+        load_reference_manufacturing_approval,
+        reference_manufacturing_approval_event,
+    )
+
+    workspace = _workspace(tmp_path, attempt_id="attempt-003")
+    workspace.project_dir.mkdir(parents=True)
+    (workspace.project_dir / "demo.kicad_sch").write_text("schematic\n", encoding="utf-8")
+    (workspace.project_dir / "demo.kicad_pcb").write_text("board\n", encoding="utf-8")
+    source_revision = "e" * 40
+    _write_reference_manufacturing_approval(
+        workspace,
+        source_revision=source_revision,
+        digest=compute_reference_project_state_digest(workspace),
+    )
+    approval = load_reference_manufacturing_approval(workspace, source_revision=source_revision)
+    event = reference_manufacturing_approval_event(workspace, approval)
+
+    assert event.event_type == "workflow"
+    assert event.name == "human_manufacturing_approval"
+    assert event.status == "completed"
+    assert event.details["source_revision"] == source_revision
+    assert event.details["project_state_digest"] == approval.project_state_digest
+
+
+def test_reference_agent_cli_manufacturing_fails_before_provider_without_human_approval(
+    tmp_path, monkeypatch
+) -> None:
+    import importlib.util
+
+    script = Path(__file__).resolve().parents[2] / "scripts/run_reference_board_agent.py"
+    spec = importlib.util.spec_from_file_location("reference_agent_manufacturing_missing", script)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    board = tmp_path / "docs/evidence/reference-boards/stm32f072-usbc/v1"
+    board.mkdir(parents=True)
+    (board / "original-prompt.md").write_text(
+        "# Benchmark\nCommon.\n\n## Phase: schematic\nBuild.\n\n"
+        "## Phase: pcb\nLayout.\n\n## Phase: manufacturing\nExport.\n",
+        encoding="utf-8",
+    )
+    project = tmp_path / ".dev-tools/reference-agent-runs/stm32f072-usbc/v1/attempt-003/project"
+    project.mkdir(parents=True)
+    (project / "demo.kicad_sch").write_text("schematic\n", encoding="utf-8")
+    (project / "demo.kicad_pcb").write_text("board\n", encoding="utf-8")
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.setattr(module, "discover_reference_source_revision", lambda _root: "f" * 40)
+    monkeypatch.setattr(module, "discover_reference_kicad_cli", lambda: tmp_path / "kicad-cli")
+
+    def fail_run(**_kwargs: object):
+        raise AssertionError("provider must not start before human manufacturing approval")
+
+    monkeypatch.setattr(module, "run_claude_session", fail_run)
+    with pytest.raises(ValueError, match="manufacturing approval evidence is missing"):
+        module.main(
+            ["--board-id", "stm32f072-usbc", "--attempt-number", "3", "--phase", "manufacturing"]
+        )
+
+
+def test_reference_agent_cli_manufacturing_consumes_bound_approval_and_logs_handoff(
+    tmp_path, monkeypatch
+) -> None:
+    import importlib.util
+
+    from kicad_mcp.evals.reference_agent_runner import (
+        ReferenceAgentRunSummary,
+        ReferenceAgentWorkspace,
+        compute_reference_project_state_digest,
+    )
+
+    script = Path(__file__).resolve().parents[2] / "scripts/run_reference_board_agent.py"
+    spec = importlib.util.spec_from_file_location("reference_agent_manufacturing_valid", script)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    board = tmp_path / "docs/evidence/reference-boards/stm32f072-usbc/v1"
+    board.mkdir(parents=True)
+    (board / "original-prompt.md").write_text(
+        "# Benchmark\nCommon.\n\n## Phase: schematic\nBuild.\n\n"
+        "## Phase: pcb\nLayout.\n\n## Phase: manufacturing\nExport.\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    workspace = ReferenceAgentWorkspace.for_reviewed_attempt(
+        checkout_dir=tmp_path, board_id="stm32f072-usbc", attempt_number=3
+    )
+    workspace.project_dir.mkdir(parents=True)
+    (workspace.project_dir / "demo.kicad_sch").write_text("schematic\n", encoding="utf-8")
+    (workspace.project_dir / "demo.kicad_pcb").write_text("board\n", encoding="utf-8")
+    source_revision = "f" * 40
+    _write_reference_manufacturing_approval(
+        workspace,
+        source_revision=source_revision,
+        digest=compute_reference_project_state_digest(workspace),
+    )
+    monkeypatch.setattr(module, "discover_reference_source_revision", lambda _root: source_revision)
+    monkeypatch.setattr(module, "discover_reference_kicad_cli", lambda: tmp_path / "kicad-cli")
+    captured: dict[str, object] = {}
+
+    def fake_run(**kwargs: object) -> ReferenceAgentRunSummary:
+        captured.update(kwargs)
+        return ReferenceAgentRunSummary(
+            events=(),
+            primary_model="claude-sonnet-5",
+            auxiliary_models=(),
+            provider="firstParty",
+            permission_denials=0,
+            terminal_reason="completed",
+            successful=True,
+        )
+
+    monkeypatch.setattr(module, "run_claude_session", fake_run)
+    assert (
+        module.main(
+            ["--board-id", "stm32f072-usbc", "--attempt-number", "3", "--phase", "manufacturing"]
+        )
+        == 0
+    )
+    assert 'approval_evidence_path="reference-manufacturing-approval.json"' in captured["prompt"]
+    events = [json.loads(line) for line in workspace.agent_log_path.read_text().splitlines()]
+    assert events[0]["name"] == "human_manufacturing_approval"
+    assert events[0]["details"]["source_revision"] == source_revision
+
+
+def test_reference_source_revision_rejects_dirty_runtime_source_but_not_evidence(tmp_path) -> None:
+    import shutil
+    import subprocess
+
+    from kicad_mcp.evals.reference_agent_runner import (
+        ReferenceAgentRunnerError,
+        discover_reference_source_revision,
+    )
+
+    (tmp_path / "src").mkdir()
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "src/runtime.py").write_text("VALUE = 1\n", encoding="utf-8")
+    (tmp_path / "scripts/runner.py").write_text("print('run')\n", encoding="utf-8")
+    git_executable = shutil.which("git")
+    assert git_executable is not None
+    subprocess.run([git_executable, "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(
+        [git_executable, "config", "user.email", "test@example.com"], cwd=tmp_path, check=True
+    )
+    subprocess.run([git_executable, "config", "user.name", "Test"], cwd=tmp_path, check=True)
+    subprocess.run([git_executable, "add", "src", "scripts"], cwd=tmp_path, check=True)
+    subprocess.run([git_executable, "commit", "-qm", "fixture"], cwd=tmp_path, check=True)
+    revision = discover_reference_source_revision(tmp_path)
+    assert len(revision) == 40
+
+    evidence = tmp_path / "docs/evidence/reference-boards/board/v1/attempts/attempt-003"
+    evidence.mkdir(parents=True)
+    (evidence / "agent-log.jsonl").write_text("{}\n", encoding="utf-8")
+    assert discover_reference_source_revision(tmp_path) == revision
+
+    (tmp_path / "src/runtime.py").write_text("VALUE = 2\n", encoding="utf-8")
+    with pytest.raises(ReferenceAgentRunnerError, match="runtime source checkout is dirty"):
+        discover_reference_source_revision(tmp_path)
+
+
+def test_reference_manufacturing_approval_requires_exact_approved_file_manifest(tmp_path) -> None:
+    from kicad_mcp.evals.reference_agent_runner import (
+        ReferenceAgentRunnerError,
+        compute_reference_project_state_digest,
+        load_reference_manufacturing_approval,
+    )
+
+    workspace = _workspace(tmp_path, attempt_id="attempt-003")
+    workspace.project_dir.mkdir(parents=True)
+    (workspace.project_dir / "demo.kicad_sch").write_text("schematic\n", encoding="utf-8")
+    (workspace.project_dir / "demo.kicad_pcb").write_text("board\n", encoding="utf-8")
+    source_revision = "9" * 40
+    _write_reference_manufacturing_approval(
+        workspace,
+        source_revision=source_revision,
+        digest=compute_reference_project_state_digest(workspace),
+    )
+    payload = json.loads(workspace.manufacturing_approval_path.read_text())
+    payload["approved_project_files"][0]["sha256"] = "0" * 64
+    workspace.manufacturing_approval_path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(ReferenceAgentRunnerError, match="approved project files"):
+        load_reference_manufacturing_approval(workspace, source_revision=source_revision)
+
+
+def test_reference_manufacturing_approval_rejects_unsafe_reviewer_before_provider(tmp_path) -> None:
+    from kicad_mcp.evals.reference_agent_runner import (
+        ReferenceAgentRunnerError,
+        compute_reference_project_state_digest,
+        load_reference_manufacturing_approval,
+    )
+
+    workspace = _workspace(tmp_path, attempt_id="attempt-003")
+    workspace.project_dir.mkdir(parents=True)
+    (workspace.project_dir / "demo.kicad_sch").write_text("schematic\n", encoding="utf-8")
+    (workspace.project_dir / "demo.kicad_pcb").write_text("board\n", encoding="utf-8")
+    source_revision = "7" * 40
+    _write_reference_manufacturing_approval(
+        workspace,
+        source_revision=source_revision,
+        digest=compute_reference_project_state_digest(workspace),
+    )
+    payload = json.loads(workspace.manufacturing_approval_path.read_text())
+    payload["approved_by"] = "/home/private/reviewer"
+    workspace.manufacturing_approval_path.write_text(json.dumps(payload) + "\n", encoding="utf-8")
+
+    with pytest.raises(ReferenceAgentRunnerError, match="reviewer is invalid"):
+        load_reference_manufacturing_approval(workspace, source_revision=source_revision)
+
+
+def test_reference_manufacturing_approval_event_uses_handoff_time_not_approval_time(
+    tmp_path,
+) -> None:
+    from datetime import UTC, datetime
+
+    from kicad_mcp.evals.reference_agent_runner import (
+        compute_reference_project_state_digest,
+        load_reference_manufacturing_approval,
+        reference_manufacturing_approval_event,
+    )
+
+    workspace = _workspace(tmp_path, attempt_id="attempt-003")
+    workspace.project_dir.mkdir(parents=True)
+    (workspace.project_dir / "demo.kicad_sch").write_text("schematic\n", encoding="utf-8")
+    (workspace.project_dir / "demo.kicad_pcb").write_text("board\n", encoding="utf-8")
+    source_revision = "8" * 40
+    _write_reference_manufacturing_approval(
+        workspace,
+        source_revision=source_revision,
+        digest=compute_reference_project_state_digest(workspace),
+    )
+    approval = load_reference_manufacturing_approval(workspace, source_revision=source_revision)
+    handoff_at = datetime(2026, 9, 10, 17, 0, tzinfo=UTC)
+    event = reference_manufacturing_approval_event(workspace, approval, handoff_at=handoff_at)
+    assert event.timestamp == handoff_at
+    assert event.details["approved_at_utc"] == "2026-09-10T16:00:00+00:00"

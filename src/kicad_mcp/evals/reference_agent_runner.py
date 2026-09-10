@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
+import shutil
 import subprocess
 import sys
 from collections.abc import Iterable, Mapping
@@ -15,12 +17,16 @@ from typing import Any, Literal
 from ..discovery import discover_kicad_cli, find_kicad_version
 from ..operating_modes import is_tool_allowed_in_mode
 from ..tools.router import tools_for_profile
+from .evidence_sanitization import EvidenceSanitizationError, validate_sanitized_evidence
 from .reference_corpus import ReferenceAgentLogEvent
 
 _MCP_PREFIX = "mcp__kicad__"
 _CLAUDE_EXECUTABLE = "claude"
 _CLAUDE_MODEL = "claude-sonnet-5"
 _INTERNAL_TOOLS = frozenset({"ToolSearch"})
+_MANUFACTURING_APPROVAL_FILE = "reference-manufacturing-approval.json"
+_REFERENCE_DESIGN_SUFFIXES = frozenset({".kicad_pro", ".kicad_sch", ".kicad_pcb", ".kicad_dru"})
+_REFERENCE_RUNTIME_PATHS = ("src", "scripts", "pyproject.toml", "uv.lock")
 
 
 class ReferenceAgentRunnerError(ValueError):
@@ -106,6 +112,11 @@ class ReferenceAgentWorkspace:
             project_dir=scratch / "project",
         )
 
+    @property
+    def manufacturing_approval_path(self) -> Path:
+        """Return the fixed project-local human approval evidence path."""
+        return self.project_dir / _MANUFACTURING_APPROVAL_FILE
+
     def phase_settings_path(self, phase: ReferenceAgentPhase) -> Path:
         return self.scratch_dir / f"{phase.name}-settings.json"
 
@@ -132,6 +143,51 @@ def _reference_kicad_candidates() -> tuple[Path, ...]:
         if candidate not in unique:
             unique.append(candidate)
     return tuple(unique)
+
+
+def discover_reference_source_revision(checkout_dir: Path) -> str:
+    """Return the exact Git commit used by one reference-agent runtime."""
+    git_executable = shutil.which("git")
+    if git_executable is None:
+        raise ReferenceAgentRunnerError("reference source revision could not be resolved")
+    try:
+        completed = subprocess.run(
+            [git_executable, "rev-parse", "HEAD"],
+            cwd=checkout_dir,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            shell=False,
+            check=False,
+        )
+    except OSError as exc:
+        raise ReferenceAgentRunnerError("reference source revision could not be resolved") from exc
+    revision = completed.stdout.strip()
+    if completed.returncode != 0 or not re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise ReferenceAgentRunnerError("reference source revision could not be resolved")
+    status = subprocess.run(
+        [
+            git_executable,
+            "status",
+            "--porcelain=v1",
+            "--untracked-files=all",
+            "--",
+            *_REFERENCE_RUNTIME_PATHS,
+        ],
+        cwd=checkout_dir,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        shell=False,
+        check=False,
+    )
+    if status.returncode != 0:
+        raise ReferenceAgentRunnerError("reference runtime source status could not be resolved")
+    if status.stdout.strip():
+        raise ReferenceAgentRunnerError("reference runtime source checkout is dirty")
+    return revision
 
 
 def discover_reference_kicad_cli() -> Path:
@@ -269,6 +325,178 @@ def reviewed_mcp_tools(phase: ReferenceAgentPhase) -> frozenset[str]:
     if not reviewed <= catalog:
         raise ReferenceAgentRunnerError("reviewed execution tools exceed phase catalog")
     return reviewed
+
+
+@dataclass(frozen=True, slots=True)
+class ReferenceManufacturingApproval:
+    """Human approval bound to one exact reference-board project state."""
+
+    approved_by: str
+    approved_at_utc: datetime
+    source_revision: str
+    project_state_digest: str
+    approved_project_files: tuple[tuple[str, str], ...]
+
+
+def _sha256_path(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _reference_project_files(workspace: ReferenceAgentWorkspace) -> tuple[tuple[str, str], ...]:
+    """Return the exact approved design-file manifest for one project state."""
+    root = workspace.project_dir
+    if root.is_symlink() or not root.is_dir():
+        raise ReferenceAgentRunnerError("reference project state directory is missing")
+    files: list[Path] = []
+    for path in root.rglob("*"):
+        if path.is_symlink():
+            raise ReferenceAgentRunnerError("reference project state must not contain symlinks")
+        if not path.is_file():
+            continue
+        relative = path.relative_to(root).as_posix()
+        if path.suffix in _REFERENCE_DESIGN_SUFFIXES or relative == ".kicad-mcp/project_spec.json":
+            files.append(path)
+    if not any(path.suffix == ".kicad_sch" for path in files) or not any(
+        path.suffix == ".kicad_pcb" for path in files
+    ):
+        raise ReferenceAgentRunnerError("reference project state requires schematic and PCB files")
+    return tuple(
+        (path.relative_to(root).as_posix(), _sha256_path(path))
+        for path in sorted(files, key=lambda item: item.relative_to(root).as_posix())
+    )
+
+
+def compute_reference_project_state_digest(workspace: ReferenceAgentWorkspace) -> str:
+    """Bind approval to deterministic schematic/PCB/design-rule project state."""
+    files = _reference_project_files(workspace)
+    tree = hashlib.sha256()
+    for relative, digest in files:
+        tree.update(relative.encode("utf-8"))
+        tree.update(b"\0")
+        tree.update(digest.encode("ascii"))
+        tree.update(b"\n")
+    return f"sha256:{tree.hexdigest()}"
+
+
+def load_reference_manufacturing_approval(
+    workspace: ReferenceAgentWorkspace, *, source_revision: str
+) -> ReferenceManufacturingApproval:
+    """Load and fail-closed validate the fixed human approval handoff."""
+    path = workspace.manufacturing_approval_path
+    if path.is_symlink() or not path.is_file():
+        raise ReferenceAgentRunnerError("manufacturing approval evidence is missing")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ReferenceAgentRunnerError("manufacturing approval evidence is invalid") from exc
+    if not isinstance(payload, dict):
+        raise ReferenceAgentRunnerError("manufacturing approval evidence must be an object")
+    expected_identity = {
+        "schema_version": "pcb-reference-manufacturing-approval.v1",
+        "approval_scope": "manufacturing_release",
+        "board_id": workspace.board_id,
+        "benchmark_version": workspace.version,
+        "attempt_id": workspace.attempt_id,
+        "source_revision": source_revision,
+    }
+    for key, expected in expected_identity.items():
+        if payload.get(key) != expected:
+            label = "source revision" if key == "source_revision" else f"{key} identity"
+            raise ReferenceAgentRunnerError(f"manufacturing approval {label} does not match")
+    approved_by = payload.get("approved_by")
+    if not isinstance(approved_by, str) or not approved_by.strip() or len(approved_by) > 128:
+        raise ReferenceAgentRunnerError("manufacturing approval reviewer is invalid")
+    try:
+        validate_sanitized_evidence(approved_by)
+    except EvidenceSanitizationError as exc:
+        raise ReferenceAgentRunnerError("manufacturing approval reviewer is invalid") from exc
+    approved_at_raw = payload.get("approved_at_utc")
+    if not isinstance(approved_at_raw, str):
+        raise ReferenceAgentRunnerError("manufacturing approval timestamp is invalid")
+    try:
+        approved_at = datetime.fromisoformat(approved_at_raw.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ReferenceAgentRunnerError("manufacturing approval timestamp is invalid") from exc
+    if approved_at.utcoffset() is None:
+        raise ReferenceAgentRunnerError("manufacturing approval timestamp must be timezone-aware")
+    actual_files = _reference_project_files(workspace)
+    raw_files = payload.get("approved_project_files")
+    if not isinstance(raw_files, list):
+        raise ReferenceAgentRunnerError("manufacturing approval approved project files are invalid")
+    approved_files: list[tuple[str, str]] = []
+    for item in raw_files:
+        if not isinstance(item, dict) or set(item) != {"path", "sha256"}:
+            raise ReferenceAgentRunnerError(
+                "manufacturing approval approved project files are invalid"
+            )
+        relative = item.get("path")
+        digest = item.get("sha256")
+        if not isinstance(relative, str) or not isinstance(digest, str):
+            raise ReferenceAgentRunnerError(
+                "manufacturing approval approved project files are invalid"
+            )
+        if not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ReferenceAgentRunnerError(
+                "manufacturing approval approved project files are invalid"
+            )
+        approved_files.append((relative, digest))
+    if tuple(approved_files) != actual_files:
+        raise ReferenceAgentRunnerError(
+            "manufacturing approval project state approved project files do not match"
+        )
+    actual_digest = compute_reference_project_state_digest(workspace)
+    if payload.get("project_state_digest") != actual_digest:
+        raise ReferenceAgentRunnerError("manufacturing approval project state does not match")
+    return ReferenceManufacturingApproval(
+        approved_by=approved_by.strip(),
+        approved_at_utc=approved_at,
+        source_revision=source_revision,
+        project_state_digest=actual_digest,
+        approved_project_files=actual_files,
+    )
+
+
+def append_reference_manufacturing_approval_instruction(
+    prompt: str, approval: ReferenceManufacturingApproval
+) -> str:
+    """Tell the manufacturing agent how to consume already-reviewed approval evidence."""
+    return (
+        prompt.rstrip()
+        + "\n\n## Reviewed manufacturing approval\n"
+        + "A human reviewer approved this exact project state for manufacturing export. "
+        + f"The bound project-state digest is {approval.project_state_digest}. "
+        + "Call export_manufacturing_package with "
+        + f'approval_evidence_path="{_MANUFACTURING_APPROVAL_FILE}". '
+        + "Do not modify the design after approval; stop if any design change is required.\n"
+    )
+
+
+def reference_manufacturing_approval_event(
+    workspace: ReferenceAgentWorkspace,
+    approval: ReferenceManufacturingApproval,
+    *,
+    handoff_at: datetime | None = None,
+) -> ReferenceAgentLogEvent:
+    """Return sanitized provenance for the human approval handoff."""
+    timestamp = handoff_at or datetime.now(UTC)
+    return ReferenceAgentLogEvent(
+        attempt_id=workspace.attempt_id,
+        sequence=1,
+        timestamp=timestamp,
+        event_type="workflow",
+        name="human_manufacturing_approval",
+        status="completed",
+        details={
+            "approved_by": approval.approved_by,
+            "approved_at_utc": approval.approved_at_utc.isoformat(),
+            "source_revision": approval.source_revision,
+            "project_state_digest": approval.project_state_digest,
+        },
+    )
 
 
 @dataclass(frozen=True, slots=True)

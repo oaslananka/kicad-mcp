@@ -241,3 +241,81 @@ async def test_package_omits_unsupported_optional_manufacturing_formats(tmp_path
         (tmp_path / "output" / "manufacturing_release_report.json").read_text(encoding="utf-8")
     )
     assert all("not supported" not in item for item in report["export_results"])
+
+
+@pytest.mark.anyio
+async def test_package_revalidates_approved_project_file_digests_at_export_boundary(
+    tmp_path: Path,
+) -> None:
+    import hashlib
+
+    service, calls, _output_root = _service(tmp_path)
+    board = tmp_path / "board.kicad_pcb"
+    board.write_text("approved-state\n", encoding="utf-8")
+    approval = _approval_payload() | {
+        "approved_project_files": [
+            {
+                "path": "board.kicad_pcb",
+                "sha256": hashlib.sha256(board.read_bytes()).hexdigest(),
+            }
+        ]
+    }
+    evidence_path = tmp_path / "approval.json"
+    evidence_path.write_text(json.dumps(approval), encoding="utf-8")
+    board.write_text("changed-after-approval\n", encoding="utf-8")
+
+    result, _progress, _rendered = await _run_export(
+        service, approval_evidence_path="approval.json"
+    )
+
+    assert "approved project file digest mismatch" in result
+    assert all(not calls[name] for name in ("gerber", "drill", "bom", "pick", "ipc", "odb"))
+
+
+@pytest.mark.anyio
+async def test_package_rejects_project_file_added_after_bound_approval(tmp_path: Path) -> None:
+    import hashlib
+
+    service, calls, _output_root = _service(tmp_path)
+    board = tmp_path / "board.kicad_pcb"
+    schematic = tmp_path / "board.kicad_sch"
+    board.write_text("board\n", encoding="utf-8")
+    schematic.write_text("schematic\n", encoding="utf-8")
+    approved_files = [
+        {"path": path.name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        for path in (board, schematic)
+    ]
+    tree = hashlib.sha256()
+    for item in approved_files:
+        tree.update(item["path"].encode("utf-8"))
+        tree.update(b"\0")
+        tree.update(item["sha256"].encode("ascii"))
+        tree.update(b"\n")
+    approval = _approval_payload() | {
+        "approved_project_files": approved_files,
+        "project_state_digest": f"sha256:{tree.hexdigest()}",
+    }
+    evidence_path = tmp_path / "approval.json"
+    evidence_path.write_text(json.dumps(approval), encoding="utf-8")
+    (tmp_path / "unreviewed.kicad_dru").write_text("rules\n", encoding="utf-8")
+
+    result, _progress, _rendered = await _run_export(
+        service, approval_evidence_path="approval.json"
+    )
+
+    assert "approved project state digest mismatch" in result
+    assert all(not calls[name] for name in ("gerber", "drill", "bom", "pick", "ipc", "odb"))
+
+
+@pytest.mark.anyio
+async def test_reference_approval_filename_requires_project_state_bindings(tmp_path: Path) -> None:
+    service, calls, _output_root = _service(tmp_path)
+    evidence_path = tmp_path / "reference-manufacturing-approval.json"
+    evidence_path.write_text(json.dumps(_approval_payload()), encoding="utf-8")
+
+    result, _progress, _rendered = await _run_export(
+        service, approval_evidence_path="reference-manufacturing-approval.json"
+    )
+
+    assert "reference approval requires bound project state" in result
+    assert all(not calls[name] for name in ("gerber", "drill", "bom", "pick", "ipc", "odb"))
