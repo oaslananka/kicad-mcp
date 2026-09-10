@@ -77,30 +77,34 @@ prompt, and required successful text artifacts use the same secret/private-path 
 publish raw provider responses, environment dumps, credentials, secret-bearing strings,
 unrelated absolute user paths, or arbitrary nested provider/debug payloads.
 
-## Human manufacturing approval handoff
+## Benchmark manufacturing reproducibility boundary
 
-Reference-board agents do not bypass the production manufacturing human gate. The schematic
-and PCB phases remain autonomous, but the manufacturing phase starts only after a reviewer has
-approved the exact project state. The runner looks for the fixed project-local file
-`reference-manufacturing-approval.json`; arbitrary approval paths are not accepted by the
-benchmark harness.
+Reference-board benchmarks do **not** turn autonomous evidence generation into a production
+manufacturing release. The production `export_manufacturing_package()` path remains human-gated
+and is not exposed to the benchmark manufacturing agent. The benchmark instead launches the
+opt-in `kicad_mcp.evals.reference_mcp_server` over stdio with an exact discovery **and execution**
+allowlist. Hidden production tools cannot be invoked by name through that server.
 
-The approval object uses schema `pcb-reference-manufacturing-approval.v1` and binds the reviewer
-to the board id, benchmark version, attempt id, exact source revision, and a deterministic SHA-256
-over the KiCad schematic/PCB/project/rule files. It also carries the production-required
-`approved_by`, `approved_at_utc`, and `approval_scope=manufacturing_release` fields. If the file is
-missing, symlinked, malformed, belongs to another attempt/source revision, or the design changed
-after review, the manufacturing phase fails before the provider session starts. The same approved
-project-file SHA-256 manifest is revalidated by the manufacturing export service immediately before
-artifact generation, so state drift during the provider session also fails closed.
+The benchmark surface exposes validation/inspection tools plus two fixed orchestration tools:
+`reference_generate_manufacturing_snapshot()` and
+`reference_compare_manufacturing_snapshots()`. Each generation starts from a fresh fixed output
+location and produces a non-empty BOM plus Gerber and drill files through the same KiCad CLI export
+services used by the product. Export failures, missing required outputs, symlinks, stale manifests,
+or post-generation byte changes fail closed. Direct low-level export tools are not exposed to the
+agent, so evidence cannot be written outside the two reviewed generation roots.
 
-The runner also requires the runtime `src/`, `scripts/`, `pyproject.toml`, and `uv.lock` state to be
-clean before accepting the source revision as exact. On a valid handoff it adds only the fixed
-relative approval path to the manufacturing prompt and records a sanitized
-`human_manufacturing_approval` workflow event containing the reviewer, source revision, approval
-time, and approved project-state digest. The manufacturing profile does not
-expose design-mutation tools, so a post-approval design change requires a new review rather than
-reusing stale approval evidence.
+The comparator always preserves the SHA-256 manifest digest for each raw generation. If raw bytes
+match, the result is `byte_identical`. KiCad CLI embeds wall-clock creation timestamps in otherwise
+stable Gerber, drill, and Gerber-job outputs, so rule set `kicad-cli-timestamps-v1` may classify two
+raw-different generations as `normalized_equivalent` only when the files identify KiCad as the
+generator and all differences disappear after replacing those exact creation-time metadata fields.
+BOM data and manufacturing geometry/coordinates are never normalized. Any other byte difference
+remains `divergent`. Raw artifacts are never modified by comparison.
+
+The earlier state-bound `reference-manufacturing-approval.json` contract remains a valid hardening
+mechanism for human-gated production release workflows, but it is not required by this autonomous
+benchmark evidence phase because #730 measures artifact generation/reproducibility rather than
+production release authorization.
 
 ## Validate before publication
 

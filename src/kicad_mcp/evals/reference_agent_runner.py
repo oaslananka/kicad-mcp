@@ -19,6 +19,7 @@ from ..operating_modes import is_tool_allowed_in_mode
 from ..tools.router import tools_for_profile
 from .evidence_sanitization import EvidenceSanitizationError, validate_sanitized_evidence
 from .reference_corpus import ReferenceAgentLogEvent
+from .reference_mcp_server import REFERENCE_MANUFACTURING_TOOL_NAMES
 
 _MCP_PREFIX = "mcp__kicad__"
 _CLAUDE_EXECUTABLE = "claude"
@@ -304,6 +305,8 @@ _PCB_EXECUTION_TOOLS = (
 
 def catalog_mcp_tools(phase: ReferenceAgentPhase) -> frozenset[str]:
     """Return the profile/mode catalog boundary visible to the benchmark agent."""
+    if phase.name == "manufacturing":
+        return frozenset(_MCP_PREFIX + tool for tool in REFERENCE_MANUFACTURING_TOOL_NAMES)
     return frozenset(
         _MCP_PREFIX + tool
         for tool in tools_for_profile(phase.profile)
@@ -319,7 +322,7 @@ def reviewed_mcp_tools(phase: ReferenceAgentPhase) -> frozenset[str]:
     elif phase.name == "pcb":
         tools = _PCB_EXECUTION_TOOLS
     else:
-        tools = tuple(tools_for_profile("release"))
+        tools = REFERENCE_MANUFACTURING_TOOL_NAMES
     reviewed = frozenset(_MCP_PREFIX + tool for tool in tools)
     catalog = catalog_mcp_tools(phase)
     if not reviewed <= catalog:
@@ -457,6 +460,20 @@ def load_reference_manufacturing_approval(
         source_revision=source_revision,
         project_state_digest=actual_digest,
         approved_project_files=actual_files,
+    )
+
+
+def append_reference_manufacturing_reproducibility_instruction(prompt: str) -> str:
+    """Bind the benchmark manufacturing phase to the fixed two-generation tools."""
+    return (
+        prompt.rstrip()
+        + "\n\n## Benchmark manufacturing reproducibility\n"
+        + "Do not call export_manufacturing_package; production release approval is outside "
+        + "this benchmark phase. Call reference_generate_manufacturing_snapshot exactly twice, "
+        + 'first with generation="generation-1" and then generation="generation-2". '
+        + "Then call reference_compare_manufacturing_snapshots and treat any divergent result "
+        + "as a failed manufacturing reproducibility stage. Do not modify the design between "
+        + "the two generations.\n"
     )
 
 
@@ -639,7 +656,14 @@ def build_mcp_config(
             "kicad": {
                 "type": "stdio",
                 "command": sys.executable,
-                "args": ["-m", "kicad_mcp.server"],
+                "args": [
+                    "-m",
+                    (
+                        "kicad_mcp.evals.reference_mcp_server"
+                        if phase.name == "manufacturing"
+                        else "kicad_mcp.server"
+                    ),
+                ],
                 "env": {
                     "PYTHONPATH": str(workspace.checkout_dir / "src"),
                     "KICAD_MCP_TRANSPORT": "stdio",
