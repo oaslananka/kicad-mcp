@@ -377,3 +377,146 @@ def test_reference_gbrjob_normalization_preserves_non_timestamp_raw_bytes(
 
     assert result["comparison"] == "divergent"
     assert "normalization_rules_version" not in result
+
+
+def test_reference_snapshot_rejects_invalid_generation_and_subdir(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import kicad_mcp.evals.reference_mcp_server as reference_server
+
+    _reset_reference_env(monkeypatch, tmp_path)
+    with pytest.raises(ValueError, match="generation is invalid"):
+        reference_server._reference_snapshot_root("generation-3")  # type: ignore[arg-type]
+
+    root = tmp_path / "snapshot"
+    assert reference_server._snapshot_subdir(root, None) == root
+    assert reference_server._snapshot_subdir(root, "Gerbers") == root / "Gerbers"
+    with pytest.raises(ValueError, match="output subdirectory is invalid"):
+        reference_server._snapshot_subdir(root, "Elsewhere")
+
+
+def test_reference_snapshot_manifest_rejects_unsafe_and_stale_evidence(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import kicad_mcp.evals.reference_mcp_server as reference_server
+
+    _reset_reference_env(monkeypatch, tmp_path)
+    root = reference_server._reference_snapshot_root("generation-1")
+    root.mkdir(parents=True)
+    with pytest.raises(ValueError, match="manifest is missing"):
+        reference_server._validated_snapshot_manifest("generation-1")
+
+    manifest = root / "artifact-manifest.json"
+    manifest.write_text("not-json\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="manifest is invalid"):
+        reference_server._validated_snapshot_manifest("generation-1")
+
+    manifest.write_text("[]\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="manifest is invalid"):
+        reference_server._validated_snapshot_manifest("generation-1")
+
+    (root / "BOM.csv").write_text("reference,value\nU1,MCU\n", encoding="utf-8")
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": "pcb-reference-manufacturing-snapshot.v1",
+                "generation": "generation-1",
+                "artifact_manifest_digest": "sha256:" + "0" * 64,
+                "files": [],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="no longer matches snapshot bytes"):
+        reference_server._validated_snapshot_manifest("generation-1")
+
+
+def test_reference_snapshot_entries_reject_symlinked_artifact(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import kicad_mcp.evals.reference_mcp_server as reference_server
+
+    _reset_reference_env(monkeypatch, tmp_path)
+    root = tmp_path / "snapshot"
+    root.mkdir()
+    outside = tmp_path / "outside.txt"
+    outside.write_text("outside\n", encoding="utf-8")
+    (root / "linked.txt").symlink_to(outside)
+
+    with pytest.raises(ValueError, match="must not contain symlinks"):
+        reference_server._snapshot_file_entries(root)
+    with pytest.raises(ValueError, match="must not contain symlinks"):
+        reference_server._normalized_snapshot_entries(root)
+
+
+def test_reference_gbrjob_normalization_is_fail_closed_for_malformed_metadata() -> None:
+    import kicad_mcp.evals.reference_mcp_server as reference_server
+
+    malformed = b'{"Header":'
+    assert reference_server._normalize_kicad_timestamp_bytes("board.gbrjob", malformed) == malformed
+
+    wrong_shape = b"[]\n"
+    assert (
+        reference_server._normalize_kicad_timestamp_bytes("board.gbrjob", wrong_shape)
+        == wrong_shape
+    )
+
+    no_header = b'{"Other": {"CreationDate": "2026-09-11T00:00:00Z"}}\n'
+    assert reference_server._normalize_kicad_timestamp_bytes("board.gbrjob", no_header) == no_header
+
+    other_vendor = (
+        b'{"Header":{"CreationDate":"2026-09-11T00:00:00Z",'
+        b'"GenerationSoftware":{"Vendor":"OtherEDA"}}}\n'
+    )
+    assert (
+        reference_server._normalize_kicad_timestamp_bytes("board.gbrjob", other_vendor)
+        == other_vendor
+    )
+
+    duplicate = (
+        b'{"Header":{"CreationDate":"2026-09-11T00:00:00Z",'
+        b'"GenerationSoftware":{"Vendor":"KiCad"}},'
+        b'"Other":{"CreationDate":"2026-09-11T00:00:01Z"}}\n'
+    )
+    assert reference_server._normalize_kicad_timestamp_bytes("board.gbrjob", duplicate) == duplicate
+
+
+def test_reference_snapshot_accepts_lowercase_generated_bom(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import kicad_mcp.evals.reference_mcp_server as reference_server
+
+    _reset_reference_env(monkeypatch, tmp_path)
+
+    class Gerber:
+        def export(self, output_subdir: str = "Gerbers") -> str:
+            root = reference_server._reference_snapshot_root("generation-1") / output_subdir
+            root.mkdir(parents=True, exist_ok=True)
+            (root / "board-F_Cu.gbr").write_text("gerber\n", encoding="utf-8")
+            return "ok"
+
+    class Drill:
+        def export(self, output_subdir: str = "Gerbers") -> str:
+            root = reference_server._reference_snapshot_root("generation-1") / output_subdir
+            (root / "board.drl").write_text("drill\n", encoding="utf-8")
+            return "ok"
+
+    class Bom:
+        def export(self, format: str = "csv") -> str:
+            root = reference_server._reference_snapshot_root("generation-1")
+            (root / "bom.csv").write_text("reference,value\nU1,MCU\n", encoding="utf-8")
+            return "ok"
+
+    monkeypatch.setattr(
+        reference_server,
+        "_snapshot_export_services",
+        lambda _root: SimpleNamespace(gerber=Gerber(), drill=Drill(), bom=Bom()),
+    )
+
+    payload = json.loads(reference_server.generate_reference_manufacturing_snapshot("generation-1"))
+
+    root = reference_server._reference_snapshot_root("generation-1")
+    assert (root / "BOM.csv").is_file()
+    assert not (root / "bom.csv").exists()
+    assert any(item["path"] == "BOM.csv" for item in payload["files"])
