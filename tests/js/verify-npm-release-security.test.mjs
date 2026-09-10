@@ -77,6 +77,83 @@ test("published digest verification rejects a cross-origin tarball before fetchi
   }
 });
 
+test("published digest verification retries a temporarily unavailable registry tarball", async () => {
+  const directory = temporaryDirectory();
+  const checksumsPath = join(directory, "SHA256SUMS.txt");
+  const payload = new TextEncoder().encode("eventually available tarball");
+  const digest = createHash("sha256").update(payload).digest("hex");
+  writeFileSync(checksumsPath, `${digest}  kicad-mcp-pro-${VERSION}.tgz\n`);
+
+  const originalFetch = globalThis.fetch;
+  let tarballAttempts = 0;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (!url.endsWith(".tgz")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ dist: { tarball: packageTarballUrl(PACKAGE, VERSION) } }),
+      };
+    }
+    tarballAttempts += 1;
+    if (tarballAttempts === 1) return { ok: false, status: 404 };
+    return { ok: true, status: 200, arrayBuffer: async () => payload.buffer };
+  };
+
+  try {
+    await verifyPublishedNpmDigest({
+      packageName: PACKAGE,
+      version: VERSION,
+      checksumsPath,
+      outputDir: join(directory, "out"),
+      retries: 2,
+      retryDelayMs: 0,
+    });
+    assert.equal(tarballAttempts, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("default retry budget tolerates a registry tarball propagation window longer than six attempts", async () => {
+  const directory = temporaryDirectory();
+  const checksumsPath = join(directory, "SHA256SUMS.txt");
+  const payload = new TextEncoder().encode("slowly propagated tarball");
+  const digest = createHash("sha256").update(payload).digest("hex");
+  writeFileSync(checksumsPath, `${digest}  kicad-mcp-pro-${VERSION}.tgz\n`);
+
+  const originalFetch = globalThis.fetch;
+  let tarballAttempts = 0;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (!url.endsWith(".tgz")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ dist: { tarball: packageTarballUrl(PACKAGE, VERSION) } }),
+      };
+    }
+    tarballAttempts += 1;
+    if (tarballAttempts <= 6) return { ok: false, status: 404 };
+    return { ok: true, status: 200, arrayBuffer: async () => payload.buffer };
+  };
+
+  try {
+    await verifyPublishedNpmDigest({
+      packageName: PACKAGE,
+      version: VERSION,
+      checksumsPath,
+      outputDir: join(directory, "out"),
+      retryDelayMs: 0,
+    });
+    assert.equal(tarballAttempts, 7);
+  } finally {
+    globalThis.fetch = originalFetch;
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("basename fallback warning does not log registry-controlled names", async () => {
   const directory = temporaryDirectory();
   const checksumsPath = join(directory, "SHA256SUMS.txt");
