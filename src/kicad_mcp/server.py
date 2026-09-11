@@ -717,6 +717,7 @@ class KiCadFastMCP(FastMCP):
 
     allow_experimental_tools: bool = False
     allowed_tool_names: set[str] | None = None
+    execution_tool_names: set[str] | None = None
     filter_runtime_tools: bool = True
     operating_mode: OperatingMode = OperatingMode.READONLY
     _lazy_registration: Callable[[], None] | None = None
@@ -1019,6 +1020,15 @@ class KiCadFastMCP(FastMCP):
         with otel.tool_span(name) as span:
             try:
                 await self._ensure_registered_async()
+                execution_tool_names = getattr(self, "execution_tool_names", None)
+                if execution_tool_names is not None and name not in execution_tool_names:
+                    result = _structured_tool_error_from_message(
+                        f"Tool '{name}' is not available in this server execution surface.",
+                        tool_name=name,
+                    )
+                    status, error_code = _status_from_result(result)
+                    logger.warning("tool_denied_by_execution_surface", tool=name)
+                    return result
                 mode = getattr(self, "operating_mode", active_operating_mode())
                 if not is_tool_allowed_in_mode(name, mode):
                     result = _structured_tool_error_from_message(

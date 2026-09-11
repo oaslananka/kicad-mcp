@@ -434,8 +434,10 @@ def test_reviewed_mcp_tools_follow_profile_and_mode_boundaries() -> None:
         "mcp__kicad__run_drc",
     } <= pcb
     assert "mcp__kicad__route_differential_pair" not in pcb
-    assert len(release) == 24
-    assert "mcp__kicad__export_manufacturing_package" in release
+    assert len(release) >= 18
+    assert "mcp__kicad__reference_generate_manufacturing_snapshot" in release
+    assert "mcp__kicad__reference_compare_manufacturing_snapshots" in release
+    assert "mcp__kicad__export_manufacturing_package" not in release
 
 
 def test_parse_claude_stream_rejects_tool_outside_reviewed_phase_surface() -> None:
@@ -619,6 +621,67 @@ def test_reference_agent_cli_threads_catalog_and_execution_boundaries(
     workspace = captured["workspace"]
     assert workspace.checkout_dir == tmp_path.resolve()
     assert workspace.agent_log_path == board / "attempts/attempt-001/agent-log.jsonl"
+
+
+def test_build_mcp_config_uses_benchmark_only_manufacturing_server(tmp_path) -> None:
+    from kicad_mcp.evals.reference_agent_runner import ReferenceAgentPhase, build_mcp_config
+
+    workspace = _workspace(tmp_path, attempt_id="attempt-003")
+    config = build_mcp_config(
+        phase=ReferenceAgentPhase.for_name("manufacturing"),
+        workspace=workspace,
+        kicad_cli=tmp_path / "kicad-cli",
+    )
+    server = config["mcpServers"]["kicad"]
+    assert server["args"] == ["-m", "kicad_mcp.evals.reference_mcp_server"]
+    assert server["env"]["KICAD_MCP_OPERATING_MODE"] == "manufacturing"
+
+
+def test_reference_agent_cli_manufacturing_does_not_require_release_approval(
+    tmp_path, monkeypatch
+) -> None:
+    import importlib.util
+
+    from kicad_mcp.evals.reference_agent_runner import ReferenceAgentRunSummary
+
+    script = Path(__file__).resolve().parents[2] / "scripts/run_reference_board_agent.py"
+    spec = importlib.util.spec_from_file_location("reference_agent_benchmark_manufacturing", script)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    board = tmp_path / "docs/evidence/reference-boards/stm32f072-usbc/v1"
+    board.mkdir(parents=True)
+    (board / "original-prompt.md").write_text(
+        "# Benchmark\nCommon.\n\n## Phase: schematic\nBuild.\n\n"
+        "## Phase: pcb\nLayout.\n\n## Phase: manufacturing\nExport twice.\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(module, "ROOT", tmp_path)
+    monkeypatch.setattr(module, "discover_reference_kicad_cli", lambda: tmp_path / "kicad-cli")
+    captured: dict[str, object] = {}
+
+    def fake_run(**kwargs: object) -> ReferenceAgentRunSummary:
+        captured.update(kwargs)
+        return ReferenceAgentRunSummary(
+            events=(),
+            primary_model="claude-sonnet-5",
+            auxiliary_models=(),
+            provider="firstParty",
+            permission_denials=0,
+            terminal_reason="completed",
+            successful=True,
+        )
+
+    monkeypatch.setattr(module, "run_claude_session", fake_run)
+    assert (
+        module.main(
+            ["--board-id", "stm32f072-usbc", "--attempt-number", "3", "--phase", "manufacturing"]
+        )
+        == 0
+    )
+    assert "Reviewed manufacturing approval" not in captured["prompt"]
+    assert "mcp__kicad__reference_generate_manufacturing_snapshot" in captured["allowed_mcp_tools"]
+    assert "mcp__kicad__export_manufacturing_package" not in captured["allowed_mcp_tools"]
 
 
 def test_reference_agent_workspace_derives_reviewed_paths(tmp_path) -> None:
@@ -874,106 +937,6 @@ def test_reference_manufacturing_approval_event_is_sanitized(tmp_path) -> None:
     assert event.status == "completed"
     assert event.details["source_revision"] == source_revision
     assert event.details["project_state_digest"] == approval.project_state_digest
-
-
-def test_reference_agent_cli_manufacturing_fails_before_provider_without_human_approval(
-    tmp_path, monkeypatch
-) -> None:
-    import importlib.util
-
-    script = Path(__file__).resolve().parents[2] / "scripts/run_reference_board_agent.py"
-    spec = importlib.util.spec_from_file_location("reference_agent_manufacturing_missing", script)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    board = tmp_path / "docs/evidence/reference-boards/stm32f072-usbc/v1"
-    board.mkdir(parents=True)
-    (board / "original-prompt.md").write_text(
-        "# Benchmark\nCommon.\n\n## Phase: schematic\nBuild.\n\n"
-        "## Phase: pcb\nLayout.\n\n## Phase: manufacturing\nExport.\n",
-        encoding="utf-8",
-    )
-    project = tmp_path / ".dev-tools/reference-agent-runs/stm32f072-usbc/v1/attempt-003/project"
-    project.mkdir(parents=True)
-    (project / "demo.kicad_sch").write_text("schematic\n", encoding="utf-8")
-    (project / "demo.kicad_pcb").write_text("board\n", encoding="utf-8")
-    monkeypatch.setattr(module, "ROOT", tmp_path)
-    monkeypatch.setattr(module, "discover_reference_source_revision", lambda _root: "f" * 40)
-    monkeypatch.setattr(module, "discover_reference_kicad_cli", lambda: tmp_path / "kicad-cli")
-
-    def fail_run(**_kwargs: object):
-        raise AssertionError("provider must not start before human manufacturing approval")
-
-    monkeypatch.setattr(module, "run_claude_session", fail_run)
-    with pytest.raises(ValueError, match="manufacturing approval evidence is missing"):
-        module.main(
-            ["--board-id", "stm32f072-usbc", "--attempt-number", "3", "--phase", "manufacturing"]
-        )
-
-
-def test_reference_agent_cli_manufacturing_consumes_bound_approval_and_logs_handoff(
-    tmp_path, monkeypatch
-) -> None:
-    import importlib.util
-
-    from kicad_mcp.evals.reference_agent_runner import (
-        ReferenceAgentRunSummary,
-        ReferenceAgentWorkspace,
-        compute_reference_project_state_digest,
-    )
-
-    script = Path(__file__).resolve().parents[2] / "scripts/run_reference_board_agent.py"
-    spec = importlib.util.spec_from_file_location("reference_agent_manufacturing_valid", script)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    board = tmp_path / "docs/evidence/reference-boards/stm32f072-usbc/v1"
-    board.mkdir(parents=True)
-    (board / "original-prompt.md").write_text(
-        "# Benchmark\nCommon.\n\n## Phase: schematic\nBuild.\n\n"
-        "## Phase: pcb\nLayout.\n\n## Phase: manufacturing\nExport.\n",
-        encoding="utf-8",
-    )
-    monkeypatch.setattr(module, "ROOT", tmp_path)
-    workspace = ReferenceAgentWorkspace.for_reviewed_attempt(
-        checkout_dir=tmp_path, board_id="stm32f072-usbc", attempt_number=3
-    )
-    workspace.project_dir.mkdir(parents=True)
-    (workspace.project_dir / "demo.kicad_sch").write_text("schematic\n", encoding="utf-8")
-    (workspace.project_dir / "demo.kicad_pcb").write_text("board\n", encoding="utf-8")
-    source_revision = "f" * 40
-    _write_reference_manufacturing_approval(
-        workspace,
-        source_revision=source_revision,
-        digest=compute_reference_project_state_digest(workspace),
-    )
-    monkeypatch.setattr(module, "discover_reference_source_revision", lambda _root: source_revision)
-    monkeypatch.setattr(module, "discover_reference_kicad_cli", lambda: tmp_path / "kicad-cli")
-    captured: dict[str, object] = {}
-
-    def fake_run(**kwargs: object) -> ReferenceAgentRunSummary:
-        captured.update(kwargs)
-        return ReferenceAgentRunSummary(
-            events=(),
-            primary_model="claude-sonnet-5",
-            auxiliary_models=(),
-            provider="firstParty",
-            permission_denials=0,
-            terminal_reason="completed",
-            successful=True,
-        )
-
-    monkeypatch.setattr(module, "run_claude_session", fake_run)
-    assert (
-        module.main(
-            ["--board-id", "stm32f072-usbc", "--attempt-number", "3", "--phase", "manufacturing"]
-        )
-        == 0
-    )
-    assert 'approval_evidence_path="reference-manufacturing-approval.json"' in captured["prompt"]
-    events = [json.loads(line) for line in workspace.agent_log_path.read_text().splitlines()]
-    assert events[0]["name"] == "human_manufacturing_approval"
-    assert events[0]["details"]["source_revision"] == source_revision
 
 
 def test_reference_source_revision_rejects_dirty_runtime_source_but_not_evidence(tmp_path) -> None:
