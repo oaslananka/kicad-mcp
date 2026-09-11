@@ -551,7 +551,10 @@ def test_reference_snapshot_normalizes_same_file_bom_alias(
             root = reference_server._reference_snapshot_root("generation-1")
             lowercase = root / "bom.csv"
             lowercase.write_text("reference,value\nU1,MCU\n", encoding="utf-8")
-            os.link(lowercase, root / "BOM.csv")
+            try:
+                os.link(lowercase, root / "BOM.csv")
+            except FileExistsError:
+                pytest.skip("case-insensitive filesystem cannot create a second BOM alias")
             return "ok"
 
     monkeypatch.setattr(
@@ -580,6 +583,9 @@ def test_reference_snapshot_rejects_distinct_bom_aliases(
     root.mkdir(parents=True, exist_ok=True)
     (root / "BOM.csv").write_text("canonical\n", encoding="utf-8")
     (root / "bom.csv").write_text("different\n", encoding="utf-8")
+    aliases = [path for path in root.iterdir() if path.name.casefold() == "bom.csv"]
+    if len(aliases) < 2:
+        pytest.skip("case-insensitive filesystem cannot represent distinct BOM aliases")
 
     with pytest.raises(ValueError, match="ambiguous BOM artifacts"):
         reference_server._canonicalize_snapshot_bom(root)
@@ -625,6 +631,9 @@ def test_reference_snapshot_rejects_multiple_noncanonical_bom_spellings(
     root.mkdir(parents=True, exist_ok=True)
     (root / "bom.csv").write_text("one\n", encoding="utf-8")
     (root / "BoM.csv").write_text("two\n", encoding="utf-8")
+    aliases = [path for path in root.iterdir() if path.name.casefold() == "bom.csv"]
+    if len(aliases) < 2:
+        pytest.skip("case-insensitive filesystem cannot represent multiple BOM spellings")
 
     with pytest.raises(ValueError, match="ambiguous BOM artifacts"):
         reference_server._canonicalize_snapshot_bom(root)
