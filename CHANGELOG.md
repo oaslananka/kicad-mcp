@@ -10,6 +10,14 @@ and this package adheres to
 Comparison links will be added after the first public component tags are
 published.
 
+## [3.34.5](https://github.com/oaslananka/kicad-mcp-pro/compare/mcp-server-v3.34.4...mcp-server-v3.34.5) (2026-09-11)
+
+
+### Bug Fixes
+
+* **evals:** bind reference manufacturing approval ([#884](https://github.com/oaslananka/kicad-mcp-pro/issues/884)) ([ed4a80e](https://github.com/oaslananka/kicad-mcp-pro/commit/ed4a80ebd5ba7fb08fd5bf5b08a2bee2d7ada59c))
+* **evals:** make reference manufacturing reproducible ([#886](https://github.com/oaslananka/kicad-mcp-pro/issues/886)) ([bc11292](https://github.com/oaslananka/kicad-mcp-pro/commit/bc1129227d36be11f03f08d03e4427435e6a98ba))
+
 ## [3.34.4](https://github.com/oaslananka/kicad-mcp-pro/compare/mcp-server-v3.34.3...mcp-server-v3.34.4) (2026-09-10)
 
 
