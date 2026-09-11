@@ -247,6 +247,48 @@ def _require_snapshot_export_success(label: str, result: str) -> None:
         raise ValueError(f"{label} export failed: {result}")
 
 
+def _canonicalize_snapshot_bom(root: Path) -> Path:
+    """Require one BOM artifact and normalize its on-disk spelling to ``BOM.csv``."""
+    canonical_name = "BOM.csv"
+    candidates = [
+        path
+        for path in root.iterdir()
+        if path.name.casefold() == canonical_name.casefold() and path.is_file()
+    ]
+    canonical = root / canonical_name
+    if not candidates:
+        return canonical
+
+    exact = next((path for path in candidates if path.name == canonical_name), None)
+    if exact is not None:
+        for alias in candidates:
+            if alias == exact:
+                continue
+            if not alias.samefile(exact):
+                raise ValueError(
+                    "reference manufacturing snapshot contains ambiguous BOM artifacts"
+                )
+            alias.unlink()
+        return exact
+
+    if len(candidates) != 1:
+        raise ValueError("reference manufacturing snapshot contains ambiguous BOM artifacts")
+    source = candidates[0]
+    temporary = root / ".reference-bom-case-normalize.tmp"
+    if temporary.exists() or temporary.is_symlink():
+        raise ValueError(
+            "reference manufacturing snapshot contains reserved temporary BOM artifact"
+        )
+    source.replace(temporary)
+    try:
+        temporary.replace(canonical)
+    except OSError:
+        if temporary.exists() and not source.exists():
+            temporary.replace(source)
+        raise
+    return canonical
+
+
 def generate_reference_manufacturing_snapshot(generation: ReferenceSnapshotGeneration) -> str:
     """Generate one fresh BOM + Gerber/drill snapshot with a stable byte manifest."""
     root = _reference_snapshot_root(generation)
@@ -260,10 +302,7 @@ def generate_reference_manufacturing_snapshot(generation: ReferenceSnapshotGener
     _require_snapshot_export_success("Drill", services.drill.export("Gerbers"))
     _require_snapshot_export_success("BOM", services.bom.export("csv"))
 
-    generated_bom = root / "bom.csv"
-    canonical_bom = root / "BOM.csv"
-    if generated_bom.is_file() and not canonical_bom.exists():
-        generated_bom.replace(canonical_bom)
+    canonical_bom = _canonicalize_snapshot_bom(root)
     gerbers = root / "Gerbers"
     has_gerber = gerbers.is_dir() and any(
         path.is_file() and path.stat().st_size > 0 and path.suffix.casefold() != ".gbrjob"

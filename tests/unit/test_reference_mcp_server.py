@@ -518,5 +518,83 @@ def test_reference_snapshot_accepts_lowercase_generated_bom(
 
     root = reference_server._reference_snapshot_root("generation-1")
     assert (root / "BOM.csv").is_file()
-    assert not (root / "bom.csv").exists()
+    names = {path.name for path in root.iterdir()}
+    assert "BOM.csv" in names
+    assert "bom.csv" not in names
     assert any(item["path"] == "BOM.csv" for item in payload["files"])
+
+
+def test_reference_snapshot_normalizes_same_file_bom_alias(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import os
+
+    import kicad_mcp.evals.reference_mcp_server as reference_server
+
+    _reset_reference_env(monkeypatch, tmp_path)
+
+    class Gerber:
+        def export(self, output_subdir: str = "Gerbers") -> str:
+            root = reference_server._reference_snapshot_root("generation-1") / output_subdir
+            root.mkdir(parents=True, exist_ok=True)
+            (root / "board-F_Cu.gbr").write_text("gerber\n", encoding="utf-8")
+            return "ok"
+
+    class Drill:
+        def export(self, output_subdir: str = "Gerbers") -> str:
+            root = reference_server._reference_snapshot_root("generation-1") / output_subdir
+            (root / "board.drl").write_text("drill\n", encoding="utf-8")
+            return "ok"
+
+    class Bom:
+        def export(self, format: str = "csv") -> str:
+            root = reference_server._reference_snapshot_root("generation-1")
+            lowercase = root / "bom.csv"
+            lowercase.write_text("reference,value\nU1,MCU\n", encoding="utf-8")
+            os.link(lowercase, root / "BOM.csv")
+            return "ok"
+
+    monkeypatch.setattr(
+        reference_server,
+        "_snapshot_export_services",
+        lambda _root: SimpleNamespace(gerber=Gerber(), drill=Drill(), bom=Bom()),
+    )
+
+    reference_server.generate_reference_manufacturing_snapshot("generation-1")
+
+    root = reference_server._reference_snapshot_root("generation-1")
+    assert (root / "BOM.csv").is_file()
+    names = {path.name for path in root.iterdir()}
+    assert "BOM.csv" in names
+    assert "bom.csv" not in names
+    assert ".reference-bom-case-normalize.tmp" not in names
+
+
+def test_reference_snapshot_rejects_distinct_bom_aliases(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import kicad_mcp.evals.reference_mcp_server as reference_server
+
+    _reset_reference_env(monkeypatch, tmp_path)
+    root = reference_server._reference_snapshot_root("generation-1")
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "BOM.csv").write_text("canonical\n", encoding="utf-8")
+    (root / "bom.csv").write_text("different\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="ambiguous BOM artifacts"):
+        reference_server._canonicalize_snapshot_bom(root)
+
+
+def test_reference_snapshot_rejects_reserved_bom_temp_artifact(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import kicad_mcp.evals.reference_mcp_server as reference_server
+
+    _reset_reference_env(monkeypatch, tmp_path)
+    root = reference_server._reference_snapshot_root("generation-1")
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "bom.csv").write_text("bom\n", encoding="utf-8")
+    (root / ".reference-bom-case-normalize.tmp").write_text("reserved\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="reserved temporary BOM artifact"):
+        reference_server._canonicalize_snapshot_bom(root)
