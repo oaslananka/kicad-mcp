@@ -598,3 +598,59 @@ def test_reference_snapshot_rejects_reserved_bom_temp_artifact(
 
     with pytest.raises(ValueError, match="reserved temporary BOM artifact"):
         reference_server._canonicalize_snapshot_bom(root)
+
+
+def test_reference_snapshot_bom_canonicalizer_returns_missing_target(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import kicad_mcp.evals.reference_mcp_server as reference_server
+
+    _reset_reference_env(monkeypatch, tmp_path)
+    root = reference_server._reference_snapshot_root("generation-1")
+    root.mkdir(parents=True, exist_ok=True)
+
+    canonical = reference_server._canonicalize_snapshot_bom(root)
+
+    assert canonical == root / "BOM.csv"
+    assert not canonical.exists()
+
+
+def test_reference_snapshot_rejects_multiple_noncanonical_bom_spellings(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import kicad_mcp.evals.reference_mcp_server as reference_server
+
+    _reset_reference_env(monkeypatch, tmp_path)
+    root = reference_server._reference_snapshot_root("generation-1")
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "bom.csv").write_text("one\n", encoding="utf-8")
+    (root / "BoM.csv").write_text("two\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="ambiguous BOM artifacts"):
+        reference_server._canonicalize_snapshot_bom(root)
+
+
+def test_reference_snapshot_bom_case_rename_rolls_back_on_failure(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    import kicad_mcp.evals.reference_mcp_server as reference_server
+
+    _reset_reference_env(monkeypatch, tmp_path)
+    root = reference_server._reference_snapshot_root("generation-1")
+    root.mkdir(parents=True, exist_ok=True)
+    source = root / "bom.csv"
+    source.write_text("bom\n", encoding="utf-8")
+    original_replace = Path.replace
+
+    def fail_canonical_replace(path: Path, target: Path) -> Path:
+        if path.name == ".reference-bom-case-normalize.tmp" and target.name == "BOM.csv":
+            raise OSError("simulated case-only rename failure")
+        return original_replace(path, target)
+
+    monkeypatch.setattr(Path, "replace", fail_canonical_replace)
+
+    with pytest.raises(OSError, match="simulated case-only rename failure"):
+        reference_server._canonicalize_snapshot_bom(root)
+
+    assert source.read_text(encoding="utf-8") == "bom\n"
+    assert not (root / ".reference-bom-case-normalize.tmp").exists()
